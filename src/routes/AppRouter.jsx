@@ -44,6 +44,7 @@ import BlogDetailPage from '../pages/BlogDetailPage';
 
 import GestionPopup from '../pages/GestionPopup';
 import PostulacionesDashboard from '../pages/PostulacionesDashboard';
+import VerificarBeneficios from '../pages/VerificarBeneficios';
 
 // Páginas de RR.HH.
 import EmpleadosPage from '../pages/rrhh/EmpleadosPage';
@@ -240,6 +241,7 @@ export const AppRouter = () => {
           <Route path="registro-paciente" element={<RegistroPacientePage />} />
           <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
           <Route path="verificar-documento" element={<VerificarDocumentos />} />
+          <Route path="verificar-beneficios" element={<VerificarBeneficios />} />
           <Route path="loading" element={<Loading />} />
           <Route path="*" element={<ErrorPage />} />
         </Route>
