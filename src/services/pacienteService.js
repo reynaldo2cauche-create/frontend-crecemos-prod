@@ -78,4 +78,9 @@ export const cambiarVisibilidadPaciente = async (pacienteId, mostrarEnListado, u
   return response.data;
 };
 
+export const beneficiosPaciente = async (dni) => {
+  const response = await api.get(`/pacientes/beneficios/${dni}`);
+  return response.data;
+};
+
  
