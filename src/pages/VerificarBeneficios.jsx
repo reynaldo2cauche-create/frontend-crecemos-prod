@@ -125,28 +125,86 @@ const VerificarBeneficios = () => {
     }
   };
 
-  const getCategoriaIcono = (categoria) => {
-    const iconos = {
-      'Salud Visual': '👁️',
-      'Salud': '🏥',
-      'Actividad Física': '💪',
-      'Fitness': '🏋️',
-      'Educación': '📚',
-      'Salud Dental': '🦷',
-      'Bienestar': '🌟',
-      'Entretenimiento': '🎭',
-      'Gastronomía': '🍽️',
-      'Tecnología': '💻'
-    };
-    return iconos[categoria] || '🎁';
+  const formatearFecha = (fecha) => {
+    if (!fecha) return 'Sin vencimiento';
+    const date = new Date(fecha);
+    const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('es-PE', opciones);
   };
 
   return (
     <div style={styles.wrapper}>
+      {/* Media queries con style tag */}
+      <style>{`
+        @media (max-width: 968px) {
+          .grid-layout {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .header-inner {
+            flex-direction: column;
+            text-align: center;
+          }
+          
+          .brand {
+            flex-direction: column;
+            text-align: center;
+          }
+          
+          .action-buttons {
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+          }
+          
+          .result-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .beneficio-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .beneficio-footer {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: stretch;
+          }
+        }
+        
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+        }
+        
+        @media (min-width: 1400px) {
+          .beneficios-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+        }
+        
+        @media (min-width: 1000px) and (max-width: 1399px) {
+          .beneficios-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        
+        @media (max-width: 999px) {
+          .beneficios-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       {/* Header */}
       <header style={styles.header}>
-        <div style={styles.headerInner}>
-          <div style={styles.brand}>
+        <div style={styles.headerInner} className="header-inner">
+          <div style={styles.brand} className="brand">
             <div style={styles.logo}>CTC</div>
             <div style={styles.brandText}>
               <h1 style={styles.brandTitle}>Consulta de Beneficios</h1>
@@ -161,7 +219,7 @@ const VerificarBeneficios = () => {
 
       {/* Main Content */}
       <main style={styles.mainContent}>
-        <div style={styles.gridLayout}>
+        <div style={styles.gridLayout} className="grid-layout">
           {/* Panel de búsqueda */}
           <div style={styles.panel}>
             <div style={styles.panelTitle}>
@@ -192,7 +250,7 @@ const VerificarBeneficios = () => {
                 }}
               />
               <div style={styles.helperText}>
-                También puedes abrir esta página con <strong>?dni=12345678</strong> y consultará automáticamente.
+                Prueba con: <strong>12345678</strong> o <strong>87654321</strong> (mock).
               </div>
 
               <button 
@@ -220,7 +278,7 @@ const VerificarBeneficios = () => {
 
           {/* Panel de resultado */}
           <div style={styles.panel}>
-            <div style={styles.resultHeader}>
+            <div style={styles.resultHeader} className="result-header">
               <div style={{
                 ...styles.statusBadge,
                 ...(estado === 'success' ? styles.statusSuccess : 
@@ -230,11 +288,11 @@ const VerificarBeneficios = () => {
               }}>
                 {estadoTexto}
               </div>
-              {paciente && (
-                <span style={styles.tipoBadge}>
-                  {paciente.activo ? 'Paciente Activo' : 'Paciente Inactivo'}
-                </span>
-              )}
+              <div style={styles.actionButtons} className="action-buttons no-print">
+                <button style={styles.btnAction} onClick={() => alert('Ver ejemplos')}>Ver ejemplos</button>
+                <button style={styles.btnAction} onClick={handleImprimirBeneficios}>Imprimir</button>
+                <button style={styles.btnActionPrimary} onClick={handleCompartir}>Compartir</button>
+              </div>
             </div>
 
             <div style={styles.resultContent}>
@@ -252,103 +310,78 @@ const VerificarBeneficios = () => {
                 </div>
               )}
 
-              {paciente && (
+              {paciente && beneficios.length > 0 && (
                 <>
-                  {/* Información del paciente */}
-                  <div style={styles.infoCards}>
-                    <div style={styles.infoCard}>
-                      <div style={styles.cardLabel}>Paciente</div>
-                      <div style={styles.cardValue}>
-                        <strong>
-                          {`${paciente.nombres} ${paciente.apellido_paterno} ${paciente.apellido_materno}`}
-                        </strong>
-                      </div>
-                      <div style={styles.cardLabel}>Documento de Identidad</div>
-                      <div style={styles.cardValue}>
-                        DNI {paciente.numero_documento}
-                      </div>
-                      <div style={styles.cardLabel}>Estado</div>
-                      <div style={styles.cardValue}>
-                        <span style={paciente.activo ? styles.estadoActivo : styles.estadoInactivo}>
-                          ● {paciente.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <div style={styles.vistaEjemplo}>Vista de ejemplo activa.</div>
 
-                  {/* Lista de beneficios */}
-                  {beneficios.length > 0 ? (
-                    <div style={styles.beneficiosContainer}>
-                      <h3 style={styles.beneficiosTitulo}>
-                        Beneficios Disponibles ({totalBeneficios})
-                      </h3>
-                      
-                      {beneficios.map((beneficio) => (
-                        <div key={beneficio.id} style={styles.beneficioCard}>
-                          <div style={styles.beneficioHeader}>
-                            <div style={styles.beneficioIcono}>
-                              {getCategoriaIcono(beneficio.categoria)}
-                            </div>
-                            <div style={styles.beneficioTitleSection}>
-                              <h4 style={styles.beneficioEmpresa}>{beneficio.empresa}</h4>
-                              <span style={styles.beneficioCategoria}>
-                                {beneficio.categoria} {beneficio.subcategoria && `• ${beneficio.subcategoria}`}
-                              </span>
-                            </div>
-                            <div style={styles.beneficioDescuento}>{beneficio.descuento}</div>
+                  {/* Grid de beneficios - responsive */}
+                  <div style={styles.beneficiosGrid} className="beneficios-grid">
+                    {beneficios.map((beneficio) => (
+                      <div key={beneficio.id} style={styles.beneficioCard}>
+                        {/* Header con icono y título */}
+                        <div style={styles.beneficioCardHeader} className="beneficio-card-header">
+                          <div style={styles.beneficioIconContainer}>
+                            <span style={styles.beneficioIcono}>{beneficio.icono}</span>
                           </div>
-
-                          <div style={styles.beneficioBody}>
-                            <p style={styles.beneficioDescripcion}>{beneficio.descripcion}</p>
-                            
-                            <div style={styles.beneficioGrid}>
-                              <div>
-                                <div style={styles.beneficioLabel}>Cómo canjear</div>
-                                <div style={styles.beneficioTexto}>{beneficio.como_canjear}</div>
-                              </div>
-                              <div>
-                                <div style={styles.beneficioLabel}>Vigencia</div>
-                                <div style={styles.beneficioTexto}>{beneficio.vigencia}</div>
-                              </div>
+                          <div style={styles.beneficioTitleArea}>
+                            <h4 style={styles.beneficioNombre}>{beneficio.nombre}</h4>
+                            <div style={styles.beneficioMeta}>
+                              <span style={styles.beneficioProveedor}>{beneficio.proveedor}</span>
                             </div>
+                          </div>
+                          <div style={styles.beneficioDescuentoBadge}>{beneficio.descuento}</div>
+                        </div>
 
-                            <div style={styles.beneficioCodigo}>
-                              <div style={styles.beneficioLabel}>Código</div>
-                              <div style={styles.codigoHighlight}>{beneficio.codigo}</div>
-                              <button 
-                                style={styles.btnCopiar} 
-                                onClick={() => copiarCodigo(beneficio.codigo)}
-                              >
-                                📋 Copiar código
-                              </button>
-                            </div>
+                        {/* Descripción */}
+                        <p style={styles.beneficioDescripcion}>{beneficio.descripcion}</p>
+
+                        {/* Tags de categoría */}
+                        <div style={styles.beneficioTags}>
+                          <span style={styles.tagCategoria}>{beneficio.categoria}</span>
+                          {beneficio.etiqueta && (
+                            <span style={styles.tagEtiqueta}>{beneficio.etiqueta}</span>
+                          )}
+                        </div>
+
+                        {/* Info grid */}
+                        <div style={styles.beneficioInfoGrid}>
+                          <div>
+                            <div style={styles.infoLabel}>Cómo canjear</div>
+                            <div style={styles.infoTexto}>{beneficio.como_canjear}</div>
+                          </div>
+                          <div>
+                            <div style={styles.infoLabel}>Vigencia</div>
+                            <div style={styles.infoTexto}>{formatearFecha(beneficio.fecha_vigencia)}</div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{...styles.alert, ...styles.alertInfo}}>
-                      No hay beneficios disponibles en este momento.
-                    </div>
-                  )}
 
-                  <div style={{...styles.alert, ...styles.alertInfo}}>
-                    <strong>Nota:</strong> Presenta tu DNI junto con el código del beneficio para canjearlo en el establecimiento correspondiente.
+                        {/* Código y botón */}
+                        <div style={styles.beneficioFooter} className="beneficio-footer">
+                          <div>
+                            <div style={styles.codigoLabel}>Código: <strong style={styles.codigoTexto}>{beneficio.codigo_beneficio}</strong></div>
+                          </div>
+                          <button 
+                            style={styles.btnCopiar} 
+                            onClick={() => copiarCodigo(beneficio.codigo_beneficio)}
+                          >
+                            Copiar
+                          </button>
+                        </div>
+
+                        {/* Link términos */}
+                        <a href="#" style={styles.linkTerminos}>Ver términos y condiciones</a>
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
-            </div>
 
-            {paciente && beneficios.length > 0 && (
-              <div style={styles.actionsBar}>
-                <button style={styles.btnSecondary} onClick={handleImprimirBeneficios}>
-                  🖨️ Imprimir
-                </button>
-                <button style={styles.btnSecondary} onClick={handleCompartir}>
-                  📤 Compartir
-                </button>
-              </div>
-            )}
+              {paciente && beneficios.length === 0 && (
+                <div style={{...styles.alert, ...styles.alertInfo}}>
+                  No hay beneficios disponibles en este momento para este paciente.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>
@@ -356,7 +389,7 @@ const VerificarBeneficios = () => {
   );
 };
 
-// Estilos en línea siguiendo el diseño del verificador de documentos
+// Estilos siguiendo el diseño de la imagen - RESPONSIVE
 const styles = {
   wrapper: {
     fontFamily: "'Roboto', system-ui, sans-serif",
@@ -368,8 +401,6 @@ const styles = {
     color: 'white',
     padding: '2.5rem 0',
     boxShadow: '0 4px 20px rgba(37, 99, 235, 0.3)',
-    position: 'relative',
-    overflow: 'hidden',
   },
   headerInner: {
     display: 'flex',
@@ -377,11 +408,10 @@ const styles = {
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: '1.5rem',
-    position: 'relative',
-    zIndex: 2,
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
     padding: '0 20px',
+    paddingTop:'100px',
   },
   brand: {
     display: 'flex',
@@ -406,14 +436,14 @@ const styles = {
     flexDirection: 'column',
   },
   brandTitle: {
-    fontSize: '1.75rem',
+    fontSize: 'clamp(1.25rem, 4vw, 1.75rem)',
     fontWeight: '700',
     marginBottom: '0.25rem',
     color: 'white',
     margin: 0,
   },
   brandSubtitle: {
-    fontSize: '0.95rem',
+    fontSize: 'clamp(0.85rem, 2vw, 0.95rem)',
     opacity: 0.95,
     fontWeight: '300',
     margin: 0,
@@ -430,32 +460,32 @@ const styles = {
   },
   mainContent: {
     flex: 1,
-    padding: '3rem 20px',
-    maxWidth: '1200px',
+    padding: 'clamp(1.5rem, 4vw, 3rem) 20px',
+    maxWidth: '1400px',
     margin: '0 auto',
     width: '100%',
   },
   gridLayout: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+    gridTemplateColumns: 'minmax(300px, 350px) 1fr',
     gap: '2rem',
   },
   panel: {
     background: 'white',
     borderRadius: '20px',
-    padding: '2.5rem',
-    boxShadow: '0 5px 25px rgba(0, 0, 0, 0.08)',
+    padding: 'clamp(1.25rem, 3vw, 2rem)',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
     border: '1px solid #e9ecef',
   },
   panelTitle: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
-    marginBottom: '1.75rem',
+    marginBottom: '1.5rem',
     color: '#2563eb',
   },
   panelTitleText: {
-    fontSize: '1.5rem',
+    fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
     fontWeight: '700',
     margin: 0,
     color: '#2d465e',
@@ -463,16 +493,16 @@ const styles = {
   formLabel: {
     display: 'block',
     fontWeight: '600',
-    marginBottom: '0.75rem',
+    marginBottom: '0.5rem',
     color: '#2d465e',
-    fontSize: '1rem',
+    fontSize: '0.95rem',
   },
   input: {
     width: '100%',
-    padding: '1rem 1.25rem',
+    padding: '0.875rem 1rem',
     border: '2px solid #e9ecef',
-    borderRadius: '12px',
-    fontSize: '1.05rem',
+    borderRadius: '10px',
+    fontSize: '1rem',
     fontFamily: "'Courier New', monospace",
     background: '#f8f9fa',
     color: '#212529',
@@ -485,23 +515,22 @@ const styles = {
     background: '#fff5f5',
   },
   helperText: {
-    fontSize: '0.875rem',
+    fontSize: '0.8rem',
     color: '#6c757d',
-    marginTop: '0.75rem',
-    marginBottom: '1.5rem',
-    lineHeight: '1.6',
+    marginTop: '0.5rem',
+    marginBottom: '1rem',
   },
   btnValidar: {
     width: '100%',
-    padding: '1rem 1.5rem',
+    padding: '0.875rem 1.25rem',
     background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
     color: 'white',
     border: 'none',
-    borderRadius: '12px',
-    fontSize: '1.05rem',
+    borderRadius: '10px',
+    fontSize: '1rem',
     fontWeight: '600',
     cursor: 'pointer',
-    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
+    boxShadow: '0 2px 10px rgba(37, 99, 235, 0.3)',
     transition: 'all 0.3s',
   },
   btnValidarDisabled: {
@@ -510,45 +539,45 @@ const styles = {
   },
   infoNote: {
     display: 'flex',
-    gap: '1rem',
-    marginTop: '1.75rem',
-    padding: '1.5rem',
-    background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-    borderRadius: '12px',
-    fontSize: '0.9rem',
+    gap: '0.75rem',
+    marginTop: '1.5rem',
+    padding: '1rem',
+    background: '#f8f9fa',
+    borderRadius: '10px',
+    fontSize: '0.85rem',
     color: '#212529',
     border: '1px solid #dee2e6',
   },
   infoNoteText: {
     margin: 0,
+    lineHeight: 1.5,
   },
   resultHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: '1.5rem',
     flexWrap: 'wrap',
     gap: '1rem',
-    marginBottom: '2rem',
   },
   statusBadge: {
-    padding: '0.75rem 1.5rem',
-    borderRadius: '10px',
+    padding: '0.625rem 1.25rem',
+    borderRadius: '8px',
     fontWeight: '700',
-    fontSize: '1rem',
-    letterSpacing: '0.3px',
+    fontSize: '0.95rem',
   },
   statusSuccess: {
-    background: 'linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)',
+    background: '#d4edda',
     color: '#155724',
     border: '1px solid #c3e6cb',
   },
   statusWarning: {
-    background: 'linear-gradient(135deg, #fff3cd 0%, #ffe8a1 100%)',
+    background: '#fff3cd',
     color: '#856404',
     border: '1px solid #ffeeba',
   },
   statusError: {
-    background: 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)',
+    background: '#f8d7da',
     color: '#721c24',
     border: '1px solid #f5c6cb',
   },
@@ -557,223 +586,231 @@ const styles = {
     color: '#6c757d',
     border: '1px solid #dee2e6',
   },
-  tipoBadge: {
-    padding: '0.75rem 1.5rem',
-    background: 'linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%)',
-    borderRadius: '10px',
+  actionButtons: {
+    display: 'flex',
+    gap: '0.5rem',
+    flexWrap: 'wrap',
+  },
+  btnAction: {
+    padding: '0.5rem 1rem',
+    background: 'white',
+    border: '1px solid #dee2e6',
+    borderRadius: '8px',
+    fontSize: '0.9rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    color: '#495057',
+    transition: 'all 0.2s',
+  },
+  btnActionPrimary: {
+    padding: '0.5rem 1rem',
+    background: '#212529',
+    border: 'none',
+    borderRadius: '8px',
     fontSize: '0.9rem',
     fontWeight: '600',
-    color: '#2d465e',
-    border: '1px solid #dee2e6',
+    cursor: 'pointer',
+    color: 'white',
+    transition: 'all 0.2s',
   },
   resultContent: {
-    minHeight: '250px',
+    minHeight: '200px',
   },
   alert: {
-    padding: '1.5rem',
-    borderRadius: '12px',
-    marginBottom: '1.5rem',
-    lineHeight: '1.7',
-    fontSize: '1rem',
+    padding: '1rem',
+    borderRadius: '10px',
+    marginBottom: '1rem',
+    fontSize: '0.95rem',
   },
   alertInfo: {
-    background: 'linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%)',
+    background: '#d1ecf1',
     color: '#0c5460',
-    borderLeft: '5px solid #17a2b8',
+    borderLeft: '4px solid #17a2b8',
   },
   alertWarning: {
-    background: 'linear-gradient(135deg, #fff3cd 0%, #ffe8a1 100%)',
+    background: '#fff3cd',
     color: '#856404',
-    borderLeft: '5px solid #ffc107',
+    borderLeft: '4px solid #ffc107',
   },
   alertError: {
-    background: 'linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)',
+    background: '#f8d7da',
     color: '#721c24',
-    borderLeft: '5px solid #dc3545',
+    borderLeft: '4px solid #dc3545',
   },
   alertCode: {
     background: 'rgba(0, 0, 0, 0.1)',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '6px',
+    padding: '0.125rem 0.5rem',
+    borderRadius: '4px',
     fontFamily: "'Courier New', monospace",
-    fontWeight: '700',
-    fontSize: '1.05rem',
+    fontWeight: '600',
   },
-  infoCards: {
-    display: 'grid',
-    gap: '1.25rem',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  vistaEjemplo: {
+    padding: '0.75rem',
+    background: '#e7f3ff',
+    borderRadius: '8px',
+    fontSize: '0.9rem',
+    color: '#004085',
     marginBottom: '1.5rem',
-  },
-  infoCard: {
-    padding: '1.75rem',
-    background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-    borderRadius: '12px',
-    border: '1px solid #dee2e6',
-  },
-  cardLabel: {
-    fontSize: '0.75rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    color: '#6c757d',
-    fontWeight: '700',
-    marginBottom: '0.5rem',
-    marginTop: '1rem',
-  },
-  cardValue: {
-    fontSize: '1rem',
-    color: '#212529',
-    lineHeight: '1.6',
+    textAlign: 'center',
     fontWeight: '500',
   },
-  estadoActivo: {
-    color: '#28a745',
-    fontWeight: '700',
-    fontSize: '1.05rem',
-  },
-  estadoInactivo: {
-    color: '#dc3545',
-    fontWeight: '700',
-    fontSize: '1.05rem',
-  },
-  beneficiosContainer: {
-    marginTop: '2rem',
-  },
-  beneficiosTitulo: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    color: '#2d465e',
-    marginBottom: '1.5rem',
+  beneficiosGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gap: '1.5rem',
   },
   beneficioCard: {
     background: 'white',
-    border: '2px solid #e9ecef',
-    borderRadius: '16px',
-    marginBottom: '1.5rem',
-    overflow: 'hidden',
+    border: '1px solid #e9ecef',
+    borderRadius: '12px',
+    padding: 'clamp(1rem, 2.5vw, 1.5rem)',
     transition: 'all 0.3s',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+    height: 'fit-content',
   },
-  beneficioHeader: {
+  beneficioCardHeader: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: '1rem',
-    padding: '1.5rem',
-    background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-    borderBottom: '1px solid #bfdbfe',
+    marginBottom: '1rem',
+    flexWrap: 'wrap',
   },
-  beneficioIcono: {
-    fontSize: '2rem',
+  beneficioIconContainer: {
     width: '50px',
     height: '50px',
+    background: '#f8f9fa',
+    borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     flexShrink: 0,
+    border: '2px solid #e9ecef',
   },
-  beneficioTitleSection: {
+  beneficioIcono: {
+    fontSize: '1.75rem',
+  },
+  beneficioTitleArea: {
     flex: 1,
     minWidth: 0,
   },
-  beneficioEmpresa: {
-    fontSize: '1.25rem',
+  beneficioNombre: {
+    fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
     fontWeight: '700',
     color: '#1e40af',
     margin: '0 0 0.25rem 0',
+    lineHeight: 1.3,
   },
-  beneficioCategoria: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    fontWeight: '600',
+  beneficioMeta: {
+    display: 'flex',
+    gap: '0.5rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
-  beneficioDescuento: {
-    padding: '0.5rem 1rem',
-    background: '#2563eb',
-    color: 'white',
-    borderRadius: '8px',
-    fontWeight: '700',
-    fontSize: '0.95rem',
-    flexShrink: 0,
-  },
-  beneficioBody: {
-    padding: '1.5rem',
-  },
-  beneficioDescripcion: {
-    fontSize: '1rem',
-    color: '#4b5563',
-    marginBottom: '1.5rem',
-    lineHeight: '1.6',
-  },
-  beneficioGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-  },
-  beneficioLabel: {
-    fontSize: '0.75rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
+  beneficioProveedor: {
+    fontSize: '0.85rem',
     color: '#6c757d',
-    fontWeight: '700',
-    marginBottom: '0.5rem',
-  },
-  beneficioTexto: {
-    fontSize: '0.95rem',
-    color: '#212529',
     fontWeight: '500',
   },
-  beneficioCodigo: {
-    background: '#f8f9fa',
-    padding: '1rem',
-    borderRadius: '10px',
-    border: '2px dashed #dee2e6',
-  },
-  codigoHighlight: {
-    fontFamily: "'Courier New', monospace",
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: '#2563eb',
-    letterSpacing: '2px',
-    padding: '0.5rem',
-    textAlign: 'center',
-    background: 'white',
-    borderRadius: '8px',
-    margin: '0.5rem 0',
-  },
-  btnCopiar: {
-    width: '100%',
-    padding: '0.75rem',
+  beneficioDescuentoBadge: {
+    padding: '0.375rem 0.75rem',
     background: '#2563eb',
     color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    marginTop: '0.5rem',
-    transition: 'all 0.3s',
+    borderRadius: '6px',
+    fontSize: '0.85rem',
+    fontWeight: '700',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
-  actionsBar: {
+  beneficioDescripcion: {
+    fontSize: '0.9rem',
+    color: '#495057',
+    marginBottom: '1rem',
+    lineHeight: 1.5,
+  },
+  beneficioTags: {
     display: 'flex',
-    gap: '1rem',
-    marginTop: '2rem',
-    paddingTop: '2rem',
-    borderTop: '2px solid #dee2e6',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+    flexWrap: 'wrap',
   },
-  btnSecondary: {
-    flex: 1,
-    padding: '0.875rem 1.5rem',
-    background: 'white',
-    border: '2px solid #dee2e6',
-    borderRadius: '10px',
-    color: '#2d465e',
+  tagCategoria: {
+    padding: '0.25rem 0.625rem',
+    background: '#e9ecef',
+    borderRadius: '4px',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    color: '#495057',
+  },
+  tagEtiqueta: {
+    padding: '0.25rem 0.625rem',
+    background: '#d4edda',
+    borderRadius: '4px',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    color: '#155724',
+  },
+  beneficioInfoGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '1rem',
+    marginBottom: '1rem',
+    padding: '1rem',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+  },
+  infoLabel: {
+    fontSize: '0.75rem',
+    textTransform: 'uppercase',
+    color: '#6c757d',
+    fontWeight: '700',
+    marginBottom: '0.25rem',
+    letterSpacing: '0.5px',
+  },
+  infoTexto: {
+    fontSize: '0.875rem',
+    color: '#212529',
+    fontWeight: '500',
+    lineHeight: 1.4,
+  },
+  beneficioFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0.75rem',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+    marginBottom: '0.75rem',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+  },
+  codigoLabel: {
+    fontSize: '0.85rem',
+    color: '#495057',
+  },
+  codigoTexto: {
+    fontFamily: "'Courier New', monospace",
+    color: '#2563eb',
+    fontSize: '0.95rem',
+    letterSpacing: '0.5px',
+  },
+  btnCopiar: {
+    padding: '0.5rem 1rem',
+    background: '#212529',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.85rem',
     fontWeight: '600',
     cursor: 'pointer',
-    fontSize: '1rem',
-    transition: 'all 0.3s',
+    transition: 'all 0.2s',
+  },
+  linkTerminos: {
+    fontSize: '0.85rem',
+    color: '#2563eb',
+    textDecoration: 'none',
+    fontWeight: '500',
+    display: 'block',
+    textAlign: 'center',
   },
 };
 
