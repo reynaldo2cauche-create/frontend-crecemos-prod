@@ -205,15 +205,13 @@ const VerificarBeneficios = () => {
       <header style={styles.header}>
         <div style={styles.headerInner} className="header-inner">
           <div style={styles.brand} className="brand">
-            <div style={styles.logo}>CTC</div>
+           
             <div style={styles.brandText}>
               <h1 style={styles.brandTitle}>Consulta de Beneficios</h1>
               <p style={styles.brandSubtitle}>Verifica beneficios disponibles para pacientes activos</p>
             </div>
           </div>
-          <a style={styles.linkWeb} href="https://www.crecemos.com.pe" target="_blank" rel="noreferrer">
-            www.crecemos.com.pe
-          </a>
+          
         </div>
       </header>
 
@@ -289,7 +287,7 @@ const VerificarBeneficios = () => {
                 {estadoTexto}
               </div>
               <div style={styles.actionButtons} className="action-buttons no-print">
-                <button style={styles.btnAction} onClick={() => alert('Ver ejemplos')}>Ver ejemplos</button>
+                
                 <button style={styles.btnAction} onClick={handleImprimirBeneficios}>Imprimir</button>
                 <button style={styles.btnActionPrimary} onClick={handleCompartir}>Compartir</button>
               </div>
