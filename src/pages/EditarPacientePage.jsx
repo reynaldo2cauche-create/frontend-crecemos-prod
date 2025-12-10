@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2 } from 'lucide-react';
+import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2 ,ArrowLeft} from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import { asignarTerapeuta } from '../services/terapeutaService';
 import api from '../services/api';
@@ -228,8 +228,6 @@ const EditarPacientePage = () => {
       medicamentos_actuales: pacienteData.medicamentos_actuales
     };
 
-    console.log('📤 Datos a enviar a la API:', data);
-    console.log('🔑 ID del paciente:', id);
 
     try {
       console.log('⏳ Llamando a updatePacienteById...');
@@ -524,6 +522,15 @@ const EditarPacientePage = () => {
       )}
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 lg:pl-8">
+           {/* Botón Retroceder */}
+        <button
+          onClick={() => navigate('/intranet/lista-pacientes')}
+          className="flex items-center gap-2 px-4 py-2 mb-4 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span className="text-sm font-medium">Volver</span>
+        </button>
+
         {/* Header minimalista */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

@@ -3,14 +3,15 @@ import  {initializePageScripts}  from '../utils/initScripts';
 import { useState } from 'react';
 import * as popupService from '../services/popupService';
 import { API_BASE_URL } from '../services/api';
+import DialogNotice from '../components/DialogNotice/DialogNotice';
 
 
 export default function HomePage() {
 
  const [currentImage, setCurrentImage] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
-  const [popupConfig, setPopupConfig] = useState({ activo: false, imagenUrl: '' });
 
+  const [popupActivo, setPopupActivo] = useState(null);
   const heroImages = [
     '/assets/img/index/Carrusel servicios.png',
     '/assets/img/index/carrusel psicologia infantil.png',
@@ -75,67 +76,60 @@ export default function HomePage() {
   };
 }, [heroImages.length]);
 
-// Cargar configuración del popup desde el backend
 useEffect(() => {
   const cargarPopup = async () => {
     try {
-      const config = await popupService.obtenerConfiguracionPopup();
-      setPopupConfig(config);
+ 
+      const respuesta = await popupService.obtenerPopupActivo();
+      
 
-      // Mostrar el popup solo si está activo y tiene imagen
-      if (config.activo && config.imagenUrl) {
-        const popupTimer = setTimeout(() => {
-          setShowPopup(true);
-        }, 1000);
 
-        return () => clearTimeout(popupTimer);
+      if (respuesta.activo && respuesta.popup) {
+        const popup = respuesta.popup;
+        
+        const ahora = new Date();
+        const fechaInicio = new Date(popup.fechaInicio);
+        const fechaFin = new Date(popup.fechaFin);
+
+
+        // Solo mostrar si no hay un popup activo ya visible
+        if (!popupActivo) {
+  
+          setPopupActivo(popup);
+          setTimeout(() => setShowPopup(true), 1000);
+        } else {
+          console.log('⏭️ Ya hay un popup visible, no mostrar otro');
+        }
+      } else {
+        console.log('❌ No hay popup activo o no cumple condiciones');
       }
     } catch (error) {
-      console.error('Error al cargar configuración del popup:', error);
+      console.error('💥 Error al cargar popup:', error);
     }
   };
 
+  // Solo cargar UNA VEZ al montar el componente
   cargarPopup();
-}, []);
+}, []); // Sin intervalo, sin cleanup
+
+const cerrarPopup = () => {
+  console.log('🚪 Cerrando popup');
+  setShowPopup(false);
+  // No guardar en sessionStorage - siempre muestra en cada recarga
+  setTimeout(() => setPopupActivo(null), 300);
+};
   return (
 <main className="main">
-  {/* Popup Promocional */}
-  {showPopup && popupConfig.activo && popupConfig.imagenUrl && (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ 
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(6px)' 
-      }}
-      onClick={() => setShowPopup(false)}
-    >
-      <div 
-        className="relative mx-4 max-w-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div 
-          className="rounded-2xl overflow-hidden shadow-2xl relative" 
-          style={{ maxHeight: '90vh' }}
-        >
-          <button
-            className="absolute top-3 right-3 w-10 h-10 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg z-10"
-            onClick={() => setShowPopup(false)}
-            aria-label="Cerrar promoción"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          <img
-            src={`${API_BASE_URL}/popup/imagen/${popupConfig.imagenUrl}`}
-            alt="Promoción especial - Centro Crecemos"
-            className="w-full h-full object-contain block"
-          />
-        </div>
-      </div>
-    </div>
-  )}
+{/* Popup Programado - NUEVO DISEÑO MODERNO */}
+<DialogNotice
+  open={showPopup && !!popupActivo}
+  onClose={cerrarPopup}
+  popupData={popupActivo ? {
+    titulo: popupActivo.titulo,
+    imagenUrl: `${API_BASE_URL}/popup/imagen/${popupActivo.imagenUrl}`,
+    mensajeWhatsapp: popupActivo.mensajeWhatsapp
+  } : null}
+/>
   <section id="hero" className="hero section" style={{ paddingTop: '150px' }}>
       <div className="container" data-aos="fade-up" data-aos-delay="100">
         <div className="row align-items-center">
