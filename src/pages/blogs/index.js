@@ -17,6 +17,7 @@ import TCABlog from './psicologia/TCABlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
+import DiaDerechosHumanosBlog from './efemerides/DiaDerechosHumanosBlog';
 
 // Blogs de Terapias
 // import EjemploBlog from './terapias/EjemploBlog';
@@ -37,6 +38,7 @@ export const blogComponents = {
   'tumbo-fruta-andina-ninos-neurodivergentes': TumboBlog,
   '30-noviembre-trastornos-conducta-alimentaria': TCABlog,
   '3-diciembre-dia-internacional-personas-discapacidad': DiaDiscapacidadBlog,
+  '10-diciembre-dia-derechos-humanos': DiaDerechosHumanosBlog,
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
 };
@@ -51,4 +53,5 @@ export {
   TumboBlog,
   TCABlog,
   DiaDiscapacidadBlog,
+  DiaDerechosHumanosBlog,
 };

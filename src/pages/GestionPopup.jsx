@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Image,
@@ -7,50 +8,52 @@ import {
   X,
   Check,
   AlertCircle,
-  Settings,
-  Save
+  Calendar,
+  Plus,
+  Edit,
+  Clock,
+  Power,
+  PowerOff,
+  MessageCircle
 } from 'lucide-react';
 import * as popupService from '../services/popupService';
 import { API_BASE_URL } from '../services/api';
 
 const GestionPopup = () => {
-  const [popupConfig, setPopupConfig] = useState({
-    activo: false,
-    imagenUrl: ''
+  const [popups, setPopups] = useState([]);
+  const [dialogoCrear, setDialogoCrear] = useState(false);
+  const [dialogoEditar, setDialogoEditar] = useState(false);
+  const [popupEditando, setPopupEditando] = useState(null);
+  const [vistaPrevia, setVistaPrevia] = useState(null);
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+
+  // Estado del formulario
+  const [formulario, setFormulario] = useState({
+    titulo: '',
+    fechaInicio: '',
+    fechaFin: '',
+    activo: true,
+    mensajeWhatsapp: '', // 👈 NUEVO
+    imagen: null,
+    imagenPreview: null
   });
 
-  const [vistaPrevia, setVistaPrevia] = useState(false);
-  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
-  const [dialogoSubir, setDialogoSubir] = useState(false);
-  const [imagenTemporal, setImagenTemporal] = useState(null);
-  const [archivoImagen, setArchivoImagen] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  const [cargando, setCargando] = useState(true);
-
-  // Cargar configuración al montar
   useEffect(() => {
-    cargarConfiguracion();
+    cargarPopups();
   }, []);
 
-  const cargarConfiguracion = async () => {
+  const cargarPopups = async () => {
     try {
       setCargando(true);
-      const config = await popupService.obtenerConfiguracionPopup();
-      setPopupConfig(config);
+      const data = await popupService.listarPopups();
+      setPopups(data);
     } catch (error) {
-      console.error('Error al cargar configuración:', error);
-      showNotification('Error al cargar la configuración', 'error');
+      console.error('Error al cargar popups:', error);
+      showNotification('Error al cargar los popups', 'error');
     } finally {
       setCargando(false);
-    }
-  };
-
-  const guardarConfiguracion = async (config) => {
-    try {
-      await popupService.actualizarConfiguracionPopup(config);
-    } catch (error) {
-      console.error('Error al guardar configuración:', error);
-      throw error;
     }
   };
 
@@ -61,19 +64,16 @@ const GestionPopup = () => {
     }, 3000);
   };
 
-  const handleToggleActivo = async () => {
-    try {
-      const nuevoEstado = !popupConfig.activo;
-      const nuevaConfig = {
-        ...popupConfig,
-        activo: nuevoEstado
-      };
-      setPopupConfig(nuevaConfig);
-      await guardarConfiguracion(nuevaConfig);
-      showNotification(nuevoEstado ? 'Popup activado' : 'Popup desactivado', 'success');
-    } catch (error) {
-      showNotification('Error al cambiar el estado', 'error');
-    }
+  const resetFormulario = () => {
+    setFormulario({
+      titulo: '',
+      fechaInicio: '',
+      fechaFin: '',
+      activo: true,
+      mensajeWhatsapp: '', // 👈 NUEVO
+      imagen: null,
+      imagenPreview: null
+    });
   };
 
   const handleFileChange = (event) => {
@@ -86,8 +86,11 @@ const GestionPopup = () => {
         }
         const reader = new FileReader();
         reader.onloadend = () => {
-          setImagenTemporal(reader.result);
-          setArchivoImagen(file);
+          setFormulario(prev => ({
+            ...prev,
+            imagen: file,
+            imagenPreview: reader.result
+          }));
         };
         reader.readAsDataURL(file);
       } else {
@@ -96,61 +99,155 @@ const GestionPopup = () => {
     }
   };
 
- const handleSubirImagen = async () => {
-  if (archivoImagen) {
+  const handleCrearPopup = async () => {
+    if (!formulario.titulo || !formulario.fechaInicio || !formulario.fechaFin || !formulario.imagen) {
+      showNotification('Por favor completa todos los campos obligatorios', 'error');
+      return;
+    }
+
+    if (new Date(formulario.fechaInicio) >= new Date(formulario.fechaFin)) {
+      showNotification('La fecha de inicio debe ser anterior a la fecha de fin', 'error');
+      return;
+    }
+
     setGuardando(true);
     try {
-      // Subir imagen al servidor
-      const response = await popupService.subirImagenPopup(archivoImagen);
+      await popupService.crearPopup({
+        titulo: formulario.titulo,
+        fechaInicio: formulario.fechaInicio,
+        fechaFin: formulario.fechaFin,
+        activo: formulario.activo,
+        mensajeWhatsapp: formulario.mensajeWhatsapp // 👈 NUEVO
+      }, formulario.imagen);
 
-      const nuevaConfig = {
-        ...popupConfig,
-        imagenUrl: response.imagenUrl
-      };
-      setPopupConfig(nuevaConfig);
-
-      setDialogoSubir(false);
-      setImagenTemporal(null);
-      setArchivoImagen(null);
-      showNotification('Imagen actualizada correctamente', 'success');
-      
-      // Forzar recarga de la configuración desde el servidor
-      await cargarConfiguracion();
+      showNotification('Popup creado correctamente', 'success');
+      setDialogoCrear(false);
+      resetFormulario();
+      await cargarPopups();
     } catch (error) {
-      showNotification('Error al subir la imagen', 'error');
+      showNotification('Error al crear el popup', 'error');
     } finally {
       setGuardando(false);
     }
-  }
-};
+  };
 
-  const handleEliminarImagen = async () => {
-    try {
-      await popupService.eliminarImagenPopup();
-      const nuevaConfig = {
-        ...popupConfig,
-        imagenUrl: ''
-      };
-      setPopupConfig(nuevaConfig);
-      showNotification('Imagen eliminada', 'info');
-    } catch (error) {
-      showNotification('Error al eliminar la imagen', 'error');
+  const handleActualizarPopup = async () => {
+    if (!formulario.titulo || !formulario.fechaInicio || !formulario.fechaFin) {
+      showNotification('Por favor completa todos los campos obligatorios', 'error');
+      return;
     }
+
+    if (new Date(formulario.fechaInicio) >= new Date(formulario.fechaFin)) {
+      showNotification('La fecha de inicio debe ser anterior a la fecha de fin', 'error');
+      return;
+    }
+
+    setGuardando(true);
+    try {
+      await popupService.actualizarPopup(
+        popupEditando.id,
+        {
+          titulo: formulario.titulo,
+          fechaInicio: formulario.fechaInicio,
+          fechaFin: formulario.fechaFin,
+          activo: formulario.activo,
+          mensajeWhatsapp: formulario.mensajeWhatsapp // 👈 NUEVO
+        },
+        formulario.imagen
+      );
+
+      showNotification('Popup actualizado correctamente', 'success');
+      setDialogoEditar(false);
+      setPopupEditando(null);
+      resetFormulario();
+      await cargarPopups();
+    } catch (error) {
+      showNotification('Error al actualizar el popup', 'error');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleToggleActivo = async (id, activo) => {
+    try {
+      await popupService.toggleActivoPopup(id, !activo);
+      showNotification(`Popup ${!activo ? 'activado' : 'desactivado'}`, 'success');
+      await cargarPopups();
+    } catch (error) {
+      showNotification('Error al cambiar el estado', 'error');
+    }
+  };
+
+  const handleEliminarPopup = async (id) => {
+    if (!window.confirm('¿Estás seguro de eliminar este popup? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      await popupService.eliminarPopup(id);
+      showNotification('Popup eliminado correctamente', 'success');
+      await cargarPopups();
+    } catch (error) {
+      showNotification('Error al eliminar el popup', 'error');
+    }
+  };
+
+  const convertirUTCaDateTimeLocal = (fechaUTC) => {
+    const fecha = new Date(fechaUTC);
+    fecha.setHours(fecha.getHours() - 5);
+    return fecha.toISOString().slice(0, 16);
+  };
+
+  const abrirDialogoEditar = (popup) => {
+    setPopupEditando(popup);
+    setFormulario({
+      titulo: popup.titulo,
+      fechaInicio: convertirUTCaDateTimeLocal(popup.fechaInicio),
+      fechaFin: convertirUTCaDateTimeLocal(popup.fechaFin),
+      activo: popup.activo,
+      mensajeWhatsapp: popup.mensajeWhatsapp || '', // 👈 NUEVO
+      imagen: null,
+      imagenPreview: `${API_BASE_URL}/popup/imagen/${popup.imagenUrl}`
+    });
+    setDialogoEditar(true);
+  };
+
+  const getEstadoPopup = (fechaInicio, fechaFin, activo) => {
+    if (!activo) return { texto: 'Desactivado', color: 'text-gray-500', bg: 'bg-gray-100' };
+
+    const ahora = new Date();
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+
+    if (ahora < inicio) return { texto: 'Programado', color: 'text-blue-600', bg: 'bg-blue-100' };
+    if (ahora >= inicio && ahora <= fin) return { texto: 'Activo Ahora', color: 'text-green-600', bg: 'bg-green-100' };
+    return { texto: 'Vencido', color: 'text-red-600', bg: 'bg-red-100' };
+  };
+
+  const formatearFecha = (fecha) => {
+    return new Date(fecha).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 pt-24 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#7B1FA2] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">Cargando configuración...</p>
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando popups...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 pt-24">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-12">
       {/* Notification */}
       {notification.show && (
         <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top duration-300">
@@ -171,209 +268,346 @@ const GestionPopup = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center">
-              <Image className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Gestión de Popups</h1>
+                <p className="text-gray-600">Programa y gestiona tus popups promocionales</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Popup Promocional</h1>
-              <p className="text-gray-600 mt-1">
-                Administra la imagen promocional que se muestra al cargar la página de inicio
-              </p>
-            </div>
+            <button
+              onClick={() => {
+                resetFormulario();
+                setDialogoCrear(true);
+              }}
+              className="px-6 py-3 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Crear Popup
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Configuración */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Settings className="w-5 h-5 text-[#7B1FA2]" />
-                <h2 className="text-xl font-bold text-gray-900">Configuración</h2>
+        {/* Lista de popups */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {popups.length === 0 ? (
+            <div className="col-span-full bg-white rounded-2xl shadow-sm border border-gray-200 p-12">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  No hay popups programados
+                </h3>
+                <p className="text-gray-500 mb-6">Crea tu primer popup promocional para comenzar</p>
+                <button
+                  onClick={() => {
+                    resetFormulario();
+                    setDialogoCrear(true);
+                  }}
+                  className="px-6 py-3 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all inline-flex items-center gap-2 shadow-sm"
+                >
+                  <Plus className="w-5 h-5" />
+                  Crear Primer Popup
+                </button>
+              </div>
+            </div>
+          ) : (
+            popups.map((popup) => {
+              const estado = getEstadoPopup(popup.fechaInicio, popup.fechaFin, popup.activo);
+              return (
+                <div key={popup.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                  {/* Imagen */}
+                  <div className="relative h-48 bg-gray-100">
+                    <img
+                      src={`${API_BASE_URL}/popup/imagen/${popup.imagenUrl}`}
+                      alt={popup.titulo}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.classList.add('flex', 'items-center', 'justify-center');
+                      }}
+                    />
+                    <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold ${estado.bg} ${estado.color}`}>
+                      {estado.texto}
+                    </div>
+                    {/* Indicador de WhatsApp */}
+                    {popup.mensajeWhatsapp && (
+                      <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" />
+                        WhatsApp
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contenido */}
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">{popup.titulo}</h3>
+
+                    <div className="space-y-2 mb-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-[#7B1FA2]" />
+                        <span className="font-medium">Inicio:</span>
+                        <span>{formatearFecha(popup.fechaInicio)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-[#7B1FA2]" />
+                        <span className="font-medium">Fin:</span>
+                        <span>{formatearFecha(popup.fechaFin)}</span>
+                      </div>
+                      {popup.mensajeWhatsapp && (
+                        <div className="flex items-start gap-2 mt-2 p-2 bg-green-50 rounded-lg">
+                          <MessageCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-green-700 line-clamp-2">{popup.mensajeWhatsapp}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleActivo(popup.id, popup.activo)}
+                        className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                          popup.activo
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {popup.activo ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                        {popup.activo ? 'Activo' : 'Inactivo'}
+                      </button>
+                      <button
+                        onClick={() => setVistaPrevia(popup)}
+                        className="px-4 py-2 bg-purple-50 text-[#7B1FA2] rounded-lg font-semibold hover:bg-purple-100 transition-all border border-purple-200"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => abrirDialogoEditar(popup)}
+                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition-all border border-blue-200"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEliminarPopup(popup.id)}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all border border-red-200"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Información útil */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Cómo funciona</h3>
+          </div>
+          <ul className="text-sm text-gray-600 space-y-2.5">
+            <li className="flex items-start gap-2">
+              <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <span>Los popups se muestran automáticamente según las fechas programadas</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <span>Solo se muestra un popup a la vez (el más reciente si hay varios activos)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <span>Los popups vencidos se ocultan automáticamente</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <span>Puedes programar múltiples popups para diferentes períodos</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <MessageCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <span>Configura un mensaje de WhatsApp personalizado para cada promoción</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Power className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
+              <span>Desactiva un popup para que no se muestre aunque esté en su período</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Diálogo Crear/Editar */}
+      {(dialogoCrear || dialogoEditar) && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-6 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                {dialogoCrear ? <Plus className="w-6 h-6" /> : <Edit className="w-6 h-6" />}
+                {dialogoCrear ? 'Crear Nuevo Popup' : 'Editar Popup'}
+              </h3>
+              <button
+                onClick={() => {
+                  dialogoCrear ? setDialogoCrear(false) : setDialogoEditar(false);
+                  resetFormulario();
+                  setPopupEditando(null);
+                }}
+                className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Título */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Título del Popup *
+                </label>
+                <input
+                  type="text"
+                  value={formulario.titulo}
+                  onChange={(e) => setFormulario(prev => ({ ...prev, titulo: e.target.value }))}
+                  placeholder="Ej: Promoción Día Mundial del TEA"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#7B1FA2] focus:outline-none transition-colors"
+                />
               </div>
 
-              {/* Toggle Estado */}
-              <div className="mb-6">
+              {/* Fechas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Fecha y Hora de Inicio *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formulario.fechaInicio}
+                    onChange={(e) => setFormulario(prev => ({ ...prev, fechaInicio: e.target.value }))}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#7B1FA2] focus:outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Fecha y Hora de Fin *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formulario.fechaFin}
+                    onChange={(e) => setFormulario(prev => ({ ...prev, fechaFin: e.target.value }))}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#7B1FA2] focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Estado */}
+              <div>
                 <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
                   <div>
                     <p className="font-semibold text-gray-900">Estado del Popup</p>
                     <p className="text-sm text-gray-600 mt-1">
-                      {popupConfig.activo ? '✅ Activo - Visible para usuarios' : '❌ Desactivado - Oculto'}
+                      {formulario.activo ? 'Se mostrará en las fechas programadas' : 'No se mostrará (desactivado)'}
                     </p>
                   </div>
                   <button
-                    onClick={handleToggleActivo}
+                    type="button"
+                    onClick={() => setFormulario(prev => ({ ...prev, activo: !prev.activo }))}
                     className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                      popupConfig.activo ? 'bg-[#7B1FA2]' : 'bg-gray-300'
+                      formulario.activo ? 'bg-[#7B1FA2]' : 'bg-gray-300'
                     }`}
                   >
                     <span
                       className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                        popupConfig.activo ? 'translate-x-7' : 'translate-x-1'
+                        formulario.activo ? 'translate-x-7' : 'translate-x-1'
                       }`}
                     />
                   </button>
                 </label>
               </div>
 
-              {/* Botones de acción */}
-              <div className="space-y-3">
-                <button
-                  onClick={() => setDialogoSubir(true)}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <Upload className="w-5 h-5" />
-                  Cambiar Imagen
-                </button>
-
-                <button
-                  onClick={() => setVistaPrevia(true)}
-                  disabled={!popupConfig.imagenUrl}
-                  className="w-full px-4 py-3 border-2 border-[#7B1FA2] text-[#7B1FA2] rounded-xl font-semibold hover:bg-purple-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Eye className="w-5 h-5" />
-                  Vista Previa
-                </button>
-
-                {popupConfig.imagenUrl && (
-                  <button
-                    onClick={handleEliminarImagen}
-                    className="w-full px-4 py-3 border-2 border-red-500 text-red-500 rounded-xl font-semibold hover:bg-red-50 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                    Eliminar Imagen
-                  </button>
-                )}
+              {/* Mensaje WhatsApp - NUEVO */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-green-600" />
+                  Mensaje de WhatsApp (Opcional)
+                </label>
+                <textarea
+                  value={formulario.mensajeWhatsapp}
+                  onChange={(e) => setFormulario(prev => ({ ...prev, mensajeWhatsapp: e.target.value }))}
+                  placeholder="Ej: Hola! Vengo de la web y deseo más información sobre la promoción por el Día Mundial del TEA"
+                  rows="3"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#7B1FA2] focus:outline-none transition-colors resize-none"
+                />
+                <p className="text-xs text-gray-500 mt-2 flex items-start gap-2">
+                  <MessageCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Este mensaje se enviará automáticamente al hacer clic en el botón de WhatsApp del popup.
+                    Si no agregas un mensaje, no aparecerá el botón de WhatsApp.
+                  </span>
+                </p>
               </div>
-            </div>
-          </div>
 
-          {/* Vista previa de la imagen */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Image className="w-5 h-5 text-[#7B1FA2]" />
-                Imagen Actual
-              </h2>
-
-              {popupConfig.imagenUrl ? (
-                <div className="space-y-4">
-                  <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-                    <img
-                      src={`${API_BASE_URL}/popup/imagen/${popupConfig.imagenUrl}`}
-                      alt="Imagen promocional"
-                      className="w-full h-auto max-h-96 object-contain"
-                    />
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                    <p className="text-sm text-gray-600">
-                      <strong className="text-gray-900">Estado:</strong>{' '}
-                      {popupConfig.activo ? (
-                        <span className="text-green-600 font-semibold">✅ Activo</span>
-                      ) : (
-                        <span className="text-red-600 font-semibold">❌ Desactivado</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center min-h-80 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
-                  <Image className="w-20 h-20 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                    No hay imagen configurada
-                  </h3>
-                  <p className="text-gray-500 mb-4">Sube una imagen para comenzar</p>
-                  <button
-                    onClick={() => setDialogoSubir(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
-                  >
-                    <Upload className="w-5 h-5" />
-                    Subir Primera Imagen
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Recomendaciones */}
-            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                💡 Recomendaciones:
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 ml-7">
-                <li>• Usa imágenes en formato PNG o JPG</li>
-                <li>• Tamaño recomendado: 800x600 px o similar</li>
-                <li>• Peso máximo: 2MB para carga rápida</li>
-                <li>• Asegúrate que el texto sea legible</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Diálogo para subir imagen */}
-      {dialogoSubir && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-6 rounded-t-2xl">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Upload className="w-6 h-6" />
-                Subir Nueva Imagen
-              </h3>
-            </div>
-
-            <div className="p-6">
-              <div className="text-center py-8">
+              {/* Imagen */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Imagen del Popup * {dialogoEditar && '(Dejar vacío para mantener la actual)'}
+                </label>
                 <input
                   accept="image/*"
                   style={{ display: 'none' }}
-                  id="upload-image-input"
+                  id="upload-popup-image"
                   type="file"
                   onChange={handleFileChange}
                 />
-                <label htmlFor="upload-image-input">
-                  <div className="cursor-pointer border-2 border-dashed border-[#7B1FA2] rounded-xl p-8 hover:bg-purple-50 transition-colors">
-                    <Upload className="w-12 h-12 text-[#7B1FA2] mx-auto mb-3" />
-                    <p className="text-lg font-semibold text-gray-900 mb-1">
-                      Seleccionar Imagen
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      PNG, JPG - Máx 2MB
-                    </p>
+                <label htmlFor="upload-popup-image">
+                  <div className="cursor-pointer border-2 border-dashed border-[#7B1FA2] rounded-xl p-8 hover:bg-purple-50 transition-colors text-center">
+                    {formulario.imagenPreview ? (
+                      <div>
+                        <img
+                          src={formulario.imagenPreview}
+                          alt="Vista previa"
+                          className="max-w-full max-h-64 mx-auto rounded-xl border border-gray-200 shadow-lg mb-3"
+                        />
+                        <p className="text-sm text-gray-600">Click para cambiar imagen</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                          <Upload className="w-8 h-8 text-[#7B1FA2]" />
+                        </div>
+                        <p className="text-lg font-semibold text-gray-900 mb-1">
+                          Seleccionar Imagen
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          PNG, JPG - Máx 2MB - Recomendado: 800x600px
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </label>
-
-                {imagenTemporal && (
-                  <div className="mt-6">
-                    <p className="font-semibold text-gray-900 mb-3">Vista Previa:</p>
-                    <img
-                      src={imagenTemporal}
-                      alt="Vista previa"
-                      className="max-w-full max-h-64 mx-auto rounded-xl border border-gray-200 shadow-lg"
-                    />
-                  </div>
-                )}
               </div>
             </div>
 
             <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-2xl flex items-center justify-end gap-3">
               <button
                 onClick={() => {
-                  setDialogoSubir(false);
-                  setImagenTemporal(null);
-                  setArchivoImagen(null);
+                  dialogoCrear ? setDialogoCrear(false) : setDialogoEditar(false);
+                  resetFormulario();
+                  setPopupEditando(null);
                 }}
                 className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={handleSubirImagen}
-                disabled={!imagenTemporal || guardando}
+                onClick={dialogoCrear ? handleCrearPopup : handleActualizarPopup}
+                disabled={guardando || !formulario.titulo || !formulario.fechaInicio || !formulario.fechaFin || (dialogoCrear && !formulario.imagen)}
                 className="px-5 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {guardando ? (
@@ -383,8 +617,8 @@ const GestionPopup = () => {
                   </>
                 ) : (
                   <>
-                    <Save className="w-5 h-5" />
-                    Guardar Imagen
+                    <Check className="w-5 h-5" />
+                    {dialogoCrear ? 'Crear Popup' : 'Guardar Cambios'}
                   </>
                 )}
               </button>
@@ -395,34 +629,28 @@ const GestionPopup = () => {
 
       {/* Diálogo de vista previa */}
       {vistaPrevia && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-4 rounded-t-2xl flex items-center justify-between">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <Eye className="w-5 h-5" />
-                Vista Previa del Popup
+                Vista Previa: {vistaPrevia.titulo}
               </h3>
               <button
-                onClick={() => setVistaPrevia(false)}
-                className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
+                onClick={() => setVistaPrevia(null)}
+                className="w-9 h-9 flex items-center justify-center hover:bg-white/20 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="overflow-auto flex-1">
-              {popupConfig.imagenUrl ? (
-                <img
-                  src={`${API_BASE_URL}/popup/imagen/${popupConfig.imagenUrl}`}
-                  alt="Imagen promocional"
-                  className="w-full h-auto object-contain"
-                  style={{ maxHeight: 'calc(90vh - 80px)' }}
-                />
-              ) : (
-                <div className="p-12 text-center">
-                  <p className="text-gray-500">No hay imagen para previsualizar</p>
-                </div>
-              )}
+              <img
+                src={`${API_BASE_URL}/popup/imagen/${vistaPrevia.imagenUrl}`}
+                alt={vistaPrevia.titulo}
+                className="w-full h-auto object-contain"
+                style={{ maxHeight: 'calc(90vh - 80px)' }}
+              />
             </div>
           </div>
         </div>

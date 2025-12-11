@@ -98,13 +98,26 @@ export const blogMetadata = [
     slug: '3-diciembre-dia-internacional-personas-discapacidad',
     title: 'Día Internacional de las Personas con Discapacidad: el camino hacia la Inclusión',
     excerpt: 'Hoy conmemoramos el Día Internacional de las Personas con Discapacidad, una fecha de suma importancia para visibilizar, promover los derechos y el bienestar de las personas con discapacidad en todos los ámbitos de la sociedad.',
-    image: '/assets/img/blog/discapacidad-portada.jpg',
+    image: '/assets/img/blog/discapacidad-portada.png',
     date: '3 Diciembre 2025',
     category: 'efemerides',
     categoryName: 'Eventos Conmemorativos',
     readTime: '10 min lectura',
     author: 'Centro Crecemos',
     heroImage: '/assets/img/blog/discapacidad-hero.jpg'
+  },
+  {
+    id: 9,
+    slug: '10-diciembre-dia-derechos-humanos',
+    title: '¡El 10 de Diciembre: Día para honrar los Derechos Humanos y la dignidad!',
+    excerpt: 'El 10 de diciembre no es solo una fecha más; es el Día de los Derechos Humanos, un llamado urgente a la conciencia. Esta conmemoración nos obliga a reconocer el valor único de cada persona.',
+    image: '/assets/img/blog/derechos-humanos-portada.jpg',
+    date: '10 Diciembre 2025',
+    category: 'efemerides',
+    categoryName: 'Eventos Conmemorativos',
+    readTime: '12 min lectura',
+    author: 'Centro Crecemos',
+    heroImage: '/assets/img/blog/derechos-humanos-hero.jpg'
   }
   // Aquí agregas más blogs...
 ];

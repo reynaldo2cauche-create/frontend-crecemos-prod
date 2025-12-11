@@ -13,11 +13,17 @@ import TarjetasPacientes from '../components/Pacientes/TablaPacientes';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ROLES, isTerapeuta, canViewServiceInfo } from '../constants/roles';
 import { useNavigate } from 'react-router-dom';
+import { useTerapeutas } from '../hooks/useTerapeutas';
 import '../styles/intranet.css';
 
 export const ListaPacientes = () => {
   const user = useCurrentUser();
   const navigate = useNavigate();
+  const trabajadores = useTerapeutas(); // Obtener todos los trabajadores
+  // Filtrar solo terapeutas (sin validar activo porque viene undefined del backend)
+  const terapeutasDisponibles = trabajadores.filter(
+    t => t.rol?.id === ROLES.TERAPEUTA && t.estado
+  );
   const [pacientes, setPacientes] = useState([]);
   const [filteredPacientes, setFilteredPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +34,8 @@ export const ListaPacientes = () => {
     estadoId: '',
     numeroDocumento: '',
     nombreCompleto: '',
-    servicioId: ''
+    servicioId: '',
+    terapeutaId: '' // ✅ AGREGADO
   });
   const [numeroDocumentoInput, setNumeroDocumentoInput] = useState('');
   const [nombreCompletoInput, setNombreCompletoInput] = useState('');
@@ -43,7 +50,7 @@ export const ListaPacientes = () => {
   useEffect(() => {
     const tieneFiltrosActivos = searchParams.distritoId || searchParams.estadoId || 
                                 searchParams.numeroDocumento || searchParams.nombreCompleto || 
-                                searchParams.servicioId;
+                                searchParams.servicioId || searchParams.terapeutaId; // ✅ AGREGADO
     
     if (!tieneFiltrosActivos) {
       return;
@@ -65,6 +72,10 @@ export const ListaPacientes = () => {
         if (searchParams.nombreCompleto) params.append('nombreCompleto', searchParams.nombreCompleto);
         if (searchParams.servicioId && searchParams.servicioId !== '') {
           params.append('servicioId', searchParams.servicioId);
+        }
+        // ✅ AGREGADO
+        if (searchParams.terapeutaId && searchParams.terapeutaId !== '') {
+          params.append('terapeutaId', searchParams.terapeutaId);
         }
         
         if (params.toString()) {
@@ -165,6 +176,7 @@ export const ListaPacientes = () => {
         nombreCompleto: nombreCompletoInput || '',
         distritoId: filters.distritoId || '',
         estadoId: filters.estadoId || '',
+        terapeutaId: filters.terapeutaId || '', // ✅ AGREGADO
         ...(canViewServiceInfo(user) && { servicioId: filters.servicioId || '' })
       };
       
@@ -208,7 +220,7 @@ export const ListaPacientes = () => {
 
   const handleFilterChange = (field, value) => {
     let processedValue = value;
-    if (field === 'servicioId') {
+    if (field === 'servicioId' || field === 'terapeutaId') { // ✅ MODIFICADO
       processedValue = value === '' ? '' : String(value);
     }
     
@@ -247,6 +259,7 @@ export const ListaPacientes = () => {
       estadoId: '',
       numeroDocumento: '',
       nombreCompleto: '',
+      terapeutaId: '', // ✅ AGREGADO
       ...(canViewServiceInfo(user) && { servicioId: '' })
     });
     setNumeroDocumentoInput('');
@@ -314,7 +327,6 @@ export const ListaPacientes = () => {
 
   if (error && !pacientes.length) {
     return (
-
       <Box sx={{
         flexGrow: 1,
         p: 3,
@@ -329,11 +341,10 @@ export const ListaPacientes = () => {
     );
   }
 
-  const filtrosActivos = searchParams.distritoId || searchParams.estadoId || searchParams.servicioId || searchParams.numeroDocumento || searchParams.nombreCompleto;
+  const filtrosActivos = searchParams.distritoId || searchParams.estadoId || searchParams.servicioId || searchParams.numeroDocumento || searchParams.nombreCompleto || searchParams.terapeutaId; // ✅ MODIFICADO
 
   return (
     <div className="tailwind-scope">
-
     <Box
       component="main"
       sx={{
@@ -396,13 +407,25 @@ export const ListaPacientes = () => {
                     <span className="text-gray-700">{servicios.find(s => s.id === parseInt(searchParams.servicioId))?.nombre}</span>
                   </div>
                 )}
+
+                {/* ✅ AGREGADO - Chip para Terapeuta */}
+                {searchParams.terapeutaId && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-[#7B1FA2]/30 text-sm">
+                    <span className="font-medium text-[#7B1FA2]">Terapeuta:</span>
+                    <span className="text-gray-700">
+                      {terapeutasDisponibles.find(t => t.id === parseInt(searchParams.terapeutaId))
+                        ? `${terapeutasDisponibles.find(t => t.id === parseInt(searchParams.terapeutaId)).nombres} ${terapeutasDisponibles.find(t => t.id === parseInt(searchParams.terapeutaId)).apellidos}`
+                        : 'Desconocido'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* Inputs de búsqueda */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
               {/* Nombre Completo */}
               <div className="relative">
                 <input
@@ -506,13 +529,29 @@ export const ListaPacientes = () => {
                   ))}
                 </select>
               )}
+
+              {/* ✅ AGREGADO - Selector de Terapeuta */}
+              {!isTerapeuta(user) && (
+                <select
+                  value={filters.terapeutaId || ''}
+                  onChange={(e) => handleFilterChange('terapeutaId', e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Todos los terapeutas</option>
+                  {terapeutasDisponibles.map((terapeuta) => (
+                    <option key={terapeuta.id} value={terapeuta.id}>
+                      {terapeuta.nombres} {terapeuta.apellidos}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Botones de acción */}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={ejecutarBusqueda}
-                disabled={searching || (!numeroDocumentoInput && !nombreCompletoInput && !filters.distritoId && !filters.estadoId && !(canViewServiceInfo(user) && filters.servicioId))}
+                disabled={searching || (!numeroDocumentoInput && !nombreCompletoInput && !filters.distritoId && !filters.estadoId && !(canViewServiceInfo(user) && filters.servicioId) && !filters.terapeutaId)}
                 className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
               >
                 {searching ? (

@@ -165,28 +165,36 @@ const Sidebar = () => {
           transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease'
         }}
       >
-        {/* Logo */}
-        <div className="p-3 flex items-center justify-between overflow-hidden">
-          <div className="flex items-center overflow-hidden">
-            <div className={`transition-all duration-500 ease-in-out ${isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0'}`}>
-              {isCollapsed && (
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center">
+        {/* Header: Logo + Notificaciones */}
+        <div className="p-3" style={{ borderBottom: '1px solid #e9ecef' }}>
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center overflow-hidden">
+              <div className={`transition-all duration-500 ease-in-out ${isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0'}`}>
+                {isCollapsed && (
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center">
+                    <img
+                      src="/videologo.png"
+                      alt="Logo"
+                      className="w-12 h-12 object-contain transition-transform duration-500 hover:scale-110"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className={`transition-all duration-500 ease-in-out ${!isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0 absolute'}`}>
+                {!isCollapsed && (
                   <img
-                    src="/videologo.png"
-                    alt="Logo"
-                    className="w-12 h-12 object-contain transition-transform duration-500 hover:scale-110"
+                    src="/logo-text-short.png"
+                    alt="Logo Crecemos"
+                    className="h-10 w-auto object-contain transition-transform duration-500 hover:scale-105"
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
-            <div className={`transition-all duration-500 ease-in-out ${!isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0 absolute'}`}>
-              {!isCollapsed && (
-                <img
-                  src="/logo-text-short.png"
-                  alt="Logo Crecemos"
-                  className="h-10 w-auto object-contain transition-transform duration-500 hover:scale-105"
-                />
-              )}
+
+            {/* Notificaciones - Siempre visible */}
+            <div className="flex-shrink-0">
+              <NotificacionesGlobales />
             </div>
           </div>
         </div>
@@ -370,16 +378,11 @@ const Sidebar = () => {
           </div>
         </nav>
 
-        {/* User Profile & Notifications */}
+        {/* User Profile */}
         <div className="p-3" style={{ borderTop: '1px solid #e9ecef' }}>
           {isCollapsed ? (
             // Vista colapsada - Iconos verticales centrados
             <div className="flex flex-col items-center gap-2">
-              {/* Notificaciones */}
-              <div className="w-full flex justify-center">
-                <NotificacionesGlobales />
-              </div>
-
               {/* Avatar del usuario */}
               <button
                 onClick={() => navigate('/intranet/mi-perfil')}
@@ -447,15 +450,11 @@ const Sidebar = () => {
                 <UserCircleIcon className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] flex-shrink-0 transition-all duration-300 group-hover:scale-125" />
               </button>
 
-              {/* Fila de notificaciones y cerrar sesión */}
+              {/* Botón cerrar sesión */}
               <div className="flex items-center gap-2">
-                <div className="flex-shrink-0">
-                  <NotificacionesGlobales />
-                </div>
-                
                 <button
                   onClick={handleLogout}
-                  className="flex-1 flex items-center justify-center gap-2 p-2.5 text-gray-500 rounded-xl transition-all duration-300 outline-none hover:scale-[1.02]"
+                  className="w-full flex items-center justify-center gap-2 p-2.5 text-gray-500 rounded-xl transition-all duration-300 outline-none hover:scale-[1.02]"
                   style={{
                     border: 'none',
                     background: 'transparent',

@@ -190,7 +190,7 @@ const NotificacionesGlobales = () => {
   const notificacionesFiltradas = getNotificacionesFiltradas();
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       {/* Badge de notificaciones */}
       <button
         onClick={() => setMostrarPanel(!mostrarPanel)}
@@ -204,7 +204,7 @@ const NotificacionesGlobales = () => {
         )}
 
         {totalNotificaciones > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center animate-pulse">
+          <span className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center animate-pulse">
             {totalNotificaciones > 99 ? '99+' : totalNotificaciones}
           </span>
         )}
@@ -219,8 +219,8 @@ const NotificacionesGlobales = () => {
             onClick={() => setMostrarPanel(false)}
           />
 
-          {/* Panel */}
-          <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-2xl z-50 border border-gray-200 max-h-[500px] flex flex-col">
+          {/* Panel - Abriendo hacia la DERECHA desde el sidebar */}
+          <div className="absolute left-full top-0 ml-2 w-96 bg-white rounded-lg shadow-2xl z-50 border border-gray-200 max-h-[500px] flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
               <div className="flex items-center justify-between mb-3">

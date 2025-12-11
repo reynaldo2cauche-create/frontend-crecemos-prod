@@ -53,6 +53,12 @@ export default function BlogPage() {
       nombre: 'Educación',
       icon: 'bi-book',
       color: '#F39C12'
+    },
+    {
+      id: 'efemerides',
+      nombre: 'Eventos Conmemorativos',
+      icon: 'bi-calendar-event',
+      color: '#c263f9'
     }
   ];
 

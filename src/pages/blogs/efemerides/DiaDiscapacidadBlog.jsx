@@ -10,16 +10,6 @@ export default function DiaDiscapacidadBlog() {
         discapacidad en todos los ámbitos de la sociedad.
       </div>
 
-      {/* Imagen principal - placeholder 1 */}
-      <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
-        <img
-          src="/assets/img/blog/discapacidad-hero.jpg"
-          alt="Día Internacional de las Personas con Discapacidad"
-          style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
-          onError={(e) => e.target.style.display = 'none'}
-        />
-      </div>
-
       <hr className="my-5" />
 
       {/* Sección 1: La Historia */}
@@ -31,7 +21,7 @@ export default function DiaDiscapacidadBlog() {
         trabajo enfocado en este tema.
       </p>
 
-      <h3 className="mt-5 mb-3" data-aos="fade-up" style={{ color: '#7B1FA2', fontSize: '1.5rem' }}>
+      <h3 className="mt-5 mb-3" data-aos="fade-up" style={{ color: '#c263f9', fontSize: '1.5rem' }}>
         El Precedente: El Decenio (1983-1992)
       </h3>
 
@@ -43,31 +33,31 @@ export default function DiaDiscapacidadBlog() {
       {/* Lista de objetivos del decenio */}
       <div className="row gy-4 mb-5">
         <div className="col-md-4" data-aos="fade-up" data-aos-delay="100">
-          <div className="benefit-card" style={{ borderLeft: '4px solid #7B1FA2' }}>
+          <div className="benefit-card">
             <div className="benefit-icon">
               <i className="bi bi-globe"></i>
             </div>
-            <h4>Crear conciencia global</h4>
+            <h3>Crear conciencia global</h3>
             <p>Aumentar la comprensión internacional sobre los desafíos y la situación de las personas con discapacidad.</p>
           </div>
         </div>
 
         <div className="col-md-4" data-aos="fade-up" data-aos-delay="200">
-          <div className="benefit-card" style={{ borderLeft: '4px solid #7B1FA2' }}>
+          <div className="benefit-card">
             <div className="benefit-icon">
               <i className="bi bi-lightning-charge"></i>
             </div>
-            <h4>Impulsar acciones</h4>
+            <h3>Impulsar acciones</h3>
             <p>Motivar a los gobiernos y a la sociedad civil a implementar programas y políticas específicas para mejorar la vida de este colectivo.</p>
           </div>
         </div>
 
         <div className="col-md-4" data-aos="fade-up" data-aos-delay="300">
-          <div className="benefit-card" style={{ borderLeft: '4px solid #7B1FA2' }}>
+          <div className="benefit-card">
             <div className="benefit-icon">
               <i className="bi bi-people-fill"></i>
             </div>
-            <h4>Lograr tres metas</h4>
+            <h3>Lograr tres metas</h3>
             <p>El lema central del decenio era alcanzar la "Igualdad, Plena Participación e Integración" de las personas con discapacidad en la sociedad.</p>
           </div>
         </div>
@@ -78,12 +68,11 @@ export default function DiaDiscapacidadBlog() {
         <img
           src="/assets/img/blog/discapacidad-historia.jpg"
           alt="Historia del Día Internacional de las Personas con Discapacidad"
-          style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
         />
       </div>
 
-      <h3 className="mt-5 mb-3" data-aos="fade-up" style={{ color: '#7B1FA2', fontSize: '1.5rem' }}>
+      <h3 className="mt-5 mb-3" data-aos="fade-up" style={{ color: '#c263f9', fontSize: '1.5rem' }}>
         La Culminación: La Proclamación en 1992
       </h3>
 
@@ -118,8 +107,8 @@ export default function DiaDiscapacidadBlog() {
       {/* Lista numerada de implicancias */}
       <div className="recipe-section mb-5" data-aos="fade-up">
         <div className="recipe-number">1</div>
+        <h3 className="recipe-title">Visibilización de la Diversidad</h3>
         <div className="recipe-content">
-          <h4>Visibilización de la Diversidad</h4>
           <p>
             Resalta que la discapacidad es parte de la condición humana. Afecta a más de mil millones
             de personas a nivel mundial.
@@ -129,8 +118,8 @@ export default function DiaDiscapacidadBlog() {
 
       <div className="recipe-section mb-5" data-aos="fade-up">
         <div className="recipe-number">2</div>
+        <h3 className="recipe-title">Promoción de Derechos</h3>
         <div className="recipe-content">
-          <h4>Promoción de Derechos</h4>
           <p>
             Sirve para impulsar y garantizar que todas las personas con discapacidad tengan acceso a la
             educación, el empleo, la atención sanitaria y la participación política y social.
@@ -140,8 +129,8 @@ export default function DiaDiscapacidadBlog() {
 
       <div className="recipe-section mb-5" data-aos="fade-up">
         <div className="recipe-number">3</div>
+        <h3 className="recipe-title">Fomento de la Inclusión</h3>
         <div className="recipe-content">
-          <h4>Fomento de la Inclusión</h4>
           <p>
             Incita a gobiernos, organizaciones y a la sociedad en general a eliminar las barreras
             (actitudinales, físicas y comunicacionales) que limitan la vida de estas personas.
@@ -154,7 +143,6 @@ export default function DiaDiscapacidadBlog() {
         <img
           src="/assets/img/blog/discapacidad-inclusion.jpg"
           alt="Inclusión de personas con discapacidad"
-          style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
         />
       </div>
@@ -180,28 +168,30 @@ export default function DiaDiscapacidadBlog() {
         </div>
       </div>
 
-      <h3 className="mt-5 mb-4" data-aos="fade-up" style={{ color: '#7B1FA2', fontSize: '1.5rem' }}>
+      <h3 className="mt-5 mb-4" data-aos="fade-up" style={{ color: '#c263f9', fontSize: '1.5rem' }}>
         Es vital preguntarnos hoy:
       </h3>
 
       <div className="row gy-4 mb-5">
         <div className="col-md-4" data-aos="fade-up" data-aos-delay="100">
-          <div className="benefit-card" style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px' }}>
-            <div className="benefit-icon mb-3">
-              <i className="bi bi-building" style={{ fontSize: '2.5rem', color: '#7B1FA2' }}></i>
+          <div className="benefit-card">
+            <div className="benefit-icon">
+              <i className="bi bi-building"></i>
             </div>
-            <p className="mb-0" style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
+            <h3>Espacios accesibles</h3>
+            <p>
               ¿Mis espacios de trabajo o estudio son realmente accesibles?
             </p>
           </div>
         </div>
 
         <div className="col-md-4" data-aos="fade-up" data-aos-delay="200">
-          <div className="benefit-card" style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px' }}>
-            <div className="benefit-icon mb-3">
-              <i className="bi bi-person-check" style={{ fontSize: '2.5rem', color: '#7B1FA2' }}></i>
+          <div className="benefit-card">
+            <div className="benefit-icon">
+              <i className="bi bi-person-check"></i>
             </div>
-            <p className="mb-0" style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
+            <h3>Cuestionar prejuicios</h3>
+            <p>
               ¿Estoy cuestionando mis propios prejuicios sobre lo que una persona con
               discapacidad puede o no puede hacer?
             </p>
@@ -209,11 +199,12 @@ export default function DiaDiscapacidadBlog() {
         </div>
 
         <div className="col-md-4" data-aos="fade-up" data-aos-delay="300">
-          <div className="benefit-card" style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px' }}>
-            <div className="benefit-icon mb-3">
-              <i className="bi bi-megaphone" style={{ fontSize: '2.5rem', color: '#7B1FA2' }}></i>
+          <div className="benefit-card">
+            <div className="benefit-icon">
+              <i className="bi bi-megaphone"></i>
             </div>
-            <p className="mb-0" style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
+            <h3>Amplificar voces</h3>
+            <p>
               ¿Estoy amplificando las voces de las personas con discapacidad en lugar de hablar por
               ellas?
             </p>
@@ -226,20 +217,14 @@ export default function DiaDiscapacidadBlog() {
         <img
           src="/assets/img/blog/discapacidad-accion.jpg"
           alt="Acciones para la inclusión"
-          style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
         />
       </div>
 
       {/* Mensaje final destacado */}
-      <div className="alert-info mb-5" data-aos="fade-up" style={{
-        fontSize: '1.3rem',
-        padding: '2rem',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        borderRadius: '12px',
-        border: 'none',
-        textAlign: 'center'
+      <div className="alert-info mb-5 text-center" data-aos="fade-up" style={{
+        fontSize: '1.2rem',
+        padding: '2rem'
       }}>
         <i className="bi bi-quote me-2"></i>
         <strong>
