@@ -170,20 +170,36 @@ const Agenda = () => {
     }
   };
 
-  const guardarCita = async () => {
+  const guardarCita = async (datosFormulario = null) => {
     setGuardando(true);
     try {
+      // Usar los datos recibidos o los del estado
+      const datos = datosFormulario || formularioCita;
+
       const validaciones = [];
-      
-      if (!formularioCita.paciente?.id) validaciones.push('Debe seleccionar un paciente');
-      if (!formularioCita.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
-      if (!formularioCita.servicio_id) validaciones.push('Debe seleccionar un servicio');
-      if (!formularioCita.motivo_id) validaciones.push('Debe seleccionar un motivo');
-      if (!formularioCita.duracion) validaciones.push('Debe seleccionar una duración');
-      if (!formularioCita.fechasHoras || formularioCita.fechasHoras.length === 0) {
+
+      if (!datos.paciente?.id) validaciones.push('Debe seleccionar un paciente');
+      if (!datos.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
+
+      // Validar servicios según el tipo de cita
+      const esReunionClinica = datos.terapeutas_adicionales?.length > 0;
+
+      if (esReunionClinica) {
+        // Reunión clínica: debe tener al menos un servicio en servicios_adicionales
+        if (!datos.servicios_adicionales || datos.servicios_adicionales.length === 0) {
+          validaciones.push('Debe seleccionar al menos un servicio para la reunión clínica');
+        }
+      } else {
+        // Cita normal: debe tener servicio_id
+        if (!datos.servicio_id) validaciones.push('Debe seleccionar un servicio');
+      }
+
+      if (!datos.motivo_id) validaciones.push('Debe seleccionar un motivo');
+      if (!datos.duracion) validaciones.push('Debe seleccionar una duración');
+      if (!datos.fechasHoras || datos.fechasHoras.length === 0) {
         validaciones.push('Debe agregar al menos una fecha y hora');
       } else {
-        formularioCita.fechasHoras.forEach((fh, index) => {
+        datos.fechasHoras.forEach((fh, index) => {
           if (!fh.fecha) validaciones.push(`Debe seleccionar una fecha para la cita ${index + 1}`);
           if (!fh.horaInicio) validaciones.push(`Debe seleccionar una hora para la cita ${index + 1}`);
         });
@@ -201,31 +217,37 @@ const Agenda = () => {
 
       if (citaEditando) {
         const primeraCita = {
-          paciente_id: formularioCita.paciente?.id,
-          doctor_id: formularioCita.doctor_id,
-          servicio_id: formularioCita.servicio_id,
-          motivo_id: formularioCita.motivo_id,
-          fecha: formularioCita.fechasHoras[0].fecha,
-          hora_inicio: formularioCita.fechasHoras[0].horaInicio + ':00',
-          duracion_minutos: parseInt(formularioCita.duracion),
-          nota: formularioCita.nota,
+          paciente_id: datos.paciente?.id,
+          doctor_id: datos.doctor_id,
+          servicio_id: datos.servicio_id,
+          motivo_id: datos.motivo_id,
+          fecha: datos.fechasHoras[0].fecha,
+          hora_inicio: datos.fechasHoras[0].horaInicio + ':00',
+          duracion_minutos: parseInt(datos.duracion),
+          nota: datos.nota,
           user_id: currentUser?.id,
-          estado_id: 1
+          estado_id: 1,
+          // Incluir terapeutas y servicios adicionales para reunión clínica
+          terapeutas_adicionales: datos.terapeutas_adicionales || [],
+          servicios_adicionales: datos.servicios_adicionales || []
         };
         await actualizarCita(citaEditando.id, primeraCita);
         setSnackbar({ open: true, message: 'Cita actualizada correctamente', severity: 'success' });
       } else {
-        const citasParaCrear = formularioCita.fechasHoras.map(fechaHora => ({
-          paciente_id: formularioCita.paciente?.id,
-          doctor_id: formularioCita.doctor_id,
-          servicio_id: formularioCita.servicio_id,
-          motivo_id: formularioCita.motivo_id,
+        const citasParaCrear = datos.fechasHoras.map(fechaHora => ({
+          paciente_id: datos.paciente?.id,
+          doctor_id: datos.doctor_id,
+          servicio_id: datos.servicio_id,
+          motivo_id: datos.motivo_id,
           fecha: fechaHora.fecha,
           hora_inicio: fechaHora.horaInicio + ':00',
-          duracion_minutos: parseInt(formularioCita.duracion),
-          nota: formularioCita.nota,
+          duracion_minutos: parseInt(datos.duracion),
+          nota: datos.nota,
           user_id: currentUser?.id,
-          estado_id: 1
+          estado_id: 1,
+          // Incluir terapeutas y servicios adicionales para reunión clínica
+          terapeutas_adicionales: datos.terapeutas_adicionales || [],
+          servicios_adicionales: datos.servicios_adicionales || []
         }));
 
         const resultados = await crearMultiplesCitas(citasParaCrear);
@@ -456,6 +478,13 @@ const Agenda = () => {
               const horaInicioCita = cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora;
               setSlotSeleccionado({ dia: '', hora: horaInicioCita, fecha });
               setCitaEditando(cita);
+
+              // Extraer terapeutas adicionales
+              const terapeutasAdicionales = cita.terapeutas_adicionales?.map(t => t.id || t.terapeuta_id) || [];
+
+              // Extraer servicios
+              const servicios = cita.servicios?.map(s => s.servicio_id || s.id) || [];
+
               setFormularioCita({
                 fechasHoras: [{ fecha, horaInicio: formatearHora(horaInicioCita) }],
                 paciente: cita.paciente_id ? {
@@ -466,7 +495,9 @@ const Agenda = () => {
                 servicio_id: cita.servicio_id || '',
                 motivo_id: cita.motivo_id || '',
                 duracion: String(cita.duracion_minutos || ''),
-                nota: cita.nota || ''
+                nota: cita.nota || '',
+                terapeutas_adicionales: terapeutasAdicionales,
+                servicios_adicionales: servicios
               });
               setModalAbierto(true);
             }}
