@@ -116,21 +116,6 @@ const VerificarBeneficios = () => {
     window.print();
   };
 
-  const copiarCodigo = async (codigo) => {
-    try {
-      await navigator.clipboard.writeText(codigo);
-      alert(`Código ${codigo} copiado al portapapeles`);
-    } catch (err) {
-      console.error('Error al copiar:', err);
-    }
-  };
-
-  const formatearFecha = (fecha) => {
-    if (!fecha) return 'Sin vencimiento';
-    const date = new Date(fecha);
-    const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('es-PE', opciones);
-  };
 
   return (
     <div style={styles.wrapper}>
@@ -319,7 +304,16 @@ const VerificarBeneficios = () => {
                         {/* Header con icono y título */}
                         <div style={styles.beneficioCardHeader} className="beneficio-card-header">
                           <div style={styles.beneficioIconContainer}>
-                            <span style={styles.beneficioIcono}>{beneficio.icono}</span>
+                            {beneficio.icono ? (
+                              <img
+                                src={beneficio.icono}
+                                alt={beneficio.nombre}
+                                style={styles.beneficioIconoImg}
+                                onError={(e) => e.target.style.display = 'none'}
+                              />
+                            ) : (
+                              <span style={styles.beneficioIcono}>🎁</span>
+                            )}
                           </div>
                           <div style={styles.beneficioTitleArea}>
                             <h4 style={styles.beneficioNombre}>{beneficio.nombre}</h4>
@@ -340,34 +334,6 @@ const VerificarBeneficios = () => {
                             <span style={styles.tagEtiqueta}>{beneficio.etiqueta}</span>
                           )}
                         </div>
-
-                        {/* Info grid - OCULTO */}
-                        {/* <div style={styles.beneficioInfoGrid}>
-                          <div>
-                            <div style={styles.infoLabel}>Cómo canjear</div>
-                            <div style={styles.infoTexto}>{beneficio.como_canjear}</div>
-                          </div>
-                          <div>
-                            <div style={styles.infoLabel}>Vigencia</div>
-                            <div style={styles.infoTexto}>{formatearFecha(beneficio.fecha_vigencia)}</div>
-                          </div>
-                        </div> */}
-
-                        {/* Código y botón - OCULTO */}
-                        {/* <div style={styles.beneficioFooter} className="beneficio-footer">
-                          <div>
-                            <div style={styles.codigoLabel}>Código: <strong style={styles.codigoTexto}>{beneficio.codigo_beneficio}</strong></div>
-                          </div>
-                          <button
-                            style={styles.btnCopiar}
-                            onClick={() => copiarCodigo(beneficio.codigo_beneficio)}
-                          >
-                            Copiar
-                          </button>
-                        </div> */}
-
-                        {/* Link términos - OCULTO */}
-                        {/* <a href="#" style={styles.linkTerminos}>Ver términos y condiciones</a> */}
                       </div>
                     ))}
                   </div>
@@ -687,6 +653,12 @@ const styles = {
   beneficioIcono: {
     fontSize: '1.75rem',
   },
+  beneficioIconoImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    borderRadius: '8px',
+  },
   beneficioTitleArea: {
     flex: 1,
     minWidth: 0,
@@ -746,69 +718,6 @@ const styles = {
     fontSize: '0.8rem',
     fontWeight: '600',
     color: '#155724',
-  },
-  beneficioInfoGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: '1rem',
-    marginBottom: '1rem',
-    padding: '1rem',
-    background: '#f8f9fa',
-    borderRadius: '8px',
-  },
-  infoLabel: {
-    fontSize: '0.75rem',
-    textTransform: 'uppercase',
-    color: '#6c757d',
-    fontWeight: '700',
-    marginBottom: '0.25rem',
-    letterSpacing: '0.5px',
-  },
-  infoTexto: {
-    fontSize: '0.875rem',
-    color: '#212529',
-    fontWeight: '500',
-    lineHeight: 1.4,
-  },
-  beneficioFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0.75rem',
-    background: '#f8f9fa',
-    borderRadius: '8px',
-    marginBottom: '0.75rem',
-    gap: '0.75rem',
-    flexWrap: 'wrap',
-  },
-  codigoLabel: {
-    fontSize: '0.85rem',
-    color: '#495057',
-  },
-  codigoTexto: {
-    fontFamily: "'Courier New', monospace",
-    color: '#2563eb',
-    fontSize: '0.95rem',
-    letterSpacing: '0.5px',
-  },
-  btnCopiar: {
-    padding: '0.5rem 1rem',
-    background: '#212529',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  linkTerminos: {
-    fontSize: '0.85rem',
-    color: '#2563eb',
-    textDecoration: 'none',
-    fontWeight: '500',
-    display: 'block',
-    textAlign: 'center',
   },
 };
 
