@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Plus, X, Save, FileText, Target, Activity, Stethoscope, ClipboardList, Calendar, User } from 'lucide-react';
+import { guardarNotaEvolucion, obtenerNotasEvolucionPorPaciente } from '../../services/notaEvolucionService';
+import { ROLES } from '../../constants/roles';
 
-const NotasEvolucion = ({ 
-  notas, 
-  setNotas, 
-  openNotaModal, 
-  setOpenNotaModal, 
-  nota, 
-  setNota, 
-  paciente_id, 
-  user_id_crea, 
-  user, 
-  setSnackbar 
+const NotasEvolucion = ({
+  notas,
+  setNotas,
+  openNotaModal,
+  setOpenNotaModal,
+  nota,
+  setNota,
+  paciente_id,
+  user_id_crea,
+  user,
+  setSnackbar
 }) => {
   const [saving, setSaving] = useState(false);
 
@@ -39,24 +41,39 @@ const NotasEvolucion = ({
         user_id_crea
       };
       try {
-        // await guardarNotaEvolucion(nuevaNota);
-        setNotas([
-          {
-            id: notas.length + 1,
-            fecha: new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),            
-            autor: user ? `${user.nombres} ${user.apellidos}${user.rol ? ' — ' + user.rol.nombre : ''}` : 'Usuario',
-            entrevista: nota.entrevista,
-            sesionEvaluacion: nota.sesionEvaluacion,
-            sesionTerapias: nota.sesionTerapias,
-            objetivosTerapeuticos: nota.objetivosTerapeuticos,
-            observaciones: nota.observaciones
-          },
-          ...notas
-        ]);
+        // Guardar la nota en la BD
+        console.log('📝 Guardando nota de evolución:', nuevaNota);
+        const respuestaGuardado = await guardarNotaEvolucion(nuevaNota);
+        console.log('✅ Respuesta del guardado:', respuestaGuardado);
+
+        // Recargar todas las notas desde la BD para obtener los datos reales
+        let url = `/nota-evolucion/paciente/${paciente_id}`;
+        if (user?.rol?.id === ROLES.TERAPEUTA) {
+          url += `?trabajador_id=${user.id}`;
+        }
+        console.log('🔄 Recargando notas desde BD con URL:', url);
+        const notasActualizadas = await obtenerNotasEvolucionPorPaciente(paciente_id, url);
+        console.log('📋 Notas recargadas desde BD:', notasActualizadas);
+
+        // Actualizar el estado con las notas reales de la BD
+        setNotas(notasActualizadas.map(n => ({
+          id: n.id,
+          fecha: n.fecha_crea ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '',
+          autor: n.trabajador
+            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}${n.trabajador.rol ? ' — ' + n.trabajador.rol.nombre : ''}`
+            : `Usuario ${n.user_id_crea}`,
+          entrevista: n.entrevista,
+          sesionEvaluacion: n.sesion_evaluacion,
+          sesionTerapias: n.sesion_terapias,
+          objetivosTerapeuticos: n.objetivos_terapeuticos,
+          observaciones: n.observaciones
+        })));
+
         setNota({ entrevista: '', sesionEvaluacion: '', sesionTerapias: '', objetivosTerapeuticos: '', observaciones: '' });
         setOpenNotaModal(false);
         setSnackbar({ open: true, message: 'Nota guardada correctamente', severity: 'success' });
       } catch (error) {
+        console.error('Error al guardar la nota:', error);
         setSnackbar({ open: true, message: 'Error al guardar la nota', severity: 'error' });
       } finally {
         setSaving(false);
