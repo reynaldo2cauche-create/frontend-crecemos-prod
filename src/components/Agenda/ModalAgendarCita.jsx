@@ -108,9 +108,12 @@ const ModalAgendarCita = ({
         setServiciosReunion([]);
         setEncargadoVisita({ nombre_completo: '', telefono: '', institucion: '' });
         setDocumentoFirmado(false);
+      } else if (citaEditando) {
+        // Cargar datos de la cita en edición
+        setDocumentoFirmado(citaEditando.firma_documento === 1 || citaEditando.firma_documento === true);
       }
     }
-  }, [open, modoEdicion]);
+  }, [open, modoEdicion, citaEditando]);
 
   // Funciones para Reunión Clínica
   const agregarTerapeuta = () => setTerapeutasReunion([...terapeutasReunion, { terapeuta_id: '' }]);
@@ -152,7 +155,7 @@ const ModalAgendarCita = ({
       datosGuardar.terapeutas_ids = [];
       datosGuardar.servicios_ids = [];
       datosGuardar.doctor_id = null;
-      datosGuardar.documento_firmado = documentoFirmado;
+      datosGuardar.firma_documento = documentoFirmado ? 1 : 0;
     }
 
     onGuardar(datosGuardar);
