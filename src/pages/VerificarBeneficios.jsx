@@ -341,8 +341,8 @@ const VerificarBeneficios = () => {
                           )}
                         </div>
 
-                        {/* Info grid */}
-                        <div style={styles.beneficioInfoGrid}>
+                        {/* Info grid - OCULTO */}
+                        {/* <div style={styles.beneficioInfoGrid}>
                           <div>
                             <div style={styles.infoLabel}>Cómo canjear</div>
                             <div style={styles.infoTexto}>{beneficio.como_canjear}</div>
@@ -351,23 +351,23 @@ const VerificarBeneficios = () => {
                             <div style={styles.infoLabel}>Vigencia</div>
                             <div style={styles.infoTexto}>{formatearFecha(beneficio.fecha_vigencia)}</div>
                           </div>
-                        </div>
+                        </div> */}
 
-                        {/* Código y botón */}
-                        <div style={styles.beneficioFooter} className="beneficio-footer">
+                        {/* Código y botón - OCULTO */}
+                        {/* <div style={styles.beneficioFooter} className="beneficio-footer">
                           <div>
                             <div style={styles.codigoLabel}>Código: <strong style={styles.codigoTexto}>{beneficio.codigo_beneficio}</strong></div>
                           </div>
-                          <button 
-                            style={styles.btnCopiar} 
+                          <button
+                            style={styles.btnCopiar}
                             onClick={() => copiarCodigo(beneficio.codigo_beneficio)}
                           >
                             Copiar
                           </button>
-                        </div>
+                        </div> */}
 
-                        {/* Link términos */}
-                        <a href="#" style={styles.linkTerminos}>Ver términos y condiciones</a>
+                        {/* Link términos - OCULTO */}
+                        {/* <a href="#" style={styles.linkTerminos}>Ver términos y condiciones</a> */}
                       </div>
                     ))}
                   </div>
