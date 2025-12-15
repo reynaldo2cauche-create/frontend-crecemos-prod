@@ -637,7 +637,7 @@ const EditarPacientePage = () => {
         </div>
 
         {/* Contenido */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Área principal */}
           <div className="lg:col-span-7">
             {tabSeleccionado === 'filiacion' && (
@@ -676,6 +676,7 @@ const EditarPacientePage = () => {
               setSnackbar={setSnackbar}
             />
           </div>
+
         </div>
       </div>
 

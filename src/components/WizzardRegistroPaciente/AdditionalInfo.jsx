@@ -58,6 +58,7 @@ const AdditionalInfo = ({ onNext, onBack }) => {
       try {
         setLoading(true);
         const data = await getServicios();
+        console.log('Servicios cargados:', data);
         setServicios(Array.isArray(data) ? data : []);
         setError(null);
       } catch (error) {
@@ -177,6 +178,9 @@ const AdditionalInfo = ({ onNext, onBack }) => {
     } else {
       serviciosFiltrados = servicios.filter(s => s.area?.nombre === "Área Adultos");
     }
+
+    console.log('Servicios filtrados:', serviciosFiltrados);
+    console.log('Total servicios:', servicios.length, 'Filtrados:', serviciosFiltrados.length);
   }
 
   return (

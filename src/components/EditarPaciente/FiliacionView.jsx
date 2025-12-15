@@ -137,7 +137,7 @@ const FiliacionView = ({
   if (!paciente) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm" style={{ minHeight: '700px' }}>
       {/* Header */}
       <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
         <div className="flex items-center justify-between">
