@@ -366,12 +366,18 @@ const EditarPacientePage = () => {
         }
       }
 
-      // Recargar los servicios del paciente
+      // Pequeño delay para asegurar que el backend terminó de procesar
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Recargar los servicios del paciente con cache-busting
       const serviciosActualizados = await getServiciosPorPaciente(id);
       setPaciente(prev => ({
         ...prev,
         servicios: serviciosActualizados
       }));
+
+      // Forzar re-render adicional
+      setPaciente(prev => ({ ...prev }));
 
       // Mostrar mensaje de éxito
       setSnackbar({
@@ -448,12 +454,18 @@ const EditarPacientePage = () => {
         user_id_actua: user_id
       });
 
+      // Pequeño delay para asegurar que el backend terminó de procesar
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Recargar los servicios del paciente
       const serviciosActualizados = await getServiciosPorPaciente(id);
       setPaciente(prev => ({
         ...prev,
         servicios: serviciosActualizados
       }));
+
+      // Forzar re-render adicional
+      setPaciente(prev => ({ ...prev }));
 
       // Mostrar mensaje de éxito
       setSnackbar({

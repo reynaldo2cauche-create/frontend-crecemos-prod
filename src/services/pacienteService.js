@@ -48,7 +48,14 @@ export const desasignarServicioPaciente = async (pacienteId, servicioId, userId)
 };
 
 export const getServiciosPorPaciente = async (id) => {
-  const response = await api.get(`/paciente-servicio/paciente/${id}`);
+  // Agregar timestamp para evitar cache
+  const timestamp = new Date().getTime();
+  const response = await api.get(`/paciente-servicio/paciente/${id}?_t=${timestamp}`, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
+    }
+  });
   return response.data;
 };
 
