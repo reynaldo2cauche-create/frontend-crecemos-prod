@@ -421,7 +421,9 @@ const Agenda = () => {
                   trabajadores
                     .filter(t => {
                       const rolId = t.rol_id || t.rol?.id;
-                      return rolId === ROLES.TERAPEUTA;
+                      // El campo en el backend se llama 'estado' y es boolean (true = activo, false = inactivo)
+                      const esActivo = t.estado === true;
+                      return rolId === ROLES.TERAPEUTA && esActivo;
                     })
                     .map((terapeuta) => (
                       <option key={terapeuta.id} value={terapeuta.id}>

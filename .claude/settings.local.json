@@ -2,6 +2,7 @@
   "permissions": {
     "allow": [
 <<<<<<< HEAD
+<<<<<<< HEAD
       "Bash(npm run start:dev:*)",
       "Bash(timeout /t 10)",
       "Bash(netstat:*)",
@@ -40,6 +41,11 @@
       "Bash(mkdir:*)",
       "Bash(npm run dev:*)"
 >>>>>>> blog-original
+=======
+      "Bash(npm run start:dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout:*)"
+>>>>>>> ab86c50 (se sube beneficios de crecemos)
     ],
     "deny": [],
     "ask": []

@@ -6,7 +6,11 @@ import CushuroBlog from './nutricion/CushuroBlog';
 import QuinuaBlog from './nutricion/QuinuaBlog';
 import Omega3Blog from './nutricion/Omega3Blog';
 import TumboBlog from './nutricion/TumboBlog';
-
+import ChocloBlog from './nutricion/ChocloBlog';
+import EsparragoBlog from './nutricion/EsparragoBlog';
+import NuezBlog from './nutricion/NuezBlog';
+import PaltaBlog from './nutricion/PaltaBlog';
+import PecanaBlog from './nutricion/PecanaBlog';
 // Blogs de Desarrollo Infantil
 // import EjemploBlog from './desarrollo-infantil/EjemploBlog';
 
@@ -39,6 +43,13 @@ export const blogComponents = {
   '30-noviembre-trastornos-conducta-alimentaria': TCABlog,
   '3-diciembre-dia-internacional-personas-discapacidad': DiaDiscapacidadBlog,
   '10-diciembre-dia-derechos-humanos': DiaDerechosHumanosBlog,
+  'choclo-alimento-natural-energetico-ninos-neurodivergentes': ChocloBlog,
+  'esparrago-alimento-nutritivo-ninos-neurodivergentes': EsparragoBlog,
+  'nuez-alimento-nutritivo-ninos-neurodivergentes': NuezBlog,
+  'palta-alimento-suave-nutritivo-ninos-neurodivergentes': PaltaBlog,
+  'pecana-fruto-seco-nutritivo-ninos-neurodivergentes': PecanaBlog,
+
+
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
 };

@@ -26,7 +26,8 @@ const CalendarioSemanal = ({
       const lunes = new Date(fecha);
       lunes.setDate(fecha.getDate() - fecha.getDay() + 1);
 
-      const dias = Array.from({length: 7}, (_, i) => {
+      // Solo generar 6 días (lunes a sábado), sin domingo
+      const dias = Array.from({length: 6}, (_, i) => {
         const dia = new Date(lunes);
         dia.setDate(lunes.getDate() + i);
         return {
@@ -104,7 +105,7 @@ const CalendarioSemanal = ({
   const formatearRangoSemana = () => {
     if (diasSemana.length === 0) return '';
     const inicio = diasSemana[0];
-    const fin = diasSemana[6];
+    const fin = diasSemana[5]; // Último día es sábado (índice 5)
 
     const mesInicio = inicio.fecha.toLocaleDateString('es-ES', { month: 'short' });
     const mesFin = fin.fecha.toLocaleDateString('es-ES', { month: 'short' });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserCircle, Phone, MapPin, Calendar, FileText, X,
   Clock, Stethoscope, Mail, Home, AlertCircle, Heart, Pill, User, Users,
@@ -469,7 +469,16 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
 const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEditar, user, emptyMessage, onPacienteOcultado }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
+  // Cargar preferencia de vista desde localStorage
+  const [viewMode, setViewMode] = useState(() => {
+    const savedView = localStorage.getItem('pacientes_viewMode');
+    return savedView || 'grid'; // Por defecto 'grid'
+  });
+
+  // Guardar preferencia cuando cambie el viewMode
+  useEffect(() => {
+    localStorage.setItem('pacientes_viewMode', viewMode);
+  }, [viewMode]);
 
   const handleClickPaciente = (paciente) => {
     setPacienteSeleccionado(paciente);

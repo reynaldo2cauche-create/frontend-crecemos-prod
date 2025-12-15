@@ -118,7 +118,72 @@ export const blogMetadata = [
     readTime: '12 min lectura',
     author: 'Centro Crecemos',
     heroImage: '/assets/img/blog/derechos-humanos-hero.jpg'
-  }
+  },
+  {
+    id: 10,
+    slug: 'choclo-alimento-natural-energetico-ninos-neurodivergentes',
+    title: 'Choclo: Un alimento natural y energético para niños desde 1 año, incluyendo niños neurodivergentes',
+    excerpt: 'El choclo (maíz tierno) es un alimento tradicional y muy presente en la alimentación familiar. Gracias a su sabor suave, textura blanda cuando está bien cocido y buen aporte de energía, puede incorporarse de manera segura desde el primer año de vida.',
+    image: '/assets/img/blog/choclo-portada.jpg',
+    date: '12 Diciembre 2025',
+    category: 'nutricion',
+    categoryName: 'Nutrición',
+    readTime: '10 min lectura',
+    author: 'Leonardo Yactayo Uceda',
+    heroImage: '/assets/img/blog/choclo-hero.jpg'
+  },
+  {
+  id: 11,
+  slug: 'esparrago-alimento-nutritivo-ninos-neurodivergentes',
+  title: 'Espárrago: Un alimento nutritivo y suave para niños desde 1 año, incluyendo niños neurodivergentes',
+  excerpt: 'El espárrago es una verdura natural rica en nutrientes esenciales que puede incorporarse de manera segura en la alimentación infantil a partir del primer año de vida. Cuando se prepara correctamente, su textura es suave y fácil de manejar.',
+  image: '/assets/img/blog/esparrago-portada.jpg',
+  date: '13 Diciembre 2025',
+  category: 'nutricion',
+  categoryName: 'Nutrición',
+  readTime: '8 min lectura',
+  author: 'Leonardo Yactayo Uceda',
+  heroImage: '/assets/img/blog/esparrago-hero.jpg'
+},
+{
+  id: 12,
+  slug: 'nuez-alimento-nutritivo-ninos-neurodivergentes',
+  title: 'Nuez: Un alimento nutritivo que requiere adaptación segura para niños desde 1 año',
+  excerpt: 'La nuez es un fruto seco con alto valor nutricional, rico en Omega 3 y grasas saludables. Puede formar parte de la alimentación infantil desde el primer año, siempre que se ofrezca de manera segura y adaptada.',
+  image: '/assets/img/blog/nuez-portada.jpg',
+  date: '14 Diciembre 2025',
+  category: 'nutricion',
+  categoryName: 'Nutrición',
+  readTime: '10 min lectura',
+  author: 'Leonardo Yactayo Uceda',
+  heroImage: '/assets/img/blog/nuez-hero.jpg'
+},
+{
+  id: 13,
+  slug: 'palta-alimento-suave-nutritivo-ninos-neurodivergentes',
+  title: 'Palta: Un alimento suave y altamente nutritivo para niños desde 1 año',
+  excerpt: 'La palta es uno de los alimentos más completos y versátiles para la alimentación infantil. Su textura cremosa, sabor suave y alto contenido de grasas saludables la hacen ideal para niños neurodivergentes.',
+  image: '/assets/img/blog/palta-portada.jpg',
+  date: '15 Diciembre 2025',
+  category: 'nutricion',
+  categoryName: 'Nutrición',
+  readTime: '9 min lectura',
+  author: 'Leonardo Yactayo Uceda',
+  heroImage: '/assets/img/blog/palta-hero.jpg'
+},
+{
+  id: 14,
+  slug: 'pecana-fruto-seco-nutritivo-ninos-neurodivergentes',
+  title: 'Pecana: Un fruto seco nutritivo para niños desde 1 año',
+  excerpt: 'La pecana es un fruto seco rico en grasas saludables, vitaminas y minerales. Puede aportar importantes beneficios a la alimentación infantil cuando se ofrece de forma segura y adaptada.',
+  image: '/assets/img/blog/pecana-portada.jpg',
+  date: '16 Diciembre 2025',
+  category: 'nutricion',
+  categoryName: 'Nutrición',
+  readTime: '10 min lectura',
+  author: 'Leonardo Yactayo Uceda',
+  heroImage: '/assets/img/blog/pecana-hero.jpg'
+}
   // Aquí agregas más blogs...
 ];
 

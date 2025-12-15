@@ -45,7 +45,16 @@ const GestionArchivosOficiales = () => {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
+  // Cargar preferencia de vista desde localStorage
+  const [viewMode, setViewMode] = useState(() => {
+    const savedView = localStorage.getItem('archivosOficiales_viewMode');
+    return savedView || 'grid'; // Por defecto 'grid'
+  });
+
+  // Guardar preferencia cuando cambie el viewMode
+  useEffect(() => {
+    localStorage.setItem('archivosOficiales_viewMode', viewMode);
+  }, [viewMode]);
 
   // Estados formulario
   const [tipoDestinatario, setTipoDestinatario] = useState('paciente');
