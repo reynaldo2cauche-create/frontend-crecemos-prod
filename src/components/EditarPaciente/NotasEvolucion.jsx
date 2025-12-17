@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, X, Save, FileText, Target, Activity, Stethoscope, ClipboardList, Calendar, User, Filter } from 'lucide-react';
+import { Plus, X, Save, FileText, Target, Activity, Stethoscope, ClipboardList, Calendar, User, Filter, ArrowRightLeft } from 'lucide-react';
 import { guardarNotaEvolucion, obtenerNotasEvolucionPorPaciente } from '../../services/notaEvolucionService';
 import { ROLES } from '../../constants/roles';
 
@@ -124,9 +124,8 @@ const NotasEvolucion = ({
         if (user?.rol?.id === ROLES.TERAPEUTA) {
           url += `?trabajador_id=${user.id}`;
         }
-        console.log('🔄 Recargando notas desde BD con URL:', url);
         const notasActualizadas = await obtenerNotasEvolucionPorPaciente(paciente_id, url);
-        console.log('📋 Notas recargadas desde BD:', notasActualizadas);
+    
 
         setNotas(notasActualizadas.map(n => ({
           id: n.id,
@@ -134,6 +133,7 @@ const NotasEvolucion = ({
           autor: n.trabajador
             ? `${n.trabajador.nombres} ${n.trabajador.apellidos}${n.trabajador.rol ? ' — ' + n.trabajador.rol.nombre : ''}`
             : `Usuario ${n.user_id_crea}`,
+          tipoNota: n.tipo_nota || null,
           entrevista: n.entrevista,
           sesionEvaluacion: n.sesion_evaluacion,
           sesionTerapias: n.sesion_terapias,
@@ -260,7 +260,21 @@ const NotasEvolucion = ({
                           {nombre.split(' ').map(p => p[0]).join('')}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-bold text-gray-900 truncate">{nombre}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-base font-bold text-gray-900">{nombre}</p>
+                            {n.tipoNota && (
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border ${
+                                n.tipoNota === 'Nota propia'
+                                  ? 'bg-green-50 text-green-700 border-green-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
+                                {n.tipoNota === 'Nota transferida' && (
+                                  <ArrowRightLeft className="w-3 h-3" />
+                                )}
+                                {n.tipoNota}
+                              </span>
+                            )}
+                          </div>
                           {especialidad && (
                             <span className="inline-block mt-1.5 px-2.5 py-1 bg-[#A3C644]/10 text-[#A3C644] text-sm font-medium rounded border border-[#A3C644]/20">
                               {especialidad.trim()}

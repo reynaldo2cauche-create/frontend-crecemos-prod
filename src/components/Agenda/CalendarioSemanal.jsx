@@ -7,9 +7,10 @@ import {
   User
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+import { esHorarioBloqueado, generarHorasDisponibles } from '../../constants/agendaData';
 
 const CalendarioSemanal = ({
-  horas,
+  horas: horasProp,
   citas,
   onSlotClick,
   onCitaClick,
@@ -20,6 +21,25 @@ const CalendarioSemanal = ({
   currentUser = null
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
+
+  // Generar todas las horas posibles (8:00 AM - 8:00 PM con intervalos de 40 min)
+  // Esto cubre tanto sábados (8:00-14:00) como lunes-viernes (11:00-20:00)
+  const todasLasHoras = React.useMemo(() => {
+    const horas = [];
+    let minutos = 8 * 60; // Empezar a las 8:00 AM
+    const finMinutos = 20 * 60; // Terminar a las 8:00 PM
+
+    while (minutos <= finMinutos) {
+      const h = Math.floor(minutos / 60);
+      const m = minutos % 60;
+      horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+      minutos += 40; // Intervalos de 40 minutos
+    }
+
+    return horas;
+  }, []);
+
+  const horas = todasLasHoras;
 
   useEffect(() => {
     const calcularDiasSemana = (fecha) => {
@@ -209,17 +229,33 @@ const CalendarioSemanal = ({
                   const esHoy = dia.fechaString === new Date().toISOString().split('T')[0];
                   const hayCitas = citasInfo && citasInfo.length > 0;
                   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
-                  const puedeHacerClic = !hayCitas && !esTerapeuta;
+
+                  // Verificar si la hora está bloqueada según el día de la semana
+                  const diaSemana = dia.fecha.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+                  const horaBloqueada = esHorarioBloqueado(hora, diaSemana);
+
+                  const puedeHacerClic = !hayCitas && !esTerapeuta && !horaBloqueada;
 
                   return (
                     <td
                       key={`${dia.fechaString}-${hora}`}
                       onClick={() => puedeHacerClic && onSlotClick(dia, hora)}
                       className={`relative border-l border-b border-gray-200 ${
-                        puedeHacerClic ? 'cursor-pointer hover:bg-purple-50/50' : 'cursor-default'
-                      } ${esHoy ? 'bg-purple-50/20' : 'bg-white'}`}
+                        horaBloqueada
+                          ? 'bg-gray-100 cursor-not-allowed'
+                          : puedeHacerClic
+                            ? 'cursor-pointer hover:bg-purple-50/50'
+                            : 'cursor-default'
+                      } ${esHoy && !horaBloqueada ? 'bg-purple-50/20' : ''}`}
                     >
-                      {citasInfo && citasInfo.map((slotInfo, index) => {
+                      {horaBloqueada && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xs text-gray-400 font-semibold select-none">
+                            Bloqueado
+                          </span>
+                        </div>
+                      )}
+                      {!horaBloqueada && citasInfo && citasInfo.map((slotInfo, index) => {
                         const cita = slotInfo.cita;
                         if (!slotInfo.isTop) return null;
 

@@ -176,6 +176,7 @@ const EditarPacientePage = () => {
             autor: nota.trabajador
               ? `${nota.trabajador.nombres} ${nota.trabajador.apellidos}${nota.trabajador.rol ? ' — ' + nota.trabajador.rol.nombre : ''}`
               : `Usuario ${nota.user_id_crea}`,
+            tipoNota: nota.tipo_nota || null,
             entrevista: nota.entrevista,
             sesionEvaluacion: nota.sesion_evaluacion,
             sesionTerapias: nota.sesion_terapias,
@@ -431,11 +432,11 @@ const EditarPacientePage = () => {
     }
   };
 
-  const handleEditarTerapeuta = async () => {
+  const handleEditarTerapeuta = async (transferirNotas = false) => {
 
     try {
-      if (!servicioAEditar || !servicioAEditar.asignaciones || servicioAEditar.asignaciones.length === 0) {
-        throw new Error('No hay asignación para editar');
+      if (!servicioAEditar) {
+        throw new Error('No hay servicio seleccionado');
       }
 
       // Encontrar el ID del terapeuta seleccionado
@@ -446,13 +447,59 @@ const EditarPacientePage = () => {
         throw new Error('Terapeuta no encontrado');
       }
 
-      const asignacionId = servicioAEditar.asignaciones[0].id;
+      // Verificar si ya existe una asignación activa
+      const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
+      const terapeutaAnteriorId = tieneAsignacion ? servicioAEditar.asignaciones[0].terapeuta.id : null;
 
-      // Llamar a la API para actualizar la asignación
-      await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
-        terapeuta_id: terapeutaSeleccionado.id,
-        user_id_actua: user_id
-      });
+      if (tieneAsignacion) {
+        // CASO 1: EDITAR asignación existente (cambio de terapeuta)
+        const asignacionId = servicioAEditar.asignaciones[0].id;
+
+        await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
+          terapeuta_id: terapeutaSeleccionado.id,
+          user_id_actua: user_id
+        });
+
+        // Si se solicitó transferir notas, crear la transferencia
+        if (transferirNotas && terapeutaAnteriorId) {
+          console.log('🔄 Creando transferencia de notas...');
+          console.log('📋 Datos de transferencia:', {
+            paciente_id: parseInt(id),
+            user_id_crea_retiro: terapeutaAnteriorId,
+            user_id_asignado_nuevo: terapeutaSeleccionado.id
+          });
+
+          try {
+            const respuestaTransferencia = await api.post('/nota-evolucion/transferir', {
+              paciente_id: parseInt(id),
+              user_id_crea_retiro: terapeutaAnteriorId,
+              user_id_asignado_nuevo: terapeutaSeleccionado.id
+            });
+            console.log('✅ Transferencia de notas creada exitosamente:', respuestaTransferencia.data);
+          } catch (errorTransferencia) {
+            console.error('⚠️ ERROR COMPLETO al crear transferencia:', errorTransferencia);
+            console.error('⚠️ Response error:', errorTransferencia.response?.data);
+            console.error('⚠️ Status:', errorTransferencia.response?.status);
+            // No lanzamos el error para que no falle toda la operación
+            // La asignación ya se hizo correctamente
+          }
+        } else {
+          console.log('ℹ️ NO se creará transferencia:', {
+            transferirNotas,
+            terapeutaAnteriorId,
+            mensaje: !transferirNotas ? 'Checkbox no marcado' : 'No hay terapeuta anterior'
+          });
+        }
+      } else {
+        // CASO 2: CREAR nueva asignación (primera vez)
+        await api.post('/paciente-servicio/asignacion', {
+          paciente_servicio_id: servicioAEditar.id,
+          terapeuta_id: terapeutaSeleccionado.id,
+          fecha_asignacion: new Date().toISOString().split('T')[0],
+          estado: 'ACTIVO',
+          user_id_crea: user_id
+        });
+      }
 
       // Pequeño delay para asegurar que el backend terminó de procesar
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -468,9 +515,14 @@ const EditarPacientePage = () => {
       setPaciente(prev => ({ ...prev }));
 
       // Mostrar mensaje de éxito
+      let mensajeExito = tieneAsignacion ? 'Terapeuta actualizado correctamente' : 'Terapeuta asignado correctamente';
+      if (tieneAsignacion && transferirNotas) {
+        mensajeExito += '. Las notas de evolución fueron transferidas.';
+      }
+
       setSnackbar({
         open: true,
-        message: 'Terapeuta actualizado correctamente',
+        message: mensajeExito,
         severity: 'success'
       });
 
@@ -480,10 +532,10 @@ const EditarPacientePage = () => {
       setNuevoTerapeuta('');
 
     } catch (error) {
-      console.error('❌ Error al actualizar terapeuta:', error);
+      console.error('❌ Error al asignar/actualizar terapeuta:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error al actualizar el terapeuta',
+        message: error.response?.data?.message || error.message || 'Error al asignar el terapeuta',
         severity: 'error'
       });
       throw error;

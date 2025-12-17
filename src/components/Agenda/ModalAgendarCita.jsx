@@ -21,6 +21,7 @@ import { useServicios } from '../../hooks/useServicios';
 import { useMotivosCita } from '../../hooks/useMotivosCita';
 import { useHistorialCita } from '../../hooks/useHistorialCita';
 import { ROLES } from '../../constants/roles';
+import { generarHorasPorFecha } from '../../constants/agendaData';
 
 const ModalAgendarCita = ({
   open,
@@ -393,21 +394,23 @@ const ModalAgendarCita = ({
                         disabled={esTerapeuta}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                       />
-                      <input
-                        type="time"
+                      <select
                         value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                        onChange={(e) => {
-                          const hora = e.target.value;
-                          if (hora >= '08:00' && hora <= '20:00') {
-                            onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: hora });
-                          }
-                        }}
-                        disabled={esTerapeuta}
-                        min="08:00"
-                        max="20:00"
-                        step="300"
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                      />
+                        onChange={(e) => onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value })}
+                        disabled={esTerapeuta || !formularioCita.fechasHoras?.[0]?.fecha || !formularioCita.duracion}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                      >
+                        <option value="">
+                          {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' :
+                           !formularioCita.duracion ? 'Seleccione una duración primero' :
+                           'Seleccionar hora...'}
+                        </option>
+                        {formularioCita.fechasHoras?.[0]?.fecha && formularioCita.duracion &&
+                          generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, parseInt(formularioCita.duracion)).map(hora => (
+                            <option key={hora} value={hora}>{hora}</option>
+                          ))
+                        }
+                      </select>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -430,21 +433,23 @@ const ModalAgendarCita = ({
                                 disabled={esTerapeuta}
                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                               />
-                              <input
-                                type="time"
+                              <select
                                 value={fechaHora.horaInicio}
-                                onChange={(e) => {
-                                  const hora = e.target.value;
-                                  if (hora >= '08:00' && hora <= '20:00') {
-                                    onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: hora });
-                                  }
-                                }}
-                                disabled={esTerapeuta}
-                                min="08:00"
-                                max="20:00"
-                                step="300"
-                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                              />
+                                onChange={(e) => onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value })}
+                                disabled={esTerapeuta || !fechaHora.fecha || !formularioCita.duracion}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!fechaHora.fecha ? 'Seleccione una fecha primero' :
+                                   !formularioCita.duracion ? 'Seleccione una duración primero' :
+                                   'Seleccionar hora...'}
+                                </option>
+                                {fechaHora.fecha && formularioCita.duracion &&
+                                  generarHorasPorFecha(fechaHora.fecha, parseInt(formularioCita.duracion)).map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ))
+                                }
+                              </select>
                             </div>
                           </div>
                         ))

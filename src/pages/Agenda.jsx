@@ -242,6 +242,7 @@ const Agenda = () => {
     } catch (error) {
       console.error('Error capturado en guardarCita:', error);
 
+      // Error 409: Conflicto de horarios con otra cita
       if (error.status === 409) {
         let mensajeConflicto = error.message || 'Ya existe una cita en ese horario';
         if (error.conflictos && error.conflictos.length > 0) {
@@ -252,7 +253,15 @@ const Agenda = () => {
           mensajeConflicto = `Conflicto de horarios detectado:\n${detallesConflictos}`;
         }
         setSnackbar({ open: true, message: mensajeConflicto, severity: 'error' });
-      } else {
+      }
+      // Error 400: Validaciones (horarios bloqueados, datos incorrectos, etc.)
+      else if (error.status === 400) {
+        // El mensaje del backend ya viene formateado y específico
+        const mensajeValidacion = error.message || error.response?.data?.message || 'Error de validación';
+        setSnackbar({ open: true, message: mensajeValidacion, severity: 'error' });
+      }
+      // Otros errores
+      else {
         let mensajeError = citaEditando ? 'Error al actualizar la cita' : 'Error al agendar la cita';
         if (error.message) {
           mensajeError = error.message;
@@ -341,7 +350,7 @@ const Agenda = () => {
         
         {/* Notificación */}
         {snackbar.open && (
-          <div className={`fixed top-6 right-6 z-50 px-5 py-3.5 rounded-xl shadow-lg border transform transition-all duration-300 ${
+          <div className={`fixed top-6 right-6 z-[9999] px-5 py-3.5 rounded-xl shadow-lg border transform transition-all duration-300 ${
             snackbar.severity === 'success'
               ? 'bg-white border-gray-100'
               : 'bg-white border-red-100'
