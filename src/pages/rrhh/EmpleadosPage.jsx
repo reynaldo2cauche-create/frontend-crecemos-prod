@@ -431,7 +431,7 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
               <Briefcase className="w-3 h-3 flex-shrink-0 text-orange-500" />
               <span className="text-gray-600">
                 {empleado.cargo.nombre}
-                {empleado.cargo.es_jefe && ' 👑'}
+                {empleado.cargo.es_jefe}
               </span>
             </div>
           )}
@@ -669,7 +669,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess,
                   onChange={handleChange} 
                   options={cargos.filter(c => c.activo).map(c => ({ 
                     value: c.id, 
-                    label: `${c.nombre}${c.es_jefe ? ' 👑' : ''}` 
+                    label: `${c.nombre}` 
                   }))}
                   isValueLabel={true}
                 />
@@ -961,7 +961,7 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
                   onChange={handleChange} 
                   options={cargos.filter(c => c.activo).map(c => ({ 
                     value: c.id, 
-                    label: `${c.nombre}${c.es_jefe ? ' 👑' : ''}` 
+                    label: `${c.nombre}` 
                   }))}
                   isValueLabel={true}
                 />

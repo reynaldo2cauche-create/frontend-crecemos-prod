@@ -392,16 +392,47 @@ const FiliacionView = ({
                           {servicio.servicio?.nombre || 'Sin nombre'}
                         </span>
                       </div>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
-                        servicio.asignaciones && servicio.asignaciones.length > 0 && servicio.asignaciones[0].terapeuta
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                        <User className="w-3 h-3" />
-                        {servicio.asignaciones && servicio.asignaciones.length > 0 && servicio.asignaciones[0].terapeuta
-                          ? `${servicio.asignaciones[0].terapeuta.nombres} ${servicio.asignaciones[0].terapeuta.apellidos}`
-                          : 'Sin asignar'}
-                      </div>
+
+                      {/* Mostrar TODOS los terapeutas asignados */}
+                      {servicio.asignaciones && servicio.asignaciones.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {servicio.asignaciones
+                            .filter(asig => asig.estado === 'ACTIVO' && asig.activo)
+                            .map((asignacion, index) => (
+                              <div
+                                key={asignacion.id || index}
+                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              >
+                                <User className="w-3 h-3" />
+                                <span>
+                                  {asignacion.terapeuta?.nombres} {asignacion.terapeuta?.apellidos}
+                                </span>
+                                {puedeGestionarServicios && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Aquí irá la función de eliminar terapeuta individual
+                                      setModalEliminarServicio({
+                                        open: true,
+                                        servicio,
+                                        asignacionId: asignacion.id,
+                                        terapeutaNombre: `${asignacion.terapeuta?.nombres} ${asignacion.terapeuta?.apellidos}`
+                                      });
+                                    }}
+                                    className="ml-1 text-emerald-600 hover:text-red-600 hover:bg-red-50 rounded-full p-0.5 transition-colors"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                          <User className="w-3 h-3" />
+                          Sin asignar
+                        </div>
+                      )}
                     </div>
 
                     {/* Botones de gestión para ADMINISTRADOR y ADMISIÓN */}
@@ -410,18 +441,25 @@ const FiliacionView = ({
                         <button
                           type="button"
                           onClick={() => {
+                            console.log('🔵 Botón editar clickeado');
+                            console.log('🔵 Servicio:', servicio);
+                            console.log('🔵 Terapeuta ID:', servicio.asignaciones?.[0]?.terapeuta?.id);
                             setServicioAEditar(servicio);
-                            setNuevoTerapeuta(
-                              servicio.asignaciones && servicio.asignaciones.length > 0 && servicio.asignaciones[0].terapeuta
-                                ? `${servicio.asignaciones[0].terapeuta.nombres} ${servicio.asignaciones[0].terapeuta.apellidos}`
-                                : ''
-                            );
+                            // ✅ IMPORTANTE: Setear el ID como STRING
+                            const terapeutaId = servicio.asignaciones && 
+                                               servicio.asignaciones.length > 0 && 
+                                               servicio.asignaciones[0].terapeuta
+                              ? String(servicio.asignaciones[0].terapeuta.id)
+                              : '';
+                            console.log('🔵 ID del terapeuta a setear:', terapeutaId);
+                            setNuevoTerapeuta(terapeutaId);
                             setOpenEditarTerapeuta(true);
                           }}
                           className="p-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
+                        
                         <button
                           type="button"
                           onClick={() => setModalEliminarServicio({ open: true, servicio })}

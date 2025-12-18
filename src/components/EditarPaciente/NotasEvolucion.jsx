@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, X, Save, FileText, Target, Activity, Stethoscope, ClipboardList, Calendar, User, Filter, ArrowRightLeft } from 'lucide-react';
+import { Plus, X, Save, FileText, Target, Activity, Stethoscope, ClipboardList, Calendar, User, Filter } from 'lucide-react';
 import { guardarNotaEvolucion, obtenerNotasEvolucionPorPaciente } from '../../services/notaEvolucionService';
 import { ROLES } from '../../constants/roles';
 
@@ -16,10 +16,53 @@ const NotasEvolucion = ({
   setSnackbar
 }) => {
   const [saving, setSaving] = useState(false);
-  const [filtroEspecialidad, setFiltroEspecialidad] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [filtroServicio, setFiltroServicio] = useState('');
   const [filtroTerapeuta, setFiltroTerapeuta] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const containerRef = useRef(null);
+
+  // Cargar notas al montar el componente
+  useEffect(() => {
+    const cargarNotasIniciales = async () => {
+      try {
+        setLoading(true);
+        let url = `/nota-evolucion/paciente/${paciente_id}`;
+        if (user?.rol?.id === ROLES.TERAPEUTA) {
+          url += `?trabajador_id=${user.id}`;
+        }
+        
+        const respuesta = await obtenerNotasEvolucionPorPaciente(paciente_id, url);
+        const notasActualizadas = respuesta?.data || [];
+
+        setNotas(notasActualizadas.map(n => ({
+          id: n.id,
+          fecha: n.fecha_crea 
+            ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
+              new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+            : '',
+          autor: n.trabajador
+            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}`
+            : `Usuario ${n.user_id_crea}`,
+          servicio: n.servicio?.nombre || 'Sin servicio',
+          entrevista: n.entrevista,
+          sesionEvaluacion: n.sesion_evaluacion,
+          sesionTerapias: n.sesion_terapias,
+          objetivosTerapeuticos: n.objetivos_terapeuticos,
+          observaciones: n.observaciones
+        })));
+      } catch (error) {
+        console.error('❌ Error al cargar notas iniciales:', error);
+        setSnackbar({ open: true, message: 'Error al cargar las notas de evolución', severity: 'error' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (paciente_id) {
+      cargarNotasIniciales();
+    }
+  }, [paciente_id, user]);
 
   useEffect(() => {
     const ajustarAltura = () => {
@@ -43,34 +86,29 @@ const NotasEvolucion = ({
     };
   }, []);
 
-  const especialidades = useMemo(() => {
+  const servicios = useMemo(() => {
     if (!notas || notas.length === 0) return [];
-    const lista = [...new Set(notas.map(n => n.autor.split(' — ')[1]).filter(Boolean))];
+    const lista = [...new Set(notas.map(n => n.servicio).filter(Boolean))];
     return lista.sort();
   }, [notas]);
 
   const terapeutas = useMemo(() => {
     if (!notas || notas.length === 0) return [];
-    const lista = [...new Set(notas.map(n => n.autor.split(' — ')[0]).filter(Boolean))];
+    const lista = [...new Set(notas.map(n => n.autor).filter(Boolean))];
     return lista.sort();
   }, [notas]);
 
   const notasFiltradas = useMemo(() => {
     if (!notas || notas.length === 0) return [];
     return notas.filter(n => {
-      const [nombre, especialidad] = n.autor.split(' — ');
-
-      // Filtro de especialidad
-      if (filtroEspecialidad && especialidad?.trim() !== filtroEspecialidad) {
+      if (filtroServicio && n.servicio?.trim() !== filtroServicio) {
         return false;
       }
 
-      // Filtro de terapeuta
-      if (filtroTerapeuta && nombre?.trim() !== filtroTerapeuta) {
+      if (filtroTerapeuta && n.autor?.trim() !== filtroTerapeuta) {
         return false;
       }
 
-      // Filtro de tipo de comentario
       if (filtroTipo) {
         switch (filtroTipo) {
           case 'entrevista':
@@ -90,7 +128,7 @@ const NotasEvolucion = ({
 
       return true;
     });
-  }, [notas, filtroEspecialidad, filtroTerapeuta, filtroTipo]);
+  }, [notas, filtroServicio, filtroTerapeuta, filtroTipo]);
 
   const formatTextWithLineBreaks = (text) => {
     if (!text) return '';
@@ -124,16 +162,20 @@ const NotasEvolucion = ({
         if (user?.rol?.id === ROLES.TERAPEUTA) {
           url += `?trabajador_id=${user.id}`;
         }
-        const notasActualizadas = await obtenerNotasEvolucionPorPaciente(paciente_id, url);
-    
+        
+        const respuesta = await obtenerNotasEvolucionPorPaciente(paciente_id, url);
+        const notasActualizadas = respuesta?.data || [];
 
         setNotas(notasActualizadas.map(n => ({
           id: n.id,
-          fecha: n.fecha_crea ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '',
+          fecha: n.fecha_crea 
+            ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
+              new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+            : '',
           autor: n.trabajador
-            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}${n.trabajador.rol ? ' — ' + n.trabajador.rol.nombre : ''}`
+            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}`
             : `Usuario ${n.user_id_crea}`,
-          tipoNota: n.tipo_nota || null,
+          servicio: n.servicio?.nombre || 'Sin servicio',
           entrevista: n.entrevista,
           sesionEvaluacion: n.sesion_evaluacion,
           sesionTerapias: n.sesion_terapias,
@@ -145,7 +187,8 @@ const NotasEvolucion = ({
         setOpenNotaModal(false);
         setSnackbar({ open: true, message: 'Nota guardada correctamente', severity: 'success' });
       } catch (error) {
-        console.error('Error al guardar la nota:', error);
+        console.error('❌ Error al guardar la nota:', error);
+        console.error('❌ Detalles:', error.response?.data);
         setSnackbar({ open: true, message: 'Error al guardar la nota', severity: 'error' });
       } finally {
         setSaving(false);
@@ -177,13 +220,13 @@ const NotasEvolucion = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <select
-                value={filtroEspecialidad}
-                onChange={(e) => setFiltroEspecialidad(e.target.value)}
+                value={filtroServicio}
+                onChange={(e) => setFiltroServicio(e.target.value)}
                 className="text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 bg-white"
               >
-                <option value="">Todas las especialidades</option>
-                {especialidades.map(esp => (
-                  <option key={esp} value={esp}>{esp}</option>
+                <option value="">Todos los servicios</option>
+                {servicios.map(serv => (
+                  <option key={serv} value={serv}>{serv}</option>
                 ))}
               </select>
 
@@ -222,7 +265,6 @@ const NotasEvolucion = ({
           </button>
         </div>
 
-        {/* Área de contenido con scroll interno - contenedor invisible */}
         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
           <style>{`
             .flex-1::-webkit-scrollbar {
@@ -239,159 +281,152 @@ const NotasEvolucion = ({
             .flex-1::-webkit-scrollbar-thumb:hover {
               background: #a1a1a1;
             }
-            /* Firefox */
             .flex-1 {
               scrollbar-width: thin;
               scrollbar-color: #c1c1c1 #f1f1f1;
             }
           `}</style>
-          {notas && notas.length > 0 ? (
+          
+          {loading ? (
+            <div className="p-3 sm:p-4">
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
+                  <div className="w-6 h-6 border-2 border-[#7B1FA2] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Cargando notas...</p>
+                <p className="text-xs text-gray-500">Obteniendo historial del paciente</p>
+              </div>
+            </div>
+          ) : notas && notas.length > 0 ? (
             <div className="p-3 sm:p-4 space-y-3">
-              {notasFiltradas.length > 0 ? notasFiltradas.map((n) => {
-                const [nombre, especialidad] = n.autor.split(' — ');
-                return (
-                  <div
-                    key={n.id}
-                    className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all bg-white"
-                  >
-                    <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 border-b border-gray-100">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
-                          {nombre.split(' ').map(p => p[0]).join('')}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-base font-bold text-gray-900">{nombre}</p>
-                            {n.tipoNota && (
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border ${
-                                n.tipoNota === 'Nota propia'
-                                  ? 'bg-green-50 text-green-700 border-green-200'
-                                  : 'bg-blue-50 text-blue-700 border-blue-200'
-                              }`}>
-                                {n.tipoNota === 'Nota transferida' && (
-                                  <ArrowRightLeft className="w-3 h-3" />
-                                )}
-                                {n.tipoNota}
-                              </span>
-                            )}
-                          </div>
-                          {especialidad && (
-                            <span className="inline-block mt-1.5 px-2.5 py-1 bg-[#A3C644]/10 text-[#A3C644] text-sm font-medium rounded border border-[#A3C644]/20">
-                              {especialidad.trim()}
-                            </span>
-                          )}
-                          <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>{n.fecha}</span>
-                          </div>
+              {notasFiltradas.length > 0 ? notasFiltradas.map((n) => (
+                <div
+                  key={n.id}
+                  className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all bg-white"
+                >
+                  <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 border-b border-gray-100">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
+                        {n.autor.split(' ').map(p => p[0]).join('')}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold text-gray-900">{n.autor}</p>
+                        {n.servicio && (
+                          <span className="inline-block mt-1.5 px-2.5 py-1 bg-[#A3C644]/10 text-[#A3C644] text-sm font-medium rounded border border-[#A3C644]/20">
+                            {n.servicio}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-2">
+                          <Calendar className="w-4 h-4" />
+                          <span>{n.fecha}</span>
                         </div>
                       </div>
                     </div>
-
-                    <div className="p-4 sm:p-5 space-y-3">
-                      {n.entrevista && (
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                              <User className="w-4.5 h-4.5 text-purple-600" />
-                            </div>
-                            <span className="text-sm font-bold text-purple-700 uppercase tracking-wide">
-                              Entrevista
-                            </span>
-                          </div>
-                          <div className="text-base text-gray-800 leading-relaxed pl-10">
-                            {formatTextWithLineBreaks(n.entrevista)}
-                          </div>
-                        </div>
-                      )}
-
-                      {n.objetivosTerapeuticos && (
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                              <Target className="w-4.5 h-4.5 text-emerald-600" />
-                            </div>
-                            <span className="text-sm font-bold text-emerald-700 uppercase tracking-wide">
-                              Objetivos Terapéuticos
-                            </span>
-                          </div>
-                          <div className="text-base text-gray-800 leading-relaxed pl-10">
-                            {formatTextWithLineBreaks(n.objetivosTerapeuticos)}
-                          </div>
-                        </div>
-                      )}
-
-                      {n.sesionEvaluacion && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                              <Activity className="w-4.5 h-4.5 text-blue-600" />
-                            </div>
-                            <span className="text-sm font-bold text-blue-700 uppercase tracking-wide">
-                              Sesión de Evaluación
-                            </span>
-                          </div>
-                          <div className="text-base text-gray-800 leading-relaxed pl-10">
-                            {formatTextWithLineBreaks(n.sesionEvaluacion)}
-                          </div>
-                        </div>
-                      )}
-
-                      {n.sesionTerapias && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                              <Stethoscope className="w-4.5 h-4.5 text-amber-600" />
-                            </div>
-                            <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">
-                              Sesión de Terapias
-                            </span>
-                          </div>
-                          <div className="text-base text-gray-800 leading-relaxed pl-10">
-                            {formatTextWithLineBreaks(n.sesionTerapias)}
-                          </div>
-                        </div>
-                      )}
-
-                      {n.observaciones && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                              <ClipboardList className="w-4.5 h-4.5 text-gray-600" />
-                            </div>
-                            <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-                              Observaciones
-                            </span>
-                          </div>
-                          <div className="text-base text-gray-800 leading-relaxed pl-10">
-                            {formatTextWithLineBreaks(n.observaciones)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                );
-                }) : (
-                  <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                    <p className="text-sm text-gray-500">No hay notas que coincidan con los filtros</p>
+
+                  <div className="p-4 sm:p-5 space-y-3">
+                    {n.entrevista && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4.5 h-4.5 text-purple-600" />
+                          </div>
+                          <span className="text-sm font-bold text-purple-700 uppercase tracking-wide">
+                            Entrevista
+                          </span>
+                        </div>
+                        <div className="text-base text-gray-800 leading-relaxed pl-10">
+                          {formatTextWithLineBreaks(n.entrevista)}
+                        </div>
+                      </div>
+                    )}
+
+                    {n.objetivosTerapeuticos && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <Target className="w-4.5 h-4.5 text-emerald-600" />
+                          </div>
+                          <span className="text-sm font-bold text-emerald-700 uppercase tracking-wide">
+                            Objetivos Terapéuticos
+                          </span>
+                        </div>
+                        <div className="text-base text-gray-800 leading-relaxed pl-10">
+                          {formatTextWithLineBreaks(n.objetivosTerapeuticos)}
+                        </div>
+                      </div>
+                    )}
+
+                    {n.sesionEvaluacion && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <Activity className="w-4.5 h-4.5 text-blue-600" />
+                          </div>
+                          <span className="text-sm font-bold text-blue-700 uppercase tracking-wide">
+                            Sesión de Evaluación
+                          </span>
+                        </div>
+                        <div className="text-base text-gray-800 leading-relaxed pl-10">
+                          {formatTextWithLineBreaks(n.sesionEvaluacion)}
+                        </div>
+                      </div>
+                    )}
+
+                    {n.sesionTerapias && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                            <Stethoscope className="w-4.5 h-4.5 text-amber-600" />
+                          </div>
+                          <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">
+                            Sesión de Terapias
+                          </span>
+                        </div>
+                        <div className="text-base text-gray-800 leading-relaxed pl-10">
+                          {formatTextWithLineBreaks(n.sesionTerapias)}
+                        </div>
+                      </div>
+                    )}
+
+                    {n.observaciones && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <ClipboardList className="w-4.5 h-4.5 text-gray-600" />
+                          </div>
+                          <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                            Observaciones
+                          </span>
+                        </div>
+                        <div className="text-base text-gray-800 leading-relaxed pl-10">
+                          {formatTextWithLineBreaks(n.observaciones)}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 sm:p-4">
-                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
-                    <FileText className="w-6 h-6 text-gray-300" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900 mb-1">Sin notas registradas</p>
-                  <p className="text-xs text-gray-500">Agrega la primera nota de evolución del paciente</p>
                 </div>
+              )) : (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                  <p className="text-sm text-gray-500">No hay notas que coincidan con los filtros</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 sm:p-4">
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
+                  <FileText className="w-6 h-6 text-gray-300" />
+                </div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Sin notas registradas</p>
+                <p className="text-xs text-gray-500">Agrega la primera nota de evolución del paciente</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Modal para nueva nota (sin cambios) */}
+      {/* Modal para nueva nota */}
       {openNotaModal && (
         <>
           <div 

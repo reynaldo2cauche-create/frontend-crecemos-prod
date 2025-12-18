@@ -117,7 +117,7 @@ export const citasEjemplo = [
  * @returns {string[]} Array de horas en formato "HH:MM"
  */
 export const generarHorasDisponibles = (duracionMinutos, diaSemana) => {
-  const horas = [];
+  const horasDisponibles = []; // ✅ Cambiado de 'horas' a 'horasDisponibles'
 
   // Determinar horario según el día
   let inicioMin, finMin;
@@ -143,9 +143,9 @@ export const generarHorasDisponibles = (duracionMinutos, diaSemana) => {
   let minutosActuales = inicioMin;
 
   while (minutosActuales < finMin) {
-    const horas = Math.floor(minutosActuales / 60);
-    const minutos = minutosActuales % 60;
-    const horaFormateada = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+    const hrs = Math.floor(minutosActuales / 60); // ✅ Cambiado de 'horas' a 'hrs'
+    const mins = minutosActuales % 60; // ✅ Cambiado de 'minutos' a 'mins'
+    const horaFormateada = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 
     // Verificar si está en horario de refrigerio (solo lunes a viernes)
     const esRefrigerio = diaSemana >= 1 && diaSemana <= 5 &&
@@ -153,13 +153,13 @@ export const generarHorasDisponibles = (duracionMinutos, diaSemana) => {
                          minutosActuales < finRefrigerio;
 
     if (!esRefrigerio) {
-      horas.push(horaFormateada);
+      horasDisponibles.push(horaFormateada); // ✅ Usar 'horasDisponibles'
     }
 
     minutosActuales += duracionMinutos;
   }
 
-  return horas;
+  return horasDisponibles; // ✅ Retornar 'horasDisponibles'
 };
 
 /**

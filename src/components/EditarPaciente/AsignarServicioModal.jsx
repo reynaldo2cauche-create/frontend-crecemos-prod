@@ -3,7 +3,7 @@ import { X, UserPlus, Loader2, Briefcase, User } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
 import { getTrabajadoresByServicio } from '../../services/trabajadorServicioService';
 
-const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServicio, setNuevoServicio, onAsignar }) => {
+const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServicio, setNuevoServicio, onAsignar, serviciosActualesPaciente = [] }) => {
   const [saving, setSaving] = useState(false);
   const [terapeutasFiltrados, setTerapeutasFiltrados] = useState([]);
   const [loadingTerapeutas, setLoadingTerapeutas] = useState(false);

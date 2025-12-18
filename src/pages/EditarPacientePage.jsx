@@ -307,27 +307,47 @@ const EditarPacientePage = () => {
         throw new Error('Terapeuta no encontrado');
       }
 
-      // PASO 1: Asignar el servicio al paciente
-      const resultado = await asignarServicioPaciente({
-        paciente_id: parseInt(id),
-        servicio_id: servicioSeleccionado.id,
-        user_id_actua: user_id
-      });
+      // Verificar si el servicio YA EXISTE para este paciente
+      const servicioExistente = paciente.servicios?.find(
+        s => s.servicio?.id === servicioSeleccionado.id
+      );
 
-      console.log('Respuesta completa del backend:', JSON.stringify(resultado, null, 2));
+      let pacienteServicioId;
 
-      // PASO 2: Asignar el terapeuta al servicio del paciente
-      // Intentar diferentes formas de obtener el ID
-      const pacienteServicioId = resultado?.pacienteServicio?.id
-        || resultado?.id
-        || resultado?.data?.id
-        || resultado?.data?.pacienteServicio?.id;
+      if (servicioExistente) {
+        // El servicio YA EXISTE, solo vamos a agregar el terapeuta
+        console.log('✅ Servicio ya existe, agregando terapeuta adicional...');
+        pacienteServicioId = servicioExistente.id;
 
-      console.log('PacienteServicio ID extraído:', pacienteServicioId);
+        // Verificar si el terapeuta ya está asignado
+        const terapeutaYaAsignado = servicioExistente.asignaciones?.some(
+          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+        );
 
-      if (!pacienteServicioId) {
-        console.error('No se pudo extraer el ID. Estructura de respuesta:', resultado);
-        throw new Error('No se pudo obtener el ID del servicio asignado. Revisa la consola para más detalles.');
+        if (terapeutaYaAsignado) {
+          throw new Error('Este terapeuta ya está asignado a este servicio');
+        }
+      } else {
+        // El servicio NO EXISTE, crearlo primero
+        console.log('🆕 Servicio nuevo, creando...');
+        const resultado = await asignarServicioPaciente({
+          paciente_id: parseInt(id),
+          servicio_id: servicioSeleccionado.id,
+          user_id_actua: user_id
+        });
+
+        console.log('Respuesta del backend:', JSON.stringify(resultado, null, 2));
+
+        // Obtener el ID del servicio del paciente
+        pacienteServicioId = resultado?.pacienteServicio?.id
+          || resultado?.id
+          || resultado?.data?.id
+          || resultado?.data?.pacienteServicio?.id;
+
+        if (!pacienteServicioId) {
+          console.error('No se pudo extraer el ID. Estructura de respuesta:', resultado);
+          throw new Error('No se pudo obtener el ID del servicio asignado');
+        }
       }
 
       console.log('Asignando terapeuta:', {
@@ -336,41 +356,21 @@ const EditarPacientePage = () => {
         user_id_actua: user_id
       });
 
-      try {
-        await asignarTerapeuta({
-          paciente_servicio_id: pacienteServicioId,
-          terapeuta_id: terapeutaSeleccionado.id,
-          user_id_actua: user_id
-        });
-        console.log('Terapeuta asignado exitosamente');
-      } catch (errorTerapeuta) {
-        console.error('Error al asignar terapeuta:', errorTerapeuta);
-        console.error('Detalles del error:', {
-          message: errorTerapeuta.message,
-          response: errorTerapeuta.response?.data,
-          status: errorTerapeuta.response?.status
-        });
+      // Crear una nueva asignación (no reemplazar)
+      await api.post('/paciente-servicio/asignacion', {
+        paciente_servicio_id: pacienteServicioId,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_asignacion: new Date().toISOString().split('T')[0],
+        estado: 'ACTIVO',
+        user_id_crea: user_id
+      });
 
-        // Intentar método alternativo: actualizar el paciente_servicio directamente
-        console.log('Intentando método alternativo...');
-        try {
-          await api.post('/paciente-servicio/asignar', {
-            paciente_id: parseInt(id),
-            servicio_id: servicioSeleccionado.id,
-            terapeuta_id: terapeutaSeleccionado.id,
-            user_id_actua: user_id
-          });
-          console.log('Terapeuta asignado con método alternativo');
-        } catch (errorAlternativo) {
-          console.error('Método alternativo también falló:', errorAlternativo);
-          throw new Error(`No se pudo asignar el terapeuta: ${errorTerapeuta.response?.data?.message || errorTerapeuta.message}`);
-        }
-      }
+      console.log('✅ Terapeuta asignado exitosamente');
 
       // Pequeño delay para asegurar que el backend terminó de procesar
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Recargar los servicios del paciente con cache-busting
+      // Recargar los servicios del paciente
       const serviciosActualizados = await getServiciosPorPaciente(id);
       setPaciente(prev => ({
         ...prev,
@@ -381,9 +381,13 @@ const EditarPacientePage = () => {
       setPaciente(prev => ({ ...prev }));
 
       // Mostrar mensaje de éxito
+      const mensaje = servicioExistente
+        ? `Terapeuta agregado al servicio "${servicioSeleccionado.nombre}"`
+        : 'Servicio y terapeuta asignados correctamente';
+
       setSnackbar({
         open: true,
-        message: 'Servicio y terapeuta asignados correctamente',
+        message: mensaje,
         severity: 'success'
       });
 
@@ -395,7 +399,7 @@ const EditarPacientePage = () => {
       console.error('Error al asignar servicio:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error al asignar el servicio',
+        message: error.response?.data?.message || error.message || 'Error al asignar el servicio',
         severity: 'error'
       });
       throw error;
@@ -403,144 +407,126 @@ const EditarPacientePage = () => {
   };
 
   const handleEliminarServicio = async () => {
-    const servicio = modalEliminarServicio.servicio;
+    const { servicio, asignacionId, terapeutaNombre } = modalEliminarServicio;
 
     try {
-      await desasignarServicioPaciente(paciente.id, servicio.servicio.id, user_id);
+      // Si hay asignacionId, eliminar solo ese terapeuta
+      if (asignacionId) {
+        await api.delete(`/paciente-servicio/asignacion/${asignacionId}`);
 
-      // Recargar los servicios del paciente
-      const serviciosActualizados = await getServiciosPorPaciente(id);
-      setPaciente(prev => ({
-        ...prev,
-        servicios: serviciosActualizados
-      }));
+        // Recargar los servicios del paciente
+        const serviciosActualizados = await getServiciosPorPaciente(id);
+        setPaciente(prev => ({
+          ...prev,
+          servicios: serviciosActualizados
+        }));
 
-      setSnackbar({
-        open: true,
-        message: 'Servicio eliminado exitosamente',
-        severity: 'success'
-      });
+        setSnackbar({
+          open: true,
+          message: `Terapeuta ${terapeutaNombre} desasignado exitosamente`,
+          severity: 'success'
+        });
+      } else {
+        // Eliminar todo el servicio
+        await desasignarServicioPaciente(paciente.id, servicio.servicio.id, user_id);
+
+        // Recargar los servicios del paciente
+        const serviciosActualizados = await getServiciosPorPaciente(id);
+        setPaciente(prev => ({
+          ...prev,
+          servicios: serviciosActualizados
+        }));
+
+        setSnackbar({
+          open: true,
+          message: 'Servicio eliminado exitosamente',
+          severity: 'success'
+        });
+      }
 
       setModalEliminarServicio({ open: false, servicio: null });
     } catch (error) {
-      console.error('Error al eliminar servicio:', error);
+      console.error('Error al eliminar:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error al eliminar el servicio',
+        message: error.response?.data?.message || 'Error al eliminar',
         severity: 'error'
       });
     }
   };
 
-  const handleEditarTerapeuta = async (transferirNotas = false) => {
-
-    try {
-      if (!servicioAEditar) {
-        throw new Error('No hay servicio seleccionado');
-      }
-
-      // Encontrar el ID del terapeuta seleccionado
-      const terapeutaSeleccionado = terapeutasDisponibles.find(
-        t => `${t.nombres} ${t.apellidos}` === nuevoTerapeuta
-      );
-      if (!terapeutaSeleccionado) {
-        throw new Error('Terapeuta no encontrado');
-      }
-
-      // Verificar si ya existe una asignación activa
-      const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
-      const terapeutaAnteriorId = tieneAsignacion ? servicioAEditar.asignaciones[0].terapeuta.id : null;
-
-      if (tieneAsignacion) {
-        // CASO 1: EDITAR asignación existente (cambio de terapeuta)
-        const asignacionId = servicioAEditar.asignaciones[0].id;
-
-        await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
-          terapeuta_id: terapeutaSeleccionado.id,
-          user_id_actua: user_id
-        });
-
-        // Si se solicitó transferir notas, crear la transferencia
-        if (transferirNotas && terapeutaAnteriorId) {
-          console.log('🔄 Creando transferencia de notas...');
-          console.log('📋 Datos de transferencia:', {
-            paciente_id: parseInt(id),
-            user_id_crea_retiro: terapeutaAnteriorId,
-            user_id_asignado_nuevo: terapeutaSeleccionado.id
-          });
-
-          try {
-            const respuestaTransferencia = await api.post('/nota-evolucion/transferir', {
-              paciente_id: parseInt(id),
-              user_id_crea_retiro: terapeutaAnteriorId,
-              user_id_asignado_nuevo: terapeutaSeleccionado.id
-            });
-            console.log('✅ Transferencia de notas creada exitosamente:', respuestaTransferencia.data);
-          } catch (errorTransferencia) {
-            console.error('⚠️ ERROR COMPLETO al crear transferencia:', errorTransferencia);
-            console.error('⚠️ Response error:', errorTransferencia.response?.data);
-            console.error('⚠️ Status:', errorTransferencia.response?.status);
-            // No lanzamos el error para que no falle toda la operación
-            // La asignación ya se hizo correctamente
-          }
-        } else {
-          console.log('ℹ️ NO se creará transferencia:', {
-            transferirNotas,
-            terapeutaAnteriorId,
-            mensaje: !transferirNotas ? 'Checkbox no marcado' : 'No hay terapeuta anterior'
-          });
-        }
-      } else {
-        // CASO 2: CREAR nueva asignación (primera vez)
-        await api.post('/paciente-servicio/asignacion', {
-          paciente_servicio_id: servicioAEditar.id,
-          terapeuta_id: terapeutaSeleccionado.id,
-          fecha_asignacion: new Date().toISOString().split('T')[0],
-          estado: 'ACTIVO',
-          user_id_crea: user_id
-        });
-      }
-
-      // Pequeño delay para asegurar que el backend terminó de procesar
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Recargar los servicios del paciente
-      const serviciosActualizados = await getServiciosPorPaciente(id);
-      setPaciente(prev => ({
-        ...prev,
-        servicios: serviciosActualizados
-      }));
-
-      // Forzar re-render adicional
-      setPaciente(prev => ({ ...prev }));
-
-      // Mostrar mensaje de éxito
-      let mensajeExito = tieneAsignacion ? 'Terapeuta actualizado correctamente' : 'Terapeuta asignado correctamente';
-      if (tieneAsignacion && transferirNotas) {
-        mensajeExito += '. Las notas de evolución fueron transferidas.';
-      }
-
-      setSnackbar({
-        open: true,
-        message: mensajeExito,
-        severity: 'success'
-      });
-
-      // Cerrar el modal
-      setOpenEditarTerapeuta(false);
-      setServicioAEditar(null);
-      setNuevoTerapeuta('');
-
-    } catch (error) {
-      console.error('❌ Error al asignar/actualizar terapeuta:', error);
-      setSnackbar({
-        open: true,
-        message: error.response?.data?.message || error.message || 'Error al asignar el terapeuta',
-        severity: 'error'
-      });
-      throw error;
+ const handleEditarTerapeuta = async () => {  // ✅ Eliminar parámetro transferirNotas
+  try {
+    if (!servicioAEditar) {
+      throw new Error('No hay servicio seleccionado');
     }
-  };
+
+    // ✅ CAMBIAR: Buscar por ID en lugar de por nombre
+    const terapeutaSeleccionado = terapeutasDisponibles.find(
+      t => t.id === parseInt(nuevoTerapeuta)  // ← CAMBIO AQUÍ
+    );
+    
+    if (!terapeutaSeleccionado) {
+      throw new Error('Terapeuta no encontrado');
+    }
+
+    // Verificar si ya existe una asignación activa
+    const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
+    const terapeutaAnteriorId = tieneAsignacion ? servicioAEditar.asignaciones[0].terapeuta.id : null;
+
+    if (tieneAsignacion) {
+      // CASO 1: EDITAR asignación existente (cambio de terapeuta)
+      const asignacionId = servicioAEditar.asignaciones[0].id;
+
+      await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
+        terapeuta_id: terapeutaSeleccionado.id,
+        user_id_actua: user_id
+      });
+    } else {
+      // CASO 2: CREAR nueva asignación (primera vez)
+      await api.post('/paciente-servicio/asignacion', {
+        paciente_servicio_id: servicioAEditar.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_asignacion: new Date().toISOString().split('T')[0],
+        estado: 'ACTIVO',
+        user_id_crea: user_id
+      });
+    }
+
+    // Pequeño delay para asegurar que el backend terminó de procesar
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Recargar los servicios del paciente
+    const serviciosActualizados = await getServiciosPorPaciente(id);
+    setPaciente(prev => ({
+      ...prev,
+      servicios: serviciosActualizados
+    }));
+
+    // Mostrar mensaje de éxito
+    const mensajeExito = tieneAsignacion ? 'Terapeuta actualizado correctamente' : 'Terapeuta asignado correctamente';
+
+    setSnackbar({
+      open: true,
+      message: mensajeExito,
+      severity: 'success'
+    });
+
+    // Cerrar el modal
+    setOpenEditarTerapeuta(false);
+    setServicioAEditar(null);
+    setNuevoTerapeuta('');
+
+  } catch (error) {
+    console.error('❌ Error al asignar/actualizar terapeuta:', error);
+    setSnackbar({
+      open: true,
+      message: error.response?.data?.message || error.message || 'Error al asignar el terapeuta',
+      severity: 'error'
+    });
+    throw error;
+  }
+};
 
   if (loading) return <EditarPacienteSkeleton />;
   if (error) return (
@@ -753,11 +739,16 @@ const EditarPacientePage = () => {
         nuevoServicio={nuevoServicio}
         setNuevoServicio={setNuevoServicio}
         onAsignar={handleAsignarServicio}
+        serviciosActualesPaciente={paciente?.servicios || []}
       />
 
       <EditarTerapeutaModal
         open={openEditarTerapeuta}
-        onClose={() => setOpenEditarTerapeuta(false)}
+        onClose={() =>{ console.log('🔴 Cerrando modal');
+    setOpenEditarTerapeuta(false);
+    setServicioAEditar(null);
+    setNuevoTerapeuta('');}}
+          
         servicio={servicioAEditar}
         nuevoTerapeuta={nuevoTerapeuta}
         setNuevoTerapeuta={setNuevoTerapeuta}
@@ -828,15 +819,36 @@ const EditarPacientePage = () => {
 
             {/* Content */}
             <div className="p-6">
-              <p className="text-gray-700 mb-2">
-                ¿Estás seguro de que deseas eliminar el servicio:
-              </p>
-              <p className="text-lg font-semibold text-gray-900 mb-4">
-                "{modalEliminarServicio.servicio?.servicio?.nombre}"?
-              </p>
-              <p className="text-sm text-gray-500">
-                Esta acción no se puede deshacer. El terapeuta asignado también será desvinculado de este servicio.
-              </p>
+              {modalEliminarServicio.asignacionId ? (
+                // Eliminar terapeuta individual
+                <>
+                  <p className="text-gray-700 mb-2">
+                    ¿Estás seguro de que deseas desasignar al terapeuta:
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900 mb-2">
+                    "{modalEliminarServicio.terapeutaNombre}"
+                  </p>
+                  <p className="text-gray-700 mb-4">
+                    del servicio "{modalEliminarServicio.servicio?.servicio?.nombre}"?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Los demás terapeutas del servicio no se verán afectados.
+                  </p>
+                </>
+              ) : (
+                // Eliminar servicio completo
+                <>
+                  <p className="text-gray-700 mb-2">
+                    ¿Estás seguro de que deseas eliminar el servicio:
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900 mb-4">
+                    "{modalEliminarServicio.servicio?.servicio?.nombre}"?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Esta acción no se puede deshacer. Todos los terapeutas asignados serán desvinculados de este servicio.
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Footer */}
@@ -852,7 +864,7 @@ const EditarPacientePage = () => {
                 className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30"
               >
                 <Trash2 className="w-4 h-4" />
-                Eliminar Servicio
+                {modalEliminarServicio.asignacionId ? 'Desasignar Terapeuta' : 'Eliminar Servicio'}
               </button>
             </div>
           </div>
