@@ -8,6 +8,13 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
   const [terapeutasFiltrados, setTerapeutasFiltrados] = useState([]);
   const [loadingTerapeutas, setLoadingTerapeutas] = useState(false);
 
+  // Debug: ver qué servicios llegan
+  useEffect(() => {
+    console.log('Servicios recibidos:', servicios);
+    console.log('Servicios área 1:', servicios.filter(s => s.area?.id === 1));
+    console.log('Servicios área 2:', servicios.filter(s => s.area?.id === 2));
+  }, [servicios]);
+
   // Encontrar el ID del servicio seleccionado
   const servicioSeleccionado = useMemo(() => {
     return servicios.find(s => s.nombre === nuevoServicio.servicio);
@@ -93,11 +100,45 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
               className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] transition-colors bg-white"
             >
               <option value="">Seleccione un servicio</option>
-              {servicios.map(s => (
-                <option key={s.id} value={s.nombre}>
-                  {s.nombre}
-                </option>
-              ))}
+
+              {/* Área Infantil y Adolescentes */}
+              {servicios.filter(s => s.area?.id === 1).length > 0 && (
+                <optgroup label="📋 Área Infantil y Adolescentes">
+                  {servicios
+                    .filter(s => s.area?.id === 1)
+                    .map(s => (
+                      <option key={s.id} value={s.nombre}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+
+              {/* Área Adultos */}
+              {servicios.filter(s => s.area?.id === 2).length > 0 && (
+                <optgroup label="📋 Área Adultos">
+                  {servicios
+                    .filter(s => s.area?.id === 2)
+                    .map(s => (
+                      <option key={s.id} value={s.nombre}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+
+              {/* Servicios sin área definida */}
+              {servicios.filter(s => !s.area?.id || (s.area?.id !== 1 && s.area?.id !== 2)).length > 0 && (
+                <optgroup label="📋 Otros Servicios">
+                  {servicios
+                    .filter(s => !s.area?.id || (s.area?.id !== 1 && s.area?.id !== 2))
+                    .map(s => (
+                      <option key={s.id} value={s.nombre}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
             </select>
           </div>
 

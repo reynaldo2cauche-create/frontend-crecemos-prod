@@ -274,108 +274,144 @@ const EditarPacientePage = () => {
     }
   };
 
-  const handleAsignarServicio = async () => {
-    try {
-      const servicioSeleccionado = serviciosDisponibles.find(s => s.nombre === nuevoServicio.servicio);
-      if (!servicioSeleccionado) {
-        throw new Error('Servicio no encontrado');
-      }
+const handleAsignarServicio = async () => {
+  try {
+    const servicioSeleccionado = serviciosDisponibles.find(s => s.nombre === nuevoServicio.servicio);
+    if (!servicioSeleccionado) {
+      throw new Error('Servicio no encontrado');
+    }
 
-      const terapeutaSeleccionado = terapeutasDisponibles.find(
-        t => `${t.nombres} ${t.apellidos}` === nuevoServicio.terapeuta
+    const terapeutaSeleccionado = terapeutasDisponibles.find(
+      t => `${t.nombres} ${t.apellidos}` === nuevoServicio.terapeuta
+    );
+    if (!terapeutaSeleccionado) {
+      throw new Error('Terapeuta no encontrado');
+    }
+
+    // Obtener fecha actual en Perú (UTC-5)
+    const getPeruTimeISOString = () => {
+      const now = new Date();
+      // Perú está en UTC-5 (PET) - no cambia por horario de verano
+      const offsetPeru = -5 * 60 * 60 * 1000; // -5 horas en milisegundos
+      const peruTime = new Date(now.getTime() + offsetPeru);
+      return peruTime.toISOString();
+    };
+
+    const serviciosPaciente = paciente.servicios || [];
+    const servicioExistente = serviciosPaciente.find(
+      s => s.servicio?.id === servicioSeleccionado.id
+    );
+
+    // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en CUALQUIER servicio de este paciente
+    const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
+      const tieneAsignacion = s.asignaciones?.some(
+        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
       );
-      if (!terapeutaSeleccionado) {
-        throw new Error('Terapeuta no encontrado');
+      if (tieneAsignacion && s.servicio?.id !== servicioSeleccionado.id) {
+        return true; // Encontró al terapeuta en OTRO servicio
       }
+      return false;
+    });
 
-      // Verificar si el terapeuta ya está asignado a otro servicio del mismo paciente
-      const serviciosPaciente = paciente.servicios || [];
-      const terapeutaOcupadoEnOtroServicio = serviciosPaciente.some(servicio => {
-        const tieneAsignacionesActivas = servicio.asignaciones?.some(
-          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && 
-                 asig.estado === 'ACTIVO' && 
-                 asig.activo === true
-        );
-        return tieneAsignacionesActivas && servicio.servicio?.id !== servicioSeleccionado.id;
-      });
-
-      if (terapeutaOcupadoEnOtroServicio) {
-        throw new Error(`La terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignada a otro servicio de este paciente. No se puede asignar a más de un servicio del mismo paciente.`);
-      }
-
-      const servicioExistente = serviciosPaciente.find(
-        s => s.servicio?.id === servicioSeleccionado.id
-      );
-
-      let pacienteServicioId;
-
-      if (servicioExistente) {
-        pacienteServicioId = servicioExistente.id;
-        const terapeutaYaAsignado = servicioExistente.asignaciones?.some(
-          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
-        );
-        if (terapeutaYaAsignado) {
-          throw new Error('Este terapeuta ya está asignado a este servicio');
-        }
-      } else {
-        const resultado = await api.post('/paciente-servicio/asignar-servicio-terapeuta', {
-          paciente_id: parseInt(id),
-          servicio_id: servicioSeleccionado.id,
-          terapeuta_id: terapeutaSeleccionado.id,
-          fecha_inicio: new Date().toISOString().split('T')[0],
-          motivo_consulta: paciente.motivo_consulta || '',
-          observaciones: '',
-          activo: true
-        });
-        pacienteServicioId = resultado.data?.pacienteServicio?.id;
-        if (!pacienteServicioId) {
-          throw new Error('No se pudo obtener el ID del servicio asignado');
-        }
-      }
-
-      // Solo crear la asignación si no se usó el endpoint combinado
-      if (servicioExistente) {
-        await api.post('/paciente-servicio/asignacion', {
-          paciente_servicio_id: pacienteServicioId,
-          terapeuta_id: terapeutaSeleccionado.id,
-          fecha_asignacion: new Date().toISOString().split('T')[0],
-          estado: 'ACTIVO',
-          user_id_crea: user_id
-        });
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const serviciosActualizados = await getServiciosPorPaciente(id);
-      setPaciente(prev => ({
-        ...prev,
-        servicios: serviciosActualizados
-      }));
-
-      const mensaje = servicioExistente
-        ? `Terapeuta agregado al servicio "${servicioSeleccionado.nombre}"`
-        : 'Servicio y terapeuta asignados correctamente';
-
+    if (terapeutaOcupadoEnOtroServicio) {
       setSnackbar({
         open: true,
-        message: mensaje,
-        severity: 'success'
+        message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
+        severity: 'error'
       });
-
-      setOpenAsignarServicio(false);
-      setNuevoServicio({ servicio: '', terapeuta: '' });
-
-    } catch (error) {
-      console.error('Error al asignar servicio:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error al asignar el servicio';
-      
-      setOpenAsignarServicio(false);
-      setErrorModal({
-        open: true,
-        message: errorMessage,
-        title: 'Error al asignar servicio'
-      });
+      return; // Detener la ejecución
     }
-  };
+
+    if (servicioExistente) {
+      // El servicio ya existe, solo agregar el terapeuta
+      // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
+      const terapeutaYaAsignado = servicioExistente.asignaciones?.some(
+        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+      );
+
+      if (terapeutaYaAsignado) {
+        setSnackbar({
+          open: true,
+          message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado a este mismo servicio.`,
+          severity: 'error'
+        });
+        return; // Detener la ejecución
+      }
+
+      await api.post('/paciente-servicio/asignacion', {
+        paciente_servicio_id: servicioExistente.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_asignacion: getPeruTimeISOString(), // Fecha Perú
+        estado: 'ACTIVO',
+        user_id_crea: user_id
+      });
+    } else {
+      // NUEVO SERVICIO
+      console.log('📤 Enviando al backend:', {
+        paciente_id: parseInt(id),
+        servicio_id: servicioSeleccionado.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_inicio: getPeruTimeISOString(),
+        motivo_consulta: paciente.motivo_consulta || '',
+        observaciones: '',
+        activo: true
+      });
+
+      const resultado = await api.post('/paciente-servicio/asignar', {
+        paciente_id: parseInt(id),
+        servicio_id: servicioSeleccionado.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_inicio: getPeruTimeISOString(), // Fecha Perú
+        motivo_consulta: paciente.motivo_consulta || '',
+        observaciones: '',
+        activo: true
+      });
+      
+      console.log('✅ Respuesta del servidor:', resultado);
+    }
+
+    // Recargar servicios
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const serviciosActualizados = await getServiciosPorPaciente(id);
+    
+    setPaciente(prev => ({
+      ...prev,
+      servicios: serviciosActualizados
+    }));
+
+    const mensaje = servicioExistente
+      ? `Terapeuta agregado al servicio "${servicioSeleccionado.nombre}"`
+      : 'Servicio y terapeuta asignados correctamente';
+
+    setSnackbar({
+      open: true,
+      message: mensaje,
+      severity: 'success'
+    });
+
+    setOpenAsignarServicio(false);
+    setNuevoServicio({ servicio: '', terapeuta: '' });
+
+  } catch (error) {
+    console.error('❌ Error al asignar servicio:', error);
+    console.error('❌ Detalles del error:', error.response?.data);
+    
+    // Mostrar mensaje de error específico del backend
+    const backendMessage = error.response?.data?.message || 
+                          (Array.isArray(error.response?.data?.message) 
+                            ? error.response.data.message.join(', ') 
+                            : error.response?.data?.message);
+    
+    const errorMessage = backendMessage || error.message || 'Error al asignar el servicio';
+    
+    setOpenAsignarServicio(false);
+    setErrorModal({
+      open: true,
+      message: errorMessage,
+      title: 'Error al asignar servicio'
+    });
+  }
+};
 
   const handleEliminarServicio = async () => {
     const { servicio, asignacionId, terapeutaNombre } = modalEliminarServicio;
@@ -411,83 +447,109 @@ const EditarPacientePage = () => {
     }
   };
 
-  const handleEditarTerapeuta = async () => {
-    try {
-      if (!servicioAEditar) {
-        throw new Error('No hay servicio seleccionado');
-      }
+const handleEditarTerapeuta = async () => {
+  try {
+    if (!servicioAEditar) {
+      throw new Error('No hay servicio seleccionado');
+    }
 
-      const terapeutaSeleccionado = terapeutasDisponibles.find(
-        t => t.id === parseInt(nuevoTerapeuta)
+    const terapeutaSeleccionado = terapeutasDisponibles.find(
+      t => t.id === parseInt(nuevoTerapeuta)
+    );
+
+    if (!terapeutaSeleccionado) {
+      throw new Error('Terapeuta no encontrado');
+    }
+
+    // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en OTRO servicio del paciente
+    const serviciosPaciente = paciente.servicios || [];
+    const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
+      const tieneAsignacion = s.asignaciones?.some(
+        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
       );
-      
-      if (!terapeutaSeleccionado) {
-        throw new Error('Terapeuta no encontrado');
+      if (tieneAsignacion && s.id !== servicioAEditar.id) {
+        return true; // Encontró al terapeuta en OTRO servicio
       }
+      return false;
+    });
 
-      // Verificar si el terapeuta ya está asignado a otro servicio del mismo paciente
-      const serviciosPaciente = paciente.servicios || [];
-      const terapeutaOcupadoEnOtroServicio = serviciosPaciente.some(servicio => {
-        const tieneAsignacionesActivas = servicio.asignaciones?.some(
-          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && 
-                 asig.estado === 'ACTIVO' && 
-                 asig.activo === true
-        );
-        return tieneAsignacionesActivas && servicio.id !== servicioAEditar.id;
-      });
-
-      if (terapeutaOcupadoEnOtroServicio) {
-        throw new Error(`La terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignada a otro servicio de este paciente. No se puede asignar a más de un servicio del mismo paciente.`);
-      }
-
-      const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
-
-      if (tieneAsignacion) {
-        const asignacionId = servicioAEditar.asignaciones[0].id;
-        await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
-          terapeuta_id: terapeutaSeleccionado.id,
-          user_id_actua: user_id
-        });
-      } else {
-        await api.post('/paciente-servicio/asignacion', {
-          paciente_servicio_id: servicioAEditar.id,
-          terapeuta_id: terapeutaSeleccionado.id,
-          fecha_asignacion: new Date().toISOString().split('T')[0],
-          estado: 'ACTIVO',
-          user_id_crea: user_id
-        });
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const serviciosActualizados = await getServiciosPorPaciente(id);
-      setPaciente(prev => ({
-        ...prev,
-        servicios: serviciosActualizados
-      }));
-
-      const mensajeExito = tieneAsignacion ? 'Terapeuta actualizado correctamente' : 'Terapeuta asignado correctamente';
+    if (terapeutaOcupadoEnOtroServicio) {
       setSnackbar({
         open: true,
-        message: mensajeExito,
-        severity: 'success'
+        message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
+        severity: 'error'
       });
+      return; // Detener la ejecución
+    }
 
-      setOpenEditarTerapeuta(false);
-      setServicioAEditar(null);
-      setNuevoTerapeuta('');
+    // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
+    const terapeutaYaAsignado = servicioAEditar.asignaciones?.some(
+      asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+    );
 
-    } catch (error) {
-      console.error('❌ Error al asignar/actualizar terapeuta:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error al asignar el terapeuta';
-      
-      setOpenEditarTerapeuta(false);
-      setErrorModal({
+    if (terapeutaYaAsignado) {
+      setSnackbar({
         open: true,
-        message: errorMessage,
-        title: 'Error al asignar terapeuta'
+        message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado a este mismo servicio.`,
+        severity: 'error'
+      });
+      return; // Detener la ejecución
+    }
+
+    const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
+
+    if (tieneAsignacion) {
+      // Actualizar asignación existente
+      const asignacionId = servicioAEditar.asignaciones[0].id;
+      await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
+        terapeuta_id: terapeutaSeleccionado.id,
+        user_id_actua: user_id
+      });
+    } else {
+      // Crear nueva asignación
+      await api.post('/paciente-servicio/asignacion', {
+        paciente_servicio_id: servicioAEditar.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_asignacion: new Date().toISOString().split('T')[0],
+        estado: 'ACTIVO',
+        user_id_crea: user_id
       });
     }
-  };
+
+    // Recargar servicios
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const serviciosActualizados = await getServiciosPorPaciente(id);
+    setPaciente(prev => ({
+      ...prev,
+      servicios: serviciosActualizados
+    }));
+
+    const mensajeExito = tieneAsignacion 
+      ? 'Terapeuta actualizado correctamente' 
+      : 'Terapeuta asignado correctamente';
+      
+    setSnackbar({
+      open: true,
+      message: mensajeExito,
+      severity: 'success'
+    });
+
+    setOpenEditarTerapeuta(false);
+    setServicioAEditar(null);
+    setNuevoTerapeuta('');
+
+  } catch (error) {
+    console.error('❌ Error al asignar/actualizar terapeuta:', error);
+    const errorMessage = error.response?.data?.message || error.message || 'Error al asignar el terapeuta';
+    
+    setOpenEditarTerapeuta(false);
+    setErrorModal({
+      open: true,
+      message: errorMessage,
+      title: 'Error al asignar terapeuta'
+    });
+  }
+};
 
   if (loading) return <EditarPacienteSkeleton />;
   if (error) return (

@@ -192,10 +192,12 @@ const Sidebar = () => {
               </div>
             </div>
 
-            {/* Notificaciones - Siempre visible */}
-            <div className="flex-shrink-0">
-              <NotificacionesGlobales />
-            </div>
+            {/* Notificaciones - Solo para administradores */}
+            {user?.rol?.id === ROLES.ADMINISTRADOR && (
+              <div className="flex-shrink-0">
+                <NotificacionesGlobales />
+              </div>
+            )}
           </div>
         </div>
 
