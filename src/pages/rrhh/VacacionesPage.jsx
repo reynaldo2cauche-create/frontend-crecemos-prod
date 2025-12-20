@@ -346,7 +346,7 @@ export default function VacacionesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{vac.cargo}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{vac.cargo.nombre}</td>
                       <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900">{vac.aniosTrabajados}</td>
                       <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900">{vac.diasTotalesAcumulados}</td>
                       <td className="px-6 py-4 text-center text-sm text-gray-600">{vac.diasTomados}</td>
