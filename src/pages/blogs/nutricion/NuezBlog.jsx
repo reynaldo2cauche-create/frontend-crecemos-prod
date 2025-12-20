@@ -290,7 +290,7 @@ export default function NuezBlog() {
             </h5>
             <p style={{ marginBottom: '0.75rem', color: '#666', fontSize: '0.95rem', lineHeight: '1.5' }}>
               <i className="bi bi-award-fill me-2" style={{ color: '#c263f9' }}></i>
-              Curso en Nutrición y Alimentación Infantil – Científica del Sur
+              Curso en Nutrición y Alimentación Infantil – Universidad Científica del Sur
             </p>
             <a href="https://www.crecemos.com.pe" target="_blank" rel="noopener noreferrer" style={{
               color: '#c263f9',
