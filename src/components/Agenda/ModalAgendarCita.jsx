@@ -21,7 +21,6 @@ import { useServicios } from '../../hooks/useServicios';
 import { useMotivosCita } from '../../hooks/useMotivosCita';
 import { useHistorialCita } from '../../hooks/useHistorialCita';
 import { ROLES } from '../../constants/roles';
-import { generarHorasPorFecha } from '../../constants/agendaData';
 
 const ModalAgendarCita = ({
   open,
@@ -53,6 +52,49 @@ const ModalAgendarCita = ({
   const { historial, loading: loadingHistorial, error: errorHistorial } = useHistorialCita(
     modoEdicion && citaEditando?.id ? citaEditando.id : null
   );
+
+  // Generar horas según el día de la semana (igual que en CalendarioSemanal)
+  const generarHorasPorFecha = (fechaString, duracion) => {
+    if (!fechaString) return [];
+    
+    const fecha = new Date(fechaString + 'T00:00:00');
+    const diaSemana = fecha.getDay();
+    const horas = [];
+    
+    if (diaSemana === 6) {
+      // Sábado: 8:00 AM a 2:00 PM (sin break, horario continuo)
+      let minutos = 8 * 60; // 8:00 AM
+      const finMinutos = 14 * 60; // 2:00 PM
+      
+      while (minutos < finMinutos) {
+        const h = Math.floor(minutos / 60);
+        const m = minutos % 60;
+        horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+        minutos += 40;
+      }
+    } else if (diaSemana >= 1 && diaSemana <= 5) {
+      // Lunes a Viernes: 11:00 AM a 8:00 PM
+      // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
+      // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
+      // Primera cita después del break: 14:00 PM (2:00 PM) - EXACTAMENTE
+      
+      // Horario de la mañana: 11:00 AM hasta 12:40 PM (incluido)
+      horas.push('11:00', '11:40', '12:20');
+      
+      // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
+      let minutos = 14 * 60; // 14:00 PM (2:00 PM)
+      const finMinutos = 20 * 60; // 8:00 PM
+      
+      while (minutos <= finMinutos) {
+        const h = Math.floor(minutos / 60);
+        const m = minutos % 60;
+        horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+        minutos += 40;
+      }
+    }
+    
+    return horas;
+  };
 
   useEffect(() => {
     if (open) {
@@ -282,10 +324,6 @@ const ModalAgendarCita = ({
                     <option value="">Seleccionar servicio...</option>
                     {(() => {
                       const lista = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []));
-
-                      console.log('Servicios disponibles:', lista);
-                      console.log('serviciosApi:', serviciosApi);
-                      console.log('servicios prop:', servicios);
 
                       if (!Array.isArray(lista) || lista.length === 0) {
                         return <option disabled>No hay servicios disponibles</option>;
