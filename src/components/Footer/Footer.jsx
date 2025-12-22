@@ -91,6 +91,7 @@ export default function Footer() {
                 <li><a href="/staff">Especialistas</a></li>
                 <li><a href="/blog">Blog</a></li>
                 <li><a href="/contactanos">Contacto</a></li>
+                <li><a href="/verificar-beneficios">Consultar Beneficios</a></li>
                 <li><a href="/verificar-documento">Verificar Documentos</a></li>
               </ul>
             </div>

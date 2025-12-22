@@ -6,7 +6,21 @@ import CushuroBlog from './nutricion/CushuroBlog';
 import QuinuaBlog from './nutricion/QuinuaBlog';
 import Omega3Blog from './nutricion/Omega3Blog';
 import TumboBlog from './nutricion/TumboBlog';
-
+import ChocloBlog from './nutricion/ChocloBlog';
+import EsparragoBlog from './nutricion/EsparragoBlog';
+import NuezBlog from './nutricion/NuezBlog';
+import PaltaBlog from './nutricion/PaltaBlog';
+import PecanaBlog from './nutricion/PecanaBlog';
+import AguaCocoBlog from './nutricion/AguaCocoBlog';
+import ArandanosBlog from './nutricion/ArandanosBlog';
+import CamoteBlog from './nutricion/CamoteBlog';
+import CerezasBlog from './nutricion/CerezasBlog';
+import GaseosasBlog from './nutricion/GaseosasBlog';
+import GolosinasBlog from './nutricion/GolosinasBlog';
+import LentejasBebeBlog from './nutricion/LentejasBebeBlog';
+import NaranjaJugoBlog from './nutricion/NaranjaJugoBlog';
+import PasasBlog from './nutricion/PasasBlog';
+import PistachosBlog from './nutricion/PistachosBlog';
 // Blogs de Desarrollo Infantil
 // import EjemploBlog from './desarrollo-infantil/EjemploBlog';
 
@@ -39,6 +53,22 @@ export const blogComponents = {
   '30-noviembre-trastornos-conducta-alimentaria': TCABlog,
   '3-diciembre-dia-internacional-personas-discapacidad': DiaDiscapacidadBlog,
   '10-diciembre-dia-derechos-humanos': DiaDerechosHumanosBlog,
+  'choclo-alimento-natural-energetico-ninos-neurodivergentes': ChocloBlog,
+  'esparrago-alimento-nutritivo-ninos-neurodivergentes': EsparragoBlog,
+  'nuez-alimento-nutritivo-ninos-neurodivergentes': NuezBlog,
+  'palta-alimento-suave-nutritivo-ninos-neurodivergentes': PaltaBlog,
+  'pecana-fruto-seco-nutritivo-ninos-neurodivergentes': PecanaBlog,
+  'agua-coco-bebida-natural-hidratante-ninos': AguaCocoBlog,
+  'arandanos-fruta-antioxidantes-ninos': ArandanosBlog,
+  'camote-alimento-energetico-nutritivo-ninos': CamoteBlog,
+  'cerezas-fruta-antioxidantes-ninos': CerezasBlog,
+  'gaseosas-por-que-evitar-consumo-ninos': GaseosasBlog,
+  'golosinas-por-que-evitar-consumo-ninos': GolosinasBlog,
+  'lentejas-bebe-fuente-vegetal-hierro-ninos': LentejasBebeBlog,
+  'naranja-jugo-fruta-vitamina-c-ninos': NaranjaJugoBlog,
+  'pasas-alimento-energetico-moderacion-ninos': PasasBlog,
+  'pistachos-fruto-seco-seguro-ninos': PistachosBlog,
+
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
 };

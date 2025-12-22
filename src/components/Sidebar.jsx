@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROLES_NAMES, ROLES } from '../constants/roles';
-import NotificacionesGlobales from './NotificacionesGlobales';
+// import NotificacionesGlobales from './NotificacionesGlobales';
 import {
   CalendarDaysIcon,
   UserGroupIcon,
@@ -192,10 +192,12 @@ const Sidebar = () => {
               </div>
             </div>
 
-            {/* Notificaciones - Siempre visible */}
-            <div className="flex-shrink-0">
-              <NotificacionesGlobales />
-            </div>
+            {/* Notificaciones - Solo para administradores */}
+            {user?.rol?.id === ROLES.ADMINISTRADOR && (
+              <div className="flex-shrink-0">
+                {/* <NotificacionesGlobales /> */}
+              </div>
+            )}
           </div>
         </div>
 

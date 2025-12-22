@@ -31,10 +31,29 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Token inválido o expirado, redirigir al login
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      window.location.href = '/intranet';
+      // Endpoints públicos que NO deben redirigir al login
+      const publicEndpoints = [
+        '/pacientes/check-documento',
+        '/pacientes/completo',
+        '/pacientes/beneficios',
+        '/catalogos/tipo-documento',
+        '/catalogos/sexo',
+        '/catalogos/distrito',
+        '/catalogos/relacion-responsable',
+        '/catalogos/servicios',
+        '/catalogos/grado-escolar',
+        '/catalogos/area-servicio'
+      ];
+
+      const requestUrl = error.config?.url || '';
+      const isPublicEndpoint = publicEndpoints.some(endpoint => requestUrl.includes(endpoint));
+
+      if (!isPublicEndpoint) {
+        // Token inválido o expirado, redirigir al login solo si NO es endpoint público
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        window.location.href = '/intranet';
+      }
     }
     return Promise.reject(error);
   }

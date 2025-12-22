@@ -2,10 +2,12 @@
 
 export const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+// Horarios fijos para el calendario (40 minutos de intervalo)
+// Cubre desde 8:00 AM (sábados) hasta 8:00 PM (lunes-viernes)
 export const horas = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
-  '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'
+  '08:00', '08:40', '09:20', '10:00', '10:40', '11:20', '12:00', '12:40',
+  '13:20', '14:00', '14:40', '15:20', '16:00', '16:40', '17:20', '18:00',
+  '18:40', '19:20', '20:00'
 ];
 
 export const pacientes = [
@@ -107,3 +109,117 @@ export const citasEjemplo = [
     dia: 'Miércoles'
   }
 ];
+
+/**
+ * Generar horas disponibles según la duración y el día de la semana
+ * @param {number} duracionMinutos - Duración de la cita (40 o 50 minutos)
+ * @param {number} diaSemana - Día de la semana (0 = Domingo, 1 = Lunes, ..., 6 = Sábado)
+ * @returns {string[]} Array de horas en formato "HH:MM"
+ */
+export const generarHorasDisponibles = (duracionMinutos, diaSemana) => {
+  const horasDisponibles = []; // ✅ Cambiado de 'horas' a 'horasDisponibles'
+
+  // Determinar horario según el día
+  let inicioMin, finMin;
+
+  if (diaSemana === 0) {
+    // Domingo: no hay horarios disponibles
+    return [];
+  } else if (diaSemana === 6) {
+    // Sábado: 8:00 AM a 2:00 PM
+    inicioMin = 8 * 60; // 8:00 = 480 minutos
+    finMin = 14 * 60; // 14:00 = 840 minutos
+  } else {
+    // Lunes a Viernes: 11:00 AM a 8:00 PM
+    inicioMin = 11 * 60; // 11:00 = 660 minutos
+    finMin = 20 * 60; // 20:00 = 1200 minutos
+  }
+
+  // Horario de refrigerio (solo lunes a viernes)
+  const inicioRefrigerio = 13 * 60; // 13:00
+  const finRefrigerio = 14 * 60; // 14:00
+
+  // Generar slots según la duración
+  let minutosActuales = inicioMin;
+
+  while (minutosActuales < finMin) {
+    const hrs = Math.floor(minutosActuales / 60); // ✅ Cambiado de 'horas' a 'hrs'
+    const mins = minutosActuales % 60; // ✅ Cambiado de 'minutos' a 'mins'
+    const horaFormateada = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+
+    // Verificar si está en horario de refrigerio (solo lunes a viernes)
+    const esRefrigerio = diaSemana >= 1 && diaSemana <= 5 &&
+                         minutosActuales >= inicioRefrigerio &&
+                         minutosActuales < finRefrigerio;
+
+    if (!esRefrigerio) {
+      horasDisponibles.push(horaFormateada); // ✅ Usar 'horasDisponibles'
+    }
+
+    minutosActuales += duracionMinutos;
+  }
+
+  return horasDisponibles; // ✅ Retornar 'horasDisponibles'
+};
+
+/**
+ * Generar horas disponibles para una fecha específica
+ * @param {string} fecha - Fecha en formato "YYYY-MM-DD"
+ * @param {number} duracionMinutos - Duración de la cita (40 o 50 minutos)
+ * @returns {string[]} Array de horas en formato "HH:MM"
+ */
+export const generarHorasPorFecha = (fecha, duracionMinutos) => {
+  if (!fecha || !duracionMinutos) return [];
+
+  const fechaObj = new Date(fecha + 'T00:00:00');
+  const diaSemana = fechaObj.getDay();
+
+  return generarHorasDisponibles(duracionMinutos, diaSemana);
+};
+
+// Función para verificar si una hora está bloqueada según el día
+export const esHorarioBloqueado = (hora, diaSemana) => {
+  // diaSemana: 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  const [h, m] = hora.split(':').map(num => parseInt(num, 10));
+  const horaMinutos = h * 60 + m;
+
+  // Domingo (0): bloqueado completamente
+  if (diaSemana === 0) {
+    return true;
+  }
+
+  // Sábado (6): solo se trabaja de 8:00 AM a 2:00 PM
+  if (diaSemana === 6) {
+    const inicioSabado = 8 * 60; // 8:00 = 480 minutos
+    const finSabado = 14 * 60; // 14:00 = 840 minutos
+
+    // Bloquear antes de las 8:00 AM o después de las 2:00 PM
+    if (horaMinutos < inicioSabado || horaMinutos >= finSabado) {
+      return true;
+    }
+
+    // No hay refrigerio los sábados
+    return false;
+  }
+
+  // Lunes a Viernes: 11:00 AM a 8:00 PM
+  if (diaSemana >= 1 && diaSemana <= 5) {
+    const inicioLaboral = 11 * 60; // 11:00 = 660 minutos
+    const finLaboral = 20 * 60; // 20:00 = 1200 minutos
+
+    // Bloquear antes de las 11:00 AM o después de las 8:00 PM
+    if (horaMinutos < inicioLaboral || horaMinutos >= finLaboral) {
+      return true;
+    }
+
+    // Horario de refrigerio: 13:00 (1 PM) a 14:00 (2 PM)
+    const inicioRefrigerio = 13 * 60; // 13:00 = 780 minutos
+    const finRefrigerio = 14 * 60; // 14:00 = 840 minutos
+
+    if (horaMinutos >= inicioRefrigerio && horaMinutos < finRefrigerio) {
+      return true;
+    }
+  }
+
+  return false;
+};

@@ -54,9 +54,27 @@ export const useCitas = () => {
   };
 
   const actualizarCita = async (id, citaData) => {
-    const actualizada = await citaService.actualizarCita(id, citaData);
-    setCitas(prev => prev.map(c => c.id === id ? actualizada : c));
-    return actualizada;
+    try {
+      const actualizada = await citaService.actualizarCita(id, citaData);
+      setCitas(prev => prev.map(c => c.id === id ? actualizada : c));
+      return actualizada;
+    } catch (err) {
+      // Capturar errores de validación (400), conflicto (409) y otros errores
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Error al actualizar cita';
+      const conflictos = err.response?.data?.conflictos || [];
+
+      console.error('Error al actualizar cita:', {
+        status: err.response?.status,
+        message: errorMessage,
+        conflictos: conflictos
+      });
+
+      throw {
+        status: err.response?.status,
+        message: errorMessage,
+        conflictos: conflictos
+      };
+    }
   };
 
   const eliminarCita = async (id, userId) => {

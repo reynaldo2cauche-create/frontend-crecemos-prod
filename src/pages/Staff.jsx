@@ -47,22 +47,6 @@ const specialists = [
       areas: ['Área Infantil y Adolescentes']
     },
     {
-      id: '8',
-      img: 'assets/img/servicios/lizbeth.png',
-      name: 'Lic. Lizbeth Olortegui',
-      title: 'Terapeuta de Aprendizaje / Docente en Educación Infantil',
-      specialties: 'Especialista en dificultades de aprendizaje, atención y concentración, con enfoque lúdico y pedagógico para potenciar el desarrollo académico y comunicativo.',
-      services: [
-        'Apoyo en lectura y escritura inicial',
-        'Estimulación del habla y la comunicación con enfoque educativo',
-        'Entrenamiento en atención y concentración',
-        'Refuerzo académico mediante juegos y dinámicas',
-        'Orientación a padres para el acompañamiento en casa'
-      ],
-      areas: ['Área Infantil']
-    },
-    
-    {
       id: '10',
       img: 'assets/img/servicios/Lic. Giselle (1).png',
       name: 'Lic. Giselle Burgos',

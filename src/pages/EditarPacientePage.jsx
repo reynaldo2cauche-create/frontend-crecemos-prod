@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2 ,ArrowLeft} from 'lucide-react';
+import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
-import { asignarTerapeuta } from '../services/terapeutaService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
 import FiliacionView from '../components/EditarPaciente/FiliacionView';
@@ -17,52 +16,47 @@ import { useTerapeutas } from '../hooks/useTerapeutas';
 import { calcularEdad } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
 import { ROLES, canManagePatientStatus } from '../constants/roles';
-import { useSidebar } from '../components/Sidebar';
 
-// Skeleton de carga
 const EditarPacienteSkeleton = () => {
   return (
-  <div className="min-h-screen bg-gray-50/50">
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6">
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="w-20 h-20 rounded-2xl bg-gray-100 animate-pulse"></div>
-          <div className="flex-1">
-            <div className="h-7 w-48 sm:w-64 bg-gray-100 rounded-lg animate-pulse mb-3"></div>
-            <div className="h-4 w-32 sm:w-48 bg-gray-100 rounded animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8">
-            <div className="h-8 w-40 sm:w-56 bg-gray-100 rounded-lg animate-pulse mb-6 sm:mb-8"></div>
-            <div className="space-y-4 sm:space-y-6">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-12 sm:h-14 bg-gray-50 rounded-xl animate-pulse"></div>
-              ))}
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="w-20 h-20 rounded-2xl bg-gray-100 animate-pulse"></div>
+            <div className="flex-1">
+              <div className="h-7 w-48 sm:w-64 bg-gray-100 rounded-lg animate-pulse mb-3"></div>
+              <div className="h-4 w-32 sm:w-48 bg-gray-100 rounded animate-pulse"></div>
             </div>
           </div>
         </div>
-
-        <div className="lg:col-span-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
-            <div className="h-6 w-32 sm:w-40 bg-gray-100 rounded animate-pulse mb-4 sm:mb-6"></div>
-            <div className="space-y-3 sm:space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-24 sm:h-32 bg-gray-50 rounded-xl animate-pulse"></div>
-              ))}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8">
+              <div className="h-8 w-40 sm:w-56 bg-gray-100 rounded-lg animate-pulse mb-6 sm:mb-8"></div>
+              <div className="space-y-4 sm:space-y-6">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="h-12 sm:h-14 bg-gray-50 rounded-xl animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-4">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+              <div className="h-6 w-32 sm:w-40 bg-gray-100 rounded animate-pulse mb-4 sm:mb-6"></div>
+              <div className="space-y-3 sm:space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-24 sm:h-32 bg-gray-50 rounded-xl animate-pulse"></div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
   );
 };
 
-// Estado colors
 const getEstadoColor = (nombreEstado) => {
   const colorMap = {
     'Nuevo': { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
@@ -111,6 +105,8 @@ const EditarPacientePage = () => {
   const [anchorEstado, setAnchorEstado] = useState(null);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [modalEliminarServicio, setModalEliminarServicio] = useState({ open: false, servicio: null });
+  const [errorModal, setErrorModal] = useState({ open: false, message: '', title: 'Error' });
+  const [mostrarErrorEnModal, setMostrarErrorEnModal] = useState(false);
 
   useEffect(() => {
     const cargarPaciente = async () => {
@@ -176,6 +172,7 @@ const EditarPacientePage = () => {
             autor: nota.trabajador
               ? `${nota.trabajador.nombres} ${nota.trabajador.apellidos}${nota.trabajador.rol ? ' — ' + nota.trabajador.rol.nombre : ''}`
               : `Usuario ${nota.user_id_crea}`,
+            tipoNota: nota.tipo_nota || null,
             entrevista: nota.entrevista,
             sesionEvaluacion: nota.sesion_evaluacion,
             sesionTerapias: nota.sesion_terapias,
@@ -228,27 +225,19 @@ const EditarPacientePage = () => {
       medicamentos_actuales: pacienteData.medicamentos_actuales
     };
 
-
     try {
-      console.log('⏳ Llamando a updatePacienteById...');
       const response = await updatePacienteById(id, data);
-      console.log('✅ Respuesta de la API:', response);
-
-      // Actualizar el estado del paciente con los nuevos datos
       setPaciente(prev => ({
         ...prev,
         ...pacienteData
       }));
-
       setSnackbar({ open: true, message: 'Datos guardados correctamente', severity: 'success' });
     } catch (error) {
       console.error('❌ Error al guardar:', error);
-      console.error('❌ Error completo:', error.response?.data);
       setSnackbar({ open: true, message: 'Error al guardar los datos', severity: 'error' });
-      throw error; // Re-lanzar el error para que lo capture handleFormSubmit
+      throw error;
     } finally {
       setSaving(false);
-      console.log('🏁 handleSubmit FINALIZADO');
     }
   };
 
@@ -256,13 +245,10 @@ const EditarPacientePage = () => {
     setCambiandoEstado(true);
     try {
       const estadoSeleccionado = estadosPaciente.find(e => e.id === estadoId);
-
       if (!estadoSeleccionado) {
         throw new Error('Estado no encontrado');
       }
-
       await cambiarEstadoPaciente(paciente.id, estadoId, user_id);
-
       setPaciente(prev => ({
         ...prev,
         estado: {
@@ -270,13 +256,11 @@ const EditarPacientePage = () => {
           nombre: estadoSeleccionado.nombre
         }
       }));
-
       setSnackbar({
         open: true,
         message: `Estado cambiado a: ${estadoSeleccionado.nombre}`,
         severity: 'success'
       });
-
       setAnchorEstado(null);
     } catch (error) {
       console.error('Error al cambiar estado:', error);
@@ -290,193 +274,282 @@ const EditarPacientePage = () => {
     }
   };
 
-  const handleAsignarServicio = async () => {
-    try {
-      // Encontrar el ID del servicio seleccionado
-      const servicioSeleccionado = serviciosDisponibles.find(s => s.nombre === nuevoServicio.servicio);
-      if (!servicioSeleccionado) {
-        throw new Error('Servicio no encontrado');
-      }
+const handleAsignarServicio = async () => {
+  try {
+    const servicioSeleccionado = serviciosDisponibles.find(s => s.nombre === nuevoServicio.servicio);
+    if (!servicioSeleccionado) {
+      throw new Error('Servicio no encontrado');
+    }
 
-      // Encontrar el ID del terapeuta seleccionado
-      const terapeutaSeleccionado = terapeutasDisponibles.find(
-        t => `${t.nombres} ${t.apellidos}` === nuevoServicio.terapeuta
+    const terapeutaSeleccionado = terapeutasDisponibles.find(
+      t => `${t.nombres} ${t.apellidos}` === nuevoServicio.terapeuta
+    );
+    if (!terapeutaSeleccionado) {
+      throw new Error('Terapeuta no encontrado');
+    }
+
+    // Obtener fecha actual en Perú (UTC-5)
+    const getPeruTimeISOString = () => {
+      const now = new Date();
+      // Perú está en UTC-5 (PET) - no cambia por horario de verano
+      const offsetPeru = -5 * 60 * 60 * 1000; // -5 horas en milisegundos
+      const peruTime = new Date(now.getTime() + offsetPeru);
+      return peruTime.toISOString();
+    };
+
+    const serviciosPaciente = paciente.servicios || [];
+    const servicioExistente = serviciosPaciente.find(
+      s => s.servicio?.id === servicioSeleccionado.id
+    );
+
+    // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en CUALQUIER servicio de este paciente
+    const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
+      const tieneAsignacion = s.asignaciones?.some(
+        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
       );
-      if (!terapeutaSeleccionado) {
-        throw new Error('Terapeuta no encontrado');
+      if (tieneAsignacion && s.servicio?.id !== servicioSeleccionado.id) {
+        return true; // Encontró al terapeuta en OTRO servicio
+      }
+      return false;
+    });
+
+    if (terapeutaOcupadoEnOtroServicio) {
+      setSnackbar({
+        open: true,
+        message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
+        severity: 'error'
+      });
+      return; // Detener la ejecución
+    }
+
+    if (servicioExistente) {
+      // El servicio ya existe, solo agregar el terapeuta
+      // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
+      const terapeutaYaAsignado = servicioExistente.asignaciones?.some(
+        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+      );
+
+      if (terapeutaYaAsignado) {
+        setSnackbar({
+          open: true,
+          message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado a este mismo servicio.`,
+          severity: 'error'
+        });
+        return; // Detener la ejecución
       }
 
-      // PASO 1: Asignar el servicio al paciente
-      const resultado = await asignarServicioPaciente({
+      await api.post('/paciente-servicio/asignacion', {
+        paciente_servicio_id: servicioExistente.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_asignacion: getPeruTimeISOString(), // Fecha Perú
+        estado: 'ACTIVO',
+        user_id_crea: user_id
+      });
+    } else {
+      // NUEVO SERVICIO
+      console.log('📤 Enviando al backend:', {
         paciente_id: parseInt(id),
         servicio_id: servicioSeleccionado.id,
-        user_id_actua: user_id
-      });
-
-      console.log('Respuesta completa del backend:', JSON.stringify(resultado, null, 2));
-
-      // PASO 2: Asignar el terapeuta al servicio del paciente
-      // Intentar diferentes formas de obtener el ID
-      const pacienteServicioId = resultado?.pacienteServicio?.id
-        || resultado?.id
-        || resultado?.data?.id
-        || resultado?.data?.pacienteServicio?.id;
-
-      console.log('PacienteServicio ID extraído:', pacienteServicioId);
-
-      if (!pacienteServicioId) {
-        console.error('No se pudo extraer el ID. Estructura de respuesta:', resultado);
-        throw new Error('No se pudo obtener el ID del servicio asignado. Revisa la consola para más detalles.');
-      }
-
-      console.log('Asignando terapeuta:', {
-        paciente_servicio_id: pacienteServicioId,
         terapeuta_id: terapeutaSeleccionado.id,
-        user_id_actua: user_id
+        fecha_inicio: getPeruTimeISOString(),
+        motivo_consulta: paciente.motivo_consulta || '',
+        observaciones: '',
+        activo: true
       });
 
-      try {
-        await asignarTerapeuta({
-          paciente_servicio_id: pacienteServicioId,
-          terapeuta_id: terapeutaSeleccionado.id,
-          user_id_actua: user_id
-        });
-        console.log('Terapeuta asignado exitosamente');
-      } catch (errorTerapeuta) {
-        console.error('Error al asignar terapeuta:', errorTerapeuta);
-        console.error('Detalles del error:', {
-          message: errorTerapeuta.message,
-          response: errorTerapeuta.response?.data,
-          status: errorTerapeuta.response?.status
-        });
-
-        // Intentar método alternativo: actualizar el paciente_servicio directamente
-        console.log('Intentando método alternativo...');
-        try {
-          await api.post('/paciente-servicio/asignar', {
-            paciente_id: parseInt(id),
-            servicio_id: servicioSeleccionado.id,
-            terapeuta_id: terapeutaSeleccionado.id,
-            user_id_actua: user_id
-          });
-          console.log('Terapeuta asignado con método alternativo');
-        } catch (errorAlternativo) {
-          console.error('Método alternativo también falló:', errorAlternativo);
-          throw new Error(`No se pudo asignar el terapeuta: ${errorTerapeuta.response?.data?.message || errorTerapeuta.message}`);
-        }
-      }
-
-      // Recargar los servicios del paciente
-      const serviciosActualizados = await getServiciosPorPaciente(id);
-      setPaciente(prev => ({
-        ...prev,
-        servicios: serviciosActualizados
-      }));
-
-      // Mostrar mensaje de éxito
-      setSnackbar({
-        open: true,
-        message: 'Servicio y terapeuta asignados correctamente',
-        severity: 'success'
+      const resultado = await api.post('/paciente-servicio/asignar', {
+        paciente_id: parseInt(id),
+        servicio_id: servicioSeleccionado.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_inicio: getPeruTimeISOString(), // Fecha Perú
+        motivo_consulta: paciente.motivo_consulta || '',
+        observaciones: '',
+        activo: true
       });
-
-      // Cerrar el modal y limpiar el formulario
-      setOpenAsignarServicio(false);
-      setNuevoServicio({ servicio: '', terapeuta: '' });
-
-    } catch (error) {
-      console.error('Error al asignar servicio:', error);
-      setSnackbar({
-        open: true,
-        message: error.response?.data?.message || 'Error al asignar el servicio',
-        severity: 'error'
-      });
-      throw error;
+      
+      console.log('✅ Respuesta del servidor:', resultado);
     }
-  };
+
+    // Recargar servicios
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const serviciosActualizados = await getServiciosPorPaciente(id);
+    
+    setPaciente(prev => ({
+      ...prev,
+      servicios: serviciosActualizados
+    }));
+
+    const mensaje = servicioExistente
+      ? `Terapeuta agregado al servicio "${servicioSeleccionado.nombre}"`
+      : 'Servicio y terapeuta asignados correctamente';
+
+    setSnackbar({
+      open: true,
+      message: mensaje,
+      severity: 'success'
+    });
+
+    setOpenAsignarServicio(false);
+    setNuevoServicio({ servicio: '', terapeuta: '' });
+
+  } catch (error) {
+    console.error('❌ Error al asignar servicio:', error);
+    console.error('❌ Detalles del error:', error.response?.data);
+    
+    // Mostrar mensaje de error específico del backend
+    const backendMessage = error.response?.data?.message || 
+                          (Array.isArray(error.response?.data?.message) 
+                            ? error.response.data.message.join(', ') 
+                            : error.response?.data?.message);
+    
+    const errorMessage = backendMessage || error.message || 'Error al asignar el servicio';
+    
+    setOpenAsignarServicio(false);
+    setErrorModal({
+      open: true,
+      message: errorMessage,
+      title: 'Error al asignar servicio'
+    });
+  }
+};
 
   const handleEliminarServicio = async () => {
-    const servicio = modalEliminarServicio.servicio;
-
+    const { servicio, asignacionId, terapeutaNombre } = modalEliminarServicio;
     try {
-      await desasignarServicioPaciente(paciente.id, servicio.servicio.id, user_id);
-
-      // Recargar los servicios del paciente
+      if (asignacionId) {
+        await api.delete(`/paciente-servicio/asignacion/${asignacionId}`);
+        setSnackbar({
+          open: true,
+          message: `Terapeuta ${terapeutaNombre} desasignado exitosamente`,
+          severity: 'success'
+        });
+      } else {
+        await desasignarServicioPaciente(paciente.id, servicio.servicio.id, user_id);
+        setSnackbar({
+          open: true,
+          message: 'Servicio eliminado exitosamente',
+          severity: 'success'
+        });
+      }
       const serviciosActualizados = await getServiciosPorPaciente(id);
       setPaciente(prev => ({
         ...prev,
         servicios: serviciosActualizados
       }));
-
-      setSnackbar({
-        open: true,
-        message: 'Servicio eliminado exitosamente',
-        severity: 'success'
-      });
-
       setModalEliminarServicio({ open: false, servicio: null });
     } catch (error) {
-      console.error('Error al eliminar servicio:', error);
+      console.error('Error al eliminar:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error al eliminar el servicio',
+        message: error.response?.data?.message || 'Error al eliminar',
         severity: 'error'
       });
     }
   };
 
-  const handleEditarTerapeuta = async () => {
+const handleEditarTerapeuta = async () => {
+  try {
+    if (!servicioAEditar) {
+      throw new Error('No hay servicio seleccionado');
+    }
 
-    try {
-      if (!servicioAEditar || !servicioAEditar.asignaciones || servicioAEditar.asignaciones.length === 0) {
-        throw new Error('No hay asignación para editar');
-      }
+    const terapeutaSeleccionado = terapeutasDisponibles.find(
+      t => t.id === parseInt(nuevoTerapeuta)
+    );
 
-      // Encontrar el ID del terapeuta seleccionado
-      const terapeutaSeleccionado = terapeutasDisponibles.find(
-        t => `${t.nombres} ${t.apellidos}` === nuevoTerapeuta
+    if (!terapeutaSeleccionado) {
+      throw new Error('Terapeuta no encontrado');
+    }
+
+    // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en OTRO servicio del paciente
+    const serviciosPaciente = paciente.servicios || [];
+    const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
+      const tieneAsignacion = s.asignaciones?.some(
+        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
       );
-      if (!terapeutaSeleccionado) {
-        throw new Error('Terapeuta no encontrado');
+      if (tieneAsignacion && s.id !== servicioAEditar.id) {
+        return true; // Encontró al terapeuta en OTRO servicio
       }
+      return false;
+    });
 
+    if (terapeutaOcupadoEnOtroServicio) {
+      setSnackbar({
+        open: true,
+        message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
+        severity: 'error'
+      });
+      return; // Detener la ejecución
+    }
+
+    // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
+    const terapeutaYaAsignado = servicioAEditar.asignaciones?.some(
+      asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+    );
+
+    if (terapeutaYaAsignado) {
+      setSnackbar({
+        open: true,
+        message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado a este mismo servicio.`,
+        severity: 'error'
+      });
+      return; // Detener la ejecución
+    }
+
+    const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
+
+    if (tieneAsignacion) {
+      // Actualizar asignación existente
       const asignacionId = servicioAEditar.asignaciones[0].id;
-
-      // Llamar a la API para actualizar la asignación
       await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
         terapeuta_id: terapeutaSeleccionado.id,
         user_id_actua: user_id
       });
-
-      // Recargar los servicios del paciente
-      const serviciosActualizados = await getServiciosPorPaciente(id);
-      setPaciente(prev => ({
-        ...prev,
-        servicios: serviciosActualizados
-      }));
-
-      // Mostrar mensaje de éxito
-      setSnackbar({
-        open: true,
-        message: 'Terapeuta actualizado correctamente',
-        severity: 'success'
+    } else {
+      // Crear nueva asignación
+      await api.post('/paciente-servicio/asignacion', {
+        paciente_servicio_id: servicioAEditar.id,
+        terapeuta_id: terapeutaSeleccionado.id,
+        fecha_asignacion: new Date().toISOString().split('T')[0],
+        estado: 'ACTIVO',
+        user_id_crea: user_id
       });
-
-      // Cerrar el modal
-      setOpenEditarTerapeuta(false);
-      setServicioAEditar(null);
-      setNuevoTerapeuta('');
-
-    } catch (error) {
-      console.error('❌ Error al actualizar terapeuta:', error);
-      setSnackbar({
-        open: true,
-        message: error.response?.data?.message || 'Error al actualizar el terapeuta',
-        severity: 'error'
-      });
-      throw error;
     }
-  };
+
+    // Recargar servicios
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const serviciosActualizados = await getServiciosPorPaciente(id);
+    setPaciente(prev => ({
+      ...prev,
+      servicios: serviciosActualizados
+    }));
+
+    const mensajeExito = tieneAsignacion 
+      ? 'Terapeuta actualizado correctamente' 
+      : 'Terapeuta asignado correctamente';
+      
+    setSnackbar({
+      open: true,
+      message: mensajeExito,
+      severity: 'success'
+    });
+
+    setOpenEditarTerapeuta(false);
+    setServicioAEditar(null);
+    setNuevoTerapeuta('');
+
+  } catch (error) {
+    console.error('❌ Error al asignar/actualizar terapeuta:', error);
+    const errorMessage = error.response?.data?.message || error.message || 'Error al asignar el terapeuta';
+    
+    setOpenEditarTerapeuta(false);
+    setErrorModal({
+      open: true,
+      message: errorMessage,
+      title: 'Error al asignar terapeuta'
+    });
+  }
+};
 
   if (loading) return <EditarPacienteSkeleton />;
   if (error) return (
@@ -498,14 +571,21 @@ const EditarPacientePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50">
-      {/* Notification */}
       {snackbar.open && (
-        <div className={`fixed top-6 right-6 z-50 px-5 py-3.5 rounded-xl shadow-lg border transform transition-all duration-300 ${
+        <div className={`fixed top-6 right-6 z-[90000] px-5 py-3.5 rounded-xl shadow-2xl border transform transition-all duration-300 ${
           snackbar.severity === 'success'
             ? 'bg-white border-gray-100'
+            : snackbar.severity === 'warning'
+            ? 'bg-amber-50 border-amber-200'
             : 'bg-white border-red-100'
         } flex items-center gap-3`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${snackbar.severity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
+          <div className={`w-1.5 h-1.5 rounded-full ${
+            snackbar.severity === 'success'
+              ? 'bg-[#A3C644]'
+              : snackbar.severity === 'warning'
+              ? 'bg-amber-500'
+              : 'bg-red-500'
+          }`}></div>
           <span className="text-sm text-gray-700">{snackbar.message}</span>
           <button onClick={() => setSnackbar({ ...snackbar, open: false })} className="ml-2">
             <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
@@ -513,7 +593,6 @@ const EditarPacientePage = () => {
         </div>
       )}
 
-      {/* Loading data indicator */}
       {loadingData && !loading && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3.5 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center gap-3">
           <div className="w-4 h-4 border-2 border-gray-100 border-t-[#7B1FA2] rounded-full animate-spin"></div>
@@ -522,7 +601,6 @@ const EditarPacientePage = () => {
       )}
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 lg:pl-8">
-           {/* Botón Retroceder */}
         <button
           onClick={() => navigate('/intranet/lista-pacientes')}
           className="flex items-center gap-2 px-4 py-2 mb-4 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all group"
@@ -531,11 +609,9 @@ const EditarPacientePage = () => {
           <span className="text-sm font-medium">Volver</span>
         </button>
 
-        {/* Header minimalista */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-6">
-              {/* Avatar */}
               <div className="relative group">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-xl font-bold shadow-sm">
                   {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
@@ -554,7 +630,6 @@ const EditarPacientePage = () => {
                 </label>
               </div>
 
-              {/* Información */}
               <div className="min-w-0 flex-1">
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5 break-words line-clamp-2">
                   {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
@@ -576,7 +651,6 @@ const EditarPacientePage = () => {
               </div>
             </div>
 
-            {/* Estado */}
             <button
               onClick={canManagePatientStatus(user) ? (e) => setAnchorEstado(e.currentTarget) : undefined}
               disabled={!canManagePatientStatus(user)}
@@ -594,23 +668,9 @@ const EditarPacientePage = () => {
             </button>
           </div>
 
-          {/* Tabs minimalistas */}
           <div className="flex flex-wrap gap-1 sm:gap-2 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-100">
             <button
               onClick={() => setTabSeleccionado('filiacion')}
-              className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                tabSeleccionado === 'filiacion'
-                  ? 'bg-[#7B1FA2] text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Filiación</span>
-              <span className="sm:hidden">Datos</span>
-            </button>
-
-            <button
-              onClick={() => setTabSeleccionado('historia')}
               className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 tabSeleccionado === 'historia'
                   ? 'bg-[#7B1FA2] text-white shadow-sm'
@@ -636,9 +696,7 @@ const EditarPacientePage = () => {
           </div>
         </div>
 
-        {/* Contenido */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Área principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7">
             {tabSeleccionado === 'filiacion' && (
               <FiliacionView
@@ -661,7 +719,6 @@ const EditarPacientePage = () => {
             {tabSeleccionado === 'archivos' && <ArchivosDigitales paciente={paciente} />}
           </div>
 
-          {/* Sidebar - Notas */}
           <div className="lg:col-span-5">
             <NotasEvolucion
               notas={comentarios}
@@ -679,7 +736,6 @@ const EditarPacientePage = () => {
         </div>
       </div>
 
-      {/* Modals */}
       <AsignarServicioModal
         open={openAsignarServicio}
         onClose={() => setOpenAsignarServicio(false)}
@@ -688,11 +744,16 @@ const EditarPacientePage = () => {
         nuevoServicio={nuevoServicio}
         setNuevoServicio={setNuevoServicio}
         onAsignar={handleAsignarServicio}
+        serviciosActualesPaciente={paciente?.servicios || []}
       />
 
       <EditarTerapeutaModal
         open={openEditarTerapeuta}
-        onClose={() => setOpenEditarTerapeuta(false)}
+        onClose={() => {
+          setOpenEditarTerapeuta(false);
+          setServicioAEditar(null);
+          setNuevoTerapeuta('');
+        }}
         servicio={servicioAEditar}
         nuevoTerapeuta={nuevoTerapeuta}
         setNuevoTerapeuta={setNuevoTerapeuta}
@@ -700,9 +761,8 @@ const EditarPacientePage = () => {
         onGuardar={handleEditarTerapeuta}
       />
 
-      {/* Popover estados */}
       {anchorEstado && canManagePatientStatus(user) && (
-        <div className="fixed inset-0 z-50" onClick={() => setAnchorEstado(null)}>
+        <div className="fixed inset-0 z-[80000]" onClick={() => setAnchorEstado(null)}>
           <div
             className="absolute bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 min-w-[180px]"
             style={{
@@ -734,18 +794,14 @@ const EditarPacientePage = () => {
         </div>
       )}
 
-      {/* Modal Confirmación Eliminar Servicio */}
       {modalEliminarServicio.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Overlay */}
+        <div className="fixed inset-0 z-[70000] flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setModalEliminarServicio({ open: false, servicio: null })}
           />
 
-          {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            {/* Header */}
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
@@ -761,20 +817,37 @@ const EditarPacientePage = () => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-6">
-              <p className="text-gray-700 mb-2">
-                ¿Estás seguro de que deseas eliminar el servicio:
-              </p>
-              <p className="text-lg font-semibold text-gray-900 mb-4">
-                "{modalEliminarServicio.servicio?.servicio?.nombre}"?
-              </p>
-              <p className="text-sm text-gray-500">
-                Esta acción no se puede deshacer. El terapeuta asignado también será desvinculado de este servicio.
-              </p>
+              {modalEliminarServicio.asignacionId ? (
+                <>
+                  <p className="text-gray-700 mb-2">
+                    ¿Estás seguro de que deseas desasignar al terapeuta:
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900 mb-2">
+                    "{modalEliminarServicio.terapeutaNombre}"
+                  </p>
+                  <p className="text-gray-700 mb-4">
+                    del servicio "{modalEliminarServicio.servicio?.servicio?.nombre}"?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Los demás terapeutas del servicio no se verán afectados.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-700 mb-2">
+                    ¿Estás seguro de que deseas eliminar el servicio:
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900 mb-4">
+                    "{modalEliminarServicio.servicio?.servicio?.nombre}"?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Esta acción no se puede deshacer. Todos los terapeutas asignados serán desvinculados de este servicio.
+                  </p>
+                </>
+              )}
             </div>
 
-            {/* Footer */}
             <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
               <button
                 onClick={() => setModalEliminarServicio({ open: false, servicio: null })}
@@ -787,7 +860,61 @@ const EditarPacientePage = () => {
                 className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30"
               >
                 <Trash2 className="w-4 h-4" />
-                Eliminar Servicio
+                {modalEliminarServicio.asignacionId ? 'Desasignar Terapeuta' : 'Eliminar Servicio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {errorModal.open && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setErrorModal({ open: false, message: '', title: 'Error' })}
+          />
+
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden z-[100001]">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">{errorModal.title}</h2>
+              </div>
+              <button
+                onClick={() => setErrorModal({ open: false, message: '', title: 'Error' })}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 mt-1">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-800 leading-relaxed">
+                    {errorModal.message}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-sm text-amber-800">
+                  <strong>Nota:</strong> Para cambiar el terapeuta, primero debe desasignar el servicio actual y luego asignar el nuevo terapeuta al servicio deseado.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end border-t border-gray-100">
+              <button
+                onClick={() => setErrorModal({ open: false, message: '', title: 'Error' })}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/30"
+              >
+                Entendido
               </button>
             </div>
           </div>
