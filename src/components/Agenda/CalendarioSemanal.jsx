@@ -20,15 +20,14 @@ const CalendarioSemanal = ({
   currentUser = null
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
-
-  // Generar horas según el día de la semana
+ // Generar horas según el día de la semana
   const generarHorasPorDia = (diaSemana) => {
     const horas = [];
     
     if (diaSemana === 6) {
-      // Sábado: 8:00 AM a 2:00 PM
-      let minutos = 8 * 60;
-      const finMinutos = 14 * 60;
+      // Sábado: 8:00 AM a 2:00 PM (sin break, horario continuo)
+      let minutos = 8 * 60; // 8:00 AM
+      const finMinutos = 14 * 60; // 2:00 PM
       
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
@@ -37,21 +36,30 @@ const CalendarioSemanal = ({
         minutos += 40;
       }
     } else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Lunes a Viernes: 11:00 AM a 8:00 PM (sin 1:00 PM a 2:00 PM)
-      let minutos = 11 * 60;
-      const refrigerioInicio = 13 * 60;
-      const refrigerioFin = 14 * 60;
-      const finMinutos = 20 * 60;
+      // Lunes a Viernes: 11:00 AM a 8:00 PM
+      // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
+      // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
+      // Primera cita después del break: 14:00 PM (2:00 PM)
       
+      let minutos = 11 * 60; // 11:00 AM
+      const ultimaCitaAntesBreak = 12 * 60 + 40; // 12:40 PM
+      const primeraCitaDespuesBreak = 14 * 60; // 14:00 PM (2:00 PM)
+      const finMinutos = 20 * 60; // 8:00 PM
+      
+      // Horario de la mañana: 11:00 AM hasta 12:40 PM (incluido)
+      while (minutos <= ultimaCitaAntesBreak) {
+        const h = Math.floor(minutos / 60);
+        const m = minutos % 60;
+        horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+        minutos += 40;
+      }
+      
+      // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
+      minutos = primeraCitaDespuesBreak;
       while (minutos <= finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
-        const horaActual = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        
-        if (minutos < refrigerioInicio || minutos >= refrigerioFin) {
-          horas.push(horaActual);
-        }
-        
+        horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         minutos += 40;
       }
     }

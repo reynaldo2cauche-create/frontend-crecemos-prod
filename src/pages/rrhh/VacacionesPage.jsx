@@ -465,7 +465,7 @@ export default function VacacionesPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Cargo</p>
-                        <p className="font-semibold text-sm text-gray-900">{modalRegistro.empleado?.cargo.nombre}</p>
+                        <p className="font-semibold text-sm text-gray-900">{modalRegistro.empleado?.cargo?.nombre}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Días Disponibles</p>
