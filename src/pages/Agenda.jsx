@@ -179,22 +179,35 @@ const Agenda = () => {
       const validaciones = [];
 
       if (!datos.paciente?.id) validaciones.push('Debe seleccionar un paciente');
-      if (!datos.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
+      if (!datos.motivo_id) validaciones.push('Debe seleccionar un motivo');
 
-      // Validar servicios según el tipo de cita
-      const esReunionClinica = datos.terapeutas_adicionales?.length > 0;
-
-      if (esReunionClinica) {
-        // Reunión clínica: debe tener al menos un servicio en servicios_adicionales
-        if (!datos.servicios_adicionales || datos.servicios_adicionales.length === 0) {
-          validaciones.push('Debe seleccionar al menos un servicio para la reunión clínica');
-        }
-      } else {
-        // Cita normal: debe tener servicio_id
-        if (!datos.servicio_id) validaciones.push('Debe seleccionar un servicio');
+      // Determinar tipo de cita según motivo_id
+      const motivoId = parseInt(datos.motivo_id);
+      let tipoCita = 'NORMAL';
+      if (motivoId === 6) {
+        tipoCita = 'REUNION_CLINICA';
+      } else if (motivoId === 7) {
+        tipoCita = 'VISITA_ESCOLAR';
       }
 
-      if (!datos.motivo_id) validaciones.push('Debe seleccionar un motivo');
+      // Validaciones según tipo de cita
+      if (tipoCita === 'NORMAL') {
+        if (!datos.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
+        if (!datos.servicio_id) validaciones.push('Debe seleccionar un servicio');
+      } else if (tipoCita === 'REUNION_CLINICA') {
+        if (!datos.terapeutas_ids || datos.terapeutas_ids.length === 0) {
+          validaciones.push('Debe seleccionar al menos un terapeuta para la reunión clínica');
+        }
+        if (!datos.servicios_ids || datos.servicios_ids.length === 0) {
+          validaciones.push('Debe seleccionar al menos un servicio para la reunión clínica');
+        }
+      } else if (tipoCita === 'VISITA_ESCOLAR') {
+        if (!datos.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
+        if (!datos.encargado?.nombre_completo) validaciones.push('Debe ingresar el nombre del encargado');
+        if (!datos.encargado?.institucion) validaciones.push('Debe ingresar el nombre del colegio');
+        if (!datos.encargado?.telefono) validaciones.push('Debe ingresar el teléfono del encargado');
+      }
+
       if (!datos.duracion) validaciones.push('Debe seleccionar una duración');
       if (!datos.fechasHoras || datos.fechasHoras.length === 0) {
         validaciones.push('Debe agregar al menos una fecha y hora');
@@ -216,7 +229,7 @@ const Agenda = () => {
       }
 
       if (citaEditando) {
-        const primeraCita = {
+        const citaData = {
           paciente_id: datos.paciente?.id,
           doctor_id: datos.doctor_id,
           servicio_id: datos.servicio_id,
@@ -225,13 +238,15 @@ const Agenda = () => {
           hora_inicio: datos.fechasHoras[0].horaInicio + ':00',
           duracion_minutos: parseInt(datos.duracion),
           nota: datos.nota,
-          user_id: currentUser?.id,
+          user_id_crea: currentUser?.id,
           estado_id: 1,
-          // Incluir terapeutas y servicios adicionales para reunión clínica
-          terapeutas_adicionales: datos.terapeutas_adicionales || [],
-          servicios_adicionales: datos.servicios_adicionales || []
+          // Datos del nuevo sistema
+          terapeutas_ids: datos.terapeutas_ids || [],
+          servicios_ids: datos.servicios_ids || [],
+          encargado: datos.encargado || null,
+          firma_documento: datos.firma_documento || false,
         };
-        await actualizarCita(citaEditando.id, primeraCita);
+        await actualizarCita(citaEditando.id, citaData);
         setSnackbar({ open: true, message: 'Cita actualizada correctamente', severity: 'success' });
       } else {
         const citasParaCrear = datos.fechasHoras.map(fechaHora => ({
@@ -243,15 +258,20 @@ const Agenda = () => {
           hora_inicio: fechaHora.horaInicio + ':00',
           duracion_minutos: parseInt(datos.duracion),
           nota: datos.nota,
-          user_id: currentUser?.id,
+          user_id_crea: currentUser?.id,
           estado_id: 1,
-          // Incluir terapeutas y servicios adicionales para reunión clínica
-          terapeutas_adicionales: datos.terapeutas_adicionales || [],
-          servicios_adicionales: datos.servicios_adicionales || []
+          // Datos del nuevo sistema
+          terapeutas_ids: datos.terapeutas_ids || [],
+          servicios_ids: datos.servicios_ids || [],
+          encargado: datos.encargado || null,
+          firma_documento: datos.firma_documento || false,
         }));
 
-        const resultados = await crearMultiplesCitas(citasParaCrear);
-        const cantidadCitas = resultados?.citas?.length || citasParaCrear.length;
+        // Crear cada cita individualmente
+        const promesas = citasParaCrear.map(cita => crearCita(cita));
+        const resultados = await Promise.all(promesas);
+
+        const cantidadCitas = resultados.length;
         setSnackbar({
           open: true,
           message: `${cantidadCitas} cita${cantidadCitas > 1 ? 's' : ''} agendada${cantidadCitas > 1 ? 's' : ''} correctamente`,

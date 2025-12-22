@@ -43,9 +43,4 @@ export const getRelacionPadres = async () => {
 export const getOcupaciones = async () => {
   const response = await api.get('/catalogos/ocupaciones');
   return response.data;
-};
-
-export const getMotivosCita = async () => {
-  const response = await api.get('/catalogos/motivos-cita');
-  return response.data;
 }; 

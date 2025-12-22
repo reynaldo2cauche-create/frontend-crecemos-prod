@@ -136,26 +136,23 @@ const ModalAgendarCita = ({
     let datosGuardar = { ...formularioCita };
 
     if (tipoCita === 'NORMAL') {
-      datosGuardar.tipo_cita_id = 1;
       datosGuardar.terapeutas_ids = [];
       datosGuardar.servicios_ids = [];
       datosGuardar.encargado = null;
-      datosGuardar.documento_firmado = false;
+      datosGuardar.firma_documento = false;
     } else if (tipoCita === 'REUNION_CLINICA') {
-      datosGuardar.tipo_cita_id = 2;
       datosGuardar.terapeutas_ids = terapeutasReunion.filter(t => t.terapeuta_id).map(t => parseInt(t.terapeuta_id));
       datosGuardar.servicios_ids = serviciosReunion.filter(s => s.servicio_id).map(s => parseInt(s.servicio_id));
       datosGuardar.doctor_id = null;
       datosGuardar.servicio_id = null;
       datosGuardar.encargado = null;
-      datosGuardar.documento_firmado = false;
+      datosGuardar.firma_documento = false;
     } else if (tipoCita === 'VISITA_ESCOLAR') {
-      datosGuardar.tipo_cita_id = 3;
       datosGuardar.encargado = encargadoVisita;
       datosGuardar.terapeutas_ids = [];
       datosGuardar.servicios_ids = [];
-      datosGuardar.doctor_id = null;
       datosGuardar.firma_documento = documentoFirmado ? 1 : 0;
+      // Mantener doctor_id y servicio_id para visita escolar
     }
 
     onGuardar(datosGuardar);
@@ -529,6 +526,21 @@ const ModalAgendarCita = ({
 
                 {tipoCita === 'VISITA_ESCOLAR' && (
                   <div className="space-y-4">
+                    {/* Terapeuta que realizará la visita */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Terapeuta <span className="text-red-500">*</span>
+                      </label>
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-purple-600" />
+                          <p className="text-sm font-semibold text-gray-900">
+                            {terapeutaSeleccionado?.nombres} {terapeutaSeleccionado?.apellidos}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                       <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                         <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
