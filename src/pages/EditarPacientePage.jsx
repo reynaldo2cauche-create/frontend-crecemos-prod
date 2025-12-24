@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft } from 'lucide-react';
+import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
@@ -16,6 +16,15 @@ import { useTerapeutas } from '../hooks/useTerapeutas';
 import { calcularEdad } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
 import { ROLES, canManagePatientStatus } from '../constants/roles';
+import { 
+  getConvenios,
+  getConveniosPorPaciente,
+  asignarConvenioPaciente,
+  eliminarPacienteConvenio,
+  activarPacienteConvenio,
+  desactivarPacienteConvenio
+} from '../services/conveniosService';
+import { SERVER_BASE_URL } from '../services/api';
 
 const EditarPacienteSkeleton = () => {
   return (
@@ -107,7 +116,42 @@ const EditarPacientePage = () => {
   const [modalEliminarServicio, setModalEliminarServicio] = useState({ open: false, servicio: null });
   const [errorModal, setErrorModal] = useState({ open: false, message: '', title: 'Error' });
   const [mostrarErrorEnModal, setMostrarErrorEnModal] = useState(false);
+  // ============== NUEVOS ESTADOS PARA CONVENIOS ==============
+const [conveniosDisponibles, setConveniosDisponibles] = useState([]);
+const [conveniosPaciente, setConveniosPaciente] = useState([]);
+const [modalConvenio, setModalConvenio] = useState(false);
+const [convenioSeleccionado, setConvenioSeleccionado] = useState('');
+const [numeroPoliza, setNumeroPoliza] = useState('');
+const [observacionesConvenio, setObservacionesConvenio] = useState('');
+const [modalEliminarConvenio, setModalEliminarConvenio] = useState({ open: false, convenio: null });
+const [loadingConvenios, setLoadingConvenios] = useState(false);
 
+useEffect(() => {
+  const cargarConvenios = async () => {
+    if (!id) return;
+    
+    try {
+      setLoadingConvenios(true);
+      const [disponibles, asignados] = await Promise.all([
+        getConvenios(true),
+        getConveniosPorPaciente(id)
+      ]);
+      
+      setConveniosDisponibles(disponibles || []);
+      setConveniosPaciente(asignados || []);
+    } catch (error) {
+      console.error('Error al cargar convenios:', error);
+      setConveniosDisponibles([]);
+      setConveniosPaciente([]);
+    } finally {
+      setLoadingConvenios(false);
+    }
+  };
+
+  if (id) {
+    cargarConvenios();
+  }
+}, [id]);
   useEffect(() => {
     const cargarPaciente = async () => {
       try {
@@ -205,31 +249,32 @@ const EditarPacientePage = () => {
     const pacienteData = datosActualizados || paciente;
 
     const data = {
-      nombres: pacienteData.nombres,
-      apellido_paterno: pacienteData.apellido_paterno,
-      apellido_materno: pacienteData.apellido_materno,
-      fecha_nacimiento: pacienteData.fecha_nacimiento,
-      tipo_documento_id: pacienteData.tipo_documento?.id || null,
-      numero_documento: pacienteData.numero_documento,
-      sexo_id: pacienteData.sexo?.id || null,
-      distrito_id: pacienteData.distrito?.id || null,
-      direccion: pacienteData.direccion,
-      celular: pacienteData.celular,
-      celular2: pacienteData.celular2,
-      correo: pacienteData.correo,
-      user_id,
-      motivo_consulta: pacienteData.motivo_consulta,
-      referido_por: pacienteData.referido_por,
-      diagnostico_medico: pacienteData.diagnostico_medico,
-      alergias: pacienteData.alergias,
-      medicamentos_actuales: pacienteData.medicamentos_actuales
-    };
-
+    nombres: pacienteData.nombres,
+    apellido_paterno: pacienteData.apellido_paterno,
+    apellido_materno: pacienteData.apellido_materno,
+    fecha_nacimiento: pacienteData.fecha_nacimiento,
+    tipo_documento_id: pacienteData.tipo_documento?.id || null,
+    numero_documento: pacienteData.numero_documento,
+    sexo_id: pacienteData.sexo?.id || null,
+    distrito_id: pacienteData.distrito?.id || null,
+    direccion: pacienteData.direccion,
+    celular: pacienteData.celular,
+    celular2: pacienteData.celular2,
+    correo: pacienteData.correo,
+    user_id,
+    motivo_consulta: pacienteData.motivo_consulta,
+    referido_por: pacienteData.referido_por,
+    diagnostico_medico: pacienteData.diagnostico_medico,
+    alergias: pacienteData.alergias,
+    medicamentos_actuales: pacienteData.medicamentos_actuales
+  };
+    
     try {
       const response = await updatePacienteById(id, data);
       setPaciente(prev => ({
         ...prev,
-        ...pacienteData
+        ...pacienteData,
+        updated_at: response.updated_at
       }));
       setSnackbar({ open: true, message: 'Datos guardados correctamente', severity: 'success' });
     } catch (error) {
@@ -366,8 +411,7 @@ const handleAsignarServicio = async () => {
         observaciones: '',
         activo: true
       });
-      
-      console.log('✅ Respuesta del servidor:', resultado);
+
     }
 
     // Recargar servicios
@@ -551,6 +595,91 @@ const handleEditarTerapeuta = async () => {
   }
 };
 
+// ============== HANDLERS DE CONVENIOS ==============
+const handleAsignarConvenio = async () => {
+  if (!convenioSeleccionado) {
+    setSnackbar({ open: true, message: 'Debes seleccionar un convenio', severity: 'error' });
+    return;
+  }
+
+  try {
+    const convenio = conveniosDisponibles.find(c => c.id === parseInt(convenioSeleccionado));
+    
+    // Verificar si ya está asignado
+    if (conveniosPaciente.some(c => c.convenio_id === convenio.id && c.activo)) {
+      setSnackbar({ open: true, message: 'Este convenio ya está asignado al paciente', severity: 'error' });
+      return;
+    }
+
+    await asignarConvenioPaciente({
+      paciente_id: parseInt(id),
+      convenio_id: convenio.id,
+      observaciones: observacionesConvenio || null,
+      activo: true
+    });
+
+    // Recargar convenios
+    const asignados = await getConveniosPorPaciente(id);
+    setConveniosPaciente(asignados || []);
+
+    setSnackbar({ open: true, message: 'Convenio asignado correctamente', severity: 'success' });
+    setModalConvenio(false);
+    setConvenioSeleccionado('');
+    setObservacionesConvenio('');
+  } catch (error) {
+    console.error('Error al asignar convenio:', error);
+    setSnackbar({ 
+      open: true, 
+      message: error.response?.data?.message || 'Error al asignar el convenio', 
+      severity: 'error' 
+    });
+  }
+};
+
+const handleEliminarConvenio = async () => {
+  const { convenio } = modalEliminarConvenio;
+  
+  try {
+    await eliminarPacienteConvenio(convenio.id);
+    
+    // Recargar convenios
+    const asignados = await getConveniosPorPaciente(id);
+    setConveniosPaciente(asignados || []);
+
+    setSnackbar({ open: true, message: 'Convenio eliminado correctamente', severity: 'success' });
+    setModalEliminarConvenio({ open: false, convenio: null });
+  } catch (error) {
+    console.error('Error al eliminar convenio:', error);
+    setSnackbar({ 
+      open: true, 
+      message: error.response?.data?.message || 'Error al eliminar el convenio', 
+      severity: 'error' 
+    });
+  }
+};
+
+const handleToggleConvenioActivo = async (convenio) => {
+  try {
+    if (convenio.activo) {
+      await desactivarPacienteConvenio(convenio.id);
+      setSnackbar({ open: true, message: 'Convenio desactivado', severity: 'success' });
+    } else {
+      await activarPacienteConvenio(convenio.id);
+      setSnackbar({ open: true, message: 'Convenio activado', severity: 'success' });
+    }
+
+    // Recargar convenios
+    const asignados = await getConveniosPorPaciente(id);
+    setConveniosPaciente(asignados || []);
+  } catch (error) {
+    console.error('Error al cambiar estado del convenio:', error);
+    setSnackbar({ 
+      open: true, 
+      message: error.response?.data?.message || 'Error al cambiar el estado del convenio', 
+      severity: 'error' 
+    });
+  }
+};
   if (loading) return <EditarPacienteSkeleton />;
   if (error) return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
@@ -609,93 +738,218 @@ const handleEditarTerapeuta = async () => {
           <span className="text-sm font-medium">Volver</span>
         </button>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4 sm:gap-6">
-              <div className="relative group">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-xl font-bold shadow-sm">
-                  {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
-                </div>
-                <input
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  id="foto-paciente"
-                  type="file"
-                  onChange={handleFotoChange}
-                />
-                <label htmlFor="foto-paciente">
-                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#A3C644] rounded-xl cursor-pointer hover:bg-[#8FB82D] transition-all flex items-center justify-center border-3 border-white shadow-sm opacity-0 group-hover:opacity-100">
-                    <Camera className="w-3.5 h-3.5 text-white" />
-                  </div>
-                </label>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5 break-words line-clamp-2">
-                  {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
-                  <span>{edad}</span>
-                  <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
-                  <span className="hidden sm:inline">{paciente.numero_documento}</span>
-                  {paciente.created_at && (
-                    <>
-                      <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
-                      <span className="hidden md:flex items-center gap-1.5 text-gray-400">
-                        <Clock className="w-3.5 h-3.5" />
-                        {new Date(paciente.created_at).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={canManagePatientStatus(user) ? (e) => setAnchorEstado(e.currentTarget) : undefined}
-              disabled={!canManagePatientStatus(user)}
-              className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl ${estadoColors.bg} ${
-                canManagePatientStatus(user) ? 'cursor-pointer hover:shadow-sm transition-all' : 'cursor-default'
-              } w-full sm:w-auto justify-center sm:justify-start`}
-            >
-              <div className={`w-2 h-2 rounded-full ${estadoColors.dot}`}></div>
-              <span className={`text-sm font-semibold ${estadoColors.text}`}>
-                {paciente.estado?.nombre || 'Sin estado'}
-              </span>
-              {canManagePatientStatus(user) && (
-                <ChevronDown className={`w-4 h-4 ${estadoColors.text}`} />
-              )}
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-1 sm:gap-2 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-100">
-            <button
-              onClick={() => setTabSeleccionado('filiacion')}
-              className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                tabSeleccionado === 'historia'
-                  ? 'bg-[#7B1FA2] text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Heart className="w-4 h-4" />
-              <span className="hidden sm:inline">Historia Clínica</span>
-              <span className="sm:hidden">Historia</span>
-            </button>
-
-            <button
-              onClick={() => setTabSeleccionado('archivos')}
-              className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                tabSeleccionado === 'archivos'
-                  ? 'bg-[#7B1FA2] text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <HardDrive className="w-4 h-4" />
-              Archivos
-            </button>
-          </div>
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 shadow-sm">
+  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="flex items-center gap-4 sm:gap-6">
+      <div className="relative group">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-xl font-bold shadow-sm">
+          {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
         </div>
+        <input
+          accept="image/*"
+          style={{ display: 'none' }}
+          id="foto-paciente"
+          type="file"
+          onChange={handleFotoChange}
+        />
+        <label htmlFor="foto-paciente">
+          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#A3C644] rounded-xl cursor-pointer hover:bg-[#8FB82D] transition-all flex items-center justify-center border-3 border-white shadow-sm opacity-0 group-hover:opacity-100">
+            <Camera className="w-3.5 h-3.5 text-white" />
+          </div>
+        </label>
+      </div>
 
+      <div className="min-w-0 flex-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5 break-words line-clamp-2">
+          {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
+        </h1>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-gray-400">Edad:</span>
+            <span>{edad} años</span>
+          </div>
+          
+          <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
+          
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-gray-400">DNI:</span>
+            <span>{paciente.numero_documento}</span>
+          </div>
+          
+          {paciente.created_at && (
+            <>
+              <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
+              
+              <div className="hidden md:flex items-center gap-1.5 text-gray-400">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="font-medium">Registro:</span>
+                <span>
+                  {new Date(paciente.created_at).toLocaleDateString('es-PE', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <button
+      onClick={canManagePatientStatus(user) ? (e) => setAnchorEstado(e.currentTarget) : undefined}
+      disabled={!canManagePatientStatus(user)}
+      className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl ${estadoColors.bg} ${
+        canManagePatientStatus(user) ? 'cursor-pointer hover:shadow-sm transition-all' : 'cursor-default'
+      } w-full sm:w-auto justify-center sm:justify-start`}
+    >
+      <div className={`w-2 h-2 rounded-full ${estadoColors.dot}`}></div>
+      <span className={`text-sm font-semibold ${estadoColors.text}`}>
+        {paciente.estado?.nombre || 'Sin estado'}
+      </span>
+      {canManagePatientStatus(user) && (
+        <ChevronDown className={`w-4 h-4 ${estadoColors.text}`} />
+      )}
+    </button>
+  </div>
+
+<div className="mt-4 pt-4 border-t border-gray-100">
+  <div className="flex items-center justify-between">
+    {/* Lado izquierdo: Título + Tabs */}
+    <div className="flex items-center gap-6">
+      
+
+      {/* Tabs */}
+      <div className="flex gap-1">
+        <button
+          onClick={() => setTabSeleccionado('filiacion')}
+          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            tabSeleccionado === 'filiacion'
+              ? 'bg-[#7B1FA2] text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span className="hidden sm:inline">Filiación</span>
+          <span className="sm:hidden">Datos</span>
+        </button>
+
+        <button
+          onClick={() => setTabSeleccionado('historia')}
+          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            tabSeleccionado === 'historia'
+              ? 'bg-[#7B1FA2] text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Heart className="w-4 h-4" />
+          <span className="hidden sm:inline">Historia Clínica</span>
+          <span className="sm:hidden">Historia</span>
+        </button>
+
+        <button
+          onClick={() => setTabSeleccionado('archivos')}
+          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            tabSeleccionado === 'archivos'
+              ? 'bg-[#7B1FA2] text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <HardDrive className="w-4 h-4" />
+          Archivos
+        </button>
+      </div>
+    </div>
+
+          <div className="flex items-center gap-4">
+            {/* Título de Convenios */}
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-[#7B1FA2]" />
+              <h3 className="text-xs font-bold text-gray-900">Convenios</h3><span>|</span>
+            </div>
+            {conveniosPaciente.length === 0 ? (
+              <p className="text-xs text-gray-400 mr-2">Sin convenios</p>
+            ) : (
+              <div className="flex items-start gap-4">
+                {conveniosPaciente.map((pc) => {
+                  const convenio = conveniosDisponibles.find(c => c.id === pc.convenio_id);
+                  if (!convenio) return null;
+
+                  return (
+                    <div
+                      key={pc.id}
+                      className="flex flex-col items-center gap-1.5 max-w-[80px]"
+                    >
+                      {/* Círculo con logo */}
+                      <div className={`group relative ${pc.activo ? 'opacity-100' : 'opacity-40'}`}>
+                        <div className={`w-12 h-12 rounded-full border-2 overflow-hidden bg-white flex items-center justify-center transition-all cursor-pointer ${
+                          pc.activo 
+                            ? 'border-[#7B1FA2] hover:shadow-md hover:scale-105' 
+                            : 'border-gray-300'
+                        }`}>
+                          {convenio.logo_url ? (
+                            <img
+                              src={`${SERVER_BASE_URL}${convenio.logo_url}`}
+                              alt={convenio.nombre}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                const fallback = e.target.parentElement.querySelector('.fallback-logo');
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div className={`fallback-logo absolute inset-0 ${convenio.logo_url ? 'hidden' : 'flex'} items-center justify-center bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]`}>
+                            <Building2 className="w-5 h-5 text-white" />
+                          </div>
+                        </div>
+
+                        <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                          pc.activo ? 'bg-green-500' : 'bg-gray-400'
+                        }`} />
+
+                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleToggleConvenioActivo(pc)}
+                            className={`p-1.5 rounded-full transition-all ${
+                              pc.activo ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'
+                            } text-white`}
+                            title={pc.activo ? 'Desactivar' : 'Activar'}
+                          >
+                            {pc.activo ? <XCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                          </button>
+                          <button
+                            onClick={() => setModalEliminarConvenio({ open: true, convenio: pc })}
+                            className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Nombre completo en múltiples líneas */}
+                      <p className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-3 break-words w-full">
+                        {convenio.nombre}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              onClick={() => setModalConvenio(true)}
+              className="w-10 h-10 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-110 shadow-sm flex-shrink-0"
+              title="Agregar convenio"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+      </div>
+    </div>
+    </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7">
             {tabSeleccionado === 'filiacion' && (
@@ -919,9 +1173,162 @@ const handleEditarTerapeuta = async () => {
             </div>
           </div>
         </div>
+
+        
+
       )}
+
+{/* ============== MODAL ASIGNAR CONVENIO ============== */}
+{modalConvenio && (
+  <div className="fixed inset-0 z-[70000] flex items-center justify-center">
+    <div
+      className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      onClick={() => setModalConvenio(false)}
+    />
+
+    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Asignar Convenio</h2>
+        </div>
+        <button
+          onClick={() => setModalConvenio(false)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4">
+     <div>
+  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+    Convenio <span className="text-red-500">*</span>
+  </label>
+  
+  {loadingConvenios ? (
+    <div className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm text-gray-500 flex items-center gap-2">
+      <div className="w-4 h-4 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
+      Cargando...
+    </div>
+  ) : (
+    <select
+      value={convenioSeleccionado}
+      onChange={(e) => setConvenioSeleccionado(e.target.value)}
+      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+    >
+      <option value="">Seleccionar convenio...</option>
+      {conveniosDisponibles.map(convenio => (
+        <option key={convenio.id} value={convenio.id}>
+          {convenio.nombre}
+        </option>
+      ))}
+    </select>
+  )}
+  
+  {!loadingConvenios && conveniosDisponibles.length === 0 && (
+    <p className="text-xs text-red-600 mt-2">
+      No hay convenios activos disponibles
+    </p>
+  )}
+</div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+            Observaciones
+          </label>
+          <textarea
+            value={observacionesConvenio}
+            onChange={(e) => setObservacionesConvenio(e.target.value)}
+            placeholder="Detalles adicionales del convenio (cobertura, restricciones, etc.)"
+            rows={3}
+            className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+          />
+        </div>
+      </div>
+
+      <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+        <button
+          onClick={() => {
+            setModalConvenio(false);
+            setConvenioSeleccionado('');
+            setObservacionesConvenio('');
+          }}
+          className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleAsignarConvenio}
+          disabled={!convenioSeleccionado}
+          className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#7B1FA2]/30"
+        >
+          Asignar Convenio
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* ============== MODAL ELIMINAR CONVENIO ============== */}
+{modalEliminarConvenio.open && (
+  <div className="fixed inset-0 z-[70000] flex items-center justify-center">
+    <div
+      className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
+    />
+
+    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+            <AlertCircle className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Confirmar Eliminación</h2>
+        </div>
+        <button
+          onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
+      </div>
+
+      <div className="p-6">
+        <p className="text-gray-700 mb-2">
+          ¿Estás seguro de que deseas eliminar la asignación del convenio:
+        </p>
+        <p className="text-lg font-semibold text-gray-900 mb-4">
+          "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.nombre}"?
+        </p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-800">
+            <strong>Nota:</strong> Esta acción no se puede deshacer. El paciente dejará de tener acceso a los beneficios de este convenio.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+        <button
+          onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
+          className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleEliminarConvenio}
+          className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30"
+        >
+          <Trash2 className="w-4 h-4" />
+          Eliminar Convenio
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
-};
+}
 
 export default EditarPacientePage;

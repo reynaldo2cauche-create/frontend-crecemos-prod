@@ -53,11 +53,11 @@ const ArchivosDigitales = ({ paciente }) => {
   // Cargar archivos del paciente
   useEffect(() => {
     const cargarArchivos = async () => {
-      if (!paciente?.id || !currentUser?.id) return;
+      if (!paciente?.id) return;
 
       try {
         setLoadingArchivos(true);
-        const data = await getArchivosPorPaciente(currentUser.id, paciente.id);
+        const data = await getArchivosPorPaciente(paciente.id);
         setArchivos(data || []);
       } catch (error) {
         console.error('Error al cargar archivos:', error);
@@ -68,7 +68,7 @@ const ArchivosDigitales = ({ paciente }) => {
     };
 
     cargarArchivos();
-  }, [paciente?.id, currentUser?.id]);
+  }, [paciente?.id]);
 
   const validarFormulario = () => {
     const nuevosErrores = {};
@@ -110,7 +110,7 @@ const ArchivosDigitales = ({ paciente }) => {
 
     try {
       await eliminarArchivo(archivoAEliminar.id);
-      const archivosActualizados = await getArchivosPorPaciente(currentUser.id, paciente.id);
+      const archivosActualizados = await getArchivosPorPaciente(paciente.id);
       setArchivos(archivosActualizados || []);
       mostrarNotificacion('Archivo eliminado exitosamente', 'success');
     } catch (error) {
@@ -249,7 +249,7 @@ const ArchivosDigitales = ({ paciente }) => {
 
       await subirArchivo(formData);
 
-      const archivosActualizados = await getArchivosPorPaciente(currentUser.id, paciente.id);
+      const archivosActualizados = await getArchivosPorPaciente(paciente.id);
       setArchivos(archivosActualizados || []);
 
       mostrarNotificacion('Archivo subido exitosamente', 'success');
@@ -547,7 +547,7 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esPDF(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}#toolbar=1&navpanes=1&scrollbar=1`}
+                  src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                   className="w-full h-full rounded-lg border-0 shadow-lg"
                   title={archivoVistaPrevia.nombreOriginal}
                 />
