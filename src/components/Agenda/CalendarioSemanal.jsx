@@ -23,19 +23,21 @@ const CalendarioSemanal = ({
  // Generar horas según el día de la semana
   const generarHorasPorDia = (diaSemana) => {
     const horas = [];
-    
+
+    // Sábado (6): 8:00 AM a 2:00 PM
     if (diaSemana === 6) {
-      // Sábado: 8:00 AM a 2:00 PM (sin break, horario continuo)
       let minutos = 8 * 60; // 8:00 AM
       const finMinutos = 14 * 60; // 2:00 PM
-      
+
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
         horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         minutos += 40;
       }
-    } else if (diaSemana >= 1 && diaSemana <= 5) {
+    }
+    // Lunes a viernes (1-5)
+    else if (diaSemana >= 1 && diaSemana <= 5) {
       // Lunes a Viernes: 9:00 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
       // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
@@ -63,7 +65,7 @@ const CalendarioSemanal = ({
         minutos += 40;
       }
     }
-    
+
     return horas;
   };
 
@@ -72,13 +74,18 @@ const CalendarioSemanal = ({
       const lunes = new Date(fecha);
       lunes.setDate(fecha.getDate() - fecha.getDay() + 1);
 
+      // Generar 6 días: lunes a sábado (0-5)
       const dias = Array.from({length: 6}, (_, i) => {
         const dia = new Date(lunes);
         dia.setDate(lunes.getDate() + i);
+
+        // Asegurar que la fecha se mantenga en la zona horaria local
+        const fechaLocal = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
+
         return {
           nombre: dia.toLocaleDateString('es-ES', { weekday: 'long' }),
           numero: dia.getDate(),
-          fecha: new Date(dia),
+          fecha: fechaLocal,
           fechaString: dia.toISOString().split('T')[0]
         };
       });
@@ -148,7 +155,7 @@ const CalendarioSemanal = ({
   const formatearRangoSemana = () => {
     if (diasSemana.length === 0) return '';
     const inicio = diasSemana[0];
-    const fin = diasSemana[5];
+    const fin = diasSemana[4]; // Viernes (último día)
 
     const mesInicio = inicio.fecha.toLocaleDateString('es-ES', { month: 'short' });
     const mesFin = fin.fecha.toLocaleDateString('es-ES', { month: 'short' });
@@ -237,6 +244,11 @@ const CalendarioSemanal = ({
 
                 {/* Horas del día */}
                 <div>
+                  {horasDelDia.length === 0 && (
+                    <div className="p-4 text-center text-gray-500">
+                      No hay horarios disponibles para este día
+                    </div>
+                  )}
                   {horasDelDia.map((hora) => {
                     const citasInfo = getCitasEnSlot(dia, hora);
                     const hayCitas = citasInfo && citasInfo.length > 0;

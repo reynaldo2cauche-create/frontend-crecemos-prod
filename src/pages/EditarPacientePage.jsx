@@ -13,7 +13,7 @@ import EditarTerapeutaModal from '../components/EditarPaciente/EditarTerapeutaMo
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useServicios } from '../hooks/useServicios';
 import { useTerapeutas } from '../hooks/useTerapeutas';
-import { calcularEdad } from '../utils/date';
+import { calcularEdad, calcularEdadDetallada } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
 import { ROLES, canManagePatientStatus } from '../constants/roles';
 import {
@@ -22,7 +22,7 @@ import {
   asignarConvenioPaciente,
   desactivarPacienteConvenio
 } from '../services/conveniosService';
-import { SERVER_BASE_URL } from '../services/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 
 const EditarPacienteSkeleton = () => {
   return (
@@ -672,7 +672,8 @@ const handleEliminarConvenio = async () => {
     </div>
   );
 
-  const edad = calcularEdad(paciente.fecha_nacimiento);
+  const edadDetallada = calcularEdadDetallada(paciente.fecha_nacimiento);
+ 
   const estadoColors = getEstadoColor(paciente.estado?.nombre);
 
   return (
@@ -743,7 +744,7 @@ const handleEliminarConvenio = async () => {
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
           <div className="flex items-center gap-1.5">
             <span className="font-medium text-gray-400">Edad:</span>
-            <span>{edad} años</span>
+            <span>{edadDetallada.texto}</span>
           </div>
           
           <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
@@ -868,8 +869,12 @@ const handleEliminarConvenio = async () => {
                         <div className="w-12 h-12 rounded-full border-2 border-[#7B1FA2] overflow-hidden bg-white flex items-center justify-center transition-all cursor-pointer hover:shadow-md hover:scale-105">
                           {convenio.logo_url ? (
                             <img
-                              src={`${SERVER_BASE_URL}${convenio.logo_url}`}
-                              alt={convenio.nombre}
+                              src={convenio.logo_url
+                                ? (convenio.logo_url.startsWith('/')
+                                  ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                                  : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                                : ''}
+                              alt={convenio.empresa || convenio.nombre}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.target.style.display = 'none';

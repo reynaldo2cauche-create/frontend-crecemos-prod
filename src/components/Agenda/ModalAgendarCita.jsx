@@ -56,23 +56,25 @@ const ModalAgendarCita = ({
   // Generar horas según el día de la semana (igual que en CalendarioSemanal)
   const generarHorasPorFecha = (fechaString, duracion) => {
     if (!fechaString) return [];
-    
+
     const fecha = new Date(fechaString + 'T00:00:00');
     const diaSemana = fecha.getDay();
     const horas = [];
-    
+
+    // Sábado (6): 8:00 AM a 2:00 PM
     if (diaSemana === 6) {
-      // Sábado: 8:00 AM a 2:00 PM (sin break, horario continuo)
       let minutos = 8 * 60; // 8:00 AM
       const finMinutos = 14 * 60; // 2:00 PM
-      
+
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
         horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         minutos += 40;
       }
-    } else if (diaSemana >= 1 && diaSemana <= 5) {
+    }
+    // Lunes a viernes (1-5)
+    else if (diaSemana >= 1 && diaSemana <= 5) {
       // Lunes a Viernes: 9:00 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
       // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
@@ -92,7 +94,7 @@ const ModalAgendarCita = ({
         minutos += 40;
       }
     }
-    
+
     return horas;
   };
 
@@ -428,7 +430,16 @@ const ModalAgendarCita = ({
                       <input
                         type="date"
                         value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                        onChange={(e) => onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value })}
+                        onChange={(e) => {
+                          const fecha = new Date(e.target.value + 'T00:00:00');
+                          const diaSemana = fecha.getDay();
+                          // Solo permitir lunes a viernes (1-5)
+                          if (diaSemana >= 1 && diaSemana <= 5) {
+                            onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                          } else {
+                            alert('Solo se pueden agendar citas de lunes a viernes');
+                          }
+                        }}
                         disabled={esTerapeuta}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                       />
@@ -467,7 +478,16 @@ const ModalAgendarCita = ({
                               <input
                                 type="date"
                                 value={fechaHora.fecha}
-                                onChange={(e) => onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value })}
+                                onChange={(e) => {
+                                  const fecha = new Date(e.target.value + 'T00:00:00');
+                                  const diaSemana = fecha.getDay();
+                                  // Solo permitir lunes a viernes (1-5)
+                                  if (diaSemana >= 1 && diaSemana <= 5) {
+                                    onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                  } else {
+                                    alert('Solo se pueden agendar citas de lunes a viernes');
+                                  }
+                                }}
                                 disabled={esTerapeuta}
                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                               />

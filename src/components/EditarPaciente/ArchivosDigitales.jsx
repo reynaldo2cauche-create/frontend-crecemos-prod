@@ -356,13 +356,48 @@ const ArchivosDigitales = ({ paciente }) => {
                   >
                     <Download className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleEliminarArchivo(archivo)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  {/* PERMISOS DE ELIMINACIÓN:
+                      - ADMIN: Puede eliminar cualquier archivo
+                      - TERAPEUTA: Solo puede eliminar archivos que él mismo subió
+                      - ADMISIÓN: NO puede eliminar ningún archivo
+                  */}
+                  {(() => {
+                    const rolUsuario = currentUser?.rol?.nombre?.toLowerCase() || currentUser?.rol?.toLowerCase() || '';
+                    const esAdmin = ['admin', 'administrador'].includes(rolUsuario);
+                    const esTerapeuta = rolUsuario === 'terapeuta';
+                    const esAdmision = ['admision', 'admisión'].includes(rolUsuario);
+
+                    // Admin puede eliminar todo
+                    if (esAdmin) {
+                      return (
+                        <button
+                          onClick={() => handleEliminarArchivo(archivo)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      );
+                    }
+
+                    // Terapeuta solo puede eliminar sus propios archivos
+                    if (esTerapeuta && archivo.terapeuta?.id === currentUser?.id) {
+                      return (
+                        <button
+                          onClick={() => handleEliminarArchivo(archivo)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar archivo propio"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      );
+                    }
+
+                    // Admisión NO puede eliminar nada
+                    // Terapeutas NO pueden eliminar archivos de otros
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>

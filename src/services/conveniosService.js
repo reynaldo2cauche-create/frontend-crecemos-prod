@@ -11,7 +11,7 @@ import api from './api';
 export const crearConvenio = async (convenioData, logoFile) => {
   try {
     const formData = new FormData();
-    
+
     // Agregar datos del convenio
     Object.keys(convenioData).forEach(key => {
       if (convenioData[key] !== null && convenioData[key] !== undefined) {
@@ -24,16 +24,29 @@ export const crearConvenio = async (convenioData, logoFile) => {
       formData.append('logo', logoFile);
     }
 
-    console.log('Enviando datos del convenio:', Object.fromEntries(formData.entries()));
-    
+    console.log('📤 [CREAR CONVENIO] Datos a enviar:', Object.fromEntries(formData.entries()));
+    console.log('📤 [CREAR CONVENIO] URL:', '/convenios');
+
     const response = await api.post('/convenios', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
+
+    console.log('✅ [CREAR CONVENIO] Respuesta exitosa:', response.data);
+    console.log('✅ [CREAR CONVENIO] Status:', response.status);
+
     return response.data;
   } catch (error) {
-    console.error('Error en crearConvenio:', error);
+    console.error('❌ [CREAR CONVENIO] Error completo:', error);
+    console.error('❌ [CREAR CONVENIO] Error response:', error.response);
+    console.error('❌ [CREAR CONVENIO] Error status:', error.response?.status);
+    console.error('❌ [CREAR CONVENIO] Error data:', error.response?.data);
+    console.error('❌ [CREAR CONVENIO] Error message:', error.message);
+
+    // Mostrar alerta con el error para debugging
+    alert(`Error al crear convenio:\nStatus: ${error.response?.status}\nMensaje: ${error.response?.data?.message || error.message}`);
+
     throw error;
   }
 };

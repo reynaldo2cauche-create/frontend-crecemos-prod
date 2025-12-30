@@ -594,7 +594,11 @@ const TarjetaConvenio = ({ convenio, onEditar, onToggleActivo, onVerDetalle, onD
         <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center shadow-sm">
           {convenio.logo_url && !logoError ? (
             <img
-              src={`${SERVER_BASE_URL}${convenio.logo_url}`}
+              src={convenio.logo_url
+                ? (convenio.logo_url.startsWith('/')
+                  ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                  : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                : ''}
               alt={convenio.empresa}
               className="w-full h-full object-cover"
               onError={() => setLogoError(true)}
@@ -957,7 +961,11 @@ const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
   });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(
-    convenio.logo_url ? `${SERVER_BASE_URL}${convenio.logo_url}` : null
+    convenio.logo_url
+      ? (convenio.logo_url.startsWith('/')
+        ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+        : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+      : null
   );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -1195,9 +1203,12 @@ const ModalDetalleConvenio = ({ convenio, onClose, onEditar }) => {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {convenio.logo_url && !logoError ? (
-                <img 
-                  src={`${SERVER_BASE_URL}${convenio.logo_url}`}
-                  
+                <img
+                  src={convenio.logo_url
+                    ? (convenio.logo_url.startsWith('/')
+                      ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                      : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                    : ''}
                   alt={convenio.empresa}
                   className="w-16 h-16 rounded-xl bg-white/20 object-contain p-2"
                   onError={() => setLogoError(true)}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { verificarPacienteYObtenerBeneficios } from '../services/pacienteService';
-import { SERVER_BASE_URL } from '../services/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 
 const VerificarBeneficios = () => {
   const [dni, setDni] = useState('');
@@ -766,7 +766,9 @@ const VerificarBeneficios = () => {
               <div className="beneficios-grid">
                 {beneficios.map((beneficio) => {
                   const logoUrl = beneficio.convenio?.logo_url
-                    ? `${SERVER_BASE_URL}${beneficio.convenio.logo_url}`
+                    ? (beneficio.convenio.logo_url.startsWith('/')
+                      ? `${API_BASE_URL}/convenios/logo/${beneficio.convenio.logo_url.split('/').pop()}`
+                      : `${API_BASE_URL}/convenios/logo/${beneficio.convenio.logo_url}`)
                     : null;
 
                   const nombreEmpresa = beneficio.convenio?.empresa || beneficio.convenio?.nombre || beneficio.proveedor || 'Empresa';

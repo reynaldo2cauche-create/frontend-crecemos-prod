@@ -3,7 +3,7 @@ import  {initializePageScripts}  from '../utils/initScripts';
 import { useState } from 'react';
 import * as popupService from '../services/popupService';
 import * as conveniosService from '../services/conveniosService';
-import { API_BASE_URL } from '../services/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 import DialogNotice from '../components/DialogNotice/DialogNotice';
 
 
@@ -542,7 +542,11 @@ const cerrarPopup = () => {
               borderRadius: '20px'
             }}>
               <img
-                src={convenio.logo_url ? `${API_BASE_URL.replace('/backend_api', '')}${convenio.logo_url}` : '/assets/img/index/default-logo.png'}
+                src={convenio.logo_url
+                  ? (convenio.logo_url.startsWith('/')
+                    ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                    : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                  : '/assets/img/index/default-logo.png'}
                 className="img-fluid"
                 alt={convenio.empresa}
                 style={{
