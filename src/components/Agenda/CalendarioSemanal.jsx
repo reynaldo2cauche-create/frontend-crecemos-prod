@@ -36,24 +36,24 @@ const CalendarioSemanal = ({
         minutos += 40;
       }
     } else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Lunes a Viernes: 11:00 AM a 8:00 PM
+      // Lunes a Viernes: 9:00 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
       // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
       // Primera cita después del break: 14:00 PM (2:00 PM)
-      
-      let minutos = 11 * 60; // 11:00 AM
+
+      let minutos = 9 * 60; // 9:00 AM
       const ultimaCitaAntesBreak = 12 * 60 + 40; // 12:40 PM
       const primeraCitaDespuesBreak = 14 * 60; // 14:00 PM (2:00 PM)
       const finMinutos = 20 * 60; // 8:00 PM
-      
-      // Horario de la mañana: 11:00 AM hasta 12:40 PM (incluido)
+
+      // Horario de la mañana: 9:00 AM hasta 12:40 PM (incluido)
       while (minutos <= ultimaCitaAntesBreak) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
         horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         minutos += 40;
       }
-      
+
       // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
       minutos = primeraCitaDespuesBreak;
       while (minutos <= finMinutos) {

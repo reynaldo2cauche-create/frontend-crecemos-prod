@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import  {initializePageScripts}  from '../utils/initScripts';
 import { useState } from 'react';
 import * as popupService from '../services/popupService';
+import * as conveniosService from '../services/conveniosService';
 import { API_BASE_URL } from '../services/api';
 import DialogNotice from '../components/DialogNotice/DialogNotice';
 
@@ -10,12 +11,13 @@ export default function HomePage() {
 
  const [currentImage, setCurrentImage] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
-
   const [popupActivo, setPopupActivo] = useState(null);
+  const [convenios, setConvenios] = useState([]);
+  const [cargandoConvenios, setCargandoConvenios] = useState(true);
+
   const heroImages = [
     '/assets/img/index/Carrusel servicios.png',
     '/assets/img/index/carrusel psicologia infantil.png',
-
   ];
 
 
@@ -79,14 +81,14 @@ export default function HomePage() {
 useEffect(() => {
   const cargarPopup = async () => {
     try {
- 
+
       const respuesta = await popupService.obtenerPopupActivo();
-      
+
 
 
       if (respuesta.activo && respuesta.popup) {
         const popup = respuesta.popup;
-        
+
         const ahora = new Date();
         const fechaInicio = new Date(popup.fechaInicio);
         const fechaFin = new Date(popup.fechaFin);
@@ -94,7 +96,7 @@ useEffect(() => {
 
         // Solo mostrar si no hay un popup activo ya visible
         if (!popupActivo) {
-  
+
           setPopupActivo(popup);
           setTimeout(() => setShowPopup(true), 1000);
         } else {
@@ -111,6 +113,25 @@ useEffect(() => {
   // Solo cargar UNA VEZ al montar el componente
   cargarPopup();
 }, []); // Sin intervalo, sin cleanup
+
+// Cargar convenios activos desde la BD
+useEffect(() => {
+  const cargarConvenios = async () => {
+    try {
+      setCargandoConvenios(true);
+      const conveniosActivos = await conveniosService.getConveniosActivos();
+      console.log('Convenios activos obtenidos:', conveniosActivos);
+      setConvenios(conveniosActivos);
+    } catch (error) {
+      console.error('Error al cargar convenios:', error);
+      setConvenios([]);
+    } finally {
+      setCargandoConvenios(false);
+    }
+  };
+
+  cargarConvenios();
+}, []);
 
 const cerrarPopup = () => {
   console.log('🚪 Cerrando popup');
@@ -498,25 +519,11 @@ const cerrarPopup = () => {
         })
       }} />
           <div className="swiper-wrapper align-items-center" style={{ marginBottom: '50px' }}>
-        {[
-          { img: '/assets/img/index/Logo alianzas.png', name: 'Vaxa - Desarrollo Web e Historias Clinicas' },
-          { img: '/assets/img/index/san_marcos.png', name: 'Universidad Mayor de San Marcos' },
-          { img: '/assets/img/index/villareal.png', name: 'Universidad Villareal' },
-          { img: '/assets/img/index/cayetano.png', name: 'Universidad Cayetano Heredia' },
-          { img: '/assets/img/index/logo_marcomedina.jpg', name: 'Doctor Marco Medina' },
-          { img: '/assets/img/index/colegio.png', name: 'I.E.P Sor Ana De Los Ángeles' },
-          { img: '/assets/img/index/logo_light.jpeg', name: 'Consultorio Dental Light' },
-          { img: '/assets/img/index/mamalama.png', name: 'Mamalama' },
-          { img: '/assets/img/index/logo-upn-nuevo.png', name: 'Universidad Privada del Norte' },
-          { img: '/assets/img/index/logo_PEDIATRIKIS.png', name: 'Pediatriks' },
-          { img: '/assets/img/index/fisioestudio360.png', name: 'Fisioestudio 360' },
-          { img: '/assets/img/index/UCH.png', name: 'Universidad de Ciencias y Humanidades' },
-          { img: '/assets/img/index/Aldeas Infantiles SOS Perú.png', name: 'Aldeas Infantiles SOS Perú' }
-        ].map((ally, index) => (
-          <div 
-            key={index} 
-            className="swiper-slide text-center" 
-            style={{ 
+        {convenios.map((convenio) => (
+          <div
+            key={convenio.id}
+            className="swiper-slide text-center"
+            style={{
               padding: '20px 10px',
               display: 'flex',
               flexDirection: 'column',
@@ -534,31 +541,35 @@ const cerrarPopup = () => {
               overflow: 'hidden',
               borderRadius: '20px'
             }}>
-              <img 
-                src={ally.img} 
-                className="img-fluid" 
-                alt={ally.name} 
-                style={{ 
-                  maxHeight: '180px', 
+              <img
+                src={convenio.logo_url ? `${API_BASE_URL.replace('/backend_api', '')}${convenio.logo_url}` : '/assets/img/index/default-logo.png'}
+                className="img-fluid"
+                alt={convenio.empresa}
+                style={{
+                  maxHeight: '180px',
                   maxWidth: '250px',
                   minHeight: '120px',
                   objectFit: 'contain',
                   width: 'auto',
                   height: 'auto',
                   borderRadius: '20px'
-                }} 
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/assets/img/index/default-logo.png';
+                }}
               />
             </div>
-            <h6 
-              className="mt-2" 
-              style={{ 
-                fontSize: '0.9rem', 
+            <h6
+              className="mt-2"
+              style={{
+                fontSize: '0.9rem',
                 lineHeight: '1.3',
                 margin: '0',
                 padding: '0 5px'
               }}
             >
-              {ally.name}
+              {convenio.empresa}
             </h6>
           </div>
         ))}

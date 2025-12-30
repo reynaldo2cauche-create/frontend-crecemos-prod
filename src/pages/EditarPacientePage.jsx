@@ -16,12 +16,10 @@ import { useTerapeutas } from '../hooks/useTerapeutas';
 import { calcularEdad } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
 import { ROLES, canManagePatientStatus } from '../constants/roles';
-import { 
+import {
   getConvenios,
   getConveniosPorPaciente,
   asignarConvenioPaciente,
-  eliminarPacienteConvenio,
-  activarPacienteConvenio,
   desactivarPacienteConvenio
 } from '../services/conveniosService';
 import { SERVER_BASE_URL } from '../services/api';
@@ -638,10 +636,11 @@ const handleAsignarConvenio = async () => {
 
 const handleEliminarConvenio = async () => {
   const { convenio } = modalEliminarConvenio;
-  
+
   try {
-    await eliminarPacienteConvenio(convenio.id);
-    
+    // Hacer eliminación lógica (desactivar) en lugar de eliminar físicamente
+    await desactivarPacienteConvenio(convenio.id);
+
     // Recargar convenios
     const asignados = await getConveniosPorPaciente(id);
     setConveniosPaciente(asignados || []);
@@ -650,36 +649,14 @@ const handleEliminarConvenio = async () => {
     setModalEliminarConvenio({ open: false, convenio: null });
   } catch (error) {
     console.error('Error al eliminar convenio:', error);
-    setSnackbar({ 
-      open: true, 
-      message: error.response?.data?.message || 'Error al eliminar el convenio', 
-      severity: 'error' 
+    setSnackbar({
+      open: true,
+      message: error.response?.data?.message || 'Error al eliminar el convenio',
+      severity: 'error'
     });
   }
 };
 
-const handleToggleConvenioActivo = async (convenio) => {
-  try {
-    if (convenio.activo) {
-      await desactivarPacienteConvenio(convenio.id);
-      setSnackbar({ open: true, message: 'Convenio desactivado', severity: 'success' });
-    } else {
-      await activarPacienteConvenio(convenio.id);
-      setSnackbar({ open: true, message: 'Convenio activado', severity: 'success' });
-    }
-
-    // Recargar convenios
-    const asignados = await getConveniosPorPaciente(id);
-    setConveniosPaciente(asignados || []);
-  } catch (error) {
-    console.error('Error al cambiar estado del convenio:', error);
-    setSnackbar({ 
-      open: true, 
-      message: error.response?.data?.message || 'Error al cambiar el estado del convenio', 
-      severity: 'error' 
-    });
-  }
-};
   if (loading) return <EditarPacienteSkeleton />;
   if (error) return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
@@ -868,11 +845,13 @@ const handleToggleConvenioActivo = async (convenio) => {
               <Building2 className="w-4 h-4 text-[#7B1FA2]" />
               <h3 className="text-xs font-bold text-gray-900">Convenios</h3><span>|</span>
             </div>
-            {conveniosPaciente.length === 0 ? (
+            {conveniosPaciente.filter(pc => pc.activo).length === 0 ? (
               <p className="text-xs text-gray-400 mr-2">Sin convenios</p>
             ) : (
               <div className="flex items-start gap-4">
-                {conveniosPaciente.map((pc) => {
+                {conveniosPaciente
+                  .filter(pc => pc.activo) // Solo mostrar convenios activos
+                  .map((pc) => {
                   const convenio = conveniosDisponibles.find(c => c.id === pc.convenio_id);
                   if (!convenio) return null;
 
@@ -882,12 +861,11 @@ const handleToggleConvenioActivo = async (convenio) => {
                       className="flex flex-col items-center gap-1.5 max-w-[80px]"
                     >
                       {/* Círculo con logo */}
-                      <div className={`group relative ${pc.activo ? 'opacity-100' : 'opacity-40'}`}>
-                        <div className={`w-12 h-12 rounded-full border-2 overflow-hidden bg-white flex items-center justify-center transition-all cursor-pointer ${
-                          pc.activo 
-                            ? 'border-[#7B1FA2] hover:shadow-md hover:scale-105' 
-                            : 'border-gray-300'
-                        }`}>
+                      <div
+                        className="group relative"
+                        onClick={() => setModalDesactivarConvenio({ open: true, convenio: pc })}
+                      >
+                        <div className="w-12 h-12 rounded-full border-2 border-[#7B1FA2] overflow-hidden bg-white flex items-center justify-center transition-all cursor-pointer hover:shadow-md hover:scale-105">
                           {convenio.logo_url ? (
                             <img
                               src={`${SERVER_BASE_URL}${convenio.logo_url}`}
@@ -905,24 +883,18 @@ const handleToggleConvenioActivo = async (convenio) => {
                           </div>
                         </div>
 
-                        <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                          pc.activo ? 'bg-green-500' : 'bg-gray-400'
-                        }`} />
+                        <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-green-500" />
 
-                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1">
+                        <div
+                          className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
+                        >
                           <button
-                            onClick={() => handleToggleConvenioActivo(pc)}
-                            className={`p-1.5 rounded-full transition-all ${
-                              pc.activo ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'
-                            } text-white`}
-                            title={pc.activo ? 'Desactivar' : 'Activar'}
-                          >
-                            {pc.activo ? <XCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-                          </button>
-                          <button
-                            onClick={() => setModalEliminarConvenio({ open: true, convenio: pc })}
-                            className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all"
-                            title="Eliminar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalEliminarConvenio({ open: true, convenio: pc });
+                            }}
+                            className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
+                            title="Eliminar asignación"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -931,7 +903,7 @@ const handleToggleConvenioActivo = async (convenio) => {
 
                       {/* Nombre completo en múltiples líneas */}
                       <p className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-3 break-words w-full">
-                        {convenio.nombre}
+                        {convenio.empresa || convenio.nombre}
                       </p>
                     </div>
                   );
@@ -1222,7 +1194,7 @@ const handleToggleConvenioActivo = async (convenio) => {
       <option value="">Seleccionar convenio...</option>
       {conveniosDisponibles.map(convenio => (
         <option key={convenio.id} value={convenio.id}>
-          {convenio.nombre}
+          {convenio.empresa || convenio.nombre}
         </option>
       ))}
     </select>
@@ -1280,12 +1252,12 @@ const handleToggleConvenioActivo = async (convenio) => {
     />
 
     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-      <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
             <AlertCircle className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-white">Confirmar Eliminación</h2>
+          <h2 className="text-xl font-bold text-white">Eliminar Asignación</h2>
         </div>
         <button
           onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
@@ -1297,14 +1269,17 @@ const handleToggleConvenioActivo = async (convenio) => {
 
       <div className="p-6">
         <p className="text-gray-700 mb-2">
-          ¿Estás seguro de que deseas eliminar la asignación del convenio:
+          ¿Estás seguro de que deseas quitar el convenio:
         </p>
         <p className="text-lg font-semibold text-gray-900 mb-4">
-          "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.nombre}"?
+          "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.empresa}"
         </p>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <p className="text-sm text-red-800">
-            <strong>Nota:</strong> Esta acción no se puede deshacer. El paciente dejará de tener acceso a los beneficios de este convenio.
+        <p className="text-gray-700 mb-4">
+          de este paciente?
+        </p>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <p className="text-sm text-orange-800">
+            <strong>Nota:</strong> El paciente dejará de tener acceso a los beneficios de este convenio. Esta acción puede revertirse volviendo a asignar el convenio.
           </p>
         </div>
       </div>
@@ -1318,15 +1293,16 @@ const handleToggleConvenioActivo = async (convenio) => {
         </button>
         <button
           onClick={handleEliminarConvenio}
-          className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30"
+          className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30"
         >
           <Trash2 className="w-4 h-4" />
-          Eliminar Convenio
+          Quitar Convenio
         </button>
       </div>
     </div>
   </div>
 )}
+
     </div>
   );
 }

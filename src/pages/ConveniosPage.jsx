@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Power, Check, X, Search, Eye, Trash2,
   CheckCircle, XCircle, Building2, FileText,
-  Users, Calendar, AlertCircle, Upload
+  Users, Calendar, AlertCircle, Upload, Gift, Tag,
+  AlertTriangle
 } from 'lucide-react';
 import {
   getConvenios,
@@ -11,7 +12,14 @@ import {
   eliminarConvenio,
   activarConvenio,
   desactivarConvenio,
-  getPacientesPorConvenio
+  getPacientesPorConvenio,
+  getBeneficios,
+  crearBeneficio,
+  actualizarBeneficio,
+  eliminarBeneficio,
+  activarBeneficio,
+  desactivarBeneficio,
+  getCategoriasBeneficios
 } from '../services/conveniosService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 
@@ -27,6 +35,23 @@ export default function ConveniosPage() {
   const [modalDetalle, setModalDetalle] = useState(false);
   const [modalDelete, setModalDelete] = useState(false);
   const [convenioSeleccionado, setConvenioSeleccionado] = useState(null);
+
+  // Estados para beneficios
+  const [modalBeneficios, setModalBeneficios] = useState(false);
+  const [beneficios, setBeneficios] = useState([]);
+  const [loadingBeneficios, setLoadingBeneficios] = useState(false);
+  const [modalNuevoBeneficio, setModalNuevoBeneficio] = useState(false);
+  const [modalEditarBeneficio, setModalEditarBeneficio] = useState(false);
+  const [modalEliminarBeneficio, setModalEliminarBeneficio] = useState({ open: false, beneficio: null });
+  const [beneficioSeleccionado, setBeneficioSeleccionado] = useState(null);
+  const [categoriasBeneficios, setCategoriasBeneficios] = useState([]);
+  const [formBeneficio, setFormBeneficio] = useState({
+    nombre: '',
+    descripcion: '',
+    categoria_id: '',
+    descuento: '',
+    convenio_id: ''
+  });
 
   // Notificaciones
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -85,10 +110,169 @@ export default function ConveniosPage() {
     }
   };
 
+  // =============== FUNCIONES PARA BENEFICIOS ===============
+
+  const cargarBeneficios = async () => {
+    try {
+      setLoadingBeneficios(true);
+      const [beneficiosData, categoriasData] = await Promise.all([
+        getBeneficios(),
+        getCategoriasBeneficios()
+      ]);
+      setBeneficios(Array.isArray(beneficiosData) ? beneficiosData : []);
+      setCategoriasBeneficios(Array.isArray(categoriasData) ? categoriasData : []);
+    } catch (error) {
+      console.error('Error al cargar beneficios:', error);
+      showNotification('Error al cargar beneficios', 'error');
+      setBeneficios([]);
+      setCategoriasBeneficios([]);
+    } finally {
+      setLoadingBeneficios(false);
+    }
+  };
+
+  const handleAbrirBeneficios = () => {
+    setModalBeneficios(true);
+    cargarBeneficios();
+  };
+
+  const handleCrearBeneficio = async () => {
+    try {
+      if (!formBeneficio.nombre || !formBeneficio.convenio_id) {
+        showNotification('Nombre y convenio son obligatorios', 'error');
+        return;
+      }
+
+      console.log('Creando beneficio con datos:', formBeneficio);
+
+      const beneficioData = {
+        nombre: formBeneficio.nombre,
+        descripcion: formBeneficio.descripcion || null,
+        categoria_id: formBeneficio.categoria_id || null,
+        descuento: formBeneficio.descuento || null,
+        convenio_id: parseInt(formBeneficio.convenio_id),
+        activo: true
+      };
+
+      await crearBeneficio(beneficioData);
+
+      showNotification('Beneficio creado exitosamente', 'success');
+      setModalNuevoBeneficio(false);
+      setFormBeneficio({
+        nombre: '',
+        descripcion: '',
+        categoria_id: '',
+        descuento: '',
+        convenio_id: ''
+      });
+      cargarBeneficios();
+    } catch (error) {
+      console.error('Error al crear beneficio:', error);
+      showNotification(error.response?.data?.message || 'Error al crear el beneficio', 'error');
+    }
+  };
+
+  const handleAbrirEditarBeneficio = (beneficio) => {
+    console.log('Abriendo editar beneficio:', beneficio);
+    setBeneficioSeleccionado(beneficio);
+    setFormBeneficio({
+      nombre: beneficio.nombre,
+      descripcion: beneficio.descripcion || '',
+      categoria_id: beneficio.categoria_id ? String(beneficio.categoria_id) : '',
+      descuento: beneficio.descuento || '',
+      convenio_id: String(beneficio.convenio_id)
+    });
+    setModalEditarBeneficio(true);
+  };
+
+  const handleActualizarBeneficio = async () => {
+    try {
+      console.log('🔧 Iniciando actualización de beneficio...');
+      console.log('📝 FormBeneficio:', formBeneficio);
+      console.log('🆔 Beneficio seleccionado ID:', beneficioSeleccionado?.id);
+
+      if (!formBeneficio.nombre || !formBeneficio.convenio_id) {
+        console.error('❌ Validación falló: nombre o convenio_id vacío');
+        showNotification('Nombre y convenio son obligatorios', 'error');
+        return;
+      }
+
+      if (!beneficioSeleccionado || !beneficioSeleccionado.id) {
+        console.error('❌ No hay beneficio seleccionado');
+        showNotification('Error: No se ha seleccionado un beneficio', 'error');
+        return;
+      }
+
+      const beneficioData = {
+        nombre: formBeneficio.nombre.trim(),
+        descripcion: formBeneficio.descripcion?.trim() || null,
+        categoria_id: formBeneficio.categoria_id && formBeneficio.categoria_id !== '' ? parseInt(formBeneficio.categoria_id) : null,
+        descuento: formBeneficio.descuento?.trim() || null,
+        convenio_id: parseInt(formBeneficio.convenio_id)
+      };
+
+      console.log('📤 Datos a enviar:', beneficioData);
+      console.log('🔄 Llamando a actualizarBeneficio con ID:', beneficioSeleccionado.id);
+
+      const resultado = await actualizarBeneficio(beneficioSeleccionado.id, beneficioData);
+
+      console.log('✅ Respuesta del servidor:', resultado);
+
+      showNotification('Beneficio actualizado exitosamente', 'success');
+      setModalEditarBeneficio(false);
+      setBeneficioSeleccionado(null);
+      setFormBeneficio({
+        nombre: '',
+        descripcion: '',
+        categoria_id: '',
+        descuento: '',
+        convenio_id: ''
+      });
+      cargarBeneficios();
+    } catch (error) {
+      console.error('❌ Error completo al actualizar beneficio:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error data:', error.response?.data);
+      showNotification(error.response?.data?.message || 'Error al actualizar el beneficio', 'error');
+    }
+  };
+
+  const handleToggleActivoBeneficio = async (beneficio) => {
+    try {
+      if (beneficio.activo) {
+        await desactivarBeneficio(beneficio.id);
+        showNotification('Beneficio desactivado', 'success');
+      } else {
+        await activarBeneficio(beneficio.id);
+        showNotification('Beneficio activado', 'success');
+      }
+      cargarBeneficios();
+    } catch (error) {
+      console.error('Error al cambiar estado del beneficio:', error);
+      showNotification('Error al cambiar el estado del beneficio', 'error');
+    }
+  };
+
+  const handleEliminarBeneficio = async () => {
+    const { beneficio } = modalEliminarBeneficio;
+
+    try {
+      // Desactivar el beneficio en lugar de eliminarlo (eliminación lógica)
+      await desactivarBeneficio(beneficio.id);
+      showNotification('Beneficio desactivado exitosamente', 'success');
+      setModalEliminarBeneficio({ open: false, beneficio: null });
+      cargarBeneficios();
+    } catch (error) {
+      console.error('Error al desactivar beneficio:', error);
+      showNotification(error.response?.data?.message || 'Error al desactivar el beneficio', 'error');
+      setModalEliminarBeneficio({ open: false, beneficio: null });
+    }
+  };
+
   // Filtrar convenios
   const conveniosFiltrados = convenios.filter(convenio => {
     const matchBusqueda = !busqueda ||
-      convenio.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      convenio.empresa?.toLowerCase().includes(busqueda.toLowerCase()) ||
       convenio.descripcion?.toLowerCase().includes(busqueda.toLowerCase());
 
     const matchEstado = !filtroEstado ||
@@ -134,13 +318,22 @@ export default function ConveniosPage() {
             <p className="text-sm text-gray-500">Administra los convenios institucionales</p>
           </div>
 
-          <button
-            onClick={() => setModalNuevo(true)}
-            className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Convenio
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleAbrirBeneficios}
+              className="flex items-center gap-2 bg-white border-2 border-[#7B1FA2] text-[#7B1FA2] px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#7B1FA2] hover:text-white transition-all shadow-sm"
+            >
+              <Gift className="w-4 h-4" />
+              Gestionar Beneficios
+            </button>
+            <button
+              onClick={() => setModalNuevo(true)}
+              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Convenio
+            </button>
+          </div>
         </div>
 
         {/* Estadísticas */}
@@ -293,6 +486,83 @@ export default function ConveniosPage() {
           onConfirm={handleDelete}
         />
       )}
+
+      {/* MODAL GESTIONAR BENEFICIOS */}
+      {modalBeneficios && (
+        <ModalBeneficios
+          beneficios={beneficios}
+          convenios={convenios}
+          categorias={categoriasBeneficios}
+          loading={loadingBeneficios}
+          onClose={() => setModalBeneficios(false)}
+          onNuevo={() => {
+            setFormBeneficio({
+              nombre: '',
+              descripcion: '',
+              categoria_id: '',
+              descuento: '',
+              convenio_id: ''
+            });
+            setModalNuevoBeneficio(true);
+          }}
+          onEditar={handleAbrirEditarBeneficio}
+          onToggleActivo={handleToggleActivoBeneficio}
+          onEliminar={(beneficio) => setModalEliminarBeneficio({ open: true, beneficio })}
+        />
+      )}
+
+      {/* MODAL NUEVO BENEFICIO */}
+      {modalNuevoBeneficio && (
+        <ModalNuevoBeneficio
+          convenios={convenios}
+          categorias={categoriasBeneficios}
+          formData={formBeneficio}
+          onChange={(e) => setFormBeneficio({ ...formBeneficio, [e.target.name]: e.target.value })}
+          onClose={() => {
+            setModalNuevoBeneficio(false);
+            setFormBeneficio({
+              nombre: '',
+              descripcion: '',
+              categoria_id: '',
+              descuento: '',
+              convenio_id: ''
+            });
+          }}
+          onSubmit={handleCrearBeneficio}
+        />
+      )}
+
+      {/* MODAL EDITAR BENEFICIO */}
+      {modalEditarBeneficio && beneficioSeleccionado && (
+        <ModalEditarBeneficio
+          convenios={convenios}
+          categorias={categoriasBeneficios}
+          beneficio={beneficioSeleccionado}
+          formData={formBeneficio}
+          onChange={(e) => setFormBeneficio({ ...formBeneficio, [e.target.name]: e.target.value })}
+          onClose={() => {
+            setModalEditarBeneficio(false);
+            setBeneficioSeleccionado(null);
+            setFormBeneficio({
+              nombre: '',
+              descripcion: '',
+              categoria_id: '',
+              descuento: '',
+              convenio_id: ''
+            });
+          }}
+          onSubmit={handleActualizarBeneficio}
+        />
+      )}
+
+      {/* MODAL ELIMINAR BENEFICIO */}
+      {modalEliminarBeneficio.open && modalEliminarBeneficio.beneficio && (
+        <ModalEliminarBeneficio
+          beneficio={modalEliminarBeneficio.beneficio}
+          onClose={() => setModalEliminarBeneficio({ open: false, beneficio: null })}
+          onConfirm={handleEliminarBeneficio}
+        />
+      )}
     </div>
   );
 }
@@ -321,12 +591,12 @@ const TarjetaConvenio = ({ convenio, onEditar, onToggleActivo, onVerDetalle, onD
     <div className="group relative bg-white rounded-xl p-4 border border-gray-200 hover:border-[#7B1FA2]/50 hover:shadow-sm transition-all">
       <div className="flex items-start gap-3 mb-3">
         {/* Logo del Convenio - AHORA SE MUESTRA SIEMPRE SI EXISTE */}
-        <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center shadow-sm">
+        <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center shadow-sm">
           {convenio.logo_url && !logoError ? (
-            <img 
-              src={`${SERVER_BASE_URL}${convenio.logo_url}`} 
-              alt={convenio.nombre} 
-              className="w-full h-full object-contain p-1"
+            <img
+              src={`${SERVER_BASE_URL}${convenio.logo_url}`}
+              alt={convenio.empresa}
+              className="w-full h-full object-cover"
               onError={() => setLogoError(true)}
             />
           ) : (
@@ -335,7 +605,7 @@ const TarjetaConvenio = ({ convenio, onEditar, onToggleActivo, onVerDetalle, onD
                 ? 'bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]'
                 : 'bg-gradient-to-br from-gray-400 to-gray-500'
             }`}>
-              <Building2 className="w-6 h-6 text-white" />
+              <Building2 className="w-8 h-8 text-white" />
             </div>
           )}
         </div>
@@ -343,7 +613,7 @@ const TarjetaConvenio = ({ convenio, onEditar, onToggleActivo, onVerDetalle, onD
         {/* Info principal */}
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-gray-900 text-sm leading-tight mb-1">
-            {convenio.nombre}
+            {convenio.empresa}
           </h3>
           {convenio.descripcion && (
             <p className="text-xs text-gray-600 line-clamp-2">
@@ -441,7 +711,7 @@ const TarjetaConvenio = ({ convenio, onEditar, onToggleActivo, onVerDetalle, onD
 // ============== MODAL NUEVO CONVENIO ==============
 const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
-    nombre: '',
+    empresa: '',
     descripcion: '',
     activo: true
   });
@@ -497,8 +767,8 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
   const validarFormulario = () => {
     const erroresNuevos = {};
     
-    if (!formData.nombre?.trim()) {
-      erroresNuevos.nombre = 'El nombre es obligatorio';
+    if (!formData.empresa?.trim()) {
+      erroresNuevos.empresa = 'El nombre de la empresa es obligatorio';
     }
 
     setErrors(erroresNuevos);
@@ -552,10 +822,10 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
               <div className="space-y-4">
                 <InputField 
                   label="Empresa o Institución" 
-                  name="nombre" 
-                  value={formData.nombre} 
+                  name="empresa" 
+                  value={formData.empresa} 
                   onChange={handleChange} 
-                  error={errors.nombre} 
+                  error={errors.empresa} 
                   required 
                   placeholder="Ej: Clínica San Pablo, Corporación ABC"
                 />
@@ -574,13 +844,13 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
                   <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
                     Logo del Convenio
                   </label>
-                  
+
                   {logoPreview ? (
                     <div className="space-y-2">
                       <div className="relative w-32 h-32 border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
-                        <img 
-                          src={logoPreview} 
-                          alt="Preview" 
+                        <img
+                          src={logoPreview}
+                          alt="Preview"
                           className="w-full h-full object-contain"
                         />
                         <button
@@ -596,33 +866,52 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
                       </p>
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#7B1FA2] transition-all">
-                      <input
-                        type="file"
-                        id="logo-upload"
-                        accept="image/jpeg,image/png,image/jpg,image/webp"
-                        onChange={handleLogoChange}
-                        className="hidden"
-                      />
-                      <label htmlFor="logo-upload" className="cursor-pointer">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Upload className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">Subir logo</p>
-                        <p className="text-xs text-gray-500">
-                          PNG, JPG, WEBP (Máx. 5MB)
+                    <div className="space-y-3">
+                      <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#7B1FA2] transition-all">
+                        <input
+                          type="file"
+                          id="logo-upload"
+                          accept="image/jpeg,image/png,image/jpg,image/webp"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                        <label htmlFor="logo-upload" className="cursor-pointer">
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Upload className="w-6 h-6 text-gray-400" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-700 mb-1">Subir logo</p>
+                          <p className="text-xs text-gray-500">
+                            Arrastra una imagen o haz clic para seleccionar
+                          </p>
+                        </label>
+                      </div>
+
+                      {/* Requisitos de la imagen */}
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-blue-900 mb-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Requisitos de la imagen
                         </p>
-                      </label>
+                        <ul className="text-xs text-blue-800 space-y-1">
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-blue-600 mt-0.5">•</span>
+                            <span><strong>Formatos:</strong> PNG, JPG, JPEG o WEBP</span>
+                          </li>
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-blue-600 mt-0.5">•</span>
+                            <span><strong>Peso máximo:</strong> 5 MB</span>
+                          </li>
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-blue-600 mt-0.5">•</span>
+                            <span><strong>Tamaño recomendado:</strong> 500x500 píxeles (cuadrado)</span>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                <CheckboxField
-                  label="Convenio activo desde su creación"
-                  name="activo"
-                  checked={formData.activo}
-                  onChange={handleChange}
-                />
               </div>
             </Section>
           </div>
@@ -662,12 +951,14 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
 // ============== MODAL EDITAR CONVENIO ==============
 const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
-    nombre: convenio.nombre || '',
+    empresa: convenio.empresa || '',
     descripcion: convenio.descripcion || '',
     activo: convenio.activo
   });
   const [logoFile, setLogoFile] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(convenio.logo_url || null);
+  const [logoPreview, setLogoPreview] = useState(
+    convenio.logo_url ? `${SERVER_BASE_URL}${convenio.logo_url}` : null
+  );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -718,8 +1009,8 @@ const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
   const validarFormulario = () => {
     const erroresNuevos = {};
     
-    if (!formData.nombre?.trim()) {
-      erroresNuevos.nombre = 'El nombre es obligatorio';
+    if (!formData.empresa?.trim()) {
+      erroresNuevos.empresa = 'El nombre de la empresa es obligatorio';
     }
 
     setErrors(erroresNuevos);
@@ -754,7 +1045,7 @@ const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white mb-1.5">Editar Convenio</h2>
-              <p className="text-sm text-white/90">{convenio.nombre}</p>
+              <p className="text-sm text-white/90">{convenio.empresa}</p>
             </div>
             <button onClick={onClose} className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all">
               <X className="w-5 h-5" />
@@ -768,10 +1059,10 @@ const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
               <div className="space-y-4">
                 <InputField 
                   label="Nombre del Convenio" 
-                  name="nombre" 
-                  value={formData.nombre} 
+                  name="empresa" 
+                  value={formData.empresa} 
                   onChange={handleChange} 
-                  error={errors.nombre} 
+                  error={errors.empresa} 
                   required 
                   placeholder="Ej: Clínica San Pablo, Corporación ABC"
                 />
@@ -907,7 +1198,7 @@ const ModalDetalleConvenio = ({ convenio, onClose, onEditar }) => {
                 <img 
                   src={`${SERVER_BASE_URL}${convenio.logo_url}`}
                   
-                  alt={convenio.nombre}
+                  alt={convenio.empresa}
                   className="w-16 h-16 rounded-xl bg-white/20 object-contain p-2"
                   onError={() => setLogoError(true)}
                 />
@@ -917,7 +1208,7 @@ const ModalDetalleConvenio = ({ convenio, onClose, onEditar }) => {
                 </div>
               )}
               <div>
-                <h2 className="text-2xl font-bold text-white mb-1.5">{convenio.nombre}</h2>
+                <h2 className="text-2xl font-bold text-white mb-1.5">{convenio.empresa}</h2>
                 <p className="text-sm text-white/90">Información del convenio</p>
               </div>
             </div>
@@ -1078,7 +1369,7 @@ const ModalConfirmDelete = ({ convenio, onClose, onConfirm }) => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-700">
               ¿Estás seguro de que deseas eliminar el convenio{' '}
-              <span className="font-bold text-gray-900">"{convenio.nombre}"</span>?
+              <span className="font-bold text-gray-900">"{convenio.empresa}"</span>?
             </p>
             <p className="text-xs text-red-600 mt-2">
               Nota: Solo se puede eliminar si no tiene pacientes asociados.
@@ -1179,3 +1470,469 @@ const CheckboxField = ({ label, name, checked, onChange }) => (
     </label>
   </div>
 );
+
+// ============== MODAL BENEFICIOS ==============
+const ModalBeneficios = ({ beneficios, convenios, loading, onClose, onNuevo, onEditar, onToggleActivo, onEliminar }) => {
+  const [busquedaBeneficio, setBusquedaBeneficio] = React.useState('');
+
+  const beneficiosFiltrados = beneficios.filter(beneficio => {
+    if (!busquedaBeneficio) return true;
+
+    const searchLower = busquedaBeneficio.toLowerCase();
+    const nombreMatch = beneficio.nombre?.toLowerCase().includes(searchLower);
+    const empresaMatch = beneficio.convenio?.empresa?.toLowerCase().includes(searchLower);
+    const categoriaMatch = beneficio.categoria?.nombre?.toLowerCase().includes(searchLower);
+    const descuentoMatch = beneficio.descuento?.toLowerCase().includes(searchLower);
+
+    return nombreMatch || empresaMatch || categoriaMatch || descuentoMatch;
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b-2 border-gray-100 px-6 py-5 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] rounded-xl flex items-center justify-center">
+              <Gift className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Gestión de Beneficios</h2>
+              <p className="text-xs text-gray-500">Administra los beneficios de los convenios</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onNuevo}
+              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Beneficio
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="w-12 h-12 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin mx-auto"></div>
+                <p className="text-gray-500 mt-3 text-sm">Cargando beneficios...</p>
+              </div>
+            </div>
+          ) : beneficios.length === 0 ? (
+            <div className="text-center py-12">
+              <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-sm">No hay beneficios registrados</p>
+            </div>
+          ) : (
+            <>
+              {/* Buscador */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre, empresa, categoría o descuento..."
+                    value={busquedaBeneficio}
+                    onChange={(e) => setBusquedaBeneficio(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                  />
+                  {busquedaBeneficio && (
+                    <button
+                      onClick={() => setBusquedaBeneficio('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  {busquedaBeneficio ? (
+                    <>
+                      Encontrados: <span className="font-bold text-[#7B1FA2]">{beneficiosFiltrados.length}</span> de {beneficios.length}
+                    </>
+                  ) : (
+                    <>
+                      Activos: <span className="font-bold text-green-600">{beneficios.filter(b => b.activo).length}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {beneficiosFiltrados.length === 0 ? (
+                <div className="text-center py-12">
+                  <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No se encontraron beneficios que coincidan con "{busquedaBeneficio}"</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {beneficiosFiltrados.map(beneficio => {
+                    return (
+                    <div
+                      key={beneficio.id}
+                      className="bg-white border-2 border-gray-100 rounded-xl p-4 hover:border-[#7B1FA2] transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 mb-1">{beneficio.nombre}</h3>
+                          <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />
+                            {beneficio.convenio?.empresa || 'Sin convenio'}
+                          </p>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                          beneficio.activo
+                            ? 'bg-green-50 text-green-700 border-green-100'
+                            : 'bg-gray-50 text-gray-600 border-gray-100'
+                        }`}>
+                          {beneficio.activo ? 'Activo' : 'Inactivo'}
+                        </div>
+                      </div>
+
+                      {beneficio.descripcion && (
+                        <p className="text-sm text-gray-600 mb-3">{beneficio.descripcion}</p>
+                      )}
+
+                      <div className="flex items-center gap-2 mb-3">
+                        {beneficio.categoria?.nombre && (
+                          <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium flex items-center gap-1">
+                            <Tag className="w-3 h-3" />
+                            {beneficio.categoria.nombre}
+                          </span>
+                        )}
+                        {beneficio.descuento && (
+                          <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-xs font-medium">
+                            {beneficio.descuento}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onEditar(beneficio)}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-all"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => onToggleActivo(beneficio)}
+                          className={`p-2 rounded-lg transition-all ${
+                            beneficio.activo
+                              ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                              : 'bg-green-50 text-green-700 hover:bg-green-100'
+                          }`}
+                          title={beneficio.activo ? 'Desactivar' : 'Activar'}
+                        >
+                          <Power className={`w-4 h-4 ${beneficio.activo ? 'text-green-600' : 'text-gray-400'}`} />
+                        </button>
+                        <button
+                          onClick={() => onEliminar(beneficio)}
+                          className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============== MODAL NUEVO BENEFICIO ==============
+const ModalNuevoBeneficio = ({ convenios, categorias = [], formData, onChange, onClose, onSubmit }) => {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+              <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <h2 className="text-base sm:text-xl font-bold text-white truncate">Nuevo Beneficio</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <InputField
+            label="Nombre del Beneficio"
+            name="nombre"
+            value={formData.nombre}
+            onChange={onChange}
+            placeholder="Ej: Descuento en consultas"
+            required
+          />
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+              Convenio <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="convenio_id"
+              value={formData.convenio_id}
+              onChange={onChange}
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+              required
+            >
+              <option value="">Seleccionar convenio...</option>
+              {convenios.filter(c => c.activo).map(convenio => (
+                <option key={convenio.id} value={String(convenio.id)}>
+                  {convenio.empresa}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <TextAreaField
+            label="Descripción"
+            name="descripcion"
+            value={formData.descripcion}
+            onChange={onChange}
+            placeholder="Describe el beneficio en detalle"
+            rows={3}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                Categoría
+              </label>
+              <select
+                name="categoria_id"
+                value={formData.categoria_id}
+                onChange={onChange}
+                className="w-full px-3 sm:px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+              >
+                <option value="">Seleccionar categoría...</option>
+                {categorias.map(categoria => (
+                  <option key={categoria.id} value={String(categoria.id)}>
+                    {categoria.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <InputField
+              label="Descuento"
+              name="descuento"
+              value={formData.descuento}
+              onChange={onChange}
+              placeholder="Ej: 15%, S/50"
+            />
+          </div>
+        </div>
+
+        <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 sm:px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onSubmit}
+            className="px-4 sm:px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all shadow-lg shadow-[#7B1FA2]/30"
+          >
+            Crear Beneficio
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============== MODAL EDITAR BENEFICIO ==============
+const ModalEditarBeneficio = ({ convenios, categorias = [], beneficio, formData, onChange, onClose, onSubmit }) => {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+              <Edit2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <h2 className="text-base sm:text-xl font-bold text-white truncate">Editar Beneficio</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <InputField
+            label="Nombre del Beneficio"
+            name="nombre"
+            value={formData.nombre}
+            onChange={onChange}
+            placeholder="Ej: Descuento en consultas"
+            required
+          />
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+              Convenio <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="convenio_id"
+              value={formData.convenio_id}
+              onChange={onChange}
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+              required
+            >
+              <option value="">Seleccionar convenio...</option>
+              {convenios.filter(c => c.activo).map(convenio => (
+                <option key={convenio.id} value={String(convenio.id)}>
+                  {convenio.empresa}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <TextAreaField
+            label="Descripción"
+            name="descripcion"
+            value={formData.descripcion}
+            onChange={onChange}
+            placeholder="Describe el beneficio en detalle"
+            rows={3}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                Categoría
+              </label>
+              <select
+                name="categoria_id"
+                value={formData.categoria_id}
+                onChange={onChange}
+                className="w-full px-3 sm:px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+              >
+                <option value="">Seleccionar categoría...</option>
+                {categorias.map(categoria => (
+                  <option key={categoria.id} value={String(categoria.id)}>
+                    {categoria.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <InputField
+              label="Descuento"
+              name="descuento"
+              value={formData.descuento}
+              onChange={onChange}
+              placeholder="Ej: 15%, S/50"
+            />
+          </div>
+        </div>
+
+        <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 sm:px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onSubmit}
+            className="px-4 sm:px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all shadow-lg shadow-[#7B1FA2]/30"
+          >
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============== MODAL ELIMINAR BENEFICIO ==============
+const ModalEliminarBeneficio = ({ beneficio, onClose, onConfirm }) => {
+  if (!beneficio) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Desactivar Beneficio</h2>
+              <p className="text-xs text-orange-100 mt-0.5">El beneficio dejará de estar disponible</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="bg-orange-50 border-2 border-orange-100 rounded-xl p-4 mb-4">
+            <p className="text-sm text-gray-700 mb-3">
+              ¿Estás seguro de que deseas desactivar el siguiente beneficio?
+            </p>
+            <div className="bg-white border border-orange-200 rounded-lg p-3">
+              <p className="font-bold text-gray-900 mb-1">{beneficio.nombre}</p>
+              {beneficio.descripcion && (
+                <p className="text-xs text-gray-600 mb-2">{beneficio.descripcion}</p>
+              )}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Building2 className="w-3 h-3" />
+                <span>{beneficio.convenio?.empresa || 'Sin convenio'}</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 text-center">
+            El beneficio no se eliminará permanentemente, solo se desactivará y podrás reactivarlo más tarde.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/30"
+          >
+            Desactivar Beneficio
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

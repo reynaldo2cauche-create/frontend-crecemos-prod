@@ -73,18 +73,18 @@ const ModalAgendarCita = ({
         minutos += 40;
       }
     } else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Lunes a Viernes: 11:00 AM a 8:00 PM
+      // Lunes a Viernes: 9:00 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
       // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
       // Primera cita después del break: 14:00 PM (2:00 PM) - EXACTAMENTE
-      
-      // Horario de la mañana: 11:00 AM hasta 12:40 PM (incluido)
-      horas.push('11:00', '11:40', '12:20');
-      
+
+      // Horario de la mañana: 9:00 AM hasta 12:40 PM (incluido)
+      horas.push('09:00', '09:40', '10:20', '11:00', '11:40', '12:20');
+
       // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
       let minutos = 14 * 60; // 14:00 PM (2:00 PM)
       const finMinutos = 20 * 60; // 8:00 PM
-      
+
       while (minutos <= finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
