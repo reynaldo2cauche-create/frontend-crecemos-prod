@@ -7,6 +7,11 @@ import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 import DialogNotice from '../components/DialogNotice/DialogNotice';
 
 
+const heroImages = [
+  '/assets/img/index/Carrusel servicios.png',
+  '/assets/img/index/carrusel psicologia infantil.png',
+];
+
 export default function HomePage() {
 
  const [currentImage, setCurrentImage] = useState(0);
@@ -14,11 +19,6 @@ export default function HomePage() {
   const [popupActivo, setPopupActivo] = useState(null);
   const [convenios, setConvenios] = useState([]);
   const [cargandoConvenios, setCargandoConvenios] = useState(true);
-
-  const heroImages = [
-    '/assets/img/index/Carrusel servicios.png',
-    '/assets/img/index/carrusel psicologia infantil.png',
-  ];
 
 
 
@@ -64,10 +64,16 @@ export default function HomePage() {
     tab.addEventListener('click', () => handleTabClick(tab));
   });
 
-  // Carrusel de imágenes
+  // Carrusel de imágenes - Auto rotación
   const interval = setInterval(() => {
-    setCurrentImage((prev) => (prev + 1) % heroImages.length);
+    setCurrentImage((prev) => {
+      const next = (prev + 1) % heroImages.length;
+      console.log('🎠 Carrusel rotando:', prev, '→', next);
+      return next;
+    });
   }, 5000);
+
+
 
   // Cleanup function
   return () => {
@@ -76,7 +82,7 @@ export default function HomePage() {
       tab.removeEventListener('click', () => handleTabClick(tab));
     });
   };
-}, [heroImages.length]);
+}, []);
 
 useEffect(() => {
   const cargarPopup = async () => {
@@ -133,6 +139,36 @@ useEffect(() => {
   cargarConvenios();
 }, []);
 
+// Re-inicializar Swiper cuando los convenios se cargan
+useEffect(() => {
+  if (!cargandoConvenios && convenios.length > 0) {
+    // Esperar un frame para asegurar que el DOM se haya actualizado
+    setTimeout(() => {
+      const swiperElement = document.querySelector(".init-swiper");
+      if (swiperElement) {
+        const configElement = swiperElement.querySelector(".swiper-config");
+        if (configElement) {
+          try {
+            // Importar dinámicamente Swiper
+            import('swiper').then(({ default: Swiper }) => {
+              import('swiper/modules').then(({ Autoplay, Pagination }) => {
+                const config = JSON.parse(configElement.innerHTML.trim());
+                new Swiper(swiperElement, {
+                  ...config,
+                  modules: [Autoplay, Pagination]
+                });
+                console.log('✅ Swiper de convenios inicializado correctamente');
+              });
+            });
+          } catch (error) {
+            console.error('Error al re-inicializar Swiper:', error);
+          }
+        }
+      }
+    }, 100);
+  }
+}, [convenios, cargandoConvenios]);
+
 const cerrarPopup = () => {
   console.log('🚪 Cerrando popup');
   setShowPopup(false);
@@ -186,24 +222,27 @@ const cerrarPopup = () => {
           <div className="col-lg-6">
             <div className="hero-image position-relative" data-aos="zoom-out" data-aos-delay="300">
               {/* Carrusel de imágenes */}
-<div className="position-relative hero-carousel" style={{ 
+<div className="position-relative hero-carousel" style={{
   width: '100%',
   aspectRatio: '3/4',
   maxHeight: '600px',
-  borderRadius: '16px', 
-  overflow: 'hidden'
+  borderRadius: '16px',
+  overflow: 'hidden',
+  backgroundColor: '#f0f0f0'
 }}>
   {heroImages.map((img, index) => (
-    <img 
+    <img
       key={index}
       src={img}
       alt={`Terapia y Bienestar ${index + 1}`}
       className="position-absolute top-0 start-0 w-100 h-100 hero-carousel-img"
       style={{
         objectFit: 'cover',
-        objectPosition: 'center 50%', // Más abajo para cortar logo
+        objectPosition: 'center 50%',
         opacity: index === currentImage ? 1 : 0,
-        transition: 'opacity 1s ease-in-out'
+        transition: 'opacity 1s ease-in-out',
+        zIndex: index === currentImage ? 2 : 1,
+        pointerEvents: index === currentImage ? 'auto' : 'none'
       }}
     />
   ))}

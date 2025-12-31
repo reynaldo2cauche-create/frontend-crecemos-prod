@@ -147,11 +147,9 @@ const ArchivosDigitales = ({ paciente }) => {
 
   const handleVistaPrevia = (archivo) => {
     console.log('Vista previa de archivo:', archivo);
+    console.log('ID del archivo:', archivo.id);
     console.log('Ruta del archivo:', archivo.rutaArchivo);
     console.log('Tipo MIME:', archivo.tipoMime);
-    const urlCompleta = `${SERVER_BASE_URL}/${archivo.rutaArchivo}`;
-    console.log('URL completa construida:', urlCompleta);
-    console.log('SERVER_BASE_URL:', SERVER_BASE_URL);
     setArchivoVistaPrevia(archivo);
     setOpenVistaPrevia(true);
   };
@@ -575,7 +573,7 @@ const ArchivosDigitales = ({ paciente }) => {
               {esImagen(archivoVistaPrevia.tipoMime) && (
                 <div className="flex items-center justify-center h-full">
                   <img
-                    src={`${SERVER_BASE_URL}/${archivoVistaPrevia.rutaArchivo}`}
+                    src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
                     alt={archivoVistaPrevia.nombreOriginal}
                     className="max-w-full max-h-full object-contain rounded-lg shadow-lg cursor-zoom-in hover:scale-105 transition-transform"
                     onError={(e) => {
@@ -595,7 +593,7 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esPDF(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${SERVER_BASE_URL}/${archivoVistaPrevia.rutaArchivo}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                  src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                   className="w-full h-full rounded-lg border-0 shadow-lg"
                   title={archivoVistaPrevia.nombreOriginal}
                   onError={(e) => {
@@ -646,7 +644,7 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esTexto(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${SERVER_BASE_URL}/${archivoVistaPrevia.rutaArchivo}`}
+                  src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
                   className="w-full h-full rounded-lg border-0 shadow-lg bg-white p-4"
                   title={archivoVistaPrevia.nombreOriginal}
                   onError={(e) => {
