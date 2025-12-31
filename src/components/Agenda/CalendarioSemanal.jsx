@@ -4,11 +4,7 @@ import {
   ChevronRight,
   Calendar
 } from 'lucide-react';
-
-const ROLES = {
-  TERAPEUTA: 2,
-  ADMIN: 1
-};
+import { ROLES } from '../../constants/roles';
 
 const CalendarioSemanal = ({
   citas = [],
@@ -254,10 +250,17 @@ const CalendarioSemanal = ({
                     const hayCitas = citasInfo && citasInfo.length > 0;
                     const puedeHacerClic = !hayCitas && !esTerapeuta;
 
+                    const handleSlotClick = () => {
+                      console.log('Click en slot:', { dia, hora, puedeHacerClic, hayCitas, esTerapeuta, onSlotClick: !!onSlotClick });
+                      if (puedeHacerClic && onSlotClick) {
+                        onSlotClick(dia, hora);
+                      }
+                    };
+
                     return (
                       <div
                         key={`${dia.fechaString}-${hora}`}
-                        onClick={() => puedeHacerClic && onSlotClick && onSlotClick(dia, hora)}
+                        onClick={handleSlotClick}
                         className={`relative h-[80px] border-b border-gray-200 ${
                           puedeHacerClic
                             ? 'cursor-pointer hover:bg-purple-50/50'

@@ -87,15 +87,22 @@ const Agenda = () => {
   };
 
   const abrirModalDesdeSlot = (dia, hora) => {
-    const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA 
-      ? currentUser.id 
+    console.log('abrirModalDesdeSlot llamado:', { dia, hora, terapeutaFiltro, currentUser: currentUser?.rol });
+
+    const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA
+      ? currentUser.id
       : terapeutaFiltro;
 
-    setSlotSeleccionado({ 
-      dia: dia.nombre, 
+    console.log('doctorId asignado:', doctorId);
+
+    setSlotSeleccionado({
+      dia: dia.nombre,
       hora,
-      fecha: dia.fechaString 
+      fecha: dia.fechaString
     });
+
+    const horaFormateada = formatearHora(hora);
+    console.log('Hora formateada:', horaFormateada, 'Fecha:', dia.fechaString);
 
     setFormularioCita({
       paciente: null,
@@ -103,9 +110,11 @@ const Agenda = () => {
       servicio_id: '',
       motivo_id: '',
       duracion: '',
-      fechasHoras: [{ fecha: dia.fechaString, horaInicio: formatearHora(hora) }],
+      fechasHoras: [{ fecha: dia.fechaString, horaInicio: horaFormateada }],
       nota: ''
     });
+
+    console.log('Abriendo modal...');
     setModalAbierto(true);
   };
 

@@ -100,11 +100,16 @@ const ModalAgendarCita = ({
 
   useEffect(() => {
     if (open) {
+      console.log('Modal abierto con:', {
+        slotSeleccionado,
+        formularioCita,
+        fechasHoras: formularioCita.fechasHoras
+      });
       setQueryPaciente('');
       setTabValue(0);
       setDialogoEliminarAbierto(false);
     }
-  }, [open]);
+  }, [open, slotSeleccionado, formularioCita]);
 
   const abrirDialogoEliminar = () => {
     setDialogoEliminarAbierto(true);
@@ -433,11 +438,11 @@ const ModalAgendarCita = ({
                         onChange={(e) => {
                           const fecha = new Date(e.target.value + 'T00:00:00');
                           const diaSemana = fecha.getDay();
-                          // Solo permitir lunes a viernes (1-5)
-                          if (diaSemana >= 1 && diaSemana <= 5) {
+                          // Solo permitir lunes a sábado (1-6)
+                          if (diaSemana >= 1 && diaSemana <= 6) {
                             onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
                           } else {
-                            alert('Solo se pueden agendar citas de lunes a viernes');
+                            alert('Solo se pueden agendar citas de lunes a sábado');
                           }
                         }}
                         disabled={esTerapeuta}
@@ -445,17 +450,18 @@ const ModalAgendarCita = ({
                       />
                       <select
                         value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                        onChange={(e) => onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value })}
-                        disabled={esTerapeuta || !formularioCita.fechasHoras?.[0]?.fecha || !formularioCita.duracion}
+                        onChange={(e) => {
+                          console.log('Cambiando hora a:', e.target.value);
+                          onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                        }}
+                        disabled={esTerapeuta || !formularioCita.fechasHoras?.[0]?.fecha}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                       >
                         <option value="">
-                          {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' :
-                           !formularioCita.duracion ? 'Seleccione una duración primero' :
-                           'Seleccionar hora...'}
+                          {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
                         </option>
-                        {formularioCita.fechasHoras?.[0]?.fecha && formularioCita.duracion &&
-                          generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, parseInt(formularioCita.duracion)).map(hora => (
+                        {formularioCita.fechasHoras?.[0]?.fecha &&
+                          generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
                             <option key={hora} value={hora}>{hora}</option>
                           ))
                         }
@@ -481,29 +487,30 @@ const ModalAgendarCita = ({
                                 onChange={(e) => {
                                   const fecha = new Date(e.target.value + 'T00:00:00');
                                   const diaSemana = fecha.getDay();
-                                  // Solo permitir lunes a viernes (1-5)
-                                  if (diaSemana >= 1 && diaSemana <= 5) {
+                                  // Solo permitir lunes a sábado (1-6)
+                                  if (diaSemana >= 1 && diaSemana <= 6) {
                                     onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
                                   } else {
-                                    alert('Solo se pueden agendar citas de lunes a viernes');
+                                    alert('Solo se pueden agendar citas de lunes a sábado');
                                   }
                                 }}
                                 disabled={esTerapeuta}
                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                               />
                               <select
-                                value={fechaHora.horaInicio}
-                                onChange={(e) => onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value })}
-                                disabled={esTerapeuta || !fechaHora.fecha || !formularioCita.duracion}
+                                value={fechaHora.horaInicio || ''}
+                                onChange={(e) => {
+                                  console.log('Cambiando hora (no edición) a:', e.target.value);
+                                  onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || !fechaHora.fecha}
                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                               >
                                 <option value="">
-                                  {!fechaHora.fecha ? 'Seleccione una fecha primero' :
-                                   !formularioCita.duracion ? 'Seleccione una duración primero' :
-                                   'Seleccionar hora...'}
+                                  {!fechaHora.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
                                 </option>
-                                {fechaHora.fecha && formularioCita.duracion &&
-                                  generarHorasPorFecha(fechaHora.fecha, parseInt(formularioCita.duracion)).map(hora => (
+                                {fechaHora.fecha &&
+                                  generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
                                     <option key={hora} value={hora}>{hora}</option>
                                   ))
                                 }

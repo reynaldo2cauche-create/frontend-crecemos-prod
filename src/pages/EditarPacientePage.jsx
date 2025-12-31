@@ -159,6 +159,23 @@ useEffect(() => {
           ...data.paciente,
           parejas: data.parejas || []
         };
+
+        // Normalizar fecha de nacimiento para evitar problemas de timezone
+        if (pacienteCompleto.fecha_nacimiento) {
+          const fechaStr = pacienteCompleto.fecha_nacimiento;
+          // Si ya está en formato YYYY-MM-DD, dejarlo así
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+            // Ya está bien, no hacer nada
+          } else {
+            // Si viene con hora (del backend), extraer solo la fecha en UTC para evitar desfase
+            const fecha = new Date(fechaStr);
+            const year = fecha.getUTCFullYear();
+            const month = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(fecha.getUTCDate()).padStart(2, '0');
+            pacienteCompleto.fecha_nacimiento = `${year}-${month}-${day}`;
+          }
+        }
+
         const servicios = await getServiciosPorPaciente(id);
         pacienteCompleto.servicios = servicios;
         setPaciente(pacienteCompleto);
@@ -246,11 +263,20 @@ useEffect(() => {
 
     const pacienteData = datosActualizados || paciente;
 
+    // Ajustar fecha de nacimiento para evitar problemas de timezone
+    let fechaNacimientoAjustada = pacienteData.fecha_nacimiento;
+    if (fechaNacimientoAjustada && typeof fechaNacimientoAjustada === 'string') {
+      // Si es formato YYYY-MM-DD, agregar hora de mediodía para evitar cambios por timezone
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fechaNacimientoAjustada)) {
+        fechaNacimientoAjustada = fechaNacimientoAjustada + 'T12:00:00';
+      }
+    }
+
     const data = {
     nombres: pacienteData.nombres,
     apellido_paterno: pacienteData.apellido_paterno,
     apellido_materno: pacienteData.apellido_materno,
-    fecha_nacimiento: pacienteData.fecha_nacimiento,
+    fecha_nacimiento: fechaNacimientoAjustada,
     tipo_documento_id: pacienteData.tipo_documento?.id || null,
     numero_documento: pacienteData.numero_documento,
     sexo_id: pacienteData.sexo?.id || null,

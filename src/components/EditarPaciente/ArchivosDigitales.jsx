@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, X, Trash2, Download, Eye, FileText, Cloud, AlertCircle } from 'lucide-react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { getTiposArchivo, subirArchivo, getArchivosPorPaciente, eliminarArchivo, descargarArchivo } from '../../services/archivosDigitalesService';
-import { API_BASE_URL } from '../../services/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../services/api';
 
 const ArchivosDigitales = ({ paciente }) => {
   const currentUser = useCurrentUser();
@@ -146,6 +146,12 @@ const ArchivosDigitales = ({ paciente }) => {
   };
 
   const handleVistaPrevia = (archivo) => {
+    console.log('Vista previa de archivo:', archivo);
+    console.log('Ruta del archivo:', archivo.rutaArchivo);
+    console.log('Tipo MIME:', archivo.tipoMime);
+    const urlCompleta = `${SERVER_BASE_URL}/${archivo.rutaArchivo}`;
+    console.log('URL completa construida:', urlCompleta);
+    console.log('SERVER_BASE_URL:', SERVER_BASE_URL);
     setArchivoVistaPrevia(archivo);
     setOpenVistaPrevia(true);
   };
@@ -569,9 +575,16 @@ const ArchivosDigitales = ({ paciente }) => {
               {esImagen(archivoVistaPrevia.tipoMime) && (
                 <div className="flex items-center justify-center h-full">
                   <img
-                    src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}`}
+                    src={`${SERVER_BASE_URL}/${archivoVistaPrevia.rutaArchivo}`}
                     alt={archivoVistaPrevia.nombreOriginal}
                     className="max-w-full max-h-full object-contain rounded-lg shadow-lg cursor-zoom-in hover:scale-105 transition-transform"
+                    onError={(e) => {
+                      console.error('Error al cargar imagen:', e);
+                      console.error('URL intentada:', e.target.src);
+                    }}
+                    onLoad={() => {
+                      console.log('Imagen cargada correctamente');
+                    }}
                     onClick={(e) => {
                       if (e.target.requestFullscreen) {
                         e.target.requestFullscreen();
@@ -582,9 +595,15 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esPDF(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                  src={`${SERVER_BASE_URL}/${archivoVistaPrevia.rutaArchivo}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                   className="w-full h-full rounded-lg border-0 shadow-lg"
                   title={archivoVistaPrevia.nombreOriginal}
+                  onError={(e) => {
+                    console.error('Error al cargar PDF:', e);
+                  }}
+                  onLoad={() => {
+                    console.log('PDF cargado correctamente');
+                  }}
                 />
               )}
               {(esWord(archivoVistaPrevia.tipoMime) || esExcel(archivoVistaPrevia.tipoMime) || esPowerPoint(archivoVistaPrevia.tipoMime)) && (
@@ -627,9 +646,15 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esTexto(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}`}
+                  src={`${SERVER_BASE_URL}/${archivoVistaPrevia.rutaArchivo}`}
                   className="w-full h-full rounded-lg border-0 shadow-lg bg-white p-4"
                   title={archivoVistaPrevia.nombreOriginal}
+                  onError={(e) => {
+                    console.error('Error al cargar archivo de texto:', e);
+                  }}
+                  onLoad={() => {
+                    console.log('Archivo de texto cargado correctamente');
+                  }}
                 />
               )}
               {!puedeVistaPrevia(archivoVistaPrevia) && (

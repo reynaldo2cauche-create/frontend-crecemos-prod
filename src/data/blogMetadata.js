@@ -324,7 +324,7 @@ export const blogMetadata = [
   category: 'psicologia',
   categoryName: 'Psicología',
   readTime: '20 min lectura',
-  author: 'Centro Crecemos',
+  author: 'Centro Crecemos' ,
   heroImage: '/assets/img/blog/crianza-portada.jpg'
 }
   // Aquí agregas más blogs...
