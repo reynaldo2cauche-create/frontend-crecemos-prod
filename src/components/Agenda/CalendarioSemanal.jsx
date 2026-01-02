@@ -16,6 +16,8 @@ const CalendarioSemanal = ({
   currentUser = null
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
+
+
  // Generar horas según el día de la semana
   const generarHorasPorDia = (diaSemana) => {
     const horas = [];
@@ -67,24 +69,38 @@ const CalendarioSemanal = ({
 
   useEffect(() => {
     const calcularDiasSemana = (fecha) => {
-      const lunes = new Date(fecha);
-      lunes.setDate(fecha.getDate() - fecha.getDay() + 1);
+
+
+      // Normalizar a medianoche local para evitar problemas de zona horaria
+      const lunes = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+      const diaSemana = fecha.getDay();
+      const diasParaLunes = diaSemana === 0 ? -6 : 1 - diaSemana; // Si es domingo (0), retroceder 6 días
+      lunes.setDate(lunes.getDate() + diasParaLunes);
+
 
       // Generar 6 días: lunes a sábado (0-5)
       const dias = Array.from({length: 6}, (_, i) => {
-        const dia = new Date(lunes);
-        dia.setDate(lunes.getDate() + i);
+        // Crear cada día directamente en zona horaria local
+        const fechaLocal = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + i);
 
-        // Asegurar que la fecha se mantenga en la zona horaria local
-        const fechaLocal = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
+        // Construir fechaString manualmente para evitar conversión a UTC
+        const year = fechaLocal.getFullYear();
+        const month = String(fechaLocal.getMonth() + 1).padStart(2, '0');
+        const day = String(fechaLocal.getDate()).padStart(2, '0');
+        const fechaString = `${year}-${month}-${day}`;
 
-        return {
-          nombre: dia.toLocaleDateString('es-ES', { weekday: 'long' }),
-          numero: dia.getDate(),
+        const diaData = {
+          nombre: fechaLocal.toLocaleDateString('es-ES', { weekday: 'long' }),
+          numero: fechaLocal.getDate(),
           fecha: fechaLocal,
-          fechaString: dia.toISOString().split('T')[0]
+          fechaString: fechaString
         };
+
+      
+
+        return diaData;
       });
+
       return dias;
     };
 
@@ -99,8 +115,14 @@ const CalendarioSemanal = ({
   const slotDurationMin = 40;
 
   const getCitasEnSlot = (dia, hora) => {
+    // Log detallado solo la primera vez que se renderiza cada día
+    const shouldLog = hora === '09:00' && citas.length > 0;
+
+    
+
     const citasEnSlot = citas.filter(c => {
-      if (c.fecha !== dia.fechaString) return false;
+      const coincide = c.fecha === dia.fechaString;
+      if (!coincide) return false;
 
       const start = c.hora_inicio ? c.hora_inicio.substring(0,5) : (c.hora || null);
       if (!start) return false;
@@ -251,7 +273,6 @@ const CalendarioSemanal = ({
                     const puedeHacerClic = !hayCitas && !esTerapeuta;
 
                     const handleSlotClick = () => {
-                      console.log('Click en slot:', { dia, hora, puedeHacerClic, hayCitas, esTerapeuta, onSlotClick: !!onSlotClick });
                       if (puedeHacerClic && onSlotClick) {
                         onSlotClick(dia, hora);
                       }
