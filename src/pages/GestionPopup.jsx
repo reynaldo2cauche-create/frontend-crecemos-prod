@@ -79,23 +79,40 @@ const GestionPopup = () => {
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      if (file.type.startsWith('image/')) {
-        if (file.size > 2 * 1024 * 1024) {
-          showNotification('La imagen debe pesar menos de 2MB', 'error');
-          return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFormulario(prev => ({
-            ...prev,
-            imagen: file,
-            imagenPreview: reader.result
-          }));
-        };
-        reader.readAsDataURL(file);
-      } else {
-        showNotification('Por favor seleccione un archivo de imagen válido', 'error');
+      // Validar tipo de archivo
+      const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const extensionesPermitidas = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
+      const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+      const esImagenPorTipo = file.type.startsWith('image/') || tiposPermitidos.includes(file.type);
+      const esImagenPorExtension = extensionesPermitidas.includes(extension);
+
+      if (!esImagenPorTipo && !esImagenPorExtension) {
+        showNotification(`Formato no permitido. Solo se aceptan imágenes JPG, PNG, GIF o WEBP. Archivo recibido: ${file.type || 'tipo desconocido'}`, 'error');
+        return;
       }
+
+      // Validar tamaño (aumentado a 5MB para imágenes decorativas)
+      const tamajoMaximo = 5 * 1024 * 1024; // 5MB
+      if (file.size > tamajoMaximo) {
+        const tamanjoMB = (file.size / (1024 * 1024)).toFixed(2);
+        showNotification(`La imagen es muy grande (${tamanjoMB}MB). El tamaño máximo permitido es 5MB. Por favor, comprime la imagen antes de subirla.`, 'error');
+        return;
+      }
+
+      // Si pasa todas las validaciones, leer el archivo
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormulario(prev => ({
+          ...prev,
+          imagen: file,
+          imagenPreview: reader.result
+        }));
+      };
+      reader.onerror = () => {
+        showNotification('Error al leer el archivo. Por favor, intenta nuevamente.', 'error');
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -585,7 +602,7 @@ const GestionPopup = () => {
                           Seleccionar Imagen
                         </p>
                         <p className="text-sm text-gray-600">
-                          PNG, JPG - Máx 2MB - Recomendado: 800x600px
+                          PNG, JPG, GIF, WEBP - Máx 5MB - Recomendado: 800x800px
                         </p>
                       </div>
                     )}

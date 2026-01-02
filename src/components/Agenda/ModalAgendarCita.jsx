@@ -63,42 +63,65 @@ const ModalAgendarCita = ({
     modoEdicion && citaEditando?.id ? citaEditando.id : null
   );
 
+  // Determinar permisos del usuario
+  const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
   const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION;
   const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION;
-  const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
 
-  const terapeutasDisponibles = trabajadores?.filter(t => {
-    const rolId = t.rol_id || t.rol?.id;
-    return rolId === ROLES.TERAPEUTA;
-  }) || [];
+  // Generar horas según el día de la semana (igual que en CalendarioSemanal)
+  const generarHorasPorFecha = (fechaString, duracion) => {
+    if (!fechaString) return [];
 
-  // Determinar tipo de cita según motivo
-  useEffect(() => {
-    if (formularioCita.motivo_id) {
-      const motivoId = parseInt(formularioCita.motivo_id);
+    const fecha = new Date(fechaString + 'T00:00:00');
+    const diaSemana = fecha.getDay();
+    const horas = [];
 
-      if ([1, 2, 3, 4, 5].includes(motivoId)) {
-        setTipoCita('NORMAL');
-      } else if (motivoId === 6) {
-        setTipoCita('REUNION_CLINICA');
-        if (formularioCita.doctor_id && terapeutasReunion.length === 0) {
-          setTerapeutasReunion([{ terapeuta_id: parseInt(formularioCita.doctor_id) }]);
-        }
-        if (formularioCita.servicio_id && serviciosReunion.length === 0) {
-          setServiciosReunion([{ servicio_id: parseInt(formularioCita.servicio_id) }]);
-        }
-      } else if (motivoId === 7) {
-        setTipoCita('VISITA_ESCOLAR');
-      } else {
-        setTipoCita(null);
+    // Sábado (6): 8:00 AM a 2:00 PM
+    if (diaSemana === 6) {
+      let minutos = 8 * 60; // 8:00 AM
+      const finMinutos = 14 * 60; // 2:00 PM
+
+      while (minutos < finMinutos) {
+        const h = Math.floor(minutos / 60);
+        const m = minutos % 60;
+        horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+        minutos += 40;
+      }
+    }
+    // Lunes a viernes (1-5)
+    else if (diaSemana >= 1 && diaSemana <= 5) {
+      // Lunes a Viernes: 9:00 AM a 8:00 PM
+      // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
+      // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
+      // Primera cita después del break: 14:00 PM (2:00 PM) - EXACTAMENTE
+
+      // Horario de la mañana: 9:00 AM hasta 12:40 PM (incluido)
+      horas.push('09:00', '09:40', '10:20', '11:00', '11:40', '12:20');
+
+      // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
+      let minutos = 14 * 60; // 14:00 PM (2:00 PM)
+      const finMinutos = 20 * 60; // 8:00 PM
+
+      while (minutos <= finMinutos) {
+        const h = Math.floor(minutos / 60);
+        const m = minutos % 60;
+        horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+        minutos += 40;
       }
     } else {
       setTipoCita(null);
     }
-  }, [formularioCita.motivo_id]);
+
+    return horas;
+  };
 
   useEffect(() => {
     if (open) {
+      console.log('Modal abierto con:', {
+        slotSeleccionado,
+        formularioCita,
+        fechasHoras: formularioCita.fechasHoras
+      });
       setQueryPaciente('');
       setTabValue(0);
       setDialogoEliminarAbierto(false);
@@ -108,12 +131,48 @@ const ModalAgendarCita = ({
         setServiciosReunion([]);
         setEncargadoVisita({ nombre_completo: '', telefono: '', institucion: '' });
         setDocumentoFirmado(false);
+
+        // Asegurar que fechasHoras tenga al menos un elemento si no lo tiene
+        if (!formularioCita.fechasHoras || formularioCita.fechasHoras.length === 0) {
+          onFormularioChange('fechasHoras', [{ fecha: '', horaInicio: '' }]);
+        }
       } else if (citaEditando) {
         // Cargar datos de la cita en edición
         setDocumentoFirmado(citaEditando.firma_documento === 1 || citaEditando.firma_documento === true);
+
+        // Cargar terapeutas adicionales si es reunión clínica
+        if (citaEditando.terapeutas_adicionales && citaEditando.terapeutas_adicionales.length > 0) {
+          setTerapeutasReunion(citaEditando.terapeutas_adicionales.map(t => ({ terapeuta_id: t.id || t.terapeuta_id })));
+        }
+
+        // Cargar servicios si hay
+        if (citaEditando.servicios && citaEditando.servicios.length > 0) {
+          setServiciosReunion(citaEditando.servicios.map(s => ({ servicio_id: s.servicio_id || s.id })));
+        }
+
+        // Cargar encargado si es visita escolar
+        if (citaEditando.encargado) {
+          setEncargadoVisita(citaEditando.encargado);
+        }
       }
     }
-  }, [open, modoEdicion, citaEditando]);
+  }, [open]);
+
+  // Detectar tipo de cita según motivo_id
+  useEffect(() => {
+    if (formularioCita.motivo_id) {
+      const motivoId = parseInt(formularioCita.motivo_id);
+      if (motivoId === 6) {
+        setTipoCita('REUNION_CLINICA');
+      } else if (motivoId === 7) {
+        setTipoCita('VISITA_ESCOLAR');
+      } else {
+        setTipoCita('NORMAL');
+      }
+    } else {
+      setTipoCita(null);
+    }
+  }, [formularioCita.motivo_id]);
 
   // Funciones para Reunión Clínica
   const agregarTerapeuta = () => setTerapeutasReunion([...terapeutasReunion, { terapeuta_id: '' }]);
@@ -353,79 +412,236 @@ const ModalAgendarCita = ({
 
                 {/* FORMULARIOS POR TIPO */}
                 {tipoCita === 'NORMAL' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Terapeuta */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Terapeuta <span className="text-red-500">*</span>
-                      </label>
-                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                            <User className="w-4 h-4 text-white" />
+                  <>
+                    {/* Terapeuta y Servicio */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Terapeuta <span className="text-red-500">*</span>
+                        </label>
+                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim() : 'No seleccionado'}
+                            </p>
                           </div>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim() : 'No seleccionado'}
-                          </p>
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Servicio <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formularioCita.servicio_id || ''}
+                          onChange={(e) => onFormularioChange('servicio_id', e.target.value)}
+                          disabled={esTerapeuta}
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                        >
+                          <option value="">Seleccionar servicio...</option>
+                          {(() => {
+                            const lista = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []));
+
+                            if (!Array.isArray(lista) || lista.length === 0) {
+                              return <option disabled>No hay servicios disponibles</option>;
+                            }
+
+                            const areasMap = {
+                              1: 'Infantil y Adolescentes',
+                              2: 'Adultos'
+                            };
+
+                            const agrupados = {};
+                            lista.forEach(srv => {
+                              const areaId = srv.area_id || srv.area?.id;
+                              const areaNombre = areasMap[areaId] || 'Otros';
+
+                              if (!agrupados[areaNombre]) {
+                                agrupados[areaNombre] = [];
+                              }
+                              agrupados[areaNombre].push(srv);
+                            });
+
+                            const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
+                            return ordenAreas
+                              .filter(area => agrupados[area] && agrupados[area].length > 0)
+                              .map(areaNombre => (
+                                <optgroup key={areaNombre} label={areaNombre}>
+                                  {agrupados[areaNombre].map(srv => (
+                                    <option key={srv.id} value={srv.id}>
+                                      {srv.nombre || 'Sin nombre'}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ));
+                          })()}
+                        </select>
                       </div>
                     </div>
 
-                    {/* Servicio */}
+                    {/* Duración */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Servicio <span className="text-red-500">*</span>
+                        Duración <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formularioCita.servicio_id || ''}
-                        onChange={(e) => onFormularioChange('servicio_id', e.target.value)}
+                        value={formularioCita.duracion}
+                        onChange={(e) => onFormularioChange('duracion', e.target.value)}
                         disabled={esTerapeuta}
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900
-                        focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/20
-                        transition-all disabled:opacity-60 disabled:bg-gray-50
-                        hover:border-gray-300"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                       >
-                        <option value="">Seleccionar...</option>
-                        {(() => {
-                          const lista = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []));
-                          if (!Array.isArray(lista) || lista.length === 0) {
-                            return <option disabled>No hay servicios</option>;
-                          }
-
-                          const areasMap = { 1: 'Infantil y Adolescentes', 2: 'Adultos' };
-                          const agrupados = {};
-                          lista.forEach(srv => {
-                            const areaId = srv.area_id || srv.area?.id;
-                            const areaNombre = areasMap[areaId] || 'Otros';
-                            if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
-                            agrupados[areaNombre].push(srv);
-                          });
-
-                          const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                          return ordenAreas
-                            .filter(area => agrupados[area] && agrupados[area].length > 0)
-                            .map(areaNombre => (
-                              <optgroup key={areaNombre} label={areaNombre}>
-                                {agrupados[areaNombre].map(srv => (
-                                  <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
-                                ))}
-                              </optgroup>
-                            ));
-                        })()}
+                        <option value="">Seleccionar duración...</option>
+                        {duraciones.map((duracion) => (
+                          <option key={duracion.valor} value={duracion.valor}>
+                            {duracion.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                  </div>
+
+                    {/* Fechas y Horas */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
+                        </label>
+                        {!esTerapeuta && !modoEdicion && (
+                          <button
+                            onClick={() => onFormularioChange('agregarFechaHora', null)}
+                            className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Agregar
+                          </button>
+                        )}
+                      </div>
+
+                      {modoEdicion ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            type="date"
+                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                            onChange={(e) => {
+                              const fecha = new Date(e.target.value + 'T00:00:00');
+                              const diaSemana = fecha.getDay();
+                              if (diaSemana >= 1 && diaSemana <= 6) {
+                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                              } else {
+                                alert('Solo se pueden agendar citas de lunes a sábado');
+                              }
+                            }}
+                            disabled={esTerapeuta}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                          />
+                          <select
+                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                            onChange={(e) => {
+                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                            }}
+                            disabled={esTerapeuta || !formularioCita.fechasHoras?.[0]?.fecha}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                          >
+                            <option value="">
+                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                            </option>
+                            {formularioCita.fechasHoras?.[0]?.fecha &&
+                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                <option key={hora} value={hora}>{hora}</option>
+                              ))
+                            }
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {formularioCita.fechasHoras && formularioCita.fechasHoras.length > 0 ? (
+                            formularioCita.fechasHoras.map((fechaHora, index) => (
+                              <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
+                                {!esTerapeuta && formularioCita.fechasHoras.length > 1 && (
+                                  <button
+                                    onClick={() => onFormularioChange('eliminarFechaHora', index)}
+                                    className="absolute top-2 right-2 text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <input
+                                    type="date"
+                                    value={fechaHora.fecha}
+                                    onChange={(e) => {
+                                      const fecha = new Date(e.target.value + 'T00:00:00');
+                                      const diaSemana = fecha.getDay();
+                                      if (diaSemana >= 1 && diaSemana <= 6) {
+                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                      } else {
+                                        alert('Solo se pueden agendar citas de lunes a sábado');
+                                      }
+                                    }}
+                                    disabled={esTerapeuta}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                                  />
+                                  <select
+                                    value={fechaHora.horaInicio || ''}
+                                    onChange={(e) => {
+                                      onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value });
+                                    }}
+                                    disabled={esTerapeuta || !fechaHora.fecha}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                                  >
+                                    <option value="">
+                                      {!fechaHora.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                    </option>
+                                    {fechaHora.fecha &&
+                                      generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                        <option key={hora} value={hora}>{hora}</option>
+                                      ))
+                                    }
+                                  </select>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                              <p className="text-sm text-gray-500">Haga clic en "Agregar" para agregar fechas y horas</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Nota */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nota (Opcional)</label>
+                      <textarea
+                        value={formularioCita.nota || ''}
+                        onChange={(e) => onFormularioChange('nota', e.target.value)}
+                        disabled={esTerapeuta}
+                        rows={2}
+                        placeholder="Observaciones adicionales..."
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] resize-none disabled:opacity-60"
+                      />
+                    </div>
+                  </>
                 )}
 
                 {tipoCita === 'REUNION_CLINICA' && (
-                  <div className="space-y-4">
+                  <>
                     {/* Terapeutas */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-semibold text-gray-700">Terapeutas *</label>
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Terapeutas <span className="text-red-500">*</span>
+                        </label>
                         {!esTerapeuta && (
-                          <button onClick={agregarTerapeuta} className="text-xs font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1 rounded-md transition-all">
-                            + Agregar
+                          <button
+                            onClick={agregarTerapeuta}
+                            className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Agregar
                           </button>
                         )}
                       </div>
@@ -440,12 +656,23 @@ const ModalAgendarCita = ({
                                 className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
                               >
                                 <option value="">Seleccionar terapeuta...</option>
-                                {terapeutasDisponibles.map((t) => (
-                                  <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
-                                ))}
+                                {trabajadores
+                                  .filter(t => {
+                                    const rolId = t.rol_id || t.rol?.id;
+                                    const esActivo = t.estado === true;
+                                    return rolId === ROLES.TERAPEUTA && esActivo;
+                                  })
+                                  .map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                      {t.nombres} {t.apellidos}
+                                    </option>
+                                  ))}
                               </select>
                               {!esTerapeuta && (
-                                <button onClick={() => eliminarTerapeuta(index)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all">
+                                <button
+                                  onClick={() => eliminarTerapeuta(index)}
+                                  className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"
+                                >
                                   <X className="w-4 h-4" />
                                 </button>
                               )}
@@ -454,7 +681,7 @@ const ModalAgendarCita = ({
                         </div>
                       ) : (
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                          <p className="text-sm text-gray-500">Agrega terapeutas para la reunión</p>
+                          <p className="text-sm text-gray-500">Haga clic en "Agregar" para agregar terapeutas</p>
                         </div>
                       )}
                     </div>
@@ -462,10 +689,16 @@ const ModalAgendarCita = ({
                     {/* Servicios */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-semibold text-gray-700">Servicios *</label>
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Servicios <span className="text-red-500">*</span>
+                        </label>
                         {!esTerapeuta && (
-                          <button onClick={agregarServicio} className="text-xs font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1 rounded-md transition-all">
-                            + Agregar
+                          <button
+                            onClick={agregarServicio}
+                            className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Agregar
                           </button>
                         )}
                       </div>
@@ -508,7 +741,10 @@ const ModalAgendarCita = ({
                                 })()}
                               </select>
                               {!esTerapeuta && (
-                                <button onClick={() => eliminarServicio(index)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all">
+                                <button
+                                  onClick={() => eliminarServicio(index)}
+                                  className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"
+                                >
                                   <X className="w-4 h-4" />
                                 </button>
                               )}
@@ -517,11 +753,81 @@ const ModalAgendarCita = ({
                         </div>
                       ) : (
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                          <p className="text-sm text-gray-500">Agrega servicios para la reunión</p>
+                          <p className="text-sm text-gray-500">Haga clic en "Agregar" para agregar servicios</p>
                         </div>
                       )}
                     </div>
-                  </div>
+
+                    {/* Duración */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Duración <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formularioCita.duracion}
+                        onChange={(e) => onFormularioChange('duracion', e.target.value)}
+                        disabled={esTerapeuta}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
+                      >
+                        <option value="">Seleccionar duración...</option>
+                        {duraciones.map((duracion) => (
+                          <option key={duracion.valor} value={duracion.valor}>{duracion.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Fecha y Hora */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Fecha y Hora <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="date"
+                          value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                          onChange={(e) => {
+                            const fecha = new Date(e.target.value + 'T00:00:00');
+                            const diaSemana = fecha.getDay();
+                            if (diaSemana >= 1 && diaSemana <= 6) {
+                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                            } else {
+                              alert('Solo se pueden agendar citas de lunes a sábado');
+                            }
+                          }}
+                          disabled={esTerapeuta}
+                          className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
+                        />
+                        <input
+                          type="time"
+                          value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                          onChange={(e) => {
+                            const hora = e.target.value;
+                            if (hora >= '08:00' && hora <= '20:00') {
+                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: hora });
+                            }
+                          }}
+                          disabled={esTerapeuta}
+                          min="08:00"
+                          max="20:00"
+                          step="300"
+                          className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Nota */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nota (Opcional)</label>
+                      <textarea
+                        value={formularioCita.nota || ''}
+                        onChange={(e) => onFormularioChange('nota', e.target.value)}
+                        disabled={esTerapeuta}
+                        rows={2}
+                        placeholder="Observaciones adicionales..."
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] resize-none disabled:opacity-60"
+                      />
+                    </div>
+                  </>
                 )}
 
                 {tipoCita === 'VISITA_ESCOLAR' && (
@@ -641,68 +947,6 @@ const ModalAgendarCita = ({
                       </select>
                     </div>
                   </div>
-                )}
-
-                {/* FECHA, HORA, DURACIÓN */}
-                {tipoCita && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha y Hora *</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value })}
-                            disabled={esTerapeuta}
-                            className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
-                          />
-                          <input
-                            type="time"
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              const hora = e.target.value;
-                              if (hora >= '08:00' && hora <= '20:00') {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: hora });
-                              }
-                            }}
-                            disabled={esTerapeuta}
-                            min="08:00"
-                            max="20:00"
-                            step="300"
-                            className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Duración *</label>
-                        <select
-                          value={formularioCita.duracion}
-                          onChange={(e) => onFormularioChange('duracion', e.target.value)}
-                          disabled={esTerapeuta}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
-                        >
-                          <option value="">Duración...</option>
-                          {duraciones.map((duracion) => (
-                            <option key={duracion.valor} value={duracion.valor}>{duracion.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nota (Opcional)</label>
-                      <textarea
-                        value={formularioCita.nota || ''}
-                        onChange={(e) => onFormularioChange('nota', e.target.value)}
-                        disabled={esTerapeuta}
-                        rows={2}
-                        placeholder="Observaciones adicionales..."
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] resize-none disabled:opacity-60"
-                      />
-                    </div>
-                  </>
                 )}
               </div>
             )}

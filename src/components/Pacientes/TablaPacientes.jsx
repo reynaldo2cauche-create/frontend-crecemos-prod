@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   UserCircle, Phone, MapPin, Calendar, FileText, X,
   Clock, Stethoscope, Mail, Home, AlertCircle, Heart, Pill, User, Users,
-  Edit2, Trash2, Check, ChevronRight, Grid3x3, List, Eye
+  Edit2, Trash2, Check, ChevronRight, Grid3x3, List, Eye, Building2
 } from 'lucide-react';
 import { canViewContactInfo, canViewServiceInfo, canManagePatientStatus, isAdministrador } from '../../constants/roles';
 import { cambiarVisibilidadPaciente } from '../../services/pacienteService';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../services/api';
+import { getConveniosPorPaciente } from '../../services/conveniosService';
 
 const calcularEdad = (fechaNacimiento) => {
   if (!fechaNacimiento) return 'N/A';
@@ -23,7 +25,6 @@ const formatearFecha = (fechaStr) => {
   if (!fechaStr) return 'No especificada';
 
   try {
-    // Si la fecha está en formato yyyy-mm-dd
     if (typeof fechaStr === 'string' && fechaStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = fechaStr.split('-');
       const fecha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
@@ -31,7 +32,6 @@ const formatearFecha = (fechaStr) => {
       return `${day} ${monthNames[parseInt(month) - 1]}, ${year}`;
     }
 
-    // Si la fecha viene como timestamp
     const fecha = new Date(fechaStr);
     if (isNaN(fecha.getTime())) {
       return 'Fecha inválida';
@@ -59,6 +59,117 @@ const getEstadoColor = (nombreEstado) => {
   return colorMap[nombreEstado] || colorMap['Inactivo'];
 };
 
+// Función para construir la URL del logo igual que en EditarPacientePage
+const construirUrlLogo = (logo_url) => {
+  if (!logo_url) return null;
+  
+  // Si la URL ya es completa (http:// o https://)
+  if (logo_url.startsWith('http')) {
+    return logo_url;
+  }
+  
+  // Si es una ruta relativa (empieza con /)
+  if (logo_url.startsWith('/')) {
+    return `${API_BASE_URL}/convenios/logo/${logo_url.split('/').pop()}`;
+  }
+  
+  // Si es solo el nombre del archivo
+  return `${API_BASE_URL}/convenios/logo/${logo_url}`;
+};
+
+// Componente para mostrar logos de convenios
+const ConveniosDisplay = ({ pacienteId, convenios: propConvenios }) => {
+  const [convenios, setConvenios] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const cargarConvenios = async () => {
+      if (!pacienteId) {
+        setConvenios([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await getConveniosPorPaciente(pacienteId);
+        setConvenios(data || []);
+      } catch (error) {
+        console.error('Error al cargar convenios:', error);
+        setConvenios([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarConvenios();
+  }, [pacienteId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-4 border-2 border-gray-300 border-t-[#7B1FA2] rounded-full animate-spin"></div>
+        <span className="text-xs text-gray-400">Cargando...</span>
+      </div>
+    );
+  }
+
+  // Solo mostrar convenios activos
+  const conveniosActivos = convenios.filter(c => c.activo === true || c.activo === 1 || c.activo === 'ACTIVO');
+
+  if (conveniosActivos.length === 0) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-gray-400">Sin convenios</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {conveniosActivos.slice(0, 3).map((pc, idx) => {
+        // Extraer el objeto convenio de la relación paciente-convenio
+        const convenio = pc.convenio || pc;
+        const logoUrl = construirUrlLogo(convenio.logo_url);
+        const nombreConvenio = convenio.empresa || convenio.nombre || 'Convenio';
+        
+        return (
+          <div
+            key={idx}
+            className="relative group"
+            title={nombreConvenio}
+          >
+            <div className="w-8 h-8 rounded-full border-2 border-[#7B1FA2] overflow-hidden bg-white flex items-center justify-center">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={nombreConvenio}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const fallback = e.target.parentElement.querySelector('.fallback-logo');
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div className={`fallback-logo absolute inset-0 ${logoUrl ? 'hidden' : 'flex'} items-center justify-center bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]`}>
+                <Building2 className="w-4 h-4 text-white" />
+              </div>
+            </div>
+            
+            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-white bg-green-500" />
+          </div>
+        );
+      })}
+      
+      {conveniosActivos.length > 3 && (
+        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center">
+          <span className="text-xs font-medium text-gray-600">+{conveniosActivos.length - 3}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Tarjeta minimalista con colores balanceados
 const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
   const estadoColors = getEstadoColor(paciente.estado?.nombre);
@@ -75,13 +186,11 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
         }
       `}
     >
-      {/* Barra lateral de selección - VERDE LIMA */}
       {seleccionado && (
         <div className="absolute -left-0.5 top-4 bottom-4 w-1 bg-[#A3C644] rounded-r-full" />
       )}
 
       <div className="flex items-start gap-3">
-        {/* Avatar - morado elegante cuando seleccionado */}
         <div className={`
           flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm transition-all
           ${seleccionado 
@@ -92,14 +201,12 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
           {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
         </div>
         
-        {/* Info principal */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className="font-bold text-gray-900 text-sm leading-tight">
               {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
             </h3>
             
-            {/* Estado badge - mantener colores originales */}
             <div className={`
               flex items-center gap-1.5 px-2.5 py-1 rounded-lg border flex-shrink-0
               ${estadoColors.bg} ${estadoColors.border}
@@ -111,7 +218,6 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
             </div>
           </div>
 
-          {/* Info secundaria con iconos de colores */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs text-gray-600">
               <FileText className="w-3 h-3 flex-shrink-0 text-blue-500" />
@@ -121,16 +227,38 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
               <span>{calcularEdad(paciente.fecha_nacimiento)}</span>
             </div>
             
-            {canViewServiceInfo(user) && paciente.servicio && (
-              <div className="flex items-center gap-2 text-xs">
-                <Stethoscope className="w-3 h-3 flex-shrink-0 text-[#A3C644]" />
-                <span className="font-medium text-gray-700 truncate">{paciente.servicio.nombre}</span>
+            {canViewServiceInfo(user) && paciente.servicios && paciente.servicios.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {paciente.servicios.map((servicio, idx) => {
+                  const colores = [
+                    { bg: 'bg-purple-100', text: 'text-purple-700' },
+                    { bg: 'bg-blue-100', text: 'text-blue-700' },
+                    { bg: 'bg-green-100', text: 'text-green-700' },
+                    { bg: 'bg-orange-100', text: 'text-orange-700' },
+                    { bg: 'bg-pink-100', text: 'text-pink-700' },
+                    { bg: 'bg-indigo-100', text: 'text-indigo-700' }
+                  ];
+                  const color = colores[idx % colores.length];
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`inline-flex items-center gap-1 ${color.bg} rounded px-2 py-0.5`}
+                    >
+                      <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{servicio.servicio_nombre}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
+
+            {/* Convenios en vista tarjeta */}
+            <div className="mt-1">
+              <ConveniosDisplay pacienteId={paciente.id} />
+            </div>
           </div>
         </div>
 
-        {/* Indicador chevron - verde lima */}
         <ChevronRight className={`
           w-4 h-4 flex-shrink-0 transition-all
           ${seleccionado ? 'text-[#A3C644]' : 'text-gray-300 group-hover:text-[#A3C644]'}
@@ -144,7 +272,28 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
 const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOcultado }) => {
   const [ocultando, setOcultando] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [convenios, setConvenios] = useState([]);
+  const [loadingConvenios, setLoadingConvenios] = useState(false);
   const estadoColors = getEstadoColor(paciente.estado?.nombre);
+
+  useEffect(() => {
+    const cargarConvenios = async () => {
+      if (!paciente.id) return;
+      
+      try {
+        setLoadingConvenios(true);
+        const data = await getConveniosPorPaciente(paciente.id);
+        setConvenios(data || []);
+      } catch (error) {
+        console.error('Error al cargar convenios:', error);
+        setConvenios([]);
+      } finally {
+        setLoadingConvenios(false);
+      }
+    };
+
+    cargarConvenios();
+  }, [paciente.id]);
 
   const handleOcultar = async () => {
     setOcultando(true);
@@ -192,21 +341,20 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
     </div>
   );
 
+  // Solo convenios activos
+  const conveniosActivos = convenios.filter(c => c.activo);
+
   return (
     <>
-      {/* Overlay */}
       <div 
         className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Panel lateral */}
       <div className="fixed right-0 top-0 bottom-0 w-full sm:max-w-2xl bg-white shadow-xl z-50 overflow-hidden flex flex-col px-0">
-        {/* Header con gradiente morado suave */}
         <div className="flex-shrink-0 bg-gradient-to-r from-[#7B1FA2] via-[#8E24AA] to-[#AB47BC] p-4 sm:p-6">
           <div className="flex items-start justify-between mb-3 sm:mb-4">
             <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-              {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-sm">
                   {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
@@ -230,7 +378,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               </div>
             </div>
             
-            {/* Botón cerrar */}
             <button
               onClick={onClose}
               className="flex-shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all"
@@ -239,7 +386,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
             </button>
           </div>
 
-          {/* Estado y badges */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <div className={`
               flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border bg-white/95
@@ -256,9 +402,10 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               {formatearFecha(paciente.fecha_creacion || paciente.created_at)}
             </div>
           </div>
+
+        
         </div>
 
-        {/* Botones de acción */}
         <div className="flex-shrink-0 px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-2">
           <button
             onClick={() => onEditar(paciente.id)}
@@ -279,10 +426,8 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
           )}
         </div>
 
-        {/* Contenido scrolleable con colores variados */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6 space-y-8 sm:space-y-10">
-            {/* Datos Personales - Azul */}
             <Section 
               title="Datos Personales" 
               icon={User} 
@@ -301,7 +446,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               </div>
             </Section>
 
-            {/* Información de Contacto - Verde */}
             {canViewContactInfo(user) && (
               <Section 
                 title="Contacto" 
@@ -323,7 +467,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               </Section>
             )}
 
-            {/* Responsable - Naranja */}
             {paciente.responsable_nombre && (
               <Section 
                 title="Datos del Responsable" 
@@ -357,7 +500,57 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               </Section>
             )}
 
-            {/* Información Médica - Rojo */}
+            {/* Convenios - Morado */}
+            {loadingConvenios ? (
+              <div className="py-8 text-center">
+                <div className="w-8 h-8 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin mx-auto"></div>
+                <p className="text-sm text-gray-500 mt-2">Cargando convenios...</p>
+              </div>
+            ) : conveniosActivos.length > 0 && (
+              <Section 
+                title="Convenios" 
+                icon={Building2} 
+                color="text-[#7B1FA2]" 
+                bgColor="bg-[#7B1FA2]/10"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {conveniosActivos.map((pc, idx) => {
+                    const convenio = pc.convenio || pc;
+                    const logoUrl = construirUrlLogo(convenio.logo_url);
+                    const nombreConvenio = convenio.empresa || convenio.nombre || 'Convenio';
+
+                    return (
+                      <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 flex flex-col items-center gap-2">
+                        <div className="relative w-16 h-16 rounded-full border-2 border-[#7B1FA2] overflow-hidden bg-white flex items-center justify-center">
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt={nombreConvenio}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                const fallback = e.target.parentElement.querySelector('.fallback-logo');
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div className={`fallback-logo absolute inset-0 ${logoUrl ? 'hidden' : 'flex'} items-center justify-center bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]`}>
+                            <Building2 className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-gray-900">
+                            {nombreConvenio}
+                          </p>
+                         
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Section>
+            )}
+
             <Section 
               title="Información Médica" 
               icon={Heart} 
@@ -375,7 +568,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               </div>
             </Section>
 
-            {/* Información Adicional - Morado */}
             <Section 
               title="Información Adicional" 
               icon={FileText} 
@@ -388,7 +580,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
               </div>
             </Section>
 
-            {/* Consentimientos - Verde Lima */}
             {canViewContactInfo(user) && (
               <Section 
                 title="Consentimientos" 
@@ -416,7 +607,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
         </div>
       </div>
 
-      {/* Modal de confirmación */}
       {showConfirm && (
         <div 
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]"
@@ -469,13 +659,11 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
 const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEditar, user, emptyMessage, onPacienteOcultado }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
-  // Cargar preferencia de vista desde localStorage
   const [viewMode, setViewMode] = useState(() => {
     const savedView = localStorage.getItem('pacientes_viewMode');
-    return savedView || 'grid'; // Por defecto 'grid'
+    return savedView || 'grid';
   });
 
-  // Guardar preferencia cuando cambie el viewMode
   useEffect(() => {
     localStorage.setItem('pacientes_viewMode', viewMode);
   }, [viewMode]);
@@ -507,7 +695,6 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
 
   return (
     <>
-      {/* Botones de cambio de vista */}
       <div className="flex items-center justify-end mb-4 px-0">
         <div className="flex items-center bg-gray-100 rounded-lg p-1">
           <button
@@ -537,7 +724,6 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
         </div>
       </div>
 
-      {/* Vista de Tarjetas */}
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {pacientes.map((paciente) => (
@@ -552,150 +738,149 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
         </div>
       )}
 
-     {/* Vista de Lista */}
-{viewMode === 'list' && (
-<div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto -mx-4 md:-mx-16">
-      <table className="w-full">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Paciente
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Documento
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Edad
-            </th>
-            {canViewServiceInfo(user) && (
-              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Servicio
-              </th>
-            )}
-            {canViewContactInfo(user) && (
-              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Contacto
-              </th>
-            )}
-            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Estado
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Acciones
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {pacientes.map((paciente) => {
-            const estadoColors = getEstadoColor(paciente.estado?.nombre);
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto -mx-4 md:-mx-16">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Paciente
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Documento
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Edad
+                  </th>
+                  {canViewServiceInfo(user) && (
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Servicios
+                    </th>
+                  )}
+                  {canViewContactInfo(user) && (
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Contacto
+                    </th>
+                  )}
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Convenios
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Estado
+                  </th>
+                 
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {pacientes.map((paciente) => {
+                  const estadoColors = getEstadoColor(paciente.estado?.nombre);
 
-            return (
-              <tr
-                key={paciente.id}
-                className={`hover:bg-gray-50 transition-colors group ${
-                  pacienteSeleccionadoId === paciente.id ? 'bg-[#A3C644]/5' : ''
-                }`}
-              >
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
-                      pacienteSeleccionadoId === paciente.id
-                        ? 'bg-gradient-to-br from-[#9C27B0] to-[#BA68C8]'
-                        : 'bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]'
-                    }`}>
-                      {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-900 font-medium">
-                      {paciente.numero_documento}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-700">
-                      {calcularEdad(paciente.fecha_nacimiento)}
-                    </span>
-                  </div>
-                </td>
-                {canViewServiceInfo(user) && (
-                  <td className="px-4 py-4">
-                    {paciente.servicio ? (
-                      <div className="flex items-center gap-2">
-                        <Stethoscope className="w-4 h-4 text-[#A3C644] flex-shrink-0" />
-                        <span className="text-sm text-gray-700">
-                          {paciente.servicio.nombre}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
-                  </td>
-                )}
-                {canViewContactInfo(user) && (
-                  <td className="px-4 py-4">
-                    {paciente.celular ? (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        <span className="text-sm text-gray-700">
-                          {paciente.celular}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
-                  </td>
-                )}
-                <td className="px-4 py-4">
-                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${estadoColors.bg} ${estadoColors.border}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${estadoColors.dot}`} />
-                    <span className={`text-xs font-semibold ${estadoColors.text} uppercase tracking-wide`}>
-                      {paciente.estado?.nombre}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
+                  return (
+                    <tr
+                      key={paciente.id}
                       onClick={() => handleClickPaciente(paciente)}
-                      className="p-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
-                      title="Ver detalles"
+                      className={`hover:bg-gray-50 transition-colors group cursor-pointer ${
+                        pacienteSeleccionadoId === paciente.id ? 'bg-[#A3C644]/5' : ''
+                      }`}
                     >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleClickPaciente(paciente);
-                        setTimeout(() => onEditar(paciente.id), 100);
-                      }}
-                      className="p-2 text-[#A3C644] hover:bg-green-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+                            pacienteSeleccionadoId === paciente.id
+                              ? 'bg-gradient-to-br from-[#9C27B0] to-[#BA68C8]'
+                              : 'bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]'
+                          }`}>
+                            {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-900 font-medium">
+                            {paciente.numero_documento}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-700">
+                            {calcularEdad(paciente.fecha_nacimiento)}
+                          </span>
+                        </div>
+                      </td>
+                      {canViewServiceInfo(user) && (
+                        <td className="px-4 py-4">
+                          {paciente.servicios && paciente.servicios.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {paciente.servicios.map((servicio, idx) => {
+                                const colores = [
+                                  { bg: 'bg-purple-100', text: 'text-purple-700' },
+                                  { bg: 'bg-blue-100', text: 'text-blue-700' },
+                                  { bg: 'bg-green-100', text: 'text-green-700' },
+                                  { bg: 'bg-orange-100', text: 'text-orange-700' },
+                                  { bg: 'bg-pink-100', text: 'text-pink-700' },
+                                  { bg: 'bg-indigo-100', text: 'text-indigo-700' }
+                                ];
+                                const color = colores[idx % colores.length];
 
-      {/* Modal lateral */}
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`inline-flex items-center gap-1 ${color.bg} rounded px-2 py-0.5`}
+                                  >
+                                    <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{servicio.servicio_nombre}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                      )}
+                      {canViewContactInfo(user) && (
+                        <td className="px-4 py-4">
+                          {paciente.celular ? (
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="text-sm text-gray-700">
+                                {paciente.celular}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                      )}
+                      <td className="px-4 py-4">
+                        <ConveniosDisplay pacienteId={paciente.id} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${estadoColors.bg} ${estadoColors.border}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${estadoColors.dot}`} />
+                          <span className={`text-xs font-semibold ${estadoColors.text} uppercase tracking-wide`}>
+                            {paciente.estado?.nombre}
+                          </span>
+                        </div>
+                      </td>
+                     
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {modalAbierto && pacienteSeleccionado && (
         <ModalDetallesPaciente
           paciente={pacienteSeleccionado}

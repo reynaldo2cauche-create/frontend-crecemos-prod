@@ -64,7 +64,8 @@ const menuItems = [
       { text: 'Historial de Pagos', path: '/intranet/rrhh/historial', icon: ClockIcon },
       { text: 'Dashboard', path: '/intranet/rrhh/dashboard', icon: ChartBarIcon }
     ]
-  }
+  },
+  { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon, adminOnly: true },
 ];
 
 const Sidebar = () => {

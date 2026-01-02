@@ -28,6 +28,7 @@ import PistachosBlog from './nutricion/PistachosBlog';
 import ViolenciaDomesticaBlog from './psicologia/ViolenciaDomesticaBlog';
 import Dia25NoviembreBlog from './psicologia/Dia25NoviembreBlog';
 import TCABlog from './psicologia/TCABlog';
+import PatronesCrianzaBlog from './psicologia/PatronesCrianzaBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -68,6 +69,7 @@ export const blogComponents = {
   'naranja-jugo-fruta-vitamina-c-ninos': NaranjaJugoBlog,
   'pasas-alimento-energetico-moderacion-ninos': PasasBlog,
   'pistachos-fruto-seco-seguro-ninos': PistachosBlog,
+  'patrones-crianza-romper-circulo': PatronesCrianzaBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -84,4 +86,5 @@ export {
   TCABlog,
   DiaDiscapacidadBlog,
   DiaDerechosHumanosBlog,
+  PatronesCrianzaBlog,
 };

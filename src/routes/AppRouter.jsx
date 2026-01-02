@@ -52,6 +52,7 @@ import GratificacionesPage from '../pages/rrhh/GratificacionesPage';
 import HistorialPagosPage from '../pages/rrhh/HistorialPagosPage';
 import DashboardRRHH from '../pages/rrhh/DashboardRRHH';
 import VacacionesPage from '../pages/rrhh/VacacionesPage';
+import ConveniosPage from '../pages/ConveniosPage';
 
 // Páginas de Auditoría
 import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
@@ -206,6 +207,16 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <EditarPacientePage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/convenios" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ConveniosPage />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

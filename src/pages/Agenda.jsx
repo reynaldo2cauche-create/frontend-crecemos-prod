@@ -87,15 +87,19 @@ const Agenda = () => {
   };
 
   const abrirModalDesdeSlot = (dia, hora) => {
-    const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA 
-      ? currentUser.id 
+
+    const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA
+      ? currentUser.id
       : terapeutaFiltro;
 
-    setSlotSeleccionado({ 
-      dia: dia.nombre, 
+
+    setSlotSeleccionado({
+      dia: dia.nombre,
       hora,
-      fecha: dia.fechaString 
+      fecha: dia.fechaString
     });
+
+    const horaFormateada = formatearHora(hora);
 
     setFormularioCita({
       paciente: null,
@@ -103,9 +107,10 @@ const Agenda = () => {
       servicio_id: '',
       motivo_id: '',
       duracion: '',
-      fechasHoras: [{ fecha: dia.fechaString, horaInicio: formatearHora(hora) }],
+      fechasHoras: [{ fecha: dia.fechaString, horaInicio: horaFormateada }],
       nota: ''
     });
+
     setModalAbierto(true);
   };
 
@@ -389,7 +394,7 @@ const Agenda = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
-        
+
         {/* Notificación */}
         {snackbar.open && (
           <div className={`fixed top-6 right-6 z-[9999] px-5 py-3.5 rounded-xl shadow-lg border transform transition-all duration-300 ${

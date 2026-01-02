@@ -6,8 +6,8 @@ import {
   CircularProgress,
   Chip
 } from '@mui/material';
-import { Search, X, Filter, RefreshCw } from 'lucide-react';
-import { getPacientes, getEstadosPaciente } from '../services/pacienteService';
+import { Search, X, Filter, RefreshCw, Users, UserX, UserCheck, UserCog, Stethoscope, MessageSquare, User } from 'lucide-react';
+import { getPacientes, getEstadosPaciente, getEstadisticasPacientes } from '../services/pacienteService';
 import { getDistritos, getServicios } from '../services/catalogoService';
 import TarjetasPacientes from '../components/Pacientes/TablaPacientes';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -46,6 +46,7 @@ export const ListaPacientes = () => {
   const [estados, setEstados] = useState([]);
   const [servicios, setServicios] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [estadisticas, setEstadisticas] = useState(null);
 
   useEffect(() => {
     const tieneFiltrosActivos = searchParams.distritoId || searchParams.estadoId || 
@@ -150,15 +151,17 @@ export const ListaPacientes = () => {
   useEffect(() => {
     const cargarDatosAdicionales = async () => {
       try {
-        const [distritosData, estadosData, serviciosData] = await Promise.all([
+        const [distritosData, estadosData, serviciosData, estadisticasData] = await Promise.all([
           getDistritos(),
           getEstadosPaciente(),
-          getServicios()
+          getServicios(),
+          getEstadisticasPacientes()
         ]);
-        
+
         setDistritos(distritosData || []);
         setEstados(estadosData || []);
         setServicios(serviciosData || []);
+        setEstadisticas(estadisticasData || null);
       } catch (error) {
         console.error('Error cargando datos adicionales:', error);
       }
@@ -293,6 +296,10 @@ export const ListaPacientes = () => {
       const data = await getPacientes(url);
       setPacientes(data);
       setFilteredPacientes(data);
+      
+      // ✅ RECARGAR ESTADÍSTICAS AUTOMÁTICAMENTE
+      const estadisticasData = await getEstadisticasPacientes();
+      setEstadisticas(estadisticasData || null);
     } catch (err) {
       console.error('Error al recargar pacientes:', err);
     } finally {
@@ -360,6 +367,90 @@ export const ListaPacientes = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Lista de Pacientes</h1>
         <p className="text-gray-600">Gestiona y visualiza todos tus pacientes</p>
       </div>
+
+      {/* Estadísticas Cards - Estilo RRHH - Una sola fila */}
+      {estadisticas && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {/* Pacientes Registrados este mes */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-600">Registrados este Mes</span>
+              <div className="w-8 h-8 bg-green-50 rounded-xl flex items-center justify-center">
+                <UserCheck className="w-4 h-4 text-green-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{estadisticas?.pacientesActivosMes || 0}</div>
+            <div className="text-xs text-gray-500 mt-0.5 capitalize">
+              {new Date().toLocaleDateString('es-ES', { month: 'long' })} {new Date().getFullYear()}
+            </div>
+          </div>
+
+          {/* Pacientes Dados de baja este mes */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-600">Dados de Baja</span>
+              <div className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center">
+                <UserX className="w-4 h-4 text-red-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{estadisticas?.pacientesInactivosMes || 0}</div>
+            <div className="text-xs text-gray-500 mt-0.5 capitalize">
+              {new Date().toLocaleDateString('es-ES', { month: 'long' })} {new Date().getFullYear()}
+            </div>
+          </div>
+
+          {/* Total de Pacientes Activos */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-600">Total Activos</span>
+              <div className="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center">
+                <Users className="w-4 h-4 text-purple-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{filteredPacientes.length}</div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              Pacientes actualmente
+            </div>
+          </div>
+
+          {/* Desglose por Estados - Mismo card en la misma fila */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-600">Por Estado</span>
+              <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                <Stethoscope className="w-4 h-4 text-blue-600" />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {estadisticas.estadisticas.map((est) => {
+                // Colores específicos por estado
+                const getEstadoColor = (nombreEstado) => {
+                  const colorMap = {
+                    'Nuevo': { bg: 'bg-green-100', text: 'text-green-700' },
+                    'Entrevista': { bg: 'bg-blue-100', text: 'text-blue-700' },
+                    'Evaluacion': { bg: 'bg-orange-100', text: 'text-orange-700' },
+                    'Terapia': { bg: 'bg-purple-100', text: 'text-purple-700' },
+                    'Inactivo': { bg: 'bg-gray-100', text: 'text-gray-700' }
+                  };
+                  return colorMap[nombreEstado] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+                };
+
+                const color = getEstadoColor(est.estadoNombre);
+
+                return (
+                  <div
+                    key={est.estadoId}
+                    className={`inline-flex items-center justify-center gap-0.5 ${color.bg} rounded px-1.5 py-0.5`}
+                  >
+                    <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{est.estadoNombre}</span>
+                    <span className={`text-[10px] font-bold ${color.text}`}>{est.total}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filtros Section - Estilo moderno */}
       <div className="mb-6">

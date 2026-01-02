@@ -1,12 +1,12 @@
 // Datos estáticos para la agenda
 
-export const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+export const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // Horarios fijos para el calendario (40 minutos de intervalo)
-// Cubre desde 8:00 AM (sábados) hasta 8:00 PM (lunes-viernes)
+// Cubre desde 9:00 AM hasta 8:00 PM (lunes-viernes)
 export const horas = [
-  '08:00', '08:40', '09:20', '10:00', '10:40', '11:20', '12:00', '12:40',
-  '13:20', '14:00', '14:40', '15:20', '16:00', '16:40', '17:20', '18:00',
+  '09:00', '09:40', '10:20', '11:00', '11:40', '12:20',
+  '14:00', '14:40', '15:20', '16:00', '16:40', '17:20', '18:00',
   '18:40', '19:20', '20:00'
 ];
 
@@ -130,8 +130,8 @@ export const generarHorasDisponibles = (duracionMinutos, diaSemana) => {
     inicioMin = 8 * 60; // 8:00 = 480 minutos
     finMin = 14 * 60; // 14:00 = 840 minutos
   } else {
-    // Lunes a Viernes: 11:00 AM a 8:00 PM
-    inicioMin = 11 * 60; // 11:00 = 660 minutos
+    // Lunes a Viernes: 9:00 AM a 8:00 PM
+    inicioMin = 9 * 60; // 9:00 = 540 minutos
     finMin = 20 * 60; // 20:00 = 1200 minutos
   }
 
@@ -188,7 +188,7 @@ export const esHorarioBloqueado = (hora, diaSemana) => {
     return true;
   }
 
-  // Sábado (6): solo se trabaja de 8:00 AM a 2:00 PM
+  // Sábado (6): 8:00 AM a 2:00 PM
   if (diaSemana === 6) {
     const inicioSabado = 8 * 60; // 8:00 = 480 minutos
     const finSabado = 14 * 60; // 14:00 = 840 minutos
@@ -198,16 +198,15 @@ export const esHorarioBloqueado = (hora, diaSemana) => {
       return true;
     }
 
-    // No hay refrigerio los sábados
-    return false;
+    return false; // Dentro del horario permitido en sábado
   }
 
-  // Lunes a Viernes: 11:00 AM a 8:00 PM
+  // Lunes a Viernes: 9:00 AM a 8:00 PM
   if (diaSemana >= 1 && diaSemana <= 5) {
-    const inicioLaboral = 11 * 60; // 11:00 = 660 minutos
+    const inicioLaboral = 9 * 60; // 9:00 = 540 minutos
     const finLaboral = 20 * 60; // 20:00 = 1200 minutos
 
-    // Bloquear antes de las 11:00 AM o después de las 8:00 PM
+    // Bloquear antes de las 9:00 AM o después de las 8:00 PM
     if (horaMinutos < inicioLaboral || horaMinutos >= finLaboral) {
       return true;
     }

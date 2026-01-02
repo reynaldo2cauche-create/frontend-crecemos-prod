@@ -4,11 +4,7 @@ import {
   ChevronRight,
   Calendar
 } from 'lucide-react';
-
-const ROLES = {
-  TERAPEUTA: 2,
-  ADMIN: 1
-};
+import { ROLES } from '../../constants/roles';
 
 const CalendarioSemanal = ({
   citas = [],
@@ -20,40 +16,44 @@ const CalendarioSemanal = ({
   currentUser = null
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
+
+
  // Generar horas según el día de la semana
   const generarHorasPorDia = (diaSemana) => {
     const horas = [];
-    
+
+    // Sábado (6): 8:00 AM a 2:00 PM
     if (diaSemana === 6) {
-      // Sábado: 8:00 AM a 2:00 PM (sin break, horario continuo)
       let minutos = 8 * 60; // 8:00 AM
       const finMinutos = 14 * 60; // 2:00 PM
-      
+
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
         horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         minutos += 40;
       }
-    } else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Lunes a Viernes: 11:00 AM a 8:00 PM
+    }
+    // Lunes a viernes (1-5)
+    else if (diaSemana >= 1 && diaSemana <= 5) {
+      // Lunes a Viernes: 9:00 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
       // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
       // Primera cita después del break: 14:00 PM (2:00 PM)
-      
-      let minutos = 11 * 60; // 11:00 AM
+
+      let minutos = 9 * 60; // 9:00 AM
       const ultimaCitaAntesBreak = 12 * 60 + 40; // 12:40 PM
       const primeraCitaDespuesBreak = 14 * 60; // 14:00 PM (2:00 PM)
       const finMinutos = 20 * 60; // 8:00 PM
-      
-      // Horario de la mañana: 11:00 AM hasta 12:40 PM (incluido)
+
+      // Horario de la mañana: 9:00 AM hasta 12:40 PM (incluido)
       while (minutos <= ultimaCitaAntesBreak) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
         horas.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         minutos += 40;
       }
-      
+
       // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
       minutos = primeraCitaDespuesBreak;
       while (minutos <= finMinutos) {
@@ -63,25 +63,44 @@ const CalendarioSemanal = ({
         minutos += 40;
       }
     }
-    
+
     return horas;
   };
 
   useEffect(() => {
     const calcularDiasSemana = (fecha) => {
-      const lunes = new Date(fecha);
-      lunes.setDate(fecha.getDate() - fecha.getDay() + 1);
 
+
+      // Normalizar a medianoche local para evitar problemas de zona horaria
+      const lunes = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+      const diaSemana = fecha.getDay();
+      const diasParaLunes = diaSemana === 0 ? -6 : 1 - diaSemana; // Si es domingo (0), retroceder 6 días
+      lunes.setDate(lunes.getDate() + diasParaLunes);
+
+
+      // Generar 6 días: lunes a sábado (0-5)
       const dias = Array.from({length: 6}, (_, i) => {
-        const dia = new Date(lunes);
-        dia.setDate(lunes.getDate() + i);
-        return {
-          nombre: dia.toLocaleDateString('es-ES', { weekday: 'long' }),
-          numero: dia.getDate(),
-          fecha: new Date(dia),
-          fechaString: dia.toISOString().split('T')[0]
+        // Crear cada día directamente en zona horaria local
+        const fechaLocal = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + i);
+
+        // Construir fechaString manualmente para evitar conversión a UTC
+        const year = fechaLocal.getFullYear();
+        const month = String(fechaLocal.getMonth() + 1).padStart(2, '0');
+        const day = String(fechaLocal.getDate()).padStart(2, '0');
+        const fechaString = `${year}-${month}-${day}`;
+
+        const diaData = {
+          nombre: fechaLocal.toLocaleDateString('es-ES', { weekday: 'long' }),
+          numero: fechaLocal.getDate(),
+          fecha: fechaLocal,
+          fechaString: fechaString
         };
+
+      
+
+        return diaData;
       });
+
       return dias;
     };
 
@@ -96,8 +115,14 @@ const CalendarioSemanal = ({
   const slotDurationMin = 40;
 
   const getCitasEnSlot = (dia, hora) => {
+    // Log detallado solo la primera vez que se renderiza cada día
+    const shouldLog = hora === '09:00' && citas.length > 0;
+
+    
+
     const citasEnSlot = citas.filter(c => {
-      if (c.fecha !== dia.fechaString) return false;
+      const coincide = c.fecha === dia.fechaString;
+      if (!coincide) return false;
 
       const start = c.hora_inicio ? c.hora_inicio.substring(0,5) : (c.hora || null);
       if (!start) return false;
@@ -148,7 +173,7 @@ const CalendarioSemanal = ({
   const formatearRangoSemana = () => {
     if (diasSemana.length === 0) return '';
     const inicio = diasSemana[0];
-    const fin = diasSemana[5];
+    const fin = diasSemana[4]; // Viernes (último día)
 
     const mesInicio = inicio.fecha.toLocaleDateString('es-ES', { month: 'short' });
     const mesFin = fin.fecha.toLocaleDateString('es-ES', { month: 'short' });
@@ -237,15 +262,26 @@ const CalendarioSemanal = ({
 
                 {/* Horas del día */}
                 <div>
+                  {horasDelDia.length === 0 && (
+                    <div className="p-4 text-center text-gray-500">
+                      No hay horarios disponibles para este día
+                    </div>
+                  )}
                   {horasDelDia.map((hora) => {
                     const citasInfo = getCitasEnSlot(dia, hora);
                     const hayCitas = citasInfo && citasInfo.length > 0;
                     const puedeHacerClic = !hayCitas && !esTerapeuta;
 
+                    const handleSlotClick = () => {
+                      if (puedeHacerClic && onSlotClick) {
+                        onSlotClick(dia, hora);
+                      }
+                    };
+
                     return (
                       <div
                         key={`${dia.fechaString}-${hora}`}
-                        onClick={() => puedeHacerClic && onSlotClick && onSlotClick(dia, hora)}
+                        onClick={handleSlotClick}
                         className={`relative h-[80px] border-b border-gray-200 ${
                           puedeHacerClic
                             ? 'cursor-pointer hover:bg-purple-50/50'

@@ -596,7 +596,12 @@ const VerificarDocumentos = () => {
 
               {documento && (
                 <>
-                  <div className="verificar-info-cards">
+                  <div className="verificar-info-cards" style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '20px'
+                  }}>
+                    {/* Tarjeta 1: Información del Documento */}
                     <div className="verificar-info-card">
                       <div className="verificar-card-label">Código</div>
                       <div className="verificar-card-value verificar-code-value">{documento.codigo}</div>
@@ -614,52 +619,55 @@ const VerificarDocumentos = () => {
                       )}
                     </div>
 
-                  {documento.destinatario && (
-  <div className="verificar-info-card">
-    <div className="verificar-card-label">
-      {documento.tipoDestinatario === 'paciente' ? 'Paciente' : 'Trabajador'}
-    </div>
-    <div className="verificar-card-value">
-      <strong>
-        {`${documento.destinatario.nombres} ${documento.destinatario.apellidos}`}
-      </strong>
-      <br />
-      <span className="verificar-dni-text">
-        DNI {mostrarDNI(documento.destinatario.dni)}
-      </span>
-    </div>
-    
-    <div className="verificar-card-divider"></div>
-    
-    {/* Si es TRABAJADOR, muestra especialidad */}
-    {documento.tipoDestinatario === 'trabajador' ? (
-      <>
-        <div className="verificar-card-label">Especialidad</div>
-        <div className="verificar-card-value">
-          {documento.destinatario.especialidad?.nombre || documento.destinatario.especialidad || 'No especificada'}
-        </div>
-      </>
-    ) : (
-      /* Si es PACIENTE, muestra estado activo/inactivo */
-      <>
-        <div className="verificar-card-label">Estado</div>
-        <div className="verificar-card-value">
-          <span className={esDestinatarioActivo(documento.destinatario.estado) ? 'verificar-estado-activo' : 'verificar-estado-inactivo'}>
-            ● {obtenerTextoEstado(documento.destinatario.estado)}
-          </span>
-        </div>
-      </>
-    )}
-  </div>
-)}
+                    {/* Tarjeta 2: Información del Destinatario */}
+                    {documento.destinatario && (
+                      <div className="verificar-info-card">
+                        <div className="verificar-card-label">
+                          {documento.tipoDestinatario === 'paciente' ? 'Paciente' : 'Trabajador'}
+                        </div>
+                        <div className="verificar-card-value">
+                          <strong>
+                            {`${documento.destinatario.nombres} ${documento.destinatario.apellidos}`}
+                          </strong>
+                          <br />
+                          <span className="verificar-dni-text">
+                            DNI {mostrarDNI(documento.destinatario.dni)}
+                          </span>
+                        </div>
 
+                        <div className="verificar-card-divider"></div>
+
+                        {/* Si es TRABAJADOR, muestra especialidad */}
+                        {documento.tipoDestinatario === 'trabajador' ? (
+                          <>
+                            <div className="verificar-card-label">Especialidad</div>
+                            <div className="verificar-card-value">
+                              {documento.destinatario.especialidad?.nombre || documento.destinatario.especialidad || 'No especificada'}
+                            </div>
+                          </>
+                        ) : (
+                          /* Si es PACIENTE, muestra estado activo/inactivo */
+                          <>
+                            <div className="verificar-card-label">Estado</div>
+                            <div className="verificar-card-value">
+                              <span className={esDestinatarioActivo(documento.destinatario.estado) ? 'verificar-estado-activo' : 'verificar-estado-inactivo'}>
+                                ● {obtenerTextoEstado(documento.destinatario.estado)}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tarjeta 3: Fechas */}
                     <div className="verificar-info-card">
                       <div className="verificar-card-label">Fecha de emisión</div>
                       <div className="verificar-card-value">{formatDate(documento.fechaEmision)}</div>
+                      <div className="verificar-card-divider"></div>
                       <div className="verificar-card-label">Vigencia</div>
                       <div className="verificar-card-value">
-                        {documento.fechaVigencia 
-                          ? (documento.vigente 
+                        {documento.fechaVigencia
+                          ? (documento.vigente
                               ? `Válido hasta el ${formatDate(documento.fechaVigencia)}`
                               : `Expiró el ${formatDate(documento.fechaVigencia)}`)
                           : 'Sin fecha de vencimiento'
@@ -667,6 +675,7 @@ const VerificarDocumentos = () => {
                       </div>
                     </div>
 
+                    {/* Tarjeta 4: Verificación */}
                     <div className="verificar-info-card">
                       <div className="verificar-card-label">Verificación</div>
                       <div className="verificar-card-value verificar-verification-url">

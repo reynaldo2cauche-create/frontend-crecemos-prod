@@ -17,6 +17,8 @@ import {
   updateTrabajador
 } from '../../services/trabajadorService';
 import { registrarPagoMensual } from '../../services/rrhhService';
+import { getServicios } from '../../services/catalogoService';
+import { asignarServicio, getServiciosByTrabajador, desactivarServicio } from '../../services/trabajadorServicioService';
 import api from '../../services/api';
 import CuentasBancarias from '../../components/CuentasBancarias'; // Ajusta la ruta según tu estructura
 export default function EmpleadosPage() {
@@ -24,6 +26,7 @@ export default function EmpleadosPage() {
   const [roles, setRoles] = useState([]);
   const [especialidades, setEspecialidades] = useState([]);
   const [cargos, setCargos] = useState([]);
+  const [servicios, setServicios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
@@ -47,16 +50,27 @@ export default function EmpleadosPage() {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [trabajadoresData, rolesData, especialidadesData, cargosData] = await Promise.all([
+      const [trabajadoresData, rolesData, especialidadesData, cargosData, serviciosData] = await Promise.all([
         getTrabajadores(),
         getRoles(),
         getEspecialidades(),
-        getCargos()
+        getCargos(),
+        getServicios()
       ]);
       setEmpleados(trabajadoresData);
       setRoles(rolesData);
       setEspecialidades(especialidadesData);
       setCargos(cargosData);
+      setServicios(serviciosData);
+
+      console.log('Datos cargados:', {
+        empleados: trabajadoresData?.length,
+        roles: rolesData?.length,
+        especialidades: especialidadesData?.length,
+        cargos: cargosData?.length,
+        servicios: serviciosData?.length,
+        serviciosData
+      });
     } catch (error) {
       console.error('Error al cargar datos:', error);
       showNotification('Error al cargar los datos', 'error');
@@ -304,7 +318,8 @@ export default function EmpleadosPage() {
     onClose={() => setModalNuevo(false)}
     roles={roles}
     especialidades={especialidades}
-    cargos={cargos}  // ✅ PASAR CARGOS AQUÍ
+    cargos={cargos}
+    servicios={servicios}
     onSuccess={() => {
       cargarDatos();
       showNotification('Empleado creado correctamente', 'success');
@@ -322,7 +337,8 @@ export default function EmpleadosPage() {
     }}
     roles={roles}
     especialidades={especialidades}
-    cargos={cargos}  // ✅ PASAR CARGOS AQUÍ
+    cargos={cargos}
+    servicios={servicios}
     onSuccess={() => {
       cargarDatos();
       showNotification('Empleado actualizado correctamente', 'success');
@@ -495,7 +511,7 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
 };
 
 // Modal Nuevo Empleado (simplificado - reutiliza componentes del módulo anterior)
-const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess, onError }) => {
+const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',
@@ -518,6 +534,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess,
     numero_cuenta: '',
     banco: ''
   });
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -590,11 +607,22 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess,
         banco: formData.banco || null
       };
 
-      await crearTrabajador(data);
+      const nuevoTrabajador = await crearTrabajador(data);
+
+      // Si es terapeuta y tiene servicios seleccionados, asignarlos
+      if (esTerapeuta && serviciosSeleccionados.length > 0) {
+        const userId = localStorage.getItem('userId') || 1; // Obtener userId del usuario actual
+        const promesasServicios = serviciosSeleccionados.map(servicioId =>
+          asignarServicio(nuevoTrabajador.id, servicioId, null, userId)
+        );
+        await Promise.all(promesasServicios);
+      }
+
       onSuccess();
       onClose();
     } catch (error) {
-      onError('Error al crear el empleado');
+      console.error('Error al crear empleado:', error);
+      onError(error.response?.data?.message || 'Error al crear el empleado');
     } finally {
       setLoading(false);
     }
@@ -602,6 +630,13 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess,
 
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
+
+  console.log('ModalNuevoEmpleado - Debug:', {
+    rolSeleccionado,
+    esTerapeuta,
+    serviciosCount: servicios?.length,
+    serviciosSeleccionadosCount: serviciosSeleccionados.length
+  });
 
   return (
     <>
@@ -677,19 +712,105 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess,
                 {/* ✅ ESPECIALIDAD - Solo si es terapeuta */}
                 {esTerapeuta && (
                   <div className="md:col-span-2">
-                    <SelectField 
-                      label="Especialidad Terapéutica" 
-                      name="especialidad" 
-                      value={formData.especialidad} 
-                      onChange={handleChange} 
-                      error={errors.especialidad} 
-                      options={especialidades.filter(e => e.activo).map(e => e.nombre)} 
-                      required 
+                    <SelectField
+                      label="Especialidad Terapéutica"
+                      name="especialidad"
+                      value={formData.especialidad}
+                      onChange={handleChange}
+                      error={errors.especialidad}
+                      options={especialidades.filter(e => e.activo).map(e => e.nombre)}
+                      required
                     />
                   </div>
                 )}
               </div>
             </div>
+
+            {/* ✅ SERVICIOS - Solo si es terapeuta */}
+            {esTerapeuta && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  Servicios que Brinda
+                </h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Columna Infantil y Adolescentes */}
+                    <div className="bg-white rounded-lg p-3 border border-blue-200">
+                      <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        Infantil y Adolescentes
+                      </h4>
+                      <div className="space-y-1">
+                        {servicios
+                          .filter(s => s.activo && s.area.id === 1)
+                          .map(servicio => (
+                            <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-50 rounded cursor-pointer transition-all">
+                              <input
+                                type="checkbox"
+                                checked={serviciosSeleccionados.includes(servicio.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                  } else {
+                                    setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Columna Adultos */}
+                    <div className="bg-white rounded-lg p-3 border border-purple-200">
+                      <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        Adultos
+                      </h4>
+                      <div className="space-y-1">
+                        {servicios
+                          .filter(s => s.activo && s.area.id === 2)
+                          .map(servicio => (
+                            <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-50 rounded cursor-pointer transition-all">
+                              <input
+                                type="checkbox"
+                                checked={serviciosSeleccionados.includes(servicio.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                  } else {
+                                    setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                              />
+                              <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {serviciosSeleccionados.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      No has seleccionado ningún servicio
+                    </p>
+                  )}
+                  {serviciosSeleccionados.length > 0 && (
+                    <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length > 1 ? 's' : ''} seleccionado{serviciosSeleccionados.length > 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Contacto */}
             <div>
@@ -790,7 +911,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, onSuccess,
 };
 
 // ============== MODAL EDITAR EMPLEADO ==============
-const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, onSuccess, onError }) => {
+const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, servicios, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nombres: empleado.nombres || '',
     apellidos: empleado.apellidos || '',
@@ -815,8 +936,34 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
     sueldo_base: empleado.sueldo_base || '',
     fecha_ingreso: empleado.fecha_ingreso || ''
   });
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
+  const [serviciosOriginales, setServiciosOriginales] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingServicios, setLoadingServicios] = useState(true);
+
+  // Cargar servicios del empleado al abrir el modal
+  useEffect(() => {
+    const cargarServiciosEmpleado = async () => {
+      if (empleado.rol?.nombre === 'Terapeuta') {
+        try {
+          setLoadingServicios(true);
+          const serviciosData = await getServiciosByTrabajador(empleado.id);
+          const serviciosIds = serviciosData.map(s => s.id);
+          setServiciosSeleccionados(serviciosIds);
+          setServiciosOriginales(serviciosIds);
+        } catch (error) {
+          console.error('Error al cargar servicios:', error);
+        } finally {
+          setLoadingServicios(false);
+        }
+      } else {
+        setLoadingServicios(false);
+      }
+    };
+
+    cargarServiciosEmpleado();
+  }, [empleado.id, empleado.rol]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -893,6 +1040,28 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
       }
 
       await updateTrabajador(empleado.id, data);
+
+      // Si es terapeuta, actualizar servicios
+      if (esTerapeuta) {
+        const userId = localStorage.getItem('userId') || 1;
+
+        // Servicios a agregar (están en seleccionados pero no en originales)
+        const serviciosAgregar = serviciosSeleccionados.filter(id => !serviciosOriginales.includes(id));
+
+        // Servicios a eliminar (están en originales pero no en seleccionados)
+        const serviciosEliminar = serviciosOriginales.filter(id => !serviciosSeleccionados.includes(id));
+
+        // Agregar nuevos servicios
+        for (const servicioId of serviciosAgregar) {
+          await asignarServicio(empleado.id, servicioId, null, userId);
+        }
+
+        // Eliminar servicios
+        for (const servicioId of serviciosEliminar) {
+          await desactivarServicio(empleado.id, servicioId, userId);
+        }
+      }
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -906,6 +1075,14 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
 
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
+
+  console.log('ModalEditarEmpleado - Debug:', {
+    rolSeleccionado,
+    esTerapeuta,
+    serviciosCount: servicios?.length,
+    serviciosSeleccionadosCount: serviciosSeleccionados.length,
+    loadingServicios
+  });
 
   return (
     <>
@@ -968,19 +1145,107 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
 
                 {esTerapeuta && (
                   <div className="md:col-span-2">
-                    <SelectField 
-                      label="Especialidad Terapéutica" 
-                      name="especialidad" 
-                      value={formData.especialidad} 
-                      onChange={handleChange} 
-                      error={errors.especialidad} 
-                      options={especialidades.filter(e => e.activo).map(e => e.nombre)} 
-                      required 
+                    <SelectField
+                      label="Especialidad Terapéutica"
+                      name="especialidad"
+                      value={formData.especialidad}
+                      onChange={handleChange}
+                      error={errors.especialidad}
+                      options={especialidades.filter(e => e.activo).map(e => e.nombre)}
+                      required
                     />
                   </div>
                 )}
               </div>
             </Section>
+
+            {/* ✅ SERVICIOS - Solo si es terapeuta */}
+            {esTerapeuta && (
+              <Section title="Servicios que Brinda" icon={Briefcase}>
+                {loadingServicios ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-gray-200 border-t-purple-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Columna Infantil y Adolescentes */}
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          Infantil y Adolescentes
+                        </h4>
+                        <div className="space-y-1">
+                          {servicios
+                            .filter(s => s.activo && s.area.id === 1)
+                            .map(servicio => (
+                              <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-100 rounded cursor-pointer transition-all">
+                                <input
+                                  type="checkbox"
+                                  checked={serviciosSeleccionados.includes(servicio.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                    } else {
+                                      setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Columna Adultos */}
+                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                        <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          Adultos
+                        </h4>
+                        <div className="space-y-1">
+                          {servicios
+                            .filter(s => s.activo && s.area.id === 2)
+                            .map(servicio => (
+                              <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-100 rounded cursor-pointer transition-all">
+                                <input
+                                  type="checkbox"
+                                  checked={serviciosSeleccionados.includes(servicio.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                    } else {
+                                      setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                />
+                                <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {serviciosSeleccionados.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        No has seleccionado ningún servicio
+                      </p>
+                    )}
+                    {serviciosSeleccionados.length > 0 && (
+                      <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length > 1 ? 's' : ''} seleccionado{serviciosSeleccionados.length > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </>
+                )}
+              </Section>
+            )}
 
             {/* Contacto */}
             <Section title="Información de Contacto" icon={MapPin}>

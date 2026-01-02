@@ -17,7 +17,7 @@ const NotasEvolucion = ({
 }) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [filtroServicio, setFiltroServicio] = useState('');
+  const [filtroEspecialidad, setFiltroEspecialidad] = useState('');
   const [filtroTerapeuta, setFiltroTerapeuta] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const containerRef = useRef(null);
@@ -37,12 +37,12 @@ const NotasEvolucion = ({
 
         setNotas(notasActualizadas.map(n => ({
           id: n.id,
-          fecha: n.fecha_crea 
-            ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
-              new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+          fecha: n.fecha_crea
+            ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+              new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             : '',
           autor: n.trabajador
-            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}`
+            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}${n.trabajador.rol ? ' — ' + n.trabajador.rol.nombre : ''}`
             : `Usuario ${n.user_id_crea}`,
           servicio: n.servicio?.nombre || 'Sin servicio',
           entrevista: n.entrevista,
@@ -86,29 +86,34 @@ const NotasEvolucion = ({
     };
   }, []);
 
-  const servicios = useMemo(() => {
+  const especialidades = useMemo(() => {
     if (!notas || notas.length === 0) return [];
-    const lista = [...new Set(notas.map(n => n.servicio).filter(Boolean))];
+    const lista = [...new Set(notas.map(n => n.autor.split(' — ')[1]).filter(Boolean))];
     return lista.sort();
   }, [notas]);
 
   const terapeutas = useMemo(() => {
     if (!notas || notas.length === 0) return [];
-    const lista = [...new Set(notas.map(n => n.autor).filter(Boolean))];
+    const lista = [...new Set(notas.map(n => n.autor.split(' — ')[0]).filter(Boolean))];
     return lista.sort();
   }, [notas]);
 
   const notasFiltradas = useMemo(() => {
     if (!notas || notas.length === 0) return [];
     return notas.filter(n => {
-      if (filtroServicio && n.servicio?.trim() !== filtroServicio) {
+      const [nombre, especialidad] = n.autor.split(' — ');
+
+      // Filtro de especialidad
+      if (filtroEspecialidad && especialidad?.trim() !== filtroEspecialidad) {
         return false;
       }
 
-      if (filtroTerapeuta && n.autor?.trim() !== filtroTerapeuta) {
+      // Filtro de terapeuta
+      if (filtroTerapeuta && nombre?.trim() !== filtroTerapeuta) {
         return false;
       }
 
+      // Filtro de tipo de comentario
       if (filtroTipo) {
         switch (filtroTipo) {
           case 'entrevista':
@@ -128,7 +133,7 @@ const NotasEvolucion = ({
 
       return true;
     });
-  }, [notas, filtroServicio, filtroTerapeuta, filtroTipo]);
+  }, [notas, filtroEspecialidad, filtroTerapeuta, filtroTipo]);
 
   const formatTextWithLineBreaks = (text) => {
     if (!text) return '';
@@ -168,12 +173,12 @@ const NotasEvolucion = ({
 
         setNotas(notasActualizadas.map(n => ({
           id: n.id,
-          fecha: n.fecha_crea 
-            ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
-              new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+          fecha: n.fecha_crea
+            ? new Date(n.fecha_crea).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+              new Date(n.fecha_crea).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             : '',
           autor: n.trabajador
-            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}`
+            ? `${n.trabajador.nombres} ${n.trabajador.apellidos}${n.trabajador.rol ? ' — ' + n.trabajador.rol.nombre : ''}`
             : `Usuario ${n.user_id_crea}`,
           servicio: n.servicio?.nombre || 'Sin servicio',
           entrevista: n.entrevista,
@@ -220,13 +225,13 @@ const NotasEvolucion = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <select
-                value={filtroServicio}
-                onChange={(e) => setFiltroServicio(e.target.value)}
+                value={filtroEspecialidad}
+                onChange={(e) => setFiltroEspecialidad(e.target.value)}
                 className="text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 bg-white"
               >
-                <option value="">Todos los servicios</option>
-                {servicios.map(serv => (
-                  <option key={serv} value={serv}>{serv}</option>
+                <option value="">Todas las especialidades</option>
+                {especialidades.map(esp => (
+                  <option key={esp} value={esp}>{esp}</option>
                 ))}
               </select>
 
@@ -299,30 +304,32 @@ const NotasEvolucion = ({
             </div>
           ) : notas && notas.length > 0 ? (
             <div className="p-3 sm:p-4 space-y-3">
-              {notasFiltradas.length > 0 ? notasFiltradas.map((n) => (
-                <div
-                  key={n.id}
-                  className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all bg-white"
-                >
-                  <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 border-b border-gray-100">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
-                        {n.autor.split(' ').map(p => p[0]).join('')}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold text-gray-900">{n.autor}</p>
-                        {n.servicio && (
-                          <span className="inline-block mt-1.5 px-2.5 py-1 bg-[#A3C644]/10 text-[#A3C644] text-sm font-medium rounded border border-[#A3C644]/20">
-                            {n.servicio}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>{n.fecha}</span>
+              {notasFiltradas.length > 0 ? notasFiltradas.map((n) => {
+                const [nombre, especialidad] = n.autor.split(' — ');
+                return (
+                  <div
+                    key={n.id}
+                    className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all bg-white"
+                  >
+                    <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 border-b border-gray-100">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
+                          {nombre.split(' ').map(p => p[0]).join('')}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-bold text-gray-900 truncate">{nombre}</p>
+                          {n.servicio && (
+                            <span className="inline-block mt-1.5 px-2.5 py-1 bg-[#A3C644]/10 text-[#A3C644] text-sm font-medium rounded border border-[#A3C644]/20">
+                              {n.servicio}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-2">
+                            <Calendar className="w-4 h-4" />
+                            <span>{n.fecha}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
                   <div className="p-4 sm:p-5 space-y-3">
                     {n.entrevista && (
@@ -406,7 +413,8 @@ const NotasEvolucion = ({
                     )}
                   </div>
                 </div>
-              )) : (
+                );
+              }) : (
                 <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
                   <p className="text-sm text-gray-500">No hay notas que coincidan con los filtros</p>
                 </div>

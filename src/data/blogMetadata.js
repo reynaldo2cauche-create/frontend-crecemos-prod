@@ -313,6 +313,19 @@ export const blogMetadata = [
   readTime: '9 min lectura',
   author: 'Leonardo Yactayo Uceda',
   heroImage: '/assets/img/blog/pistachos-hero.jpg'
+},
+{
+  id: 25,
+  slug: 'patrones-crianza-romper-circulo',
+  title: 'Romper el círculo: patrones de crianza',
+  excerpt: 'Muchos adultos recuerdan el miedo que sentían al escuchar los gritos de padres autoritarios y sus castigos. Hoy, el objetivo para muchas familias es claro: es vital que este ciclo termine. Descubre cómo romper patrones heredados e implementar una crianza positiva.',
+  image: '/assets/img/blog/crianza-portada.jpg',
+  date: '30 Diciembre 2025',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '20 min lectura',
+  author: 'Centro Crecemos' ,
+  heroImage: '/assets/img/blog/crianza-portada.jpg'
 }
   // Aquí agregas más blogs...
 ];
