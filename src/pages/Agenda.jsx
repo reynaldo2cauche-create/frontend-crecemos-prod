@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Calendar,
   Clock,
@@ -14,71 +14,129 @@ import {
   AlertCircle,
   Sparkles
 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Componentes
 import ModalAgendarCita from '../components/Agenda/ModalAgendarCita';
 import CalendarioSemanal from '../components/Agenda/CalendarioSemanal';
 
-// Datos y utilidades
+// Servicios
 import { 
-  diasSemana, 
-  horas, 
-  servicios, 
-  duraciones,
-  citasEjemplo
-} from '../constants/agendaData';
-import { getEstadoColor, getEstadoIcon } from '../utils/agendaUtils';
-import { useCitas } from '../hooks/useCitas';
-import { useCurrentUser } from '../hooks/useCurrentUser';
-import { useTrabajadores } from '../hooks/useTrabajadores';
+  listarCitas, 
+  crearCita, 
+  eliminarCita, 
+  getCitaById,
+  getMotivosCita,
+  getEstadosCita 
+} from '../services/citaService';
+import { getServicios } from '../services/catalogoService';
+import { getTrabajadores } from '../services/trabajadorService';
+
+// Hooks y utilidades
+import { useAuth as useCurrentUser } from '../hooks/useCurrentUser';
+import { getEstadoColor } from '../utils/agendaUtils';
 import { ROLES } from '../constants/roles';
 
 const Agenda = () => {
+  const { user: currentUser } = useCurrentUser();
   const [fechaActual, setFechaActual] = useState(new Date());
   const [fechaCalendario, setFechaCalendario] = useState(new Date());
   const [modalAbierto, setModalAbierto] = useState(false);
   const [slotSeleccionado, setSlotSeleccionado] = useState(null);
   const [terapeutaFiltro, setTerapeutaFiltro] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [citaEditando, setCitaEditando] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [formularioCita, setFormularioCita] = useState({
-    paciente: null,
-    doctor_id: '',
-    servicio_id: '',
     motivo_id: '',
-    duracion: '',
+    paciente: null,
+    paciente_id: null,
+    doctor_id: null,
+    servicio_id: null,
+    estado_id: 1,
+    duracion: '40',
     fechasHoras: [],
-    nota: ''
+    nota: '',
+    terapeutas_ids: [],
+    servicios_ids: [],
+    encargado: null,
+    firma_documento: false,
+    user_id_crea: null
   });
-
-  const currentUser = useCurrentUser();
-  const { trabajadores } = useTrabajadores();
-  const { citas, loading, error, listarCitas, crearCita, crearMultiplesCitas, actualizarCita, eliminarCita } = useCitas();
   
-  React.useEffect(() => {
-    if (!currentUser) return;
-    
-    if (currentUser.rol?.id === ROLES.TERAPEUTA) {
-      listarCitas({ terapeuta_id: currentUser.id });
-    } else if ((currentUser.rol?.id === ROLES.ADMINISTRADOR || currentUser.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-      listarCitas({ terapeuta_id: terapeutaFiltro });
-    } else if (currentUser.rol?.id === ROLES.ADMISION) {
-      listarCitas();
-    }
-  }, [currentUser, terapeutaFiltro]);
+  // Estados para datos
+  const [citas, setCitas] = useState([]);
+  const [servicios, setServicios] = useState([]);
+  const [motivos, setMotivos] = useState([]);
+  const [estados, setEstados] = useState([]);
+  const [trabajadores, setTrabajadores] = useState([]);
+  const [cargando, setCargando] = useState(false);
 
-  React.useEffect(() => {
-    if (!currentUser) return;
-    
-    if (currentUser.rol?.id === ROLES.TERAPEUTA) {
-      listarCitas({ terapeuta_id: currentUser.id });
-    } else if ((currentUser.rol?.id === ROLES.ADMINISTRADOR || currentUser.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-      listarCitas({ terapeuta_id: terapeutaFiltro });
-    } else if (currentUser.rol?.id === ROLES.ADMISION) {
-      listarCitas();
+  // Cargar datos iniciales
+  useEffect(() => {
+    const cargarDatosIniciales = async () => {
+      try {
+        setCargando(true);
+        const [
+          motivosRes,
+          estadosRes,
+          trabajadoresRes,
+          serviciosRes
+        ] = await Promise.all([
+          getMotivosCita(),
+          getEstadosCita(),
+          getTrabajadores(),
+          getServicios()
+        ]);
+
+        setMotivos(motivosRes);
+        setEstados(estadosRes);
+        setTrabajadores(trabajadoresRes);
+        setServicios(serviciosRes);
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        toast.error('Error al cargar datos');
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDatosIniciales();
+  }, []);
+
+  // Cargar citas
+  useEffect(() => {
+    const cargarCitas = async () => {
+      try {
+        let params = {};
+        
+        if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+          params.terapeuta_id = currentUser.id;
+        } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+          params.terapeuta_id = terapeutaFiltro;
+        }
+        
+        const citasRes = await listarCitas(params);
+        setCitas(citasRes);
+      } catch (error) {
+        console.error('Error cargando citas:', error);
+        toast.error('Error al cargar citas');
+      }
+    };
+
+    if (currentUser) {
+      cargarCitas();
     }
-  }, [fechaActual]);
+  }, [currentUser, terapeutaFiltro, fechaActual]);
+
+  // Determinar tipo de cita basado en motivo_id
+  const determinarTipoCita = (motivoId) => {
+    const motivo = motivos.find(m => m.id === parseInt(motivoId));
+    if (!motivo) return 'NORMAL';
+    
+    const tipoCodigo = motivo.tipoCita?.codigo;
+    return tipoCodigo || 'NORMAL';
+  };
 
   const formatearHora = (hora) => {
     if (!hora) return '';
@@ -87,11 +145,9 @@ const Agenda = () => {
   };
 
   const abrirModalDesdeSlot = (dia, hora) => {
-
     const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA
       ? currentUser.id
       : terapeutaFiltro;
-
 
     setSlotSeleccionado({
       dia: dia.nombre,
@@ -102,15 +158,23 @@ const Agenda = () => {
     const horaFormateada = formatearHora(hora);
 
     setFormularioCita({
-      paciente: null,
-      doctor_id: doctorId,
-      servicio_id: '',
       motivo_id: '',
-      duracion: '',
+      paciente: null,
+      paciente_id: null,
+      doctor_id: doctorId,
+      servicio_id: null,
+      estado_id: 1,
+      duracion: '40',
       fechasHoras: [{ fecha: dia.fechaString, horaInicio: horaFormateada }],
-      nota: ''
+      nota: '',
+      terapeutas_ids: [],
+      servicios_ids: [],
+      encargado: null,
+      firma_documento: false,
+      user_id_crea: currentUser?.id || null
     });
 
+    setCitaEditando(null);
     setModalAbierto(true);
   };
 
@@ -121,15 +185,85 @@ const Agenda = () => {
     
     setSlotSeleccionado(null);
     setFormularioCita({
-      paciente: null,
-      doctor_id: doctorId,
-      servicio_id: '',
       motivo_id: '',
-      duracion: '',
+      paciente: null,
+      paciente_id: null,
+      doctor_id: doctorId,
+      servicio_id: null,
+      estado_id: 1,
+      duracion: '40',
       fechasHoras: [],
-      nota: ''
+      nota: '',
+      terapeutas_ids: [],
+      servicios_ids: [],
+      encargado: null,
+      firma_documento: false,
+      user_id_crea: currentUser?.id || null
     });
+    setCitaEditando(null);
     setModalAbierto(true);
+  };
+
+  const handleCitaClick = async (citaData) => {
+    try {
+      const citaCompleta = await getCitaById(citaData.cita.id);
+      
+      setCitaEditando(citaCompleta);
+      
+      // Formatear datos para el formulario
+      const paciente = citaCompleta.paciente ? {
+        id: citaCompleta.paciente_id,
+        nombre_completo: citaCompleta.paciente?.nombre_completo || 'Paciente'
+      } : null;
+
+      let fechasHoras = [];
+      if (citaCompleta.fecha && citaCompleta.hora_inicio) {
+        fechasHoras = [{
+          fecha: citaCompleta.fecha,
+          horaInicio: citaCompleta.hora_inicio.substring(0, 5)
+        }];
+      }
+
+      // Extraer datos según tipo de cita
+      let terapeutas_ids = [];
+      let servicios_ids = [];
+      let encargado = null;
+      let firma_documento = false;
+
+      if (citaCompleta.tipo_cita === 'REUNION_CLINICA') {
+        terapeutas_ids = citaCompleta.terapeutas?.map(t => t.terapeuta_id || t.id) || [];
+        servicios_ids = citaCompleta.servicios?.map(s => s.servicio_id || s.id) || [];
+      } else if (citaCompleta.tipo_cita === 'VISITA_ESCOLAR') {
+        encargado = citaCompleta.encargado || {
+          nombre_completo: citaCompleta.nombre_intermediario,
+          telefono: citaCompleta.telefono,
+          institucion: citaCompleta.nombre_colegio
+        };
+        firma_documento = Boolean(citaCompleta.firma_documento);
+      }
+
+      setFormularioCita({
+        motivo_id: citaCompleta.motivo_id,
+        paciente,
+        paciente_id: citaCompleta.paciente_id,
+        doctor_id: citaCompleta.doctor_id,
+        servicio_id: citaCompleta.servicio_id,
+        estado_id: citaCompleta.estado_id,
+        duracion: citaCompleta.duracion_minutos?.toString() || '40',
+        fechasHoras,
+        nota: citaCompleta.nota || '',
+        terapeutas_ids,
+        servicios_ids,
+        encargado,
+        firma_documento,
+        user_id_crea: citaCompleta.user_id_crea || currentUser?.id
+      });
+
+      setModalAbierto(true);
+    } catch (error) {
+      console.error('Error cargando cita:', error);
+      toast.error('Error al cargar la cita');
+    }
   };
 
   const cerrarModal = () => {
@@ -137,18 +271,31 @@ const Agenda = () => {
     setSlotSeleccionado(null);
     setCitaEditando(null);
     setFormularioCita({
-      paciente: null,
-      doctor_id: '',
-      servicio_id: '',
       motivo_id: '',
-      duracion: '',
+      paciente: null,
+      paciente_id: null,
+      doctor_id: null,
+      servicio_id: null,
+      estado_id: 1,
+      duracion: '40',
       fechasHoras: [],
-      nota: ''
+      nota: '',
+      terapeutas_ids: [],
+      servicios_ids: [],
+      encargado: null,
+      firma_documento: false,
+      user_id_crea: null
     });
   };
 
-  const manejarCambioFormulario = (campo, valor) => {
-    if (campo === 'agregarFechaHora') {
+  const manejarCambioFormulario = useCallback((campo, valor) => {
+    if (campo === 'paciente') {
+      setFormularioCita(prev => ({
+        ...prev,
+        paciente: valor,
+        paciente_id: valor ? valor.id : null
+      }));
+    } else if (campo === 'agregarFechaHora') {
       setFormularioCita(prev => ({
         ...prev,
         fechasHoras: [...prev.fechasHoras, { fecha: '', horaInicio: '' }]
@@ -159,164 +306,139 @@ const Agenda = () => {
         fechasHoras: prev.fechasHoras.filter((_, index) => index !== valor)
       }));
     } else if (campo === 'actualizarFechaHora') {
-      setFormularioCita(prev => ({
-        ...prev,
-        fechasHoras: prev.fechasHoras.map((fh, index) => 
-          index === valor.index 
-            ? { ...fh, [valor.campo]: valor.valor }
-            : fh
-        )
-      }));
+      const { index, campo: subCampo, valor: subValor } = valor;
+      
+      setFormularioCita(prev => {
+        const nuevasFechasHoras = [...prev.fechasHoras];
+        nuevasFechasHoras[index] = {
+          ...nuevasFechasHoras[index],
+          [subCampo]: subValor
+        };
+        
+        return {
+          ...prev,
+          fechasHoras: nuevasFechasHoras
+        };
+      });
     } else {
       setFormularioCita(prev => ({
         ...prev,
         [campo]: valor
       }));
     }
-  };
+  }, []);
 
   const guardarCita = async (datosFormulario = null) => {
     setGuardando(true);
+    
     try {
       // Usar los datos recibidos o los del estado
       const datos = datosFormulario || formularioCita;
 
-      const validaciones = [];
-
-      if (!datos.paciente?.id) validaciones.push('Debe seleccionar un paciente');
-      if (!datos.motivo_id) validaciones.push('Debe seleccionar un motivo');
-
-      // Determinar tipo de cita según motivo_id
-      const motivoId = parseInt(datos.motivo_id);
-      let tipoCita = 'NORMAL';
-      if (motivoId === 6) {
-        tipoCita = 'REUNION_CLINICA';
-      } else if (motivoId === 7) {
-        tipoCita = 'VISITA_ESCOLAR';
+      // Validaciones básicas
+      if (!datos.paciente_id) {
+        throw new Error('Se requiere seleccionar un paciente');
       }
 
-      // Validaciones según tipo de cita
+      if (!datos.motivo_id) {
+        throw new Error('Se requiere seleccionar un motivo');
+      }
+
+      // Obtener la primera fecha y hora
+      const fechaHora = datos.fechasHoras?.[0];
+      if (!fechaHora?.fecha || !fechaHora?.horaInicio) {
+        throw new Error('Se requiere fecha y hora');
+      }
+
+      // Construir DTO para el backend
+      const citaDto = {
+        motivo_id: parseInt(datos.motivo_id),
+        paciente_id: datos.paciente_id,
+        estado_id: parseInt(datos.estado_id || 1),
+        fecha: fechaHora.fecha,
+        hora_inicio: fechaHora.horaInicio + ':00',
+        duracion_minutos: parseInt(datos.duracion || 40),
+        nota: datos.nota || '',
+        user_id_crea: currentUser.id
+      };
+
+      // Determinar tipo de cita
+      const tipoCita = determinarTipoCita(datos.motivo_id);
+
+      // Agregar campos según tipo de cita
       if (tipoCita === 'NORMAL') {
-        if (!datos.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
-        if (!datos.servicio_id) validaciones.push('Debe seleccionar un servicio');
-      } else if (tipoCita === 'REUNION_CLINICA') {
+        if (!datos.doctor_id) {
+          throw new Error('Se requiere terapeuta para cita normal');
+        }
+        if (!datos.servicio_id) {
+          throw new Error('Se requiere servicio para cita normal');
+        }
+        
+        citaDto.doctor_id = parseInt(datos.doctor_id);
+        citaDto.servicio_id = parseInt(datos.servicio_id);
+      } 
+      else if (tipoCita === 'REUNION_CLINICA') {
         if (!datos.terapeutas_ids || datos.terapeutas_ids.length === 0) {
-          validaciones.push('Debe seleccionar al menos un terapeuta para la reunión clínica');
+          throw new Error('Se requiere al menos un terapeuta para reunión clínica');
         }
         if (!datos.servicios_ids || datos.servicios_ids.length === 0) {
-          validaciones.push('Debe seleccionar al menos un servicio para la reunión clínica');
+          throw new Error('Se requiere al menos un servicio para reunión clínica');
         }
-      } else if (tipoCita === 'VISITA_ESCOLAR') {
-        if (!datos.doctor_id) validaciones.push('Debe seleccionar un terapeuta');
-        if (!datos.encargado?.nombre_completo) validaciones.push('Debe ingresar el nombre del encargado');
-        if (!datos.encargado?.institucion) validaciones.push('Debe ingresar el nombre del colegio');
-        if (!datos.encargado?.telefono) validaciones.push('Debe ingresar el teléfono del encargado');
+        
+        citaDto.terapeutas_ids = datos.terapeutas_ids.map(id => parseInt(id));
+        citaDto.servicios_ids = datos.servicios_ids.map(id => parseInt(id));
+      } 
+      else if (tipoCita === 'VISITA_ESCOLAR') {
+        if (!datos.doctor_id) {
+          throw new Error('Se requiere terapeuta para visita escolar');
+        }
+        if (!datos.encargado) {
+          throw new Error('Se requieren datos del encargado');
+        }
+        if (!datos.encargado.nombre_completo || !datos.encargado.institucion) {
+          throw new Error('Se requiere nombre del encargado y nombre de la institución');
+        }
+        
+        citaDto.doctor_id = parseInt(datos.doctor_id);
+        citaDto.servicio_id = datos.servicio_id ? parseInt(datos.servicio_id) : null;
+        citaDto.encargado = datos.encargado;
+        citaDto.firma_documento = Boolean(datos.firma_documento);
       }
 
-      if (!datos.duracion) validaciones.push('Debe seleccionar una duración');
-      if (!datos.fechasHoras || datos.fechasHoras.length === 0) {
-        validaciones.push('Debe agregar al menos una fecha y hora');
-      } else {
-        datos.fechasHoras.forEach((fh, index) => {
-          if (!fh.fecha) validaciones.push(`Debe seleccionar una fecha para la cita ${index + 1}`);
-          if (!fh.horaInicio) validaciones.push(`Debe seleccionar una hora para la cita ${index + 1}`);
-        });
-      }
+      console.log('Enviando cita al backend:', citaDto);
 
-      if (validaciones.length > 0) {
-        setSnackbar({ 
-          open: true, 
-          message: `Por favor complete los siguientes campos:\n• ${validaciones.join('\n• ')}`, 
-          severity: 'error' 
-        });
-        setGuardando(false);
-        return;
-      }
-
+      // Llamar al servicio
       if (citaEditando) {
-        const citaData = {
-          paciente_id: datos.paciente?.id,
-          doctor_id: datos.doctor_id,
-          servicio_id: datos.servicio_id,
-          motivo_id: datos.motivo_id,
-          fecha: datos.fechasHoras[0].fecha,
-          hora_inicio: datos.fechasHoras[0].horaInicio + ':00',
-          duracion_minutos: parseInt(datos.duracion),
-          nota: datos.nota,
-          user_id_crea: currentUser?.id,
-          estado_id: 1,
-          // Datos del nuevo sistema
-          terapeutas_ids: datos.terapeutas_ids || [],
-          servicios_ids: datos.servicios_ids || [],
-          encargado: datos.encargado || null,
-          firma_documento: datos.firma_documento || false,
-        };
-        await actualizarCita(citaEditando.id, citaData);
-        setSnackbar({ open: true, message: 'Cita actualizada correctamente', severity: 'success' });
+        await crearCita({ ...citaDto, id: citaEditando.id });
+        toast.success('Cita actualizada correctamente');
       } else {
-        const citasParaCrear = datos.fechasHoras.map(fechaHora => ({
-          paciente_id: datos.paciente?.id,
-          doctor_id: datos.doctor_id,
-          servicio_id: datos.servicio_id,
-          motivo_id: datos.motivo_id,
-          fecha: fechaHora.fecha,
-          hora_inicio: fechaHora.horaInicio + ':00',
-          duracion_minutos: parseInt(datos.duracion),
-          nota: datos.nota,
-          user_id_crea: currentUser?.id,
-          estado_id: 1,
-          // Datos del nuevo sistema
-          terapeutas_ids: datos.terapeutas_ids || [],
-          servicios_ids: datos.servicios_ids || [],
-          encargado: datos.encargado || null,
-          firma_documento: datos.firma_documento || false,
-        }));
-
-        // Crear cada cita individualmente
-        const promesas = citasParaCrear.map(cita => crearCita(cita));
-        const resultados = await Promise.all(promesas);
-
-        const cantidadCitas = resultados.length;
-        setSnackbar({
-          open: true,
-          message: `${cantidadCitas} cita${cantidadCitas > 1 ? 's' : ''} agendada${cantidadCitas > 1 ? 's' : ''} correctamente`,
-          severity: 'success'
-        });
+        await crearCita(citaDto);
+        toast.success('Cita creada correctamente');
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Recargar citas
+      let params = {};
+      if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+        params.terapeuta_id = currentUser.id;
+      } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+        params.terapeuta_id = terapeutaFiltro;
+      }
+      
+      const citasActualizadas = await listarCitas(params);
+      setCitas(citasActualizadas);
+      
       cerrarModal();
     } catch (error) {
-      console.error('Error capturado en guardarCita:', error);
-
-      // Error 409: Conflicto de horarios con otra cita
-      if (error.status === 409) {
-        let mensajeConflicto = error.message || 'Ya existe una cita en ese horario';
-        if (error.conflictos && error.conflictos.length > 0) {
-          const detallesConflictos = error.conflictos.map(c => {
-            const fecha = new Date(c.fecha).toLocaleDateString('es-ES');
-            return `• ${fecha} a las ${c.hora_inicio}`;
-          }).join('\n');
-          mensajeConflicto = `Conflicto de horarios detectado:\n${detallesConflictos}`;
-        }
-        setSnackbar({ open: true, message: mensajeConflicto, severity: 'error' });
+      console.error('Error guardando cita:', error);
+      
+      let mensajeError = 'Error al guardar la cita';
+      if (error.response?.data?.message) {
+        mensajeError = error.response.data.message;
+      } else if (error.message) {
+        mensajeError = error.message;
       }
-      // Error 400: Validaciones (horarios bloqueados, datos incorrectos, etc.)
-      else if (error.status === 400) {
-        // El mensaje del backend ya viene formateado y específico
-        const mensajeValidacion = error.message || error.response?.data?.message || 'Error de validación';
-        setSnackbar({ open: true, message: mensajeValidacion, severity: 'error' });
-      }
-      // Otros errores
-      else {
-        let mensajeError = citaEditando ? 'Error al actualizar la cita' : 'Error al agendar la cita';
-        if (error.message) {
-          mensajeError = error.message;
-        } else if (error.response?.data?.message) {
-          mensajeError = error.response.data.message;
-        }
-        setSnackbar({ open: true, message: mensajeError, severity: 'error' });
-      }
+      
+      toast.error(mensajeError);
     } finally {
       setGuardando(false);
     }
@@ -326,22 +448,33 @@ const Agenda = () => {
     if (!citaEditando?.id) return;
     
     try {
-      const resultado = await eliminarCita(citaEditando.id, currentUser?.id);
-      const mensaje = resultado.message || 'Cita eliminada exitosamente';
-      setSnackbar({ 
-        open: true, 
-        message: mensaje,
-        severity: 'success' 
-      });
+      await eliminarCita(citaEditando.id);
+      
+      toast.success('Cita eliminada correctamente');
+      
+      // Recargar citas
+      let params = {};
+      if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+        params.terapeuta_id = currentUser.id;
+      } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+        params.terapeuta_id = terapeutaFiltro;
+      }
+      
+      const citasActualizadas = await listarCitas(params);
+      setCitas(citasActualizadas);
+      
       cerrarModal();
     } catch (error) {
+      console.error('Error eliminando cita:', error);
+      
       let mensajeError = 'Error al eliminar la cita';
       if (error.response?.data?.message) {
         mensajeError = error.response.data.message;
       } else if (error.message) {
         mensajeError = error.message;
       }
-      setSnackbar({ open: true, message: mensajeError, severity: 'error' });
+      
+      toast.error(mensajeError);
     }
   };
 
@@ -360,15 +493,10 @@ const Agenda = () => {
     return { primerDia, ultimoDia };
   };
 
-  const obtenerCitasConfirmadas = (citas) => {
-    return citas?.filter(c => c.estado_id === 2 || c.estado === 'confirmada').length || 0;
-  };
-
   const obtenerCitasSemana = (citas, fecha) => {
     const { primerDia, ultimoDia } = obtenerLimitesSemanaMostrada(fecha);
     
     return citas?.filter(c => {
-      // Crear fecha sin considerar la zona horaria
       const [year, month, day] = c.fecha.split('-');
       const citaDate = new Date(year, month - 1, day);
       citaDate.setHours(0, 0, 0, 0);
@@ -377,39 +505,56 @@ const Agenda = () => {
     }).length || 0;
   };
 
-  // Obtener el terapeuta seleccionado para el modal
+  // Obtener terapeutas disponibles
+  const terapeutasDisponibles = trabajadores.filter(trabajador => {
+    const rolId = trabajador.rol_id || trabajador.rol?.id;
+    return rolId === ROLES.TERAPEUTA && (trabajador.estado === true || trabajador.estado === 1);
+  });
+
+  // Obtener terapeuta seleccionado para el modal
   const obtenerTerapeutaSeleccionado = () => {
     if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
       return currentUser;
     } else if (terapeutaFiltro) {
       const filtroId = typeof terapeutaFiltro === 'string' ? parseInt(terapeutaFiltro) : terapeutaFiltro;
-      const terapeuta = trabajadores.find(t => t.id === filtroId);
-      return terapeuta;
+      return terapeutasDisponibles.find(t => t.id === filtroId);
     }
     return null;
   };
 
   const debeSeleccionarTerapeuta = (currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && !terapeutaFiltro;
 
+  // Duración de citas disponibles
+  const duraciones = [
+    { valor: '40', label: '40 minutos' },
+    { valor: '50', label: '50 minutos' },
+    { valor: '60', label: '1 hora' },
+    { valor: '90', label: '1 hora 30 minutos' },
+    { valor: '120', label: '2 horas' }
+  ];
+
+  // Función para obtener color de estado
+  const getEstadoColorCustom = useCallback((estado) => {
+    if (!estado) return '#7B1FA2';
+    
+    const estadoNombre = typeof estado === 'object' ? estado.nombre : estado;
+    const estadoObj = estados.find(e => e.nombre === estadoNombre);
+    if (!estadoObj) return '#7B1FA2';
+    
+    const colores = {
+      'Programada': '#7B1FA2',
+      'Confirmada': '#4CAF50',
+      'Cancelada': '#F44336',
+      'Completada': '#2196F3',
+      'En progreso': '#FF9800'
+    };
+    
+    return colores[estadoObj.nombre] || '#7B1FA2';
+  }, [estados]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
-
-        {/* Notificación */}
-        {snackbar.open && (
-          <div className={`fixed top-6 right-6 z-[9999] px-5 py-3.5 rounded-xl shadow-lg border transform transition-all duration-300 ${
-            snackbar.severity === 'success'
-              ? 'bg-white border-gray-100'
-              : 'bg-white border-red-100'
-          } flex items-center gap-3 max-w-md`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${snackbar.severity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
-            <span className="text-sm text-gray-700 whitespace-pre-line flex-1">{snackbar.message}</span>
-            <button onClick={() => setSnackbar({ ...snackbar, open: false })} className="text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -436,7 +581,6 @@ const Agenda = () => {
               </div>
             </div>
 
-          
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 col-span-2 sm:col-span-1">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
@@ -473,29 +617,23 @@ const Agenda = () => {
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
-                {trabajadores && trabajadores.length > 0 ? (
-                  trabajadores
-                    .filter(t => {
-                      const rolId = t.rol_id || t.rol?.id;
-                      // El campo en el backend se llama 'estado' y es boolean (true = activo, false = inactivo)
-                      const esActivo = t.estado === true;
-                      return rolId === ROLES.TERAPEUTA && esActivo;
-                    })
-                    .map((terapeuta) => (
-                      <option key={terapeuta.id} value={terapeuta.id}>
-                        {terapeuta.nombres} {terapeuta.apellidos}
-                      </option>
-                    ))
-                ) : (
-                  <option disabled>Cargando terapeutas...</option>
-                )}
+                {terapeutasDisponibles.map((terapeuta) => (
+                  <option key={terapeuta.id} value={terapeuta.id}>
+                    {terapeuta.nombres} {terapeuta.apellidos}
+                  </option>
+                ))}
               </select>
             </div>
           )}
         </div>
 
         {/* Contenido */}
-        {debeSeleccionarTerapeuta ? (
+        {cargando ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="w-10 h-10 border-4 border-[#7B1FA2] border-t-transparent rounded-full animate-spin"></div>
+            <p className="ml-3 text-gray-600">Cargando citas...</p>
+          </div>
+        ) : debeSeleccionarTerapeuta ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
             <div className="w-20 h-20 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-10 h-10 text-[#7B1FA2]" />
@@ -507,38 +645,10 @@ const Agenda = () => {
           </div>
         ) : (
           <CalendarioSemanal
-            horas={horas}
             citas={citas}
             onSlotClick={abrirModalDesdeSlot}
-            onCitaClick={({ fecha, hora, cita }) => {
-              const horaInicioCita = cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora;
-              setSlotSeleccionado({ dia: '', hora: horaInicioCita, fecha });
-              setCitaEditando(cita);
-
-              // Extraer terapeutas adicionales
-              const terapeutasAdicionales = cita.terapeutas_adicionales?.map(t => t.id || t.terapeuta_id) || [];
-
-              // Extraer servicios
-              const servicios = cita.servicios?.map(s => s.servicio_id || s.id) || [];
-
-              setFormularioCita({
-                fechasHoras: [{ fecha, horaInicio: formatearHora(horaInicioCita) }],
-                paciente: cita.paciente_id ? {
-                  id: cita.paciente_id,
-                  nombre_completo: cita.paciente_nombre
-                } : null,
-                doctor_id: cita.doctor_id || '',
-                servicio_id: cita.servicio_id || '',
-                motivo_id: cita.motivo_id || '',
-                duracion: String(cita.duracion_minutos || ''),
-                nota: cita.nota || '',
-                terapeutas_adicionales: terapeutasAdicionales,
-                servicios_adicionales: servicios
-              });
-              setModalAbierto(true);
-            }}
-            getEstadoColor={getEstadoColor}
-            getEstadoIcon={getEstadoIcon}
+            onCitaClick={handleCitaClick}
+            getEstadoColor={getEstadoColorCustom}
             fechaActual={fechaActual}
             onFechaChange={(nuevaFecha) => {
               setFechaActual(nuevaFecha);
@@ -574,6 +684,8 @@ const Agenda = () => {
           citaEditando={citaEditando}
           currentUser={currentUser}
           guardando={guardando}
+          motivos={motivos}
+          trabajadores={trabajadores}
         />
       </div>
     </div>
