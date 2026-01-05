@@ -326,13 +326,21 @@ const CalendarioSemanal = ({
                               className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
                             >
                               <div className="font-bold text-blue-700 text-xs leading-tight truncate">
-                                {(cita.paciente_nombre || cita.paciente || 'Paciente').substring(0, 20)}
-                                {(cita.paciente_nombre || cita.paciente || 'Paciente').length > 20 ? '...' : ''}
+                                {(() => {
+                                  const nombre = cita.paciente_nombre ||
+                                                (typeof cita.paciente === 'string' ? cita.paciente : cita.paciente?.nombres) ||
+                                                'Paciente';
+                                  return nombre.substring(0, 20) + (nombre.length > 20 ? '...' : '');
+                                })()}
                               </div>
 
                               <div className="text-gray-600 text-[10px] leading-tight truncate mt-0.5">
-                                {(cita.servicio_nombre || 'Servicio').substring(0, 15)}
-                                {(cita.servicio_nombre || 'Servicio').length > 15 ? '...' : ''}
+                                {(() => {
+                                  const servicio = cita.servicio_nombre ||
+                                                  (typeof cita.servicio === 'string' ? cita.servicio : cita.servicio?.nombre) ||
+                                                  'Servicio';
+                                  return servicio.substring(0, 15) + (servicio.length > 15 ? '...' : '');
+                                })()}
                               </div>
 
                               <div className="flex items-center justify-between mt-1">

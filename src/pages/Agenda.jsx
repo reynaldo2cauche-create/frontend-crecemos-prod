@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
+import {
   Calendar,
   Clock,
   ChevronLeft,
@@ -14,8 +14,6 @@ import {
   AlertCircle,
   Sparkles
 } from 'lucide-react';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 // Componentes
 import ModalAgendarCita from '../components/Agenda/ModalAgendarCita';
@@ -34,12 +32,12 @@ import { getServicios } from '../services/catalogoService';
 import { getTrabajadores } from '../services/trabajadorService';
 
 // Hooks y utilidades
-import { useAuth as useCurrentUser } from '../hooks/useCurrentUser';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { getEstadoColor } from '../utils/agendaUtils';
 import { ROLES } from '../constants/roles';
 
 const Agenda = () => {
-  const { user: currentUser } = useCurrentUser();
+  const currentUser = useCurrentUser();
   const [fechaActual, setFechaActual] = useState(new Date());
   const [fechaCalendario, setFechaCalendario] = useState(new Date());
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -72,6 +70,11 @@ const Agenda = () => {
   const [trabajadores, setTrabajadores] = useState([]);
   const [cargando, setCargando] = useState(false);
 
+  // Estados para notificaciones
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
   // Cargar datos iniciales
   useEffect(() => {
     const cargarDatosIniciales = async () => {
@@ -95,7 +98,9 @@ const Agenda = () => {
         setServicios(serviciosRes);
       } catch (error) {
         console.error('Error cargando datos:', error);
-        toast.error('Error al cargar datos');
+        setSnackbarMessage('Error al cargar datos');
+        setSnackbarSeverity('error');
+        setShowSnackbar(true);
       } finally {
         setCargando(false);
       }
@@ -120,7 +125,9 @@ const Agenda = () => {
         setCitas(citasRes);
       } catch (error) {
         console.error('Error cargando citas:', error);
-        toast.error('Error al cargar citas');
+        setSnackbarMessage('Error al cargar citas');
+        setSnackbarSeverity('error');
+        setShowSnackbar(true);
       }
     };
 
@@ -206,7 +213,9 @@ const Agenda = () => {
 
   const handleCitaClick = async (citaData) => {
     try {
+   
       const citaCompleta = await getCitaById(citaData.cita.id);
+
       
       setCitaEditando(citaCompleta);
       
@@ -231,13 +240,13 @@ const Agenda = () => {
       let firma_documento = false;
 
       if (citaCompleta.tipo_cita === 'REUNION_CLINICA') {
-        terapeutas_ids = citaCompleta.terapeutas?.map(t => t.terapeuta_id || t.id) || [];
-        servicios_ids = citaCompleta.servicios?.map(s => s.servicio_id || s.id) || [];
+        terapeutas_ids = citaCompleta.terapeutas?.map(t => t.id_terapeuta || t.terapeuta_id || t.id) || [];
+        servicios_ids = citaCompleta.servicios?.map(s => s.id_servicio || s.servicio_id || s.id) || [];
       } else if (citaCompleta.tipo_cita === 'VISITA_ESCOLAR') {
-        encargado = citaCompleta.encargado || {
-          nombre_completo: citaCompleta.nombre_intermediario,
-          telefono: citaCompleta.telefono,
-          institucion: citaCompleta.nombre_colegio
+        encargado = {
+          nombre_completo: citaCompleta.nombre_intermediario || citaCompleta.encargado?.nombre_completo || '',
+          telefono: citaCompleta.telefono || citaCompleta.encargado?.telefono || '',
+          institucion: citaCompleta.nombre_colegio || citaCompleta.encargado?.institucion || ''
         };
         firma_documento = Boolean(citaCompleta.firma_documento);
       }
@@ -262,7 +271,9 @@ const Agenda = () => {
       setModalAbierto(true);
     } catch (error) {
       console.error('Error cargando cita:', error);
-      toast.error('Error al cargar la cita');
+      setSnackbarMessage('Error al cargar la cita');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     }
   };
 
@@ -410,10 +421,14 @@ const Agenda = () => {
       // Llamar al servicio
       if (citaEditando) {
         await crearCita({ ...citaDto, id: citaEditando.id });
-        toast.success('Cita actualizada correctamente');
+        setSnackbarMessage('Cita actualizada correctamente');
+        setSnackbarSeverity('success');
+        setShowSnackbar(true);
       } else {
         await crearCita(citaDto);
-        toast.success('Cita creada correctamente');
+        setSnackbarMessage('Cita creada correctamente');
+        setSnackbarSeverity('success');
+        setShowSnackbar(true);
       }
 
       // Recargar citas
@@ -437,8 +452,10 @@ const Agenda = () => {
       } else if (error.message) {
         mensajeError = error.message;
       }
-      
-      toast.error(mensajeError);
+
+      setSnackbarMessage(mensajeError);
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     } finally {
       setGuardando(false);
     }
@@ -449,8 +466,10 @@ const Agenda = () => {
     
     try {
       await eliminarCita(citaEditando.id);
-      
-      toast.success('Cita eliminada correctamente');
+
+      setSnackbarMessage('Cita eliminada correctamente');
+      setSnackbarSeverity('success');
+      setShowSnackbar(true);
       
       // Recargar citas
       let params = {};
@@ -473,8 +492,10 @@ const Agenda = () => {
       } else if (error.message) {
         mensajeError = error.message;
       }
-      
-      toast.error(mensajeError);
+
+      setSnackbarMessage(mensajeError);
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     }
   };
 
@@ -554,6 +575,21 @@ const Agenda = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Snackbar de notificaciones */}
+      {showSnackbar && (
+        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
+          snackbarSeverity === 'success'
+            ? 'bg-white border-gray-100'
+            : 'bg-white border-red-100'
+        } flex items-center gap-2.5`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${snackbarSeverity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
+          <span className="text-xs font-medium text-gray-700">{snackbarMessage}</span>
+          <button onClick={() => setShowSnackbar(false)} className="ml-2">
+            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
         {/* Header */}
         <div className="mb-8">

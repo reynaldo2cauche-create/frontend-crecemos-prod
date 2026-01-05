@@ -126,53 +126,50 @@ const ModalAgendarCita = ({
       setTabValue(0);
       setDialogoEliminarAbierto(false);
 
-      if (!modoEdicion) {
+      // Cargar terapeutas desde formularioCita.terapeutas_ids
+      if (formularioCita.terapeutas_ids && formularioCita.terapeutas_ids.length > 0) {
+        setTerapeutasReunion(formularioCita.terapeutas_ids.map(id => ({ terapeuta_id: id })));
+      } else {
         setTerapeutasReunion([]);
+      }
+
+      // Cargar servicios desde formularioCita.servicios_ids
+      if (formularioCita.servicios_ids && formularioCita.servicios_ids.length > 0) {
+        setServiciosReunion(formularioCita.servicios_ids.map(id => ({ servicio_id: id })));
+      } else {
         setServiciosReunion([]);
+      }
+
+      // Cargar encargado si es visita escolar
+      if (formularioCita.encargado) {
+        setEncargadoVisita(formularioCita.encargado);
+      } else {
         setEncargadoVisita({ nombre_completo: '', telefono: '', institucion: '' });
-        setDocumentoFirmado(false);
+      }
 
-        // Asegurar que fechasHoras tenga al menos un elemento si no lo tiene
-        if (!formularioCita.fechasHoras || formularioCita.fechasHoras.length === 0) {
-          onFormularioChange('fechasHoras', [{ fecha: '', horaInicio: '' }]);
-        }
-      } else if (citaEditando) {
-        // Cargar datos de la cita en edición
-        setDocumentoFirmado(citaEditando.firma_documento === 1 || citaEditando.firma_documento === true);
+      // Cargar firma documento
+      setDocumentoFirmado(formularioCita.firma_documento === 1 || formularioCita.firma_documento === true);
 
-        // Cargar terapeutas adicionales si es reunión clínica
-        if (citaEditando.terapeutas_adicionales && citaEditando.terapeutas_adicionales.length > 0) {
-          setTerapeutasReunion(citaEditando.terapeutas_adicionales.map(t => ({ terapeuta_id: t.id || t.terapeuta_id })));
-        }
-
-        // Cargar servicios si hay
-        if (citaEditando.servicios && citaEditando.servicios.length > 0) {
-          setServiciosReunion(citaEditando.servicios.map(s => ({ servicio_id: s.servicio_id || s.id })));
-        }
-
-        // Cargar encargado si es visita escolar
-        if (citaEditando.encargado) {
-          setEncargadoVisita(citaEditando.encargado);
-        }
+      // Asegurar que fechasHoras tenga al menos un elemento
+      if (!formularioCita.fechasHoras || formularioCita.fechasHoras.length === 0) {
+        onFormularioChange('fechasHoras', [{ fecha: '', horaInicio: '' }]);
       }
     }
-  }, [open]);
+  }, [open, formularioCita]);
 
   // Detectar tipo de cita según motivo_id
   useEffect(() => {
-    if (formularioCita.motivo_id) {
-      const motivoId = parseInt(formularioCita.motivo_id);
-      if (motivoId === 6) {
-        setTipoCita('REUNION_CLINICA');
-      } else if (motivoId === 7) {
-        setTipoCita('VISITA_ESCOLAR');
+    if (formularioCita.motivo_id && motivos.length > 0) {
+      const motivo = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
+      if (motivo && motivo.tipoCita) {
+        setTipoCita(motivo.tipoCita.codigo); // Usar el código del tipo: NORMAL, REUNION_CLINICA, VISITA_ESCOLAR
       } else {
         setTipoCita('NORMAL');
       }
     } else {
       setTipoCita(null);
     }
-  }, [formularioCita.motivo_id]);
+  }, [formularioCita.motivo_id, motivos]);
 
   // Funciones para Reunión Clínica
   const agregarTerapeuta = () => setTerapeutasReunion([...terapeutasReunion, { terapeuta_id: '' }]);
