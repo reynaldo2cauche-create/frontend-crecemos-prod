@@ -23,9 +23,14 @@ export const crearMultiplesCitas = async (citasData) => {
   return response.data;
 };
 
-export const actualizarCita = async (id, citaData) => {
-  const response = await api.patch(`/citas/${id}`, citaData);
-  return response.data;
+export const actualizarCita = async (id, citaDto) => {
+  try {
+    const response = await api.put(`/citas/${id}`, citaDto);
+    return response.data;
+  } catch (error) {
+    console.error('Error actualizando cita:', error);
+    throw error;
+  }
 };
 
 export const eliminarCita = async (id, userId) => {

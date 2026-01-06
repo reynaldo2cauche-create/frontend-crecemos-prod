@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar
+  Calendar,
+  Users,
+  School
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
 
@@ -325,6 +327,24 @@ const CalendarioSemanal = ({
                               }}
                               className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
                             >
+                              {/* Badge de tipo de cita */}
+                              {(() => {
+                                const tipoCita = cita.tipo_cita;
+                                let badge = { text: 'Cita', color: 'bg-blue-500' };
+
+                                if (tipoCita === 'REUNION_CLINICA') {
+                                  badge = { text: 'RC', color: 'bg-purple-500' };
+                                } else if (tipoCita === 'VISITA_ESCOLAR') {
+                                  badge = { text: 'VE', color: 'bg-orange-500' };
+                                }
+
+                                return (
+                                  <div className={`absolute top-1 right-1 ${badge.color} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>
+                                    {badge.text}
+                                  </div>
+                                );
+                              })()}
+
                               <div className="font-bold text-blue-700 text-xs leading-tight truncate">
                                 {(() => {
                                   const nombre = cita.paciente_nombre ||
@@ -334,12 +354,37 @@ const CalendarioSemanal = ({
                                 })()}
                               </div>
 
-                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0.5">
+                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0.5 flex items-center gap-1">
                                 {(() => {
+                                  const tipoCita = cita.tipo_cita;
+
+                                  // REUNIÓN CLÍNICA: Mostrar cantidad de terapeutas
+                                  if (tipoCita === 'REUNION_CLINICA') {
+                                    const cantTerapeutas = cita.terapeutas?.length || 0;
+                                    return (
+                                      <>
+                                        <Users className="w-3 h-3 flex-shrink-0 text-purple-600" />
+                                        <span className="truncate">{cantTerapeutas} terapeuta{cantTerapeutas !== 1 ? 's' : ''}</span>
+                                      </>
+                                    );
+                                  }
+
+                                  // VISITA ESCOLAR: Mostrar nombre del colegio
+                                  if (tipoCita === 'VISITA_ESCOLAR') {
+                                    const colegio = cita.nombre_colegio || 'Colegio';
+                                    return (
+                                      <>
+                                        <School className="w-3 h-3 flex-shrink-0 text-orange-600" />
+                                        <span className="truncate">{colegio.substring(0, 12)}{colegio.length > 12 ? '...' : ''}</span>
+                                      </>
+                                    );
+                                  }
+
+                                  // CITA NORMAL: Mostrar servicio
                                   const servicio = cita.servicio_nombre ||
                                                   (typeof cita.servicio === 'string' ? cita.servicio : cita.servicio?.nombre) ||
                                                   'Servicio';
-                                  return servicio.substring(0, 15) + (servicio.length > 15 ? '...' : '');
+                                  return <span className="truncate">{servicio.substring(0, 15) + (servicio.length > 15 ? '...' : '')}</span>;
                                 })()}
                               </div>
 
