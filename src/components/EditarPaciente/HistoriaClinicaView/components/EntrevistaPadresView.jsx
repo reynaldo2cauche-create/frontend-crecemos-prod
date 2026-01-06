@@ -152,7 +152,7 @@ const EntrevistaPadresView = ({ paciente, user }) => {
       { campo: 'motivoConsulta', nombre: 'Motivo de consulta' },
       { campo: 'derivacionInterna', nombre: 'Otras atenciones' },
       { campo: 'relacionEntrePadres', nombre: 'Relación entre los padres' },
-      { campo: 'cantidadHermanos', nombre: 'Cantidad de hermanos' },
+
       { campo: 'tiempoJuego', nombre: 'Tiempo de juego' },
       { campo: 'tiempoDispositivos', nombre: 'Tiempo de dispositivos' },
       { campo: 'antecedentesFamiliares', nombre: 'Antecedentes familiares' },
@@ -562,7 +562,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
           <div className="mb-6">
             <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">I. DATOS GENERALES</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-              <DataRow label="Grado Escolar Actual" value={entrevista.escolaridad ? `Grado ${entrevista.escolaridad}` : 'No especificado'} />
+              <DataRow label="Grado Escolar Actual" value={entrevista.gradoEscolar?.nombre ? ` ${entrevista.gradoEscolar.nombre}` : 'No especificado'} />
               <DataRow label="Otras Atenciones" value={entrevista.atenciones?.nombre || 'No especificado'} />
               <DataRow label="Motivo Principal de Consulta" value={entrevista.motivoConsulta || entrevista.motivo_consulta} fullWidth />
             </div>
