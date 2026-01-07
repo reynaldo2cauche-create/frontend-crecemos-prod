@@ -18,11 +18,11 @@ export const crearCita = async (citaData) => {
   return response.data;
 };
 
-export const crearMultiplesCitas = async (citasData) => {
-  const response = await api.post('/citas', citasData);
+// 🆕 NUEVA FUNCIÓN PARA MÚLTIPLES CITAS
+export const crearMultiplesCitas = async (citasArray) => {
+  const response = await api.post('/citas/multiples', { citas: citasArray });
   return response.data;
 };
-
 export const actualizarCita = async (id, citaDto) => {
   try {
     const response = await api.put(`/citas/${id}`, citaDto);

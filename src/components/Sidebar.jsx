@@ -20,7 +20,8 @@ import {
   ChartBarIcon,
   ChevronDownIcon,
   CalendarIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
 // Contexto para compartir el estado del sidebar
@@ -49,6 +50,7 @@ const menuItems = [
   { text: 'Agenda', path: '/intranet/agenda', icon: CalendarDaysIcon },
   { text: 'Pacientes', path: '/intranet/lista-pacientes', icon: UserGroupIcon },
   { text: 'Reportes', path: '/intranet/reportes-evaluaciones', icon: DocumentChartBarIcon },
+  { text: 'Staff Web', path: '/intranet/gestion-staff', icon: AcademicCapIcon, adminOnly: true },
   { text: 'Popup Inicio', path: '/intranet/popup-promocional', icon: BellAlertIcon },
   { text: 'Postulaciones', path: '/intranet/postulaciones', icon: BriefcaseIcon },
   { text: 'Certificaciones', path: '/intranet/archivos-oficiales', icon: DocumentCheckIcon },

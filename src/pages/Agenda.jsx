@@ -25,6 +25,7 @@ import {
   crearCita, 
   eliminarCita, 
   getCitaById,
+  crearMultiplesCitas,
   getMotivosCita,
   getEstadosCita 
 } from '../services/citaService';
@@ -132,7 +133,7 @@ const Agenda = () => {
         // Limitación: Solo validará disponibilidad del terapeuta seleccionado
         // Para validación completa, se necesita modificar el backend
         setTodasLasCitas(citasRes);
-        console.log('✅ Citas cargadas:', citasRes.length);
+        
       } catch (error) {
         console.error('Error cargando citas:', error);
         setSnackbarMessage('Error al cargar citas');
@@ -355,6 +356,9 @@ const guardarCita = async (datosFormulario = null) => {
   try {
     const datos = datosFormulario || formularioCita;
 
+    console.log('💾 Guardando cita con datos:', datos);
+    console.log('📅 Cantidad de fechas/horas:', datos.fechasHoras?.length);
+
     // Validaciones básicas
     if (!datos.paciente_id) {
       throw new Error('Se requiere seleccionar un paciente');
@@ -364,31 +368,36 @@ const guardarCita = async (datosFormulario = null) => {
       throw new Error('Se requiere seleccionar un motivo');
     }
 
-    const fechaHora = datos.fechasHoras?.[0];
-    if (!fechaHora?.fecha || !fechaHora?.horaInicio) {
-      throw new Error('Se requiere fecha y hora');
+    if (!datos.fechasHoras || datos.fechasHoras.length === 0) {
+      throw new Error('Se requiere al menos una fecha y hora');
     }
 
-    // Construir DTO para el backend
-    const citaDto = {
+    // Validar que todas las fechas/horas estén completas
+    const fechasHorasValidas = datos.fechasHoras.every(fh => fh.fecha && fh.horaInicio);
+    if (!fechasHorasValidas) {
+      throw new Error('Todas las fechas y horas deben estar completas');
+    }
+
+    const tipoCita = determinarTipoCita(datos.motivo_id);
+    console.log('📋 Tipo de cita:', tipoCita);
+
+    // Construir datos base comunes
+    let datosBase = {
       motivo_id: parseInt(datos.motivo_id),
       paciente_id: datos.paciente_id,
       estado_id: parseInt(datos.estado_id || 1),
-      fecha: fechaHora.fecha,
-      hora_inicio: fechaHora.horaInicio + ':00',
       duracion_minutos: parseInt(datos.duracion || 40),
       nota: datos.nota || '',
       user_id_crea: currentUser.id
     };
 
-    const tipoCita = determinarTipoCita(datos.motivo_id);
-
+    // Agregar campos según tipo de cita
     if (tipoCita === 'NORMAL') {
       if (!datos.doctor_id || !datos.servicio_id) {
         throw new Error('Se requiere terapeuta y servicio para cita normal');
       }
-      citaDto.doctor_id = parseInt(datos.doctor_id);
-      citaDto.servicio_id = parseInt(datos.servicio_id);
+      datosBase.doctor_id = parseInt(datos.doctor_id);
+      datosBase.servicio_id = parseInt(datos.servicio_id);
     } 
     else if (tipoCita === 'REUNION_CLINICA') {
       if (!datos.terapeutas_ids || datos.terapeutas_ids.length === 0) {
@@ -397,8 +406,8 @@ const guardarCita = async (datosFormulario = null) => {
       if (!datos.servicios_ids || datos.servicios_ids.length === 0) {
         throw new Error('Se requiere al menos un servicio para reunión clínica');
       }
-      citaDto.terapeutas_ids = datos.terapeutas_ids.map(id => parseInt(id));
-      citaDto.servicios_ids = datos.servicios_ids.map(id => parseInt(id));
+      datosBase.terapeutas_ids = datos.terapeutas_ids.map(id => parseInt(id));
+      datosBase.servicios_ids = datos.servicios_ids.map(id => parseInt(id));
     } 
     else if (tipoCita === 'VISITA_ESCOLAR') {
       if (!datos.doctor_id) {
@@ -407,27 +416,88 @@ const guardarCita = async (datosFormulario = null) => {
       if (!datos.encargado?.nombre_completo || !datos.encargado?.institucion) {
         throw new Error('Se requiere nombre del encargado y nombre de la institución');
       }
-      citaDto.doctor_id = parseInt(datos.doctor_id);
-      citaDto.servicio_id = datos.servicio_id ? parseInt(datos.servicio_id) : null;
-      citaDto.encargado = datos.encargado;
-      citaDto.firma_documento = Boolean(datos.firma_documento);
+      datosBase.doctor_id = parseInt(datos.doctor_id);
+      datosBase.servicio_id = datos.servicio_id ? parseInt(datos.servicio_id) : null;
+      datosBase.encargado = datos.encargado;
+      datosBase.firma_documento = Boolean(datos.firma_documento);
     }
 
-    console.log('Enviando cita al backend:', citaDto);
-
-    // Llamar al servicio correcto según modo edición
+    // 🎯 AQUÍ ESTÁ LA MAGIA: Detectar si son múltiples citas
     if (citaEditando) {
+      // ✏️ MODO EDICIÓN - Siempre es una sola cita
+      console.log('✏️ Actualizando cita existente:', citaEditando.id);
+      
+      const citaDto = {
+        ...datosBase,
+        fecha: datos.fechasHoras[0].fecha,
+        hora_inicio: datos.fechasHoras[0].horaInicio + ':00'
+      };
+
+      console.log('📤 Datos a actualizar:', citaDto);
+      
       await actualizarCita(citaEditando.id, citaDto);
-      setSnackbarMessage('Cita actualizada correctamente');
+      setSnackbarMessage('✅ Cita actualizada correctamente');
+      
     } else {
-      await crearCita(citaDto);
-      setSnackbarMessage('Cita creada correctamente');
+      // ➕ MODO CREACIÓN - Detectar si hay múltiples fechas
+      const cantidadFechas = datos.fechasHoras.length;
+      console.log(`📊 Cantidad de fechas a crear: ${cantidadFechas}`);
+
+      if (cantidadFechas > 1) {
+        // 🔄 CREAR MÚLTIPLES CITAS
+        console.log(`🔄 Creando ${cantidadFechas} citas...`);
+        
+        const citasACrear = datos.fechasHoras.map((fechaHora, index) => {
+          console.log(`Preparando cita ${index + 1}:`, {
+            fecha: fechaHora.fecha,
+            hora: fechaHora.horaInicio
+          });
+          
+          return {
+            ...datosBase,
+            fecha: fechaHora.fecha,
+            hora_inicio: fechaHora.horaInicio + ':00'
+          };
+        });
+
+        console.log('📤 Enviando múltiples citas al backend:', citasACrear);
+
+        const resultado = await crearMultiplesCitas(citasACrear);
+        
+        console.log('📊 Resultado del backend:', resultado);
+        
+        // Mostrar mensaje según el resultado
+        if (resultado.exitosas === resultado.total) {
+          setSnackbarMessage(` ${resultado.exitosas} citas creadas exitosamente`);
+        } else if (resultado.exitosas > 0) {
+          setSnackbarMessage(` ${resultado.exitosas} de ${resultado.total} citas creadas. ${resultado.fallidas} fallaron.`);
+          console.error('❌ Errores:', resultado.errores);
+        } else {
+          throw new Error('No se pudo crear ninguna cita');
+        }
+        
+      } else {
+        // 📝 CREAR UNA SOLA CITA
+        console.log('📝 Creando una sola cita');
+        
+        const citaDto = {
+          ...datosBase,
+          fecha: datos.fechasHoras[0].fecha,
+          hora_inicio: datos.fechasHoras[0].horaInicio + ':00'
+        };
+
+        console.log('📤 Enviando cita única:', citaDto);
+
+        await crearCita(citaDto);
+        setSnackbarMessage('✅ Cita creada correctamente');
+      }
     }
     
     setSnackbarSeverity('success');
     setShowSnackbar(true);
 
     // Recargar citas
+    console.log('🔄 Recargando citas...');
     let params = {};
     if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
       params.terapeuta_id = currentUser.id;
@@ -441,7 +511,12 @@ const guardarCita = async (datosFormulario = null) => {
 
     cerrarModal();
   } catch (error) {
-    console.error('Error guardando cita:', error);
+    console.error('❌ Error guardando cita:', error);
+    console.error('❌ Detalles:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     
     let mensajeError = 'Error al guardar la cita';
     if (error.response?.data?.message) {

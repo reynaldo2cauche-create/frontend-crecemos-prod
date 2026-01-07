@@ -346,31 +346,37 @@ const ModalAgendarCita = ({
     setServiciosReunion(nuevos);
   };
 
-  const handleGuardar = () => {
-    let datosGuardar = { ...formularioCita };
+  // 🎯 Reemplaza tu handleGuardar actual en ModalAgendarCita con este:
 
-    if (tipoCita === 'NORMAL') {
-      datosGuardar.terapeutas_ids = [];
-      datosGuardar.servicios_ids = [];
-      datosGuardar.encargado = null;
-      datosGuardar.firma_documento = false;
-    } else if (tipoCita === 'REUNION_CLINICA') {
-      datosGuardar.terapeutas_ids = terapeutasReunion.filter(t => t.terapeuta_id).map(t => parseInt(t.terapeuta_id));
-      datosGuardar.servicios_ids = serviciosReunion.filter(s => s.servicio_id).map(s => parseInt(s.servicio_id));
-      datosGuardar.doctor_id = null;
-      datosGuardar.servicio_id = null;
-      datosGuardar.encargado = null;
-      datosGuardar.firma_documento = false;
-    } else if (tipoCita === 'VISITA_ESCOLAR') {
-      datosGuardar.encargado = encargadoVisita;
-      datosGuardar.terapeutas_ids = [];
-      datosGuardar.servicios_ids = [];
-      datosGuardar.firma_documento = documentoFirmado ? 1 : 0;
-      // Mantener doctor_id y servicio_id para visita escolar
-    }
+const handleGuardar = () => {
+  let datosGuardar = { ...formularioCita };
 
-    onGuardar(datosGuardar);
-  };
+  if (tipoCita === 'NORMAL') {
+    datosGuardar.terapeutas_ids = [];
+    datosGuardar.servicios_ids = [];
+    datosGuardar.encargado = null;
+    datosGuardar.firma_documento = false;
+  } else if (tipoCita === 'REUNION_CLINICA') {
+    datosGuardar.terapeutas_ids = terapeutasReunion.filter(t => t.terapeuta_id).map(t => parseInt(t.terapeuta_id));
+    datosGuardar.servicios_ids = serviciosReunion.filter(s => s.servicio_id).map(s => parseInt(s.servicio_id));
+    datosGuardar.doctor_id = null;
+    datosGuardar.servicio_id = null;
+    datosGuardar.encargado = null;
+    datosGuardar.firma_documento = false;
+  } else if (tipoCita === 'VISITA_ESCOLAR') {
+    datosGuardar.encargado = encargadoVisita;
+    datosGuardar.terapeutas_ids = [];
+    datosGuardar.servicios_ids = [];
+    datosGuardar.firma_documento = documentoFirmado ? 1 : 0;
+    // Mantener doctor_id y servicio_id para visita escolar
+  }
+
+  // 🆕 NUEVA LÓGICA: Marcar si son múltiples citas
+  // Pasamos la info al padre para que decida si crear múltiples o una sola
+  datosGuardar.esMultiple = !modoEdicion && datosGuardar.fechasHoras && datosGuardar.fechasHoras.length > 1;
+
+  onGuardar(datosGuardar);
+};
 
   const abrirDialogoEliminar = () => setDialogoEliminarAbierto(true);
   const cerrarDialogoEliminar = () => setDialogoEliminarAbierto(false);

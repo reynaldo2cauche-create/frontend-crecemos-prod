@@ -156,21 +156,7 @@ const PsicologiaInfantilPage = () => {
               </div>
             </div>
 
-            {/* Lic. Jhoselyn Quispe */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img src="/assets/img/servicios/jhoselyn.png" alt="Lic. Jhoselyn Quispe" style={{ height: "300px" }} />
-                <div className="team-content">
-                  <h3 className="title">Lic. Jhoselyn Quispe</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">57370</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          
           </div>
         </div>
       </section>
