@@ -54,3 +54,9 @@ export const uploadFotoStaff = async (file) => {
   });
   return response.data;
 };
+
+// Obtener detalle completo del staff (con formación académica y cursos)
+export const getStaffDetalleCompleto = async (id) => {
+  const response = await api.get(`/staff/${id}/detalle-completo`);
+  return response.data;
+};

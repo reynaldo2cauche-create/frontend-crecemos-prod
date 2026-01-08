@@ -115,7 +115,8 @@ const MiPerfil = () => {
         talla_polo: perfil.talla_polo || null,
         talla_pantalon: perfil.talla_pantalon || null,
         talla_zapatos: perfil.talla_zapatos || null,
-        especialidad_id: perfil.especialidad?.id || null
+        especialidad_id: perfil.especialidad?.id || null,
+        numero_colegiatura: perfil.numero_colegiatura || null
       };
 
       await updateMyProfile(dataToUpdate);
@@ -278,29 +279,40 @@ const MiPerfil = () => {
               <Field label="DNI" value={perfil.dni} name="dni" editable={modoEdicion} onChange={handleChange} error={errors.dni} maxLength={8} />
               <Field label="Email" value={perfil.email} name="email" type="email" editable={modoEdicion} onChange={handleChange} error={errors.email} />
               {perfil.rol?.nombre === 'Terapeuta' && (
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Especialidad</label>
-                  {modoEdicion ? (
-                    <select
-                      name="especialidad"
-                      value={perfil.especialidad?.id || ''}
-                      onChange={(e) => {
-                        const esp = especialidades.find(e => e.id === parseInt(e.target.value));
-                        setPerfil({ ...perfil, especialidad: esp });
-                      }}
-                      className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
-                    >
-                      <option value="">Seleccionar especialidad</option>
-                      {especialidades.map(esp => (
-                        <option key={esp.id} value={esp.id}>{esp.nombre}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="py-2.5 px-3 text-sm text-gray-900 font-medium bg-gray-50 rounded-lg border border-gray-100">
-                      {perfil.especialidad?.nombre || '-'}
-                    </div>
-                  )}
-                </div>
+                <>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Especialidad</label>
+                    {modoEdicion ? (
+                      <select
+                        name="especialidad"
+                        value={perfil.especialidad?.id || ''}
+                        onChange={(e) => {
+                          const esp = especialidades.find(e => e.id === parseInt(e.target.value));
+                          setPerfil({ ...perfil, especialidad: esp });
+                        }}
+                        className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                      >
+                        <option value="">Seleccionar especialidad</option>
+                        {especialidades.map(esp => (
+                          <option key={esp.id} value={esp.id}>{esp.nombre}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="py-2.5 px-3 text-sm text-gray-900 font-medium bg-gray-50 rounded-lg border border-gray-100">
+                        {perfil.especialidad?.nombre || '-'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <Field
+                      label="Número de Colegiatura"
+                      value={perfil.numero_colegiatura}
+                      name="numero_colegiatura"
+                      editable={modoEdicion}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </Section>

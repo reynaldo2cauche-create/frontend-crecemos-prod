@@ -934,7 +934,8 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
     talla_pantalon: empleado.talla_pantalon || '',
     talla_zapatos: empleado.talla_zapatos || '',
     sueldo_base: empleado.sueldo_base || '',
-    fecha_ingreso: empleado.fecha_ingreso || ''
+    fecha_ingreso: empleado.fecha_ingreso || '',
+    numero_colegiatura: empleado.numero_colegiatura || ''
   });
   
   // Estados para manejar servicios
@@ -1053,7 +1054,8 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
         talla_pantalon: formData.talla_pantalon || null,
         talla_zapatos: formData.talla_zapatos || null,
         sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
-        fecha_ingreso: formData.fecha_ingreso || null
+        fecha_ingreso: formData.fecha_ingreso || null,
+        numero_colegiatura: formData.numero_colegiatura || null
       };
 
       if (formData.contrasena?.trim()) {
@@ -1102,8 +1104,16 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
           }
         }
 
-        // Actualizar servicios originales para futuras comparaciones
-        setServiciosOriginales(serviciosSeleccionados);
+        // Recargar servicios desde el backend para sincronizar estado
+        try {
+          const serviciosActualizados = await getServiciosByTrabajador(empleado.id);
+          const serviciosIds = serviciosActualizados.map(s => s.id);
+          setServiciosOriginales(serviciosIds);
+          setServiciosSeleccionados(serviciosIds);
+          console.log('Servicios recargados después de guardar:', serviciosIds);
+        } catch (error) {
+          console.error('Error al recargar servicios:', error);
+        }
       }
 
       onSuccess();
@@ -1143,7 +1153,72 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* ... (resto del formulario igual) ... */}
+            {/* Datos Básicos */}
+            <Section title="Datos Básicos" icon={User}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Nombres" name="nombres" value={formData.nombres} onChange={handleChange} required error={errors.nombres} />
+                <InputField label="Apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} required error={errors.apellidos} />
+                <InputField label="DNI" name="dni" value={formData.dni} onChange={handleChange} maxLength={8} required error={errors.dni} />
+                <InputField label="Usuario" name="usuario" value={formData.usuario} onChange={handleChange} required error={errors.usuario} />
+                <InputField label="Email Personal" name="email" type="email" value={formData.email} onChange={handleChange} required error={errors.email} />
+                <InputField label="Email Corporativo" name="correo_corporativo" type="email" value={formData.correo_corporativo} onChange={handleChange} />
+                <InputField label="Nueva Contraseña" name="contrasena" type="password" value={formData.contrasena} onChange={handleChange} placeholder="Dejar en blanco para no cambiar" />
+              </div>
+            </Section>
+
+            {/* Rol, Cargo y Especialidad */}
+            <Section title="Rol y Cargo" icon={Shield}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SelectField
+                  label="Rol"
+                  name="rol"
+                  value={formData.rol}
+                  onChange={handleChange}
+                  options={roles.map(r => r.nombre)}
+                  required
+                  error={errors.rol}
+                />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Cargo
+                  </label>
+                  <select
+                    name="cargo_id"
+                    value={formData.cargo_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar cargo</option>
+                    {cargos.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                {esTerapeuta && (
+                  <>
+                    <div className="md:col-span-2">
+                      <SelectField
+                        label="Especialidad"
+                        name="especialidad"
+                        value={formData.especialidad}
+                        onChange={handleChange}
+                        options={especialidades.map(e => e.nombre)}
+                        required={esTerapeuta}
+                        error={errors.especialidad}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <InputField
+                        label="Número de Colegiatura"
+                        name="numero_colegiatura"
+                        value={formData.numero_colegiatura}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </Section>
 
             {/* ✅ SECCIÓN SERVICIOS - Solo si es terapeuta */}
             {esTerapeuta && (

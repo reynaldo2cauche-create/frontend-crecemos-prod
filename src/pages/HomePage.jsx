@@ -9,7 +9,7 @@ import DialogNotice from '../components/DialogNotice/DialogNotice';
 
 const heroImages = [
   '/assets/img/index/Carrusel servicios.png',
-  '/assets/img/index/carrusel psicologia infantil.png',
+  '/assets/img/index/Psicologia Infantil.png',
 ];
 
 export default function HomePage() {
