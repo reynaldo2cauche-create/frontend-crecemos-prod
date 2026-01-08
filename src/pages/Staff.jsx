@@ -16,31 +16,59 @@ export const Staff = () => {
   const [filtroArea, setFiltroArea] = useState('');
   const [filtroEspecialidad, setFiltroEspecialidad] = useState('');
   const [filtroServicio, setFiltroServicio] = useState('');
+  const [totalServiciosUnicos, setTotalServiciosUnicos] = useState(0);
 
   useEffect(() => {
     initializePageScripts();
     cargarStaff();
   }, []);
 
-  // Inicializar PureCounter cuando los datos estén listos
+  // Calcular servicios únicos cuando cambien los specialists
   useEffect(() => {
-    if (!loading && specialists.length > 0) {
-      new PureCounter({
-        selector: '.purecounter',
-        start: 0,
-        end: 100,
-        duration: 2,
-        delay: 10,
-        once: true,
-        repeat: false,
-        decimals: 0,
-        legacy: true,
-        filesizing: false,
-        currency: false,
-        separator: false
+    if (specialists.length > 0) {
+      const serviciosSet = new Set();
+      specialists.forEach(s => {
+        if (s.services && Array.isArray(s.services)) {
+          s.services.forEach(servicio => serviciosSet.add(servicio));
+        }
       });
+      setTotalServiciosUnicos(serviciosSet.size);
     }
-  }, [loading, specialists, filteredSpecialists]);
+  }, [specialists]);
+
+   useEffect(() => {
+    if (!loading && specialists.length > 0 && totalServiciosUnicos > 0) {
+      // Pequeño delay para asegurar que el DOM esté actualizado
+      setTimeout(() => {
+        // Destruir instancias anteriores
+        const counters = document.querySelectorAll('.purecounter');
+        counters.forEach(counter => {
+          counter.textContent = '0';
+          // Eliminar atributos de PureCounter para reiniciar
+          counter.removeAttribute('data-purecounter-duration');
+        });
+
+        // Actualizar el atributo data-purecounter-end con el valor correcto
+        const serviciosCounter = document.querySelector('[data-purecounter-end]');
+        if (serviciosCounter) {
+          serviciosCounter.setAttribute('data-purecounter-end', totalServiciosUnicos);
+        }
+
+        // Inicializar PureCounter
+        new PureCounter({
+          selector: '.purecounter',
+          start: 0,
+          duration: 2,
+          delay: 10,
+          once: true,
+          legacy: true,
+          filesizing: false,
+          currency: false,
+          separator: false
+        });
+      }, 300);
+    }
+  }, [loading, specialists, totalServiciosUnicos]);
 
   // ✅ Función para cargar SOLO servicios ACTIVOS del trabajador
   const cargarServiciosTrabajador = async (trabajadorId) => {
@@ -494,7 +522,7 @@ export const Staff = () => {
                   color: '#2c3e50',
                   marginBottom: '10px'
                 }}>
-                  {selectedSpecialist.name}
+                  Lic. {selectedSpecialist.name}
                 </h2>
                 
                 <p style={{
@@ -877,24 +905,16 @@ export const Staff = () => {
         {/* Stats Section */}
         <section className="stats-section" style={{ padding: '60px 0', background: 'var(--accent-color)' }}>
           <div className="container">
-            <div className="row text-center">
-              <div className="col-lg-4 col-md-4" data-aos="fade-up" data-aos-delay="100">
+            <div className="row text-center justify-content-center">
+              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
                 <div style={{ color: 'white' }}>
                   <h2 style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '10px' }}>
-                    <span className="purecounter" data-purecounter-start="0" data-purecounter-end={filteredSpecialists.length} data-purecounter-duration="2">0</span>+
-                  </h2>
-                  <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>Terapeutas Especializados</p>
-                </div>
-              </div>
-              <div className="col-lg-4 col-md-4" data-aos="fade-up" data-aos-delay="200">
-                <div style={{ color: 'white' }}>
-                  <h2 style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '10px' }}>
-                    <span className="purecounter" data-purecounter-start="0" data-purecounter-end={specialists.reduce((acc, s) => acc + s.services.length, 0)} data-purecounter-duration="2">0</span>+
+                    <span className="purecounter" data-purecounter-start="0" data-purecounter-end={totalServiciosUnicos} data-purecounter-duration="2">0</span>+
                   </h2>
                   <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>Servicios Disponibles</p>
                 </div>
               </div>
-              <div className="col-lg-4 col-md-4" data-aos="fade-up" data-aos-delay="300">
+              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
                 <div style={{ color: 'white' }}>
                   <h2 style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '10px' }}>
                     <span className="purecounter" data-purecounter-start="0" data-purecounter-end="8" data-purecounter-duration="2">0</span>+
@@ -1295,7 +1315,7 @@ export const Staff = () => {
                               lineHeight: '1.3',
                               letterSpacing: '-0.3px'
                             }}>
-                              {specialist.name}
+                              Lic. {specialist.name}
                             </h3>
                           </div>
 
