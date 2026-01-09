@@ -124,16 +124,33 @@ const Agenda = () => {
           params.terapeuta_id = terapeutaFiltro;
         }
 
+        // Calcular el rango de fechas: toda la semana visible y el resto del mes
+        const fecha = new Date(fechaActual);
+
+        // Obtener el primer día del mes
+        const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+
+        // Obtener el último día del mes
+        const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+
+        // Formatear fechas como YYYY-MM-DD
+        const formatearFecha = (f) => {
+          const year = f.getFullYear();
+          const month = String(f.getMonth() + 1).padStart(2, '0');
+          const day = String(f.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
+        params.fecha_desde = formatearFecha(primerDiaMes);
+        params.fecha_hasta = formatearFecha(ultimoDiaMes);
+
+        console.log(`📅 Cargando citas del ${params.fecha_desde} al ${params.fecha_hasta}`);
+
         // Cargar citas filtradas para mostrar en el calendario
         const citasRes = await listarCitas(params);
         setCitas(citasRes);
-
-        // SOLUCIÓN TEMPORAL: Usar las mismas citas filtradas para validación
-        // Esto evita llamar al backend sin filtro y sobrecargar con 1000+ citas
-        // Limitación: Solo validará disponibilidad del terapeuta seleccionado
-        // Para validación completa, se necesita modificar el backend
         setTodasLasCitas(citasRes);
-        
+
       } catch (error) {
         console.error('Error cargando citas:', error);
         setSnackbarMessage('Error al cargar citas');
@@ -160,6 +177,33 @@ const Agenda = () => {
     if (!hora) return '';
     const [h, m] = hora.split(':');
     return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+  };
+
+  // Función auxiliar para obtener parámetros de fecha del mes actual visualizado
+  const obtenerParamsFechaActual = () => {
+    const params = {};
+
+    if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+      params.terapeuta_id = currentUser.id;
+    } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+      params.terapeuta_id = terapeutaFiltro;
+    }
+
+    const fecha = new Date(fechaActual);
+    const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+    const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+
+    const formatearFecha = (f) => {
+      const year = f.getFullYear();
+      const month = String(f.getMonth() + 1).padStart(2, '0');
+      const day = String(f.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    params.fecha_desde = formatearFecha(primerDiaMes);
+    params.fecha_hasta = formatearFecha(ultimoDiaMes);
+
+    return params;
   };
 
   const abrirModalDesdeSlot = (dia, hora) => {
@@ -422,22 +466,35 @@ const guardarCita = async (datosFormulario = null) => {
       datosBase.firma_documento = Boolean(datos.firma_documento);
     }
 
+    // Función auxiliar para calcular hora_fin
+    const calcularHoraFin = (horaInicio, duracionMinutos) => {
+      const [hora, minuto] = horaInicio.split(':').map(Number);
+      const totalMinutos = hora * 60 + minuto + parseInt(duracionMinutos);
+      const horaFin = Math.floor(totalMinutos / 60);
+      const minutoFin = totalMinutos % 60;
+      return `${String(horaFin).padStart(2, '0')}:${String(minutoFin).padStart(2, '0')}:00`;
+    };
+
     // 🎯 AQUÍ ESTÁ LA MAGIA: Detectar si son múltiples citas
     if (citaEditando) {
       // ✏️ MODO EDICIÓN - Siempre es una sola cita
       console.log('✏️ Actualizando cita existente:', citaEditando.id);
-      
+
+      const horaInicio = datos.fechasHoras[0].horaInicio + ':00';
+      const horaFin = calcularHoraFin(datos.fechasHoras[0].horaInicio, datosBase.duracion_minutos);
+
       const citaDto = {
         ...datosBase,
         fecha: datos.fechasHoras[0].fecha,
-        hora_inicio: datos.fechasHoras[0].horaInicio + ':00'
+        hora_inicio: horaInicio,
+        hora_fin: horaFin
       };
 
       console.log('📤 Datos a actualizar:', citaDto);
-      
+
       await actualizarCita(citaEditando.id, citaDto);
       setSnackbarMessage('✅ Cita actualizada correctamente');
-      
+
     } else {
       // ➕ MODO CREACIÓN - Detectar si hay múltiples fechas
       const cantidadFechas = datos.fechasHoras.length;
@@ -446,44 +503,53 @@ const guardarCita = async (datosFormulario = null) => {
       if (cantidadFechas > 1) {
         // 🔄 CREAR MÚLTIPLES CITAS
         console.log(`🔄 Creando ${cantidadFechas} citas...`);
-        
+
         const citasACrear = datos.fechasHoras.map((fechaHora, index) => {
+          const horaInicio = fechaHora.horaInicio + ':00';
+          const horaFin = calcularHoraFin(fechaHora.horaInicio, datosBase.duracion_minutos);
+
           console.log(`Preparando cita ${index + 1}:`, {
             fecha: fechaHora.fecha,
-            hora: fechaHora.horaInicio
+            hora: fechaHora.horaInicio,
+            hora_fin: horaFin
           });
-          
+
           return {
             ...datosBase,
             fecha: fechaHora.fecha,
-            hora_inicio: fechaHora.horaInicio + ':00'
+            hora_inicio: horaInicio,
+            hora_fin: horaFin
           };
         });
 
         console.log('📤 Enviando múltiples citas al backend:', citasACrear);
 
         const resultado = await crearMultiplesCitas(citasACrear);
-        
+
         console.log('📊 Resultado del backend:', resultado);
-        
+
         // Mostrar mensaje según el resultado
         if (resultado.exitosas === resultado.total) {
-          setSnackbarMessage(` ${resultado.exitosas} citas creadas exitosamente`);
+          setSnackbarMessage(`✅ ${resultado.exitosas} citas creadas exitosamente`);
         } else if (resultado.exitosas > 0) {
-          setSnackbarMessage(` ${resultado.exitosas} de ${resultado.total} citas creadas. ${resultado.fallidas} fallaron.`);
+          setSnackbarMessage(`⚠️ ${resultado.exitosas} de ${resultado.total} citas creadas. ${resultado.fallidas} fallaron.`);
           console.error('❌ Errores:', resultado.errores);
         } else {
           throw new Error('No se pudo crear ninguna cita');
         }
-        
+
       } else {
         // 📝 CREAR UNA SOLA CITA
         console.log('📝 Creando una sola cita');
-        
+
+        const horaInicio = datos.fechasHoras[0].horaInicio + ':00';
+        const horaFin = calcularHoraFin(datos.fechasHoras[0].horaInicio, datosBase.duracion_minutos);
+
         const citaDto = {
           ...datosBase,
           fecha: datos.fechasHoras[0].fecha,
-          hora_inicio: datos.fechasHoras[0].horaInicio + ':00'
+          hora_inicio: horaInicio,
+          hora_fin: horaFin
         };
 
         console.log('📤 Enviando cita única:', citaDto);
@@ -496,14 +562,10 @@ const guardarCita = async (datosFormulario = null) => {
     setSnackbarSeverity('success');
     setShowSnackbar(true);
 
-    // Recargar citas
+    // Recargar citas del mes actual visualizado
     console.log('🔄 Recargando citas...');
-    let params = {};
-    if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
-      params.terapeuta_id = currentUser.id;
-    } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-      params.terapeuta_id = terapeutaFiltro;
-    }
+    const params = obtenerParamsFechaActual();
+    console.log(`🔄 Recargando citas del ${params.fecha_desde} al ${params.fecha_hasta}`);
 
     const citasActualizadas = await listarCitas(params);
     setCitas(citasActualizadas);
@@ -543,14 +605,8 @@ const guardarCita = async (datosFormulario = null) => {
       setSnackbarSeverity('success');
       setShowSnackbar(true);
       
-      // Recargar citas
-      let params = {};
-      if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
-        params.terapeuta_id = currentUser.id;
-      } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-        params.terapeuta_id = terapeutaFiltro;
-      }
-
+      // Recargar citas del mes actual visualizado
+      const params = obtenerParamsFechaActual();
       const citasActualizadas = await listarCitas(params);
       setCitas(citasActualizadas);
       setTodasLasCitas(citasActualizadas);
@@ -622,9 +678,7 @@ const guardarCita = async (datosFormulario = null) => {
   const duraciones = [
     { valor: '40', label: '40 minutos' },
     { valor: '50', label: '50 minutos' },
-    { valor: '60', label: '1 hora' },
-    { valor: '90', label: '1 hora 30 minutos' },
-    { valor: '120', label: '2 horas' }
+ 
   ];
 
   // Función para obtener color de estado

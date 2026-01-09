@@ -174,9 +174,9 @@ const AdditionalInfo = ({ onNext, onBack }) => {
     }
 
     if (edad < 18) {
-      serviciosFiltrados = servicios.filter(s => s.area?.nombre === "Área Infantil y Adolescentes");
+      serviciosFiltrados = servicios.filter(s => s.area?.nombre === "Área Infantil");
     } else {
-      serviciosFiltrados = servicios.filter(s => s.area?.nombre === "Área Adultos");
+      serviciosFiltrados = servicios.filter(s => s.area?.nombre === "Área Adolescentes y Adultos");
     }
 
     console.log('Servicios filtrados:', serviciosFiltrados);

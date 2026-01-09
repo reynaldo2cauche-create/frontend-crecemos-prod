@@ -8,6 +8,14 @@ export const listarCitas = async (params = {}) => {
     queryParams.append('terapeuta_id', params.terapeuta_id);
   }
 
+  if (params.fecha_desde) {
+    queryParams.append('fecha_desde', params.fecha_desde);
+  }
+
+  if (params.fecha_hasta) {
+    queryParams.append('fecha_hasta', params.fecha_hasta);
+  }
+
   const url = queryParams.toString() ? `/citas?${queryParams.toString()}` : '/citas';
   const response = await api.get(url);
   return response.data;

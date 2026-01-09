@@ -17,6 +17,7 @@ export const Staff = () => {
   const [filtroEspecialidad, setFiltroEspecialidad] = useState('');
   const [filtroServicio, setFiltroServicio] = useState('');
   const [totalServiciosUnicos, setTotalServiciosUnicos] = useState(0);
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
 
   useEffect(() => {
     initializePageScripts();
@@ -300,7 +301,9 @@ export const Staff = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedSpecialist(null);
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
   };
 
   // Función de filtrado combinada
@@ -365,6 +368,26 @@ export const Staff = () => {
     setFiltroArea('');
     setFiltroEspecialidad('');
     setFiltroServicio('');
+  };
+
+  const toggleFiltersMobile = () => {
+    setShowFiltersMobile(!showFiltersMobile);
+    if (!showFiltersMobile) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+  };
+
+  const closeFiltersMobile = () => {
+    setShowFiltersMobile(false);
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
   };
 
   // Obtener listas únicas para filtros
@@ -451,18 +474,21 @@ export const Staff = () => {
     const inicialesColegio = obtenerInicialesColegio(selectedSpecialist.title);
 
     return (
+
       <div className="modal-backdrop" style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
         zIndex: 9999,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '20px'
+        padding: '20px',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch'
       }}>
         <div className="modal-content" style={{
           backgroundColor: 'white',
@@ -471,24 +497,51 @@ export const Staff = () => {
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          position: 'relative'
+          position: 'relative',
+          margin: '0'
         }}>
-          {/* Botón cerrar */}
-          <button onClick={handleCloseModal} style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            color: '#666',
-            cursor: 'pointer',
-            zIndex: 10
-          }}>
+          {/* Botón cerrar - absoluto respecto al modal-content */}
+          <button 
+            onClick={handleCloseModal} 
+            className="modal-close-btn-custom" 
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              width: '40px',
+              height: '40px',
+              background: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              fontSize: '20px',
+              color: '#666',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              zIndex: 1002
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--accent-color)';
+              e.currentTarget.style.color = 'white';
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+              e.currentTarget.style.color = '#666';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
             <i className="bi bi-x-lg"></i>
           </button>
 
-          <div className="modal-body" style={{ padding: '40px' }}>
+          <div className="modal-body" style={{ padding: '40px', position: 'relative' }}>
+            {/* Botón cerrar - sticky */}
+            
+
+            <div style={{ clear: 'both' }}></div>
             {/* Header del modal */}
             <div className="modal-header" style={{
               display: 'flex',
@@ -810,75 +863,212 @@ export const Staff = () => {
             transform: scale(1.08);
           }
 
-          /* Grid responsive mejorado */
-          @media (max-width: 1400px) {
-            .col-lg-3 {
-              flex: 0 0 25%;
-              max-width: 25%;
-            }
-          }
-
-          @media (max-width: 1200px) {
-            .col-lg-3 {
-              flex: 0 0 33.333%;
-              max-width: 33.333%;
-            }
-          }
-
-          @media (max-width: 768px) {
-            .specialist-services-inline {
-              flex-wrap: wrap !important;
-            }
-            .modal-header {
-              flex-direction: column;
-            }
-            .modal-header > div:first-child {
-              width: 100% !important;
-              max-width: 300px;
-              margin: 0 auto 30px;
-            }
-            .col-md-4, .col-sm-6 {
-              flex: 0 0 50%;
-              max-width: 50%;
-            }
-          }
-
-          @media (max-width: 576px) {
-            .col-12 {
-              flex: 0 0 100%;
-              max-width: 100%;
-            }
-          }
-
           /* Animación de scroll suave */
           html {
             scroll-behavior: smooth;
           }
 
-          /* Mejora de selects en móvil */
+          /* Botón toggle filtros móvil */
+          .filter-toggle-mobile {
+            display: none;
+            width: 100%;
+            padding: 14px 24px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(194, 99, 249, 0.3);
+            transition: all 0.3s ease;
+          }
+
+          .filter-toggle-mobile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(194, 99, 249, 0.4);
+          }
+
+          .filter-toggle-mobile:active {
+            transform: translateY(0);
+          }
+
+          /* Responsividad mejorada para tablets - SOLO para specialists-section */
+          @media (max-width: 1200px) {
+            .specialists-section .col-lg-3 {
+              flex: 0 0 33.333%;
+              max-width: 33.333%;
+            }
+          }
+
+          /* Responsividad para tablets pequeños */
+          @media (max-width: 992px) {
+            /* Filtros en móvil - se convierten en modal/collapse */
+            .filter-toggle-mobile {
+              display: flex !important;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+            }
+
+            .filters-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: -100% !important;
+              width: 85% !important;
+              max-width: 380px !important;
+              height: 100vh !important;
+              height: 100dvh !important; /* Para móviles modernos */
+              background: white !important;
+              z-index: 10000 !important;
+              transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+              overflow-y: auto !important;
+              overflow-x: hidden !important;
+              box-shadow: 2px 0 24px rgba(0,0,0,0.3) !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-overflow-scrolling: touch !important;
+            }
+
+            .filters-sidebar.active {
+              left: 0 !important;
+            }
+
+            .filter-backdrop {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0,0,0,0.6);
+              z-index: 9999;
+              opacity: 0;
+              visibility: hidden;
+              transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              -webkit-tap-highlight-color: transparent;
+            }
+
+            .filter-backdrop.active {
+              opacity: 1;
+              visibility: visible;
+            }
+
+            .filters-sidebar > div {
+              position: static !important;
+              border-radius: 0 !important;
+              min-height: 100vh !important;
+              box-shadow: none !important;
+              padding: 20px !important;
+            }
+
+            /* Mostrar botón de cerrar en móvil */
+            .close-filters-mobile {
+              display: block !important;
+            }
+          }
+
+          /* Responsividad para móviles */
           @media (max-width: 768px) {
-            select {
-              font-size: 16px !important; /* Evita zoom en iOS */
+            .specialist-services-inline {
+              flex-wrap: wrap !important;
             }
 
-            /* Filtros laterales en móvil */
-            .col-lg-3.col-md-4 {
-              order: 2;
+            /* Modal responsivo */
+            .modal-backdrop {
+              padding: 0 !important;
+              align-items: flex-start !important;
             }
 
-            .col-lg-9.col-md-8 {
-              order: 1;
+            .modal-content {
+              margin: 0 !important;
+              max-height: 100vh !important;
+              min-height: 100vh !important;
+              border-radius: 0 !important;
+              overflow-y: auto !important;
             }
 
-            /* Tarjetas horizontales en móvil se vuelven verticales */
-            .specialist-card-modern {
+            .modal-header {
               flex-direction: column !important;
+              gap: 20px !important;
             }
 
+            .modal-header > div:first-child {
+              width: 100% !important;
+              max-width: 100% !important;
+              height: 300px !important;
+              margin: 0 !important;
+            }
+
+            .modal-header > div:last-child {
+              min-width: 100% !important;
+            }
+
+            .modal-body {
+              padding: 20px 16px 30px 16px !important;
+            }
+
+            /* Botón cerrar en móvil - a la derecha y sticky */
+            .modal-close-btn {
+              position: sticky !important;
+            //   top: 10px !important;
+              // left: auto !important;
+              // right: 10px !important;
+              margin-left: auto !important;
+              // float: right !important;
+              // width: 40px !important;
+              // height: 40px !important;
+              // background: rgba(255, 255, 255, 0.98) !important;
+              // backdrop-filter: blur(8px) !important;
+              -webkit-backdrop-filter: blur(8px) !important;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.25) !important;
+              font-size: 20px !important;
+            }
+
+            .modal-close-btn:active {
+              transform: scale(0.95) !important;
+            }
+
+            /* Cards responsive en móvil */
             .specialist-card-modern > div:first-child {
+              flex-direction: column !important;
+              height: auto !important;
+            }
+
+            .specialist-card-modern > div:first-child > div:first-child {
               width: 100% !important;
               min-width: 100% !important;
-              height: 200px !important;
+              height: 280px !important;
+            }
+
+            .specialist-card-modern > div:first-child > div:last-child,
+            .specialist-info-section {
+              width: 100% !important;
+              min-width: 100% !important;
+            }
+          }
+
+          /* Desktop - botón cerrar sticky */
+          @media (min-width: 769px) {
+            .modal-close-btn {
+              position: sticky !important;
+              // top: 40px !important;
+              // left: auto !important;
+              // right: 20px !important;
+              margin-left: auto !important;
+              margin-right: 20px !important;
+              float: right !important;
+          //     background: white !important;
+              backdrop-filter: none !important;
+          //     -webkit-backdrop-filter: none !important;
+          //     box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            }
+          }
+
+          /* Móviles pequeños */
+          @media (max-width: 576px) {
+            .specialist-card-modern > div:first-child > div:first-child {
+              height: 250px !important;
             }
           }
 
@@ -902,29 +1092,7 @@ export const Staff = () => {
           </div>
         </div>
 
-        {/* Stats Section */}
-        <section className="stats-section" style={{ padding: '60px 0', background: 'var(--accent-color)' }}>
-          <div className="container">
-            <div className="row text-center justify-content-center">
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                <div style={{ color: 'white' }}>
-                  <h2 style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '10px' }}>
-                    <span className="purecounter" data-purecounter-start="0" data-purecounter-end={totalServiciosUnicos} data-purecounter-duration="2">0</span>+
-                  </h2>
-                  <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>Servicios Disponibles</p>
-                </div>
-              </div>
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                <div style={{ color: 'white' }}>
-                  <h2 style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '10px' }}>
-                    <span className="purecounter" data-purecounter-start="0" data-purecounter-end="8" data-purecounter-duration="2">0</span>+
-                  </h2>
-                  <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>Años de Experiencia</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        
 
         {/* Search Section */}
         <section className="search-section" style={{ padding: '30px 0 40px 0', background: '#f8f9fa', marginBottom: 0}}>
@@ -986,8 +1154,41 @@ export const Staff = () => {
         <section className="specialists-section section light-background" style={{ paddingTop: '50px', paddingBottom: '60px' }}>
           <div className="container" style={{ marginTop: '0' }}>
             <div className="row" style={{ marginTop: '0' }}>
+              {/* Botón para mostrar filtros en móvil */}
+              <div className="col-12">
+                <button
+                  className="filter-toggle-mobile"
+                  onClick={toggleFiltersMobile}
+                >
+                  <i className="bi bi-funnel-fill"></i>
+                  Filtrar Especialistas
+                  {(filtroArea || filtroServicio) && (
+                    <span style={{
+                      background: 'white',
+                      color: 'var(--accent-color)',
+                      borderRadius: '50%',
+                      width: '24px',
+                      height: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.85rem',
+                      fontWeight: '700'
+                    }}>
+                      {[filtroArea, filtroServicio].filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Backdrop para filtros móvil */}
+              <div
+                className={`filter-backdrop ${showFiltersMobile ? 'active' : ''}`}
+                onClick={closeFiltersMobile}
+              ></div>
+
               {/* Filtros Laterales */}
-              <div className="col-lg-3 col-md-4 mb-4" data-aos="fade-right">
+              <div className={`col-lg-3 col-md-4 mb-4 filters-sidebar ${showFiltersMobile ? 'active' : ''}`}>
                 <div style={{
                   background: 'white',
                   borderRadius: '16px',
@@ -1016,26 +1217,44 @@ export const Staff = () => {
                       <i className="bi bi-funnel"></i>
                       Filtros
                     </h3>
-                    {(filtroArea || filtroServicio) && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {(filtroArea || filtroServicio) && (
+                        <button
+                          onClick={clearAllFilters}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--accent-color)',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            transition: 'all 0.3s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-color), transparent 92%)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                      {/* Botón cerrar solo visible en móvil */}
                       <button
-                        onClick={clearAllFilters}
+                        onClick={closeFiltersMobile}
+                        className="close-filters-mobile"
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: 'var(--accent-color)',
-                          fontSize: '0.85rem',
-                          fontWeight: '600',
+                          fontSize: '1.5rem',
+                          color: '#666',
                           cursor: 'pointer',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          transition: 'all 0.3s'
+                          padding: '4px',
+                          display: 'none'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-color), transparent 92%)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                       >
-                        Limpiar
+                        <i className="bi bi-x-lg"></i>
                       </button>
-                    )}
+                    </div>
                   </div>
 
                   {/* Filtro por Área */}
@@ -1296,7 +1515,7 @@ export const Staff = () => {
                         </div>
 
                         {/* Info Derecha - 3 secciones suaves */}
-                        <div style={{
+                        <div className="specialist-info-section" style={{
                           flex: 1,
                           display: 'flex',
                           flexDirection: 'column',
@@ -1535,7 +1754,7 @@ export const Staff = () => {
                     Nuestro equipo de especialistas está preparado para acompañarte en tu camino hacia el bienestar.
                     Agenda tu cita hoy mismo y da el primer paso hacia una mejor calidad de vida.
                   </p>
-                  <div style={{
+                  <div className="cta-buttons" style={{
                     display: 'flex',
                     gap: '15px',
                     justifyContent: 'center',
