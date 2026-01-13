@@ -10,8 +10,18 @@ export const getGeneros = async () => {
   return response.data;
 };
 
+export const getProvincias = async () => {
+  const response = await api.get('/catalogos/provincias');
+  return response.data;
+};
+
 export const getDistritos = async () => {
   const response = await api.get('/catalogos/distrito');
+  return response.data;
+};
+
+export const getDistritosByProvincia = async (provinciaId) => {
+  const response = await api.get(`/catalogos/distritos/provincia/${provinciaId}`);
   return response.data;
 };
 
@@ -42,5 +52,20 @@ export const getRelacionPadres = async () => {
 
 export const getOcupaciones = async () => {
   const response = await api.get('/catalogos/ocupaciones');
+  return response.data;
+};
+
+export const getEstadosCiviles = async () => {
+  const response = await api.get('/catalogos/estado-civil');
+  return response.data;
+};
+
+export const getParentescos = async () => {
+  const response = await api.get('/catalogos/parentesco');
+  return response.data;
+};
+
+export const getNivelesEducacion = async () => {
+  const response = await api.get('/catalogos/nivel-educacion');
   return response.data;
 }; 
