@@ -30,6 +30,7 @@ import { getPacientesAll } from '../services/pacienteService';
 import { getTrabajadores } from '../services/trabajadorService';
 import archivosOficialesService from '../services/archivosOficialesService';
 import { getTiposDocumento } from '../services/tiposArchivoService';
+import { ROLES, isAdministrador } from '../constants/roles';
 
 const GestionArchivosOficiales = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -89,6 +90,16 @@ const GestionArchivosOficiales = () => {
   const [loadingTipos, setLoadingTipos] = useState(false);
   const [errorFechaVigencia, setErrorFechaVigencia] = useState('');
   const [datosInicializados, setDatosInicializados] = useState(false);
+
+  // ✅ Obtener usuario desde localStorage
+  const [currentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     if (datosInicializados) return;
@@ -309,20 +320,47 @@ const GestionArchivosOficiales = () => {
     handleMenuClose();
   };
 
+  // ✅ Función para copiar código de validación
+  const copiarCodigo = (codigo) => {
+    navigator.clipboard.writeText(codigo).then(() => {
+      setCopiado(true);
+      setSuccess('Código copiado al portapapeles');
+      setTimeout(() => {
+        setCopiado(false);
+        setSuccess('');
+      }, 2000);
+    }).catch(err => {
+      console.error('Error al copiar:', err);
+      setError('Error al copiar el código');
+    });
+  };
+
   const handleEliminarConfirmar = async () => {
     try {
-      await archivosOficialesService.eliminarArchivo(documentoSeleccionado.id);
+      const idEliminar = modalEliminar?.id || documentoSeleccionado?.id;
+
+      if (!idEliminar) {
+        setError('No se pudo identificar el documento a eliminar');
+        setModalEliminar(null);
+        return;
+      }
+
+      console.log('🗑️ Eliminando documento ID:', idEliminar);
+
+      await archivosOficialesService.eliminarArchivo(idEliminar);
       setSuccess('Documento eliminado correctamente');
       setTimeout(() => setSuccess(''), 3000);
-      
+
       if (tabValue === 0) {
         cargarDocumentos();
       }
-      
+
       setModalEliminar(null);
       setDocumentoSeleccionado(null);
     } catch (error) {
-      setError('Error al eliminar el documento');
+      console.error('❌ Error al eliminar:', error);
+      setError(`Error al eliminar el documento: ${error.message || 'Error desconocido'}`);
+      setTimeout(() => setError(''), 5000);
       setModalEliminar(null);
     }
   };
@@ -461,12 +499,6 @@ const GestionArchivosOficiales = () => {
       setError(err.message || 'Error al subir el archivo. Intente nuevamente.');
     } finally {
       setLoadingForm(false);
-    }
-  };
-
-  const copiarCodigo = () => {
-    if (codigoGenerado?.codigoValidacion) {
-      navigator.clipboard.writeText(codigoGenerado.codigoValidacion);
     }
   };
 
@@ -897,10 +929,10 @@ const GestionArchivosOficiales = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-48">
                                 Destinatario
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-36">
                                 Código
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -915,9 +947,6 @@ const GestionArchivosOficiales = () => {
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                 Estado
                               </th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                Acciones
-                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
@@ -925,7 +954,11 @@ const GestionArchivosOficiales = () => {
                               const isPaciente = doc.paciente;
 
                               return (
-                                <tr key={doc.id} className="hover:bg-gray-50 transition-colors group">
+                                <tr
+                                  key={doc.id}
+                                  onClick={() => setModalVer(doc)}
+                                  className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                                >
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
                                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
@@ -947,13 +980,13 @@ const GestionArchivosOficiales = () => {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-4">
+                                  <td className="px-4 py-4 whitespace-nowrap">
                                     <div className={`inline-block px-3 py-1.5 rounded-lg ${
                                       isPaciente
                                         ? 'bg-gradient-to-r from-blue-500 to-blue-600'
                                         : 'bg-gradient-to-r from-amber-500 to-amber-600'
                                     }`}>
-                                      <p className="text-xs font-mono font-bold text-white">
+                                      <p className="text-xs font-mono font-bold text-white whitespace-nowrap">
                                         {doc.codigoValidacion}
                                       </p>
                                     </div>
@@ -999,24 +1032,6 @@ const GestionArchivosOficiales = () => {
                                         <AlertCircle className="w-3 h-3" />
                                       )}
                                       {doc.estado || 'Activo'}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        onClick={() => setModalVer(doc)}
-                                        className="p-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
-                                        title="Ver detalles"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => handleMenuOpen(e, doc)}
-                                        className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                        title="Más opciones"
-                                      >
-                                        <MoreVertical className="w-4 h-4" />
-                                      </button>
                                     </div>
                                   </td>
                                 </tr>
@@ -1461,8 +1476,23 @@ const GestionArchivosOficiales = () => {
             <div className="p-6 space-y-6">
               {/* Código de validación */}
               <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-xl p-5">
-                <p className="text-xs text-white/70 font-bold uppercase mb-2 tracking-wide">Código de Validación</p>
-                <p className="text-3xl font-mono font-bold text-white">{modalVer.codigoValidacion}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-white/70 font-bold uppercase mb-2 tracking-wide">Código de Validación</p>
+                    <p className="text-3xl font-mono font-bold text-white">{modalVer.codigoValidacion}</p>
+                  </div>
+                  <button
+                    onClick={() => copiarCodigo(modalVer.codigoValidacion)}
+                    className="ml-4 p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all group"
+                    title="Copiar código"
+                  >
+                    {copiado ? (
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    ) : (
+                      <Copy className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Información */}
@@ -1555,6 +1585,21 @@ const GestionArchivosOficiales = () => {
             </div>
 
             <div className="border-t border-gray-200 p-4 flex gap-3 bg-gray-50">
+              {/* ✅ Botón Eliminar - Solo Admin */}
+              {isAdministrador(currentUser) && (
+                <button
+                  onClick={() => {
+                    setModalVer(null);
+                    setModalEliminar(modalVer);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-xl font-medium text-sm hover:bg-red-100 transition-all"
+                  title="Eliminar documento"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar
+                </button>
+              )}
+
               <button
                 onClick={async () => {
                   try {

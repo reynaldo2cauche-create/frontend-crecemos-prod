@@ -399,17 +399,21 @@ export const ListaPacientes = () => {
             </div>
           </div>
 
-          {/* Total de Pacientes Activos */}
+          {/* Total de Pacientes en Tratamiento */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-600">Total Activos</span>
+              <span className="text-xs font-semibold text-gray-600">En Tratamiento</span>
               <div className="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center">
                 <Users className="w-4 h-4 text-purple-600" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-900">{filteredPacientes.length}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {estadisticas?.estadisticas
+                ?.filter(est => ['Entrevista', 'Evaluacion', 'Terapia'].includes(est.estadoNombre))
+                .reduce((sum, est) => sum + est.total, 0) || 0}
+            </div>
             <div className="text-xs text-gray-500 mt-0.5">
-              Pacientes actualmente
+              Entrevista, Evaluación y Terapia
             </div>
           </div>
 
