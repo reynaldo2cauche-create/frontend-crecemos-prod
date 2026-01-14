@@ -114,14 +114,22 @@ export default function GestionStaffCompleta() {
         return false;
       });
 
-      console.log('✅ Staff cargado desde GestionStaff:', staffSinDuplicados);
-      console.log('📊 IDs de staff:', staffSinDuplicados.map(s => ({
+      // ✅ Ordenar por el campo "orden" de forma ascendente
+      const staffOrdenado = staffSinDuplicados.sort((a, b) => {
+        const ordenA = a.orden || 999; // Si no tiene orden, ponerlo al final
+        const ordenB = b.orden || 999;
+        return ordenA - ordenB;
+      });
+
+      console.log('✅ Staff cargado desde GestionStaff:', staffOrdenado);
+      console.log('📊 IDs de staff:', staffOrdenado.map(s => ({
         id: s.id,
         trabajador_id: s.trabajador_id,
-        nombre: `${s.trabajador?.nombres || ''} ${s.trabajador?.apellidos || ''}`.trim()
+        nombre: `${s.trabajador?.nombres || ''} ${s.trabajador?.apellidos || ''}`.trim(),
+        orden: s.orden
       })));
 
-      setStaffList(staffSinDuplicados);
+      setStaffList(staffOrdenado);
       setTrabajadores(trabajadoresData);
     } catch (error) {
       console.error('Error al cargar datos:', error);

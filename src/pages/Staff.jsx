@@ -140,13 +140,14 @@ export const Staff = () => {
             trabajadorId: item.trabajador?.id,
             img: imgUrl,
             name: `${item.trabajador?.nombres || ''} ${item.trabajador?.apellidos || ''}`.trim(),
-            title: item.trabajador?.especialidad?.nombre || 
-                   item.trabajador?.cargo?.nombre || 
-                   item.descripcion_especialidad || 
+            title: item.trabajador?.especialidad?.nombre ||
+                   item.trabajador?.cargo?.nombre ||
+                   item.descripcion_especialidad ||
                    'Terapeuta',
             specialties: item.descripcion_especialidad || 'Profesional de la salud dedicado al bienestar de nuestros pacientes.',
             services: serviciosMostrar,
             areas: areas,
+            orden: item.orden || 999, // ✅ Campo orden para el ordenamiento
             // Nuevos campos para información detallada
             biografia: item.biografia || '',
             titulo_profesional: item.titulo_profesional || '',
@@ -160,14 +161,20 @@ export const Staff = () => {
               tieneTrabajador: !!item.trabajador,
               trabajadorId: item.trabajador?.id,
               serviciosOriginales: item.servicios,
-              serviciosTrabajador: serviciosTrabajador
+              serviciosTrabajador: serviciosTrabajador,
+              ordenRecibido: item.orden
             }
           };
         })
       );
 
       console.log('✅ Staff cargado:', staffFormateado);
-      console.log('📊 Staff IDs:', staffFormateado.map(s => ({ name: s.name, staffId: s.staffId, id: s.id })));
+      console.log('📊 Staff IDs y ORDEN:', staffFormateado.map(s => ({
+        name: s.name,
+        staffId: s.staffId,
+        id: s.id,
+        orden: s.orden
+      })));
 
       // ✅ Eliminar duplicados por trabajadorId (por si acaso el backend no lo hizo)
       const trabajadoresVistos = new Map();
@@ -180,10 +187,25 @@ export const Staff = () => {
         return false;
       });
 
-      console.log('✅ Staff sin duplicados:', staffSinDuplicados);
+      console.log('✅ Staff sin duplicados:', staffSinDuplicados.map(s => ({
+        name: s.name,
+        orden: s.orden
+      })));
 
-      setSpecialists(staffSinDuplicados);
-      setFilteredSpecialists(staffSinDuplicados);
+      // ✅ Ordenar por el campo "orden" de forma ascendente
+      const staffOrdenado = staffSinDuplicados.sort((a, b) => {
+        const ordenA = a.orden || 999; // Si no tiene orden, ponerlo al final
+        const ordenB = b.orden || 999;
+        return ordenA - ordenB;
+      });
+
+      console.log('✅ Staff FINAL ordenado por campo "orden":', staffOrdenado.map(s => ({
+        name: s.name,
+        orden: s.orden
+      })));
+
+      setSpecialists(staffOrdenado);
+      setFilteredSpecialists(staffOrdenado);
     } catch (error) {
       console.error('Error al cargar staff:', error);
       setSpecialists([]);

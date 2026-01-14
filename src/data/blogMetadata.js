@@ -326,6 +326,19 @@ export const blogMetadata = [
   readTime: '20 min lectura',
   author: 'Centro Crecemos' ,
   heroImage: '/assets/img/blog/crianza-portada.jpg'
+},
+{
+  id: 26,
+  slug: '13-enero-dia-mundial-lucha-depresion',
+  title: '13 de Enero: Día Mundial de la Lucha contra la Depresión',
+  excerpt: 'En este día resulta fundamental reconocer la lucha que atraviesan las personas que viven con depresión. Muchas veces se presenta en silencio, en personas que continúan con sus responsabilidades mientras internamente sienten que todo les resulta más pesado.',
+  image: '/assets/img/blog/depresion-portada.jpg',
+  date: '13 Enero 2026',
+  category: 'efemerides',
+  categoryName: 'Eventos Conmemorativos',
+  readTime: '12 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/depresion-portada.jpg'
 }
   // Aquí agregas más blogs...
 ];

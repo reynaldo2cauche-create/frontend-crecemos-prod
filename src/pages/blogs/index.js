@@ -29,6 +29,7 @@ import ViolenciaDomesticaBlog from './psicologia/ViolenciaDomesticaBlog';
 import Dia25NoviembreBlog from './psicologia/Dia25NoviembreBlog';
 import TCABlog from './psicologia/TCABlog';
 import PatronesCrianzaBlog from './psicologia/PatronesCrianzaBlog';
+import DiaDepresionBlog from './psicologia/DiaDepresionBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -70,6 +71,7 @@ export const blogComponents = {
   'pasas-alimento-energetico-moderacion-ninos': PasasBlog,
   'pistachos-fruto-seco-seguro-ninos': PistachosBlog,
   'patrones-crianza-romper-circulo': PatronesCrianzaBlog,
+  '13-enero-dia-mundial-lucha-depresion': DiaDepresionBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -87,4 +89,5 @@ export {
   DiaDiscapacidadBlog,
   DiaDerechosHumanosBlog,
   PatronesCrianzaBlog,
+  DiaDepresionBlog,
 };
