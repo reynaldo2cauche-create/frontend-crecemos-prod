@@ -1,14 +1,17 @@
 import api from './api';
 
-const BASE_URL = '/notificaciones';
+const BASE_URL = 'notificaciones';
 
-export const obtenerNotificaciones = async (filtros = {}) => {
+/**
+ * Obtiene todas las notificaciones para el usuario autenticado
+ * @param {number} limite - Cantidad de notificaciones a obtener (opcional, default: 50)
+ * @returns {Promise<Object>} - { total, rol_id, notificaciones }
+ */
+export const obtenerNotificaciones = async (limite = 50) => {
   try {
-    const params = new URLSearchParams();
-    if (filtros.leida !== undefined) params.append('leida', filtros.leida);
-    if (filtros.limite) params.append('limite', filtros.limite);
-
-    const response = await api.get(`${BASE_URL}?${params.toString()}`);
+    const response = await api.get(`${BASE_URL}`, {
+      params: { limite }
+    });
     return response.data;
   } catch (error) {
     console.error('Error al obtener notificaciones:', error);
@@ -16,54 +19,38 @@ export const obtenerNotificaciones = async (filtros = {}) => {
   }
 };
 
-export const contarNotificacionesNoLeidas = async () => {
+/**
+ * Obtiene las notificaciones recientes (últimas 24 horas)
+ * @returns {Promise<Object>} - { total, rol_id, tiempo_actual, notificaciones }
+ */
+export const obtenerNotificacionesRecientes = async () => {
   try {
-    const response = await api.get(`${BASE_URL}/contador/no-leidas`);
+    const response = await api.get(`${BASE_URL}/recientes`);
     return response.data;
   } catch (error) {
-    console.error('Error al contar notificaciones no leídas:', error);
+    console.error('Error al obtener notificaciones recientes:', error);
     throw error;
   }
 };
 
-export const marcarNotificacionLeida = async (id) => {
+/**
+ * Obtiene el conteo total de notificaciones del usuario
+ * @returns {Promise<Object>} - { rol_id, total }
+ */
+export const contarNotificaciones = async () => {
   try {
-    const response = await api.put(`${BASE_URL}/${id}/marcar-leida`);
+    const response = await api.get(`${BASE_URL}/count`);
     return response.data;
   } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
+    console.error('Error al contar notificaciones:', error);
     throw error;
   }
 };
 
-export const marcarTodasNotificacionesLeidas = async () => {
-  try {
-    const response = await api.put(`${BASE_URL}/marcar-todas-leidas`);
-    return response.data;
-  } catch (error) {
-    console.error('Error al marcar todas las notificaciones como leídas:', error);
-    throw error;
-  }
-};
-
-export const obtenerNotificacionesNoLeidas = async (limite = 15) => {
-  try {
-    const response = await api.get(`${BASE_URL}?leida=false&limite=${limite}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error al obtener notificaciones no leídas:', error);
-    throw error;
-  }
-};
-
-// NOTA: El polling ya no es necesario, ahora usamos SSE (Server-Sent Events)
-// SSE permite que el servidor envíe actualizaciones en tiempo real al cliente
-// sin necesidad de WebSockets y funciona en cPanel
-
-export default {
+const notificacionesService = {
   obtenerNotificaciones,
-  contarNotificacionesNoLeidas,
-  marcarNotificacionLeida,
-  marcarTodasNotificacionesLeidas,
-  obtenerNotificacionesNoLeidas,
+  obtenerNotificacionesRecientes,
+  contarNotificaciones
 };
+
+export default notificacionesService;
