@@ -71,18 +71,6 @@ const CalendarioSemanal = ({
 
   useEffect(() => {
     const calcularDiasSemana = (fecha) => {
-
-      // Debug: Mostrar todas las citas cuando cambia el mes
-      const mesActual = fecha.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
-      console.log(`📅 Citas cargadas para ${mesActual}:`, {
-        totalCitas: citas.length,
-        citasPorFecha: citas.reduce((acc, c) => {
-          acc[c.fecha] = (acc[c.fecha] || 0) + 1;
-          return acc;
-        }, {}),
-        citasDe50min: citas.filter(c => c.duracion_minutos === 50 || c.duracion_minutos === '50')
-      });
-
       // Normalizar a medianoche local para evitar problemas de zona horaria
       const lunes = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
       const diaSemana = fecha.getDay();
@@ -143,22 +131,6 @@ const CalendarioSemanal = ({
       const endMin = c.hora_fin ? toMinutes(c.hora_fin.substring(0,5)) : (c.duracion_minutos ? startMin + parseInt(c.duracion_minutos,10) : startMin + slotDurationMin);
       const slotStart = toMinutes(hora.padStart(5, '0'));
       const slotEnd = slotStart + slotDurationMin;
-
-      // Debug para citas de 50 minutos
-      if (c.duracion_minutos === 50 || c.duracion_minutos === '50') {
-        console.log(`🔍 DEBUG Cita 50min - ID ${c.id}:`, {
-          fecha: c.fecha,
-          hora_inicio: c.hora_inicio,
-          hora_fin: c.hora_fin,
-          duracion: c.duracion_minutos,
-          startMin,
-          endMin,
-          slotHora: hora,
-          slotStart,
-          slotEnd,
-          overlap: startMin < slotEnd && endMin > slotStart
-        });
-      }
 
       return startMin < slotEnd && endMin > slotStart;
     });
@@ -300,27 +272,6 @@ const CalendarioSemanal = ({
                     const hayCitas = citasInfo && citasInfo.length > 0;
                     const puedeHacerClic = !hayCitas && !esTerapeuta;
 
-                    // Debug específico para el sábado 10 de enero 2026 a las 10:00, 10:40 y 11:20
-                    if (dia.fechaString === '2026-01-10' && (hora === '10:00' || hora === '10:40' || hora === '11:20')) {
-                      console.log(`🔍 DEBUG Slot ${dia.fechaString} ${hora}:`, {
-                        citasInfo,
-                        hayCitas,
-                        esTerapeuta,
-                        puedeHacerClic,
-                        todasLasCitasDelDia: citas.filter(c => c.fecha === dia.fechaString),
-                        citasDetalladas: citasInfo?.map(ci => ({
-                          id: ci.cita.id,
-                          paciente: ci.cita.paciente?.nombres + ' ' + ci.cita.paciente?.apellidos,
-                          doctor_id: ci.cita.doctor_id,
-                          doctor: ci.cita.doctor?.nombres + ' ' + ci.cita.doctor?.apellidos,
-                          hora_inicio: ci.cita.hora_inicio,
-                          hora_fin: ci.cita.hora_fin,
-                          duracion: ci.cita.duracion_minutos,
-                          isTop: ci.isTop
-                        }))
-                      });
-                    }
-
                     const handleSlotClick = () => {
                       if (puedeHacerClic && onSlotClick) {
                         onSlotClick(dia, hora);
@@ -459,4 +410,5 @@ const CalendarioSemanal = ({
   );
 };
 
-export default CalendarioSemanal;
+// Memorizar el componente para evitar re-renders innecesarios
+export default React.memo(CalendarioSemanal);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
   Clock,
@@ -44,10 +44,26 @@ const ModalAgendarCita = ({
   const [queryPaciente, setQueryPaciente] = useState('');
   const [tabValue, setTabValue] = useState(0);
   const [dialogoEliminarAbierto, setDialogoEliminarAbierto] = useState(false);
+  const [motivoEliminacion, setMotivoEliminacion] = useState('');
+  const [modalYaAbierto, setModalYaAbierto] = useState(false);
+
+  // Estado para el modal de alerta bonito
+  const [alertaAbierta, setAlertaAbierta] = useState(false);
+  const [mensajeAlerta, setMensajeAlerta] = useState('');
+
+  // ✅ USAR motivoAccion DEL PADRE (formularioCita.motivo_accion) - NO estado local
+  const motivoAccion = formularioCita.motivo_accion || '';
 
   // Estados para tipos de cita
   const [tipoCita, setTipoCita] = useState(null);
   const [terapeutasReunion, setTerapeutasReunion] = useState([]);
+
+  // ✅ useCallback para el onChange del campo motivo - Actualiza en el PADRE
+  const handleMotivoChange = useCallback((e) => {
+    const nuevoValor = e.target.value;
+    onFormularioChange('motivo_accion', nuevoValor);
+  }, [onFormularioChange]);
+
   const [serviciosReunion, setServiciosReunion] = useState([]);
   const [encargadoVisita, setEncargadoVisita] = useState({
     nombre_completo: '',
@@ -73,21 +89,7 @@ const ModalAgendarCita = ({
   const verificarDisponibilidad = (fechaString, hora, duracionMinutos) => {
     if (!fechaString || !hora) return true;
 
-    console.log('🔍 Verificando disponibilidad:', {
-      fecha: fechaString,
-      hora: hora,
-      duracion: duracionMinutos,
-      tipoCita: tipoCita,
-      totalCitas: citas?.length || 0,
-      doctorId: formularioCita.doctor_id,
-      terapeutaSeleccionado: terapeutaSeleccionado?.id,
-      terapeutasReunion: terapeutasReunion,
-      modoEdicion: modoEdicion,
-      citaEditando: citaEditando ? { id: citaEditando.id, terapeutas: citaEditando.terapeutas } : null
-    });
-
     if (!citas || citas.length === 0) {
-      console.log('✅ No hay citas, todas las horas disponibles');
       return true;
     }
 
@@ -99,7 +101,6 @@ const ModalAgendarCita = ({
       if (doctorId) {
         terapeutasIds = [parseInt(doctorId)];
       }
-      console.log('👨‍⚕️ Doctor ID para validación:', doctorId);
     } else if (tipoCita === 'REUNION_CLINICA') {
       // Para reunión clínica, obtenemos todos los terapeutas seleccionados
       // Primero intentamos desde terapeutasReunion
@@ -107,14 +108,11 @@ const ModalAgendarCita = ({
         .map(t => parseInt(t.terapeuta_id))
         .filter(id => id && !isNaN(id));
 
-      console.log('👥 Terapeutas IDs desde terapeutasReunion:', terapeutasIds);
-
       // Si no hay terapeutas en el array local, intentamos obtenerlos de formularioCita
       if (terapeutasIds.length === 0 && formularioCita.terapeutas_ids && formularioCita.terapeutas_ids.length > 0) {
         terapeutasIds = formularioCita.terapeutas_ids
           .map(id => parseInt(id))
           .filter(id => id && !isNaN(id));
-        console.log('👥 Terapeutas IDs obtenidos de formularioCita.terapeutas_ids:', terapeutasIds);
       }
 
       // Si estamos en modo edición y aún no hay terapeutas,
@@ -124,31 +122,23 @@ const ModalAgendarCita = ({
           terapeutasIds = citaEditando.terapeutas
             .map(t => parseInt(t.id_terapeuta || t.terapeuta_id || t.id))
             .filter(id => id && !isNaN(id));
-          console.log('👥 Terapeutas IDs obtenidos de citaEditando:', terapeutasIds);
         }
       }
 
       // Si no hay terapeutas seleccionados aún, permitimos cualquier hora
       if (terapeutasIds.length === 0) {
-        console.log('⚠️ REUNION_CLINICA sin terapeutas seleccionados');
         return true;
       }
     }
 
     // Si no hay terapeutas para verificar, permitir cualquier hora
     if (terapeutasIds.length === 0) {
-      console.log('⚠️ No hay terapeutas seleccionados, permitiendo todas las horas');
       return true;
     }
-
-    // Buscar citas que puedan tener conflicto
-    console.log('🔎 Buscando conflictos para terapeutas:', terapeutasIds);
-    console.log('🔎 Total de citas a revisar:', citas.length);
 
     const citasDelDia = citas.filter(cita => {
       // Excluir la cita que estamos editando
       if (citaEditando && cita.id === citaEditando.id) {
-        console.log('⏭️ Saltando cita que estamos editando:', cita.id);
         return false;
       }
 
@@ -161,7 +151,6 @@ const ModalAgendarCita = ({
       if (cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') {
         // Para citas normales o visitas, verificar si el doctor_id está en nuestra lista
         const estaInvolucrado = terapeutasIds.includes(cita.doctor_id);
-        console.log(`🔍 Cita NORMAL/VISITA ${cita.id} - Doctor: ${cita.doctor_id} - ¿Involucrado?: ${estaInvolucrado}`);
         return estaInvolucrado;
       } else if (cita.tipo_cita === 'REUNION_CLINICA') {
         // Para reuniones clínicas, verificar si comparten terapeutas
@@ -170,15 +159,11 @@ const ModalAgendarCita = ({
         ).filter(id => id) || [];
 
         const compartenTerapeuta = terapeutasIds.some(id => terapeutasCita.includes(id));
-        console.log(`🔍 Cita REUNION ${cita.id} - Terapeutas: [${terapeutasCita}] - ¿Comparten?: ${compartenTerapeuta}`);
         return compartenTerapeuta;
       }
 
       return false;
     });
-
-    console.log('📅 Citas del día que podrían tener conflicto:', citasDelDia.length);
-    console.log('📅 Detalles de las citas:', citasDelDia.map(c => ({ id: c.id, hora: c.hora_inicio, tipo: c.tipo_cita, doctor_id: c.doctor_id })));
 
     // Convertir hora seleccionada a minutos
     const [horaH, horaM] = hora.split(':').map(Number);
@@ -191,25 +176,16 @@ const ModalAgendarCita = ({
       const citaInicioMinutos = citaH * 60 + citaM;
       const citaFinMinutos = citaInicioMinutos + parseInt(cita.duracion_minutos || 40);
 
-      console.log('⏰ Comparando:', {
-        horaSeleccionada: `${hora} (${horaInicioMinutos}-${horaFinMinutos})`,
-        citaExistente: `${cita.hora_inicio} (${citaInicioMinutos}-${citaFinMinutos})`,
-        paciente: cita.paciente?.nombres || 'N/A',
-        terapeutaId: cita.doctor_id || cita.terapeutas?.map(t => t.id_terapeuta)
-      });
-
       // Verificar si hay solapamiento
       if (
         (horaInicioMinutos >= citaInicioMinutos && horaInicioMinutos < citaFinMinutos) ||
         (horaFinMinutos > citaInicioMinutos && horaFinMinutos <= citaFinMinutos) ||
         (horaInicioMinutos <= citaInicioMinutos && horaFinMinutos >= citaFinMinutos)
       ) {
-        console.log('❌ CONFLICTO encontrado - hora NO disponible');
         return false; // Hay conflicto
       }
     }
 
-    console.log('✅ Hora disponible');
     return true; // No hay conflictos, hora disponible
   };
 
@@ -258,54 +234,60 @@ const ModalAgendarCita = ({
 
   // Este useEffect se ejecuta SOLO cuando el modal se abre, no cuando formularioCita cambia
   useEffect(() => {
-    if (!open) return;
+    // ✅ Si el modal se cierra, marcar que ya no está abierto
+    if (!open) {
+      setModalYaAbierto(false);
+      return;
+    }
 
-    console.log('Modal abierto con:', {
-      slotSeleccionado,
-      formularioCita,
-      fechasHoras: formularioCita.fechasHoras
-    });
+    // ✅ Solo inicializar UNA VEZ cuando el modal se abre por primera vez
+    if (open && !modalYaAbierto) {
+      setModalYaAbierto(true);
+      setQueryPaciente('');
+      setTabValue(0);
+      setDialogoEliminarAbierto(false);
 
-    setQueryPaciente('');
-    setTabValue(0);
-    setDialogoEliminarAbierto(false);
+      // ✅ RESETEAR motivo de eliminación SOLO al abrir
+      setMotivoEliminacion('');
+      // NOTA: motivo_accion ahora se maneja en el padre (formularioCita.motivo_accion)
 
-    // Cargar terapeutas desde formularioCita.terapeutas_ids
-    if (formularioCita.terapeutas_ids && formularioCita.terapeutas_ids.length > 0) {
-      setTerapeutasReunion(formularioCita.terapeutas_ids.map(id => ({ terapeuta_id: id })));
-    } else {
-      // Si no hay terapeutas y hay un terapeuta seleccionado (estamos en su agenda),
-      // agregarlo como primer terapeuta por defecto
-      if (terapeutaSeleccionado?.id && !modoEdicion) {
-        setTerapeutasReunion([{ terapeuta_id: terapeutaSeleccionado.id }]);
+      // Cargar terapeutas desde formularioCita.terapeutas_ids
+      if (formularioCita.terapeutas_ids && formularioCita.terapeutas_ids.length > 0) {
+        setTerapeutasReunion(formularioCita.terapeutas_ids.map(id => ({ terapeuta_id: id })));
       } else {
-        setTerapeutasReunion([]);
+        // Si no hay terapeutas y hay un terapeuta seleccionado (estamos en su agenda),
+        // agregarlo como primer terapeuta por defecto
+        if (terapeutaSeleccionado?.id && !modoEdicion) {
+          setTerapeutasReunion([{ terapeuta_id: terapeutaSeleccionado.id }]);
+        } else {
+          setTerapeutasReunion([]);
+        }
+      }
+
+      // Cargar servicios desde formularioCita.servicios_ids
+      if (formularioCita.servicios_ids && formularioCita.servicios_ids.length > 0) {
+        setServiciosReunion(formularioCita.servicios_ids.map(id => ({ servicio_id: id })));
+      } else {
+        setServiciosReunion([]);
+      }
+
+      // Cargar encargado si es visita escolar
+      if (formularioCita.encargado) {
+        setEncargadoVisita(formularioCita.encargado);
+      } else {
+        setEncargadoVisita({ nombre_completo: '', telefono: '', institucion: '' });
+      }
+
+      // Cargar firma documento
+      setDocumentoFirmado(formularioCita.firma_documento === 1 || formularioCita.firma_documento === true);
+
+      // Asegurar que fechasHoras tenga al menos un elemento
+      if (!formularioCita.fechasHoras || formularioCita.fechasHoras.length === 0) {
+        onFormularioChange('fechasHoras', [{ fecha: '', horaInicio: '' }]);
       }
     }
-
-    // Cargar servicios desde formularioCita.servicios_ids
-    if (formularioCita.servicios_ids && formularioCita.servicios_ids.length > 0) {
-      setServiciosReunion(formularioCita.servicios_ids.map(id => ({ servicio_id: id })));
-    } else {
-      setServiciosReunion([]);
-    }
-
-    // Cargar encargado si es visita escolar
-    if (formularioCita.encargado) {
-      setEncargadoVisita(formularioCita.encargado);
-    } else {
-      setEncargadoVisita({ nombre_completo: '', telefono: '', institucion: '' });
-    }
-
-    // Cargar firma documento
-    setDocumentoFirmado(formularioCita.firma_documento === 1 || formularioCita.firma_documento === true);
-
-    // Asegurar que fechasHoras tenga al menos un elemento
-    if (!formularioCita.fechasHoras || formularioCita.fechasHoras.length === 0) {
-      onFormularioChange('fechasHoras', [{ fecha: '', horaInicio: '' }]);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // Solo depende de 'open', no de 'formularioCita'
+  }, [open, modalYaAbierto]); // Depende de 'open' y 'modalYaAbierto'
 
   // Detectar tipo de cita según motivo_id
   useEffect(() => {
@@ -320,14 +302,6 @@ const ModalAgendarCita = ({
       setTipoCita(null);
     }
   }, [formularioCita.motivo_id, motivos]);
-
-  // Estado para forzar re-render cuando cambien los terapeutas (para actualizar horas disponibles)
-  const [, setForceUpdate] = useState(0);
-
-  // Re-renderizar cuando cambien terapeutas, doctor_id o duración para actualizar horas disponibles
-  useEffect(() => {
-    setForceUpdate(prev => prev + 1);
-  }, [terapeutasReunion, formularioCita.doctor_id, formularioCita.duracion]);
 
   // Funciones para Reunión Clínica
   const agregarTerapeuta = () => setTerapeutasReunion([...terapeutasReunion, { terapeuta_id: '' }]);
@@ -348,8 +322,22 @@ const ModalAgendarCita = ({
 
   // 🎯 Reemplaza tu handleGuardar actual en ModalAgendarCita con este:
 
-const handleGuardar = () => {
+const handleGuardar = useCallback(() => {
+  // ✅ VALIDAR MOTIVO DE ACCIÓN en modo edición
+  if (modoEdicion && !esTerapeuta) {
+    if (!motivoAccion || motivoAccion.trim() === '') {
+      setMensajeAlerta('El motivo de modificación es obligatorio para actualizar la cita.');
+      setAlertaAbierta(true);
+      return;
+    }
+  }
+
   let datosGuardar = { ...formularioCita };
+
+  // ✅ Agregar motivo_accion solo en modo edición
+  if (modoEdicion && !esTerapeuta) {
+    datosGuardar.motivo_accion = motivoAccion;
+  }
 
   if (tipoCita === 'NORMAL') {
     datosGuardar.terapeutas_ids = [];
@@ -376,13 +364,23 @@ const handleGuardar = () => {
   datosGuardar.esMultiple = !modoEdicion && datosGuardar.fechasHoras && datosGuardar.fechasHoras.length > 1;
 
   onGuardar(datosGuardar);
-};
+}, [modoEdicion, esTerapeuta, motivoAccion, formularioCita, tipoCita, terapeutasReunion, serviciosReunion, encargadoVisita, documentoFirmado, onGuardar, setMensajeAlerta, setAlertaAbierta]);
 
   const abrirDialogoEliminar = () => setDialogoEliminarAbierto(true);
-  const cerrarDialogoEliminar = () => setDialogoEliminarAbierto(false);
-  const confirmarEliminar = () => {
+  const cerrarDialogoEliminar = () => {
     setDialogoEliminarAbierto(false);
-    if (onEliminar) onEliminar();
+    setMotivoEliminacion(''); // Limpiar el motivo al cerrar
+  };
+  const confirmarEliminar = () => {
+    // ✅ VALIDAR MOTIVO DE ELIMINACIÓN (obligatorio)
+    if (!motivoEliminacion || motivoEliminacion.trim() === '') {
+      setMensajeAlerta('El motivo de eliminación es obligatorio para eliminar la cita.');
+      setAlertaAbierta(true);
+      return;
+    }
+
+    setDialogoEliminarAbierto(false);
+    if (onEliminar) onEliminar(motivoEliminacion);
   };
 
   const formatearFechaHistorial = (fecha) => {
@@ -1335,6 +1333,27 @@ const handleGuardar = () => {
     </div>
   </div>
 )}
+
+                {/* ✅ MOTIVO DE MODIFICACIÓN - UN SOLO CAMPO PARA TODOS LOS TIPOS */}
+                {modoEdicion && !esTerapeuta && (
+                  <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Motivo de Modificación <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={motivoAccion}
+                      onChange={handleMotivoChange}
+                      rows={3}
+                      placeholder="Explique detalladamente el motivo de la modificación..."
+                      className="w-full px-3 py-2 bg-white border border-yellow-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-yellow-700 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      Este campo es obligatorio para modificar una cita
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1600,19 +1619,19 @@ const handleGuardar = () => {
       {dialogoEliminarAbierto && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
-            <div className="bg-red-50 border-b border-red-200 p-5">
+            <div className="bg-red-50 border-b border-red-200 px-5 py-4 rounded-t-2xl">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
               </div>
             </div>
 
             <div className="p-5">
-              <p className="text-gray-700 mb-4">¿Está seguro que desea eliminar esta cita? Esta acción no se puede deshacer.</p>
+              <p className="text-sm text-gray-700 mb-4">¿Está seguro que desea eliminar esta cita? Esta acción no se puede deshacer.</p>
               {citaEditando && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
                   <p className="text-sm text-gray-600">
                     <span className="font-semibold">Paciente:</span> {formularioCita.paciente?.nombre_completo || 'N/A'}
                   </p>
@@ -1621,9 +1640,27 @@ const handleGuardar = () => {
                   </p>
                 </div>
               )}
+
+              {/* MOTIVO DE ELIMINACIÓN (obligatorio) */}
+              <div className="bg-red-50 border border-red-300 rounded-xl p-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Motivo de Eliminación <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={motivoEliminacion}
+                  onChange={(e) => setMotivoEliminacion(e.target.value)}
+                  rows={3}
+                  placeholder="Explique detalladamente el motivo de la eliminación..."
+                  className="w-full px-3 py-2 bg-white border border-red-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                />
+                <p className="text-xs text-red-700 mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Este campo es obligatorio para eliminar una cita
+                </p>
+              </div>
             </div>
 
-            <div className="border-t border-gray-200 p-4 flex justify-end gap-2 bg-gray-50">
+            <div className="border-t border-gray-200 px-5 py-3.5 flex justify-end gap-2 bg-gray-50 rounded-b-2xl">
               <button
                 onClick={cerrarDialogoEliminar}
                 className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
@@ -1641,8 +1678,42 @@ const handleGuardar = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Alerta Bonito */}
+      {alertaAbierta && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-orange-200 px-5 py-4 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Campo Requerido</h3>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-sm text-gray-700 leading-relaxed">{mensajeAlerta}</p>
+            </div>
+
+            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setAlertaAbierta(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
-export default ModalAgendarCita;
+
+
+// Memorizar el componente para evitar re-renders innecesarios
+export default React.memo(ModalAgendarCita);
+
+

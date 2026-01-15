@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Calendar,
   Clock,
@@ -61,7 +61,8 @@ const Agenda = () => {
     servicios_ids: [],
     encargado: null,
     firma_documento: false,
-    user_id_crea: null
+    user_id_crea: null,
+    motivo_accion: '' // ✅ CAMPO PARA MOTIVO DE MODIFICACIÓN
   });
   
   // Estados para datos
@@ -350,7 +351,8 @@ const Agenda = () => {
       servicios_ids: [],
       encargado: null,
       firma_documento: false,
-      user_id_crea: null
+      user_id_crea: null,
+      motivo_accion: '' // ✅ RESETEAR MOTIVO
     });
   };
 
@@ -432,7 +434,9 @@ const guardarCita = async (datosFormulario = null) => {
       estado_id: parseInt(datos.estado_id || 1),
       duracion_minutos: parseInt(datos.duracion || 40),
       nota: datos.nota || '',
-      user_id_crea: currentUser.id
+      user_id_crea: currentUser.id,
+      motivo_accion: datos.motivo_accion || '' // ✅ INCLUIR MOTIVO DE ACCIÓN
+      
     };
 
     // Agregar campos según tipo de cita
@@ -595,16 +599,17 @@ const guardarCita = async (datosFormulario = null) => {
   }
 };
 
-  const handleEliminarCita = async () => {
+  const handleEliminarCita = async (motivoEliminacion) => {
     if (!citaEditando?.id) return;
-    
+
     try {
-      await eliminarCita(citaEditando.id);
+      // ✅ Enviar motivo de eliminación al backend
+      await eliminarCita(citaEditando.id, currentUser?.id, motivoEliminacion);
 
       setSnackbarMessage('Cita eliminada correctamente');
       setSnackbarSeverity('success');
       setShowSnackbar(true);
-      
+
       // Recargar citas del mes actual visualizado
       const params = obtenerParamsFechaActual();
       const citasActualizadas = await listarCitas(params);
@@ -614,7 +619,7 @@ const guardarCita = async (datosFormulario = null) => {
       cerrarModal();
     } catch (error) {
       console.error('Error eliminando cita:', error);
-      
+
       let mensajeError = 'Error al eliminar la cita';
       if (error.response?.data?.message) {
         mensajeError = error.response.data.message;
@@ -661,8 +666,8 @@ const guardarCita = async (datosFormulario = null) => {
     return rolId === ROLES.TERAPEUTA && (trabajador.estado === true || trabajador.estado === 1);
   });
 
-  // Obtener terapeuta seleccionado para el modal
-  const obtenerTerapeutaSeleccionado = () => {
+  // Obtener terapeuta seleccionado para el modal - memorizado con useMemo
+  const terapeutaSeleccionadoMemo = useMemo(() => {
     if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
       return currentUser;
     } else if (terapeutaFiltro) {
@@ -670,16 +675,15 @@ const guardarCita = async (datosFormulario = null) => {
       return terapeutasDisponibles.find(t => t.id === filtroId);
     }
     return null;
-  };
+  }, [currentUser, terapeutaFiltro, terapeutasDisponibles]);
 
   const debeSeleccionarTerapeuta = (currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && !terapeutaFiltro;
 
-  // Duración de citas disponibles
-  const duraciones = [
+  // Duración de citas disponibles - memorizado para evitar re-renders
+  const duraciones = useMemo(() => [
     { valor: '40', label: '40 minutos' },
     { valor: '50', label: '50 minutos' },
- 
-  ];
+  ], []);
 
   // Función para obtener color de estado
   const getEstadoColorCustom = useCallback((estado) => {
@@ -842,7 +846,7 @@ const guardarCita = async (datosFormulario = null) => {
           onEliminar={handleEliminarCita}
           servicios={servicios}
           duraciones={duraciones}
-          terapeutaSeleccionado={obtenerTerapeutaSeleccionado()}
+          terapeutaSeleccionado={terapeutaSeleccionadoMemo}
           modoEdicion={!!citaEditando}
           citaEditando={citaEditando}
           currentUser={currentUser}

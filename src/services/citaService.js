@@ -41,9 +41,12 @@ export const actualizarCita = async (id, citaDto) => {
   }
 };
 
-export const eliminarCita = async (id, userId) => {
+export const eliminarCita = async (id, userId, motivoAccion) => {
   const response = await api.delete(`/citas/${id}`, {
-    data: { user_id: userId }
+    data: {
+      usuario_id: userId,
+      motivo_accion: motivoAccion
+    }
   });
   return response.data;
 };
