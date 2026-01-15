@@ -10,7 +10,9 @@ import {
   Clock,
   PenSquare,
   FileText,
-  Loader2
+  Loader2,
+  PartyPopper,
+  Briefcase
 } from 'lucide-react';
 import { obtenerNotificacionesRecientes } from '../services/notificacionesService';
 
@@ -21,10 +23,9 @@ const NotificacionesGlobales = () => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
 
-  // Cargar notificaciones al montar el componente y cada 60 segundos
   useEffect(() => {
     cargarNotificaciones();
-    const intervalo = setInterval(cargarNotificaciones, 60000); // Actualizar cada minuto
+    const intervalo = setInterval(cargarNotificaciones, 60000);
     return () => clearInterval(intervalo);
   }, []);
 
@@ -47,6 +48,9 @@ const NotificacionesGlobales = () => {
 
   const getIconoTipo = (tipo) => {
     const iconos = {
+      CUMPLEANOS_PACIENTE: <Cake className="w-5 h-5 text-pink-600" />,
+      CUMPLEANOS_EMPLEADO: <PartyPopper className="w-5 h-5 text-purple-600" />,
+      ANIVERSARIO_LABORAL: <Briefcase className="w-5 h-5 text-blue-600" />,
       CUMPLEANOS: <Cake className="w-5 h-5 text-pink-600" />,
       ANIVERSARIO: <Calendar className="w-5 h-5 text-blue-600" />,
       ACCESO: <TriangleAlert className="w-5 h-5 text-orange-600" />,
@@ -59,6 +63,9 @@ const NotificacionesGlobales = () => {
 
   const getColorTipo = (tipo) => {
     const colores = {
+      CUMPLEANOS_PACIENTE: 'bg-pink-50 border-pink-300',
+      CUMPLEANOS_EMPLEADO: 'bg-purple-50 border-purple-300',
+      ANIVERSARIO_LABORAL: 'bg-blue-50 border-blue-300',
       CUMPLEANOS: 'bg-pink-50 border-pink-300',
       ANIVERSARIO: 'bg-blue-50 border-blue-300',
       ACCESO: 'bg-orange-50 border-orange-300',
@@ -81,7 +88,6 @@ const NotificacionesGlobales = () => {
   };
 
   const marcarTodasComoLeidas = () => {
-    // Implementar lógica para marcar como leídas
     setNotificaciones([]);
     setTotalNotificaciones(0);
     setMostrarPanel(false);
