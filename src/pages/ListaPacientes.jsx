@@ -369,7 +369,8 @@ export const ListaPacientes = () => {
       </div>
 
       {/* Estadísticas Cards - Estilo RRHH - Una sola fila */}
-      {estadisticas && (
+      
+      {estadisticas  && user?.rol?.id !== ROLES.TERAPEUTA &&  (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {/* Pacientes Registrados este mes */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
