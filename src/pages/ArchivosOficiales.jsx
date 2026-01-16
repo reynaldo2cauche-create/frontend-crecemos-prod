@@ -45,7 +45,7 @@ const GestionArchivosOficiales = () => {
   const [modalEliminar, setModalEliminar] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   // Cargar preferencia de vista desde localStorage
   const [viewMode, setViewMode] = useState(() => {
     const savedView = localStorage.getItem('archivosOficiales_viewMode');
@@ -140,7 +140,7 @@ const GestionArchivosOficiales = () => {
     }
 
     if (filtroTipo) {
-      filtered = filtered.filter(doc => doc.tipoArchivo?.id === filtroTipo);
+      filtered = filtered.filter(doc => doc.tipoArchivo?.id === parseInt(filtroTipo));
     }
 
     setDocumentosFiltrados(filtered);
@@ -739,18 +739,10 @@ const GestionArchivosOficiales = () => {
                         Lista
                       </button>
                     </div>
-                    <button
-                      onClick={() => setShowFilters(!showFilters)}
-                      className="text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
-                    >
-                      {showFilters ? 'Ocultar' : 'Mostrar'}
-                    </button>
                   </div>
                 </div>
 
-                {showFilters && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                       <div className="relative">
                         <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <input
@@ -794,8 +786,6 @@ const GestionArchivosOficiales = () => {
                       <RefreshCw className="w-4 h-4" />
                       Actualizar
                     </button>
-                  </>
-                )}
               </div>
 
               {/* Lista de documentos */}

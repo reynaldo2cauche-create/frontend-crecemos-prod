@@ -340,6 +340,11 @@ const ArchivosDigitales = ({ paciente }) => {
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hidden md:inline">
                         {formatearFecha(archivo.fechaCreacion)}
                       </span>
+                      {archivo.terapeuta && (
+                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">
+                          Subido por: {archivo.terapeuta.nombres} {archivo.terapeuta.apellidos}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -712,6 +717,11 @@ const ArchivosDigitales = ({ paciente }) => {
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
                         {formatearTamano(archivoAEliminar.tamano)}
                       </span>
+                      {archivoAEliminar.terapeuta && (
+                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">
+                          Subido por: {archivoAEliminar.terapeuta.nombres} {archivoAEliminar.terapeuta.apellidos}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
