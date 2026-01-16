@@ -371,7 +371,7 @@ const Sidebar = () => {
                       src={item.fullLogo}
                       alt={item.text}
                       className={`transition-all duration-300 group-hover:scale-105 ${
-                        isCollapsed ? 'w-8 h-auto' : 'w-full h-auto max-w-[180px]'
+                        isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'
                       }`}
                       style={{ objectFit: 'contain' }}
                     />
