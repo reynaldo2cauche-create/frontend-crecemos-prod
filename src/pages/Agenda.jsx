@@ -117,6 +117,11 @@ const Agenda = () => {
   useEffect(() => {
     const cargarCitas = async () => {
       try {
+        // ✅ Limpiar citas inmediatamente para evitar flickering
+        setCitas([]);
+        setTodasLasCitas([]);
+        setCargando(true);
+
         let params = {};
 
         if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
@@ -157,6 +162,8 @@ const Agenda = () => {
         setSnackbarMessage('Error al cargar citas');
         setSnackbarSeverity('error');
         setShowSnackbar(true);
+      } finally {
+        setCargando(false);
       }
     };
 
@@ -822,6 +829,7 @@ const guardarCita = async (datosFormulario = null) => {
               setFechaCalendario(nuevaFecha);
             }}
             currentUser={currentUser}
+            cargando={cargando}
           />
         )}
 

@@ -65,6 +65,7 @@ export const ListaPacientes = () => {
         
         if (user?.rol?.id === ROLES.TERAPEUTA) {
           params.append('terapeutaId', user.id);
+          params.append('estadoIds', '1,2,3,4');
         }
         
         if (searchParams.distritoId) params.append('distritoId', searchParams.distritoId);
@@ -84,12 +85,17 @@ export const ListaPacientes = () => {
         }
         
         const data = await getPacientes(url);
-        
         if (data && Array.isArray(data)) {
-          setPacientes(data);
-          setFilteredPacientes(data);
-          setError(null);
-        } else {
+        // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
+        let pacientesFiltrados = data;
+        if (user?.rol?.id === ROLES.TERAPEUTA) {
+          pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+        }
+        
+        setPacientes(pacientesFiltrados);
+        setFilteredPacientes(pacientesFiltrados);
+        setError(null);
+      } else {
           setPacientes([]);
           setFilteredPacientes([]);
           setError(null);
@@ -116,6 +122,7 @@ export const ListaPacientes = () => {
         
         if (user?.rol?.id === ROLES.TERAPEUTA) {
           params.append('terapeutaId', user.id);
+          params.append('estadoIds', '1,2,3,4');
         }
         
         if (params.toString()) {
@@ -123,12 +130,17 @@ export const ListaPacientes = () => {
         }
         
         const data = await getPacientes(url);
+   if (data && Array.isArray(data)) {
+        // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
+        let pacientesFiltrados = data;
+        if (user?.rol?.id === ROLES.TERAPEUTA) {
+          pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+        }
         
-        if (data && Array.isArray(data)) {
-          setPacientes(data);
-          setFilteredPacientes(data);
-          setError(null);
-        } else {
+        setPacientes(pacientesFiltrados);
+        setFilteredPacientes(pacientesFiltrados);
+        setError(null);
+      }else {
           setPacientes([]);
           setFilteredPacientes([]);
           setError(null);
@@ -241,6 +253,7 @@ export const ListaPacientes = () => {
       
       if (user?.rol?.id === ROLES.TERAPEUTA) {
         params.append('terapeutaId', user.id);
+        params.append('estadoIds', '1,2,3,4');
       }
       
       if (params.toString()) {
@@ -248,8 +261,13 @@ export const ListaPacientes = () => {
       }
       
       const data = await getPacientes(url);
-      setPacientes(data);
-      setFilteredPacientes(data);
+      let pacientesFiltrados = data;
+    if (user?.rol?.id === ROLES.TERAPEUTA) {
+      pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+    }
+    
+      setPacientes(pacientesFiltrados);
+      setFilteredPacientes(pacientesFiltrados);
     } catch (error) {
       console.error('Error al recargar pacientes:', error);
       setError('Error al recargar la lista de pacientes');
@@ -287,6 +305,7 @@ export const ListaPacientes = () => {
       
       if (user?.rol?.id === ROLES.TERAPEUTA) {
         params.append('terapeutaId', user.id);
+     
       }
       
       if (params.toString()) {
@@ -294,8 +313,14 @@ export const ListaPacientes = () => {
       }
       
       const data = await getPacientes(url);
-      setPacientes(data);
-      setFilteredPacientes(data);
+    // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
+    let pacientesFiltrados = data;
+    if (user?.rol?.id === ROLES.TERAPEUTA) {
+      pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+    }
+    
+    setPacientes(pacientesFiltrados);
+    setFilteredPacientes(pacientesFiltrados);
       
       // ✅ RECARGAR ESTADÍSTICAS AUTOMÁTICAMENTE
       const estadisticasData = await getEstadisticasPacientes();
@@ -369,7 +394,8 @@ export const ListaPacientes = () => {
       </div>
 
       {/* Estadísticas Cards - Estilo RRHH - Una sola fila */}
-      {estadisticas && (
+      
+      {estadisticas  && user?.rol?.id !== ROLES.TERAPEUTA &&  (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {/* Pacientes Registrados este mes */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">

@@ -68,6 +68,7 @@ const menuItems = [
     ]
   },
   { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon, adminOnly: true },
+  { text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi', isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.png' },
 ];
 
 const Sidebar = () => {
@@ -106,13 +107,13 @@ const Sidebar = () => {
 
     if (userRole === ROLES.TERAPEUTA) {
       return menuItems.filter(item =>
-        item.text === 'Agenda' || item.text === 'Pacientes'
+        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Webmail'
       );
     }
 
     if (userRole === ROLES.ADMISION) {
       return menuItems.filter(item =>
-        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Certificaciones'
+        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Certificaciones' || item.text === 'Webmail'
       );
     }
 
@@ -343,10 +344,45 @@ const Sidebar = () => {
 
               const isActive = location.pathname === item.path;
 
+              // Manejar links externos
+              const handleClick = () => {
+                if (item.isExternal) {
+                  window.open(item.path, '_blank', 'noopener,noreferrer');
+                } else {
+                  navigate(item.path);
+                }
+              };
+
+              // Renderizado especial para Webmail con logo completo
+              if (item.isWebmail) {
+                return (
+                  <button
+                    key={item.text}
+                    onClick={handleClick}
+                    className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none bg-transparent hover:bg-purple-50 ${
+                      isCollapsed ? 'px-2' : ''
+                    }`}
+                    title={item.text}
+                    style={{
+                      animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
+                    }}
+                  >
+                    <img
+                      src={item.fullLogo}
+                      alt={item.text}
+                      className={`transition-all duration-300 group-hover:scale-105 ${
+                        isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'
+                      }`}
+                      style={{ objectFit: 'contain' }}
+                    />
+                  </button>
+                );
+              }
+
               return (
                 <button
                   key={item.text}
-                  onClick={() => navigate(item.path)}
+                  onClick={handleClick}
                   className={`menu-item ${isActive ? 'active' : ''} w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
                     isActive
                       ? 'text-gray-900'

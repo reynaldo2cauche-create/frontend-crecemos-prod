@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, X, Trash2, Download, Eye, FileText, Cloud, AlertCircle } from 'lucide-react';
+import { Upload, X, Trash2, Download, Eye, FileText, Cloud, AlertCircle, Lock } from 'lucide-react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { getTiposArchivo, subirArchivo, getArchivosPorPaciente, eliminarArchivo, descargarArchivo } from '../../services/archivosDigitalesService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../../services/api';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+// Configurar el worker de PDF.js
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 const ArchivosDigitales = ({ paciente }) => {
   const currentUser = useCurrentUser();
@@ -27,6 +31,14 @@ const ArchivosDigitales = ({ paciente }) => {
   const [openConfirmacion, setOpenConfirmacion] = useState(false);
   const [archivoAEliminar, setArchivoAEliminar] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [numPages, setNumPages] = useState(null);
+  const [scale, setScale] = useState(1.0);
+
+  // Función para verificar si el usuario es administrador
+  const esAdministrador = () => {
+    const rolUsuario = currentUser?.rol?.nombre?.toLowerCase() || currentUser?.rol?.toLowerCase() || '';
+    return ['admin', 'administrador'].includes(rolUsuario);
+  };
 
   // Obtener tipos de archivo del backend
   useEffect(() => {
@@ -157,7 +169,32 @@ const ArchivosDigitales = ({ paciente }) => {
   const handleCerrarVistaPrevia = () => {
     setOpenVistaPrevia(false);
     setArchivoVistaPrevia(null);
+    setNumPages(null);
+    setScale(1.0);
   };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+  };
+
+  const containerRef = React.useRef(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setScale(prev => Math.max(0.5, Math.min(3, prev + delta)));
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const esImagen = (tipoMime) => {
     return tipoMime?.startsWith('image/');
@@ -206,8 +243,14 @@ const ArchivosDigitales = ({ paciente }) => {
     }, 4000);
   };
 
+  // FUNCIÓN MODIFICADA: Solo admin puede descargar
   const handleDescargarArchivo = async (archivo) => {
     try {
+      if (!esAdministrador()) {
+        
+        return;
+      }
+
       const blob = await descargarArchivo(archivo.id);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -267,6 +310,21 @@ const ArchivosDigitales = ({ paciente }) => {
     }
   };
 
+  // Prevenir clic derecho en imágenes para usuarios no admin
+  const handleContextMenu = (e) => {
+    if (!esAdministrador()) {
+      e.preventDefault();
+      
+    }
+  };
+
+  // Prevenir arrastrar imágenes para usuarios no admin
+  const handleDragStart = (e) => {
+    if (!esAdministrador()) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl p-6 border border-gray-100">
       {/* Notificación */}
@@ -304,6 +362,8 @@ const ArchivosDigitales = ({ paciente }) => {
         </button>
       </div>
 
+     
+
       {/* Lista de archivos */}
       {loadingArchivos ? (
         <div className="flex items-center justify-center py-12">
@@ -340,10 +400,16 @@ const ArchivosDigitales = ({ paciente }) => {
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hidden md:inline">
                         {formatearFecha(archivo.fechaCreacion)}
                       </span>
+                      {archivo.terapeuta && (
+                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">
+                          Subido por: {archivo.terapeuta.nombres} {archivo.terapeuta.apellidos}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* BOTÓN DE VISTA PREVIA: Todos pueden ver */}
                   {puedeVistaPrevia(archivo) && (
                     <button
                       onClick={() => handleVistaPrevia(archivo)}
@@ -353,55 +419,19 @@ const ArchivosDigitales = ({ paciente }) => {
                       <Eye className="w-4 h-4" />
                     </button>
                   )}
-                  <button
-                    onClick={() => handleDescargarArchivo(archivo)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    title="Descargar"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
 
-                  {/* PERMISOS DE ELIMINACIÓN:
-                      - ADMIN: Puede eliminar cualquier archivo
-                      - TERAPEUTA: Solo puede eliminar archivos que él mismo subió
-                      - ADMISIÓN: NO puede eliminar ningún archivo
-                  */}
-                  {(() => {
-                    const rolUsuario = currentUser?.rol?.nombre?.toLowerCase() || currentUser?.rol?.toLowerCase() || '';
-                    const esAdmin = ['admin', 'administrador'].includes(rolUsuario);
-                    const esTerapeuta = rolUsuario === 'terapeuta';
-                    const esAdmision = ['admision', 'admisión'].includes(rolUsuario);
+                  {/* BOTÓN DE DESCARGA: Solo para Administrador */}
+                  {esAdministrador() && (
+                    <button
+                      onClick={() => handleDescargarArchivo(archivo)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      title="Descargar"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  )}
 
-                    // Admin puede eliminar todo
-                    if (esAdmin) {
-                      return (
-                        <button
-                          onClick={() => handleEliminarArchivo(archivo)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      );
-                    }
-
-                    // Terapeuta solo puede eliminar sus propios archivos
-                    if (esTerapeuta && archivo.terapeuta?.id === currentUser?.id) {
-                      return (
-                        <button
-                          onClick={() => handleEliminarArchivo(archivo)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Eliminar archivo propio"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      );
-                    }
-
-                    // Admisión NO puede eliminar nada
-                    // Terapeutas NO pueden eliminar archivos de otros
-                    return null;
-                  })()}
+                  {/* ELIMINACIÓN DESHABILITADA: Los archivos no pueden ser eliminados por ningún usuario */}
                 </div>
               </div>
             </div>
@@ -497,7 +527,7 @@ const ArchivosDigitales = ({ paciente }) => {
                       <div className="text-xs text-blue-700 space-y-1">
                         <p><strong>✓ PDF:</strong> Mejor opción para documentos (vista previa completa)</p>
                         <p><strong>✓ Imágenes:</strong> JPG, PNG, GIF, BMP, WEBP (vista previa con zoom)</p>
-                        <p><strong>• Word/Excel/PowerPoint:</strong> Requieren descarga para visualizar</p>
+                        <p><strong>• Word/Excel/PowerPoint:</strong> Solo administradores pueden descargar</p>
                       </div>
                     </div>
                   </div>
@@ -564,113 +594,283 @@ const ArchivosDigitales = ({ paciente }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 truncate">Vista Previa - {archivoVistaPrevia.nombreOriginal}</h3>
-              <button onClick={handleCerrarVistaPrevia} className="p-1 hover:bg-gray-100 rounded-lg transition-all">
+              <div className="flex-1 min-w-0 mr-4">
+                <h3 className="text-lg font-bold text-gray-900 truncate">Vista Previa - {archivoVistaPrevia.nombreOriginal}</h3>
+                {!esAdministrador() && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    Solo visualización - Descarga restringida
+                  </p>
+                )}
+              </div>
+              <button onClick={handleCerrarVistaPrevia} className="p-1 hover:bg-gray-100 rounded-lg transition-all flex-shrink-0">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-6 bg-gray-50">
+            <div className="flex-1 overflow-auto p-6 bg-gray-50 relative">
+              {/* IMÁGENES: Protegidas contra clic derecho y arrastre */}
               {esImagen(archivoVistaPrevia.tipoMime) && (
                 <div className="flex items-center justify-center h-full">
                   <img
                     src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
                     alt={archivoVistaPrevia.nombreOriginal}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg cursor-zoom-in hover:scale-105 transition-transform"
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg select-none"
+                    onContextMenu={handleContextMenu}
+                    onDragStart={handleDragStart}
                     onError={(e) => {
                       console.error('Error al cargar imagen:', e);
-                      console.error('URL intentada:', e.target.src);
-                    }}
-                    onLoad={() => {
-                      console.log('Imagen cargada correctamente');
-                    }}
-                    onClick={(e) => {
-                      if (e.target.requestFullscreen) {
-                        e.target.requestFullscreen();
-                      }
-                    }}
+console.error('URL intentada:', e.target.src);
+}}
+onLoad={() => {
+console.log('Imagen cargada correctamente');
+}}
+style={{
+userSelect: 'none',
+pointerEvents: esAdministrador() ? 'auto' : 'none'
+}}
+/>
+{/* Overlay invisible para prevenir interacciones en usuarios no admin */}
+{!esAdministrador() && (
+<div
+className="absolute inset-0"
+onContextMenu={handleContextMenu}
+style={{ cursor: 'default' }}
+/>
+)}
+</div>
+)}
+          {/* PDFs: react-pdf para control total */}
+{esPDF(archivoVistaPrevia.tipoMime) && (
+  <>
+    {esAdministrador() ? (
+      // Admin: PDF normal con todas las funcionalidades
+      <iframe
+        src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+        className="w-full h-full rounded-lg border-0 shadow-lg"
+        title={archivoVistaPrevia.nombreOriginal}
+        style={{ border: 'none' }}
+      />
+    ) : (
+      // No-admin: react-pdf con scroll nativo y bloqueo de clic derecho
+      <div className="relative w-full h-full">
+        <div
+          ref={containerRef}
+          className="w-full h-full overflow-y-auto overflow-x-hidden"
+          style={{
+            backgroundColor: '#525659'
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleContextMenu(e);
+            return false;
+          }}
+        >
+          <div className="flex flex-col items-center py-4">
+            <Document
+              file={{
+                url: `${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`,
+                httpHeaders: {
+                  'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
+                }
+              }}
+              onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={(error) => {
+                console.error('Error cargando PDF:', error);
+              }}
+              loading={
+                <div className="flex items-center justify-center py-12">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 border-2 border-gray-100 rounded-full"></div>
+                    <div className="absolute inset-0 border-2 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
+                  </div>
+                </div>
+              }
+              error={
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-red-500 text-sm">Error al cargar el PDF</p>
+                </div>
+              }
+            >
+              {numPages && Array.from(new Array(numPages), (el, index) => (
+                <div
+                  key={`page_${index + 1}`}
+                  className="mb-4"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    handleContextMenu(e);
+                  }}
+                >
+                  <Page
+                    pageNumber={index + 1}
+                    scale={scale}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
                   />
                 </div>
-              )}
-              {esPDF(archivoVistaPrevia.tipoMime) && (
-                <iframe
-                  src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
-                  className="w-full h-full rounded-lg border-0 shadow-lg"
-                  title={archivoVistaPrevia.nombreOriginal}
-                  onError={(e) => {
-                    console.error('Error al cargar PDF:', e);
-                  }}
-                  onLoad={() => {
-                    console.log('PDF cargado correctamente');
-                  }}
-                />
-              )}
-              {(esWord(archivoVistaPrevia.tipoMime) || esExcel(archivoVistaPrevia.tipoMime) || esPowerPoint(archivoVistaPrevia.tipoMime)) && (
-                <div className="w-full h-full flex flex-col">
-                  <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                    <FileText className="w-20 h-20 text-blue-500 mb-4" />
-                    <p className="text-lg font-semibold text-gray-700 mb-2">
-                      {esWord(archivoVistaPrevia.tipoMime) && 'Documento de Word'}
-                      {esExcel(archivoVistaPrevia.tipoMime) && 'Hoja de Cálculo Excel'}
-                      {esPowerPoint(archivoVistaPrevia.tipoMime) && 'Presentación PowerPoint'}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-4 max-w-md">
-                      Los archivos de Office requieren aplicaciones especiales para visualizarse correctamente.
-                      Descarga el archivo para abrirlo con Microsoft Office o aplicaciones compatibles.
-                    </p>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 max-w-md mb-4">
-                      <p className="text-xs text-gray-500 mb-2">
-                        <strong>Nombre:</strong> {archivoVistaPrevia.nombreOriginal}
-                      </p>
-                      <p className="text-xs text-gray-500 mb-2">
-                        <strong>Tipo:</strong> {
-                          esWord(archivoVistaPrevia.tipoMime) ? 'Microsoft Word' :
-                          esExcel(archivoVistaPrevia.tipoMime) ? 'Microsoft Excel' :
-                          'Microsoft PowerPoint'
-                        }
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        <strong>Tamaño:</strong> {formatearTamano(archivoVistaPrevia.tamano)}
+              ))}
+            </Document>
+          </div>
+        </div>
+
+        {/* Controles de zoom flotantes */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-md z-[100]">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Lock className="w-4 h-4 text-amber-600" />
+            <span className="text-xs font-medium text-gray-700">Vista protegida</span>
+            <div className="flex items-center gap-1 ml-2 border-l pl-2">
+              <button
+                onClick={() => setScale(prev => Math.max(0.5, prev - 0.1))}
+                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                title="Reducir zoom"
+              >
+                -
+              </button>
+              <span className="text-xs font-medium text-gray-700 min-w-[50px] text-center">
+                {Math.round(scale * 100)}%
+              </span>
+              <button
+                onClick={() => setScale(prev => Math.min(3, prev + 0.1))}
+                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                title="Aumentar zoom"
+              >
+                +
+              </button>
+              <button
+                onClick={() => setScale(1.0)}
+                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors ml-1"
+                title="Restablecer zoom"
+              >
+                100%
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+)}
+          {/* ARCHIVOS DE OFFICE: Solo admin puede descargar */}
+          {(esWord(archivoVistaPrevia.tipoMime) || esExcel(archivoVistaPrevia.tipoMime) || esPowerPoint(archivoVistaPrevia.tipoMime)) && (
+            <div className="w-full h-full flex flex-col">
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <FileText className="w-20 h-20 text-blue-500 mb-4" />
+                <p className="text-lg font-semibold text-gray-700 mb-2">
+                  {esWord(archivoVistaPrevia.tipoMime) && 'Documento de Word'}
+                  {esExcel(archivoVistaPrevia.tipoMime) && 'Hoja de Cálculo Excel'}
+                  {esPowerPoint(archivoVistaPrevia.tipoMime) && 'Presentación PowerPoint'}
+                </p>
+                <p className="text-sm text-gray-600 mb-4 max-w-md">
+                  Los archivos de Office requieren aplicaciones especiales para visualizarse correctamente.
+                </p>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 max-w-md mb-4">
+                  <p className="text-xs text-gray-500 mb-2">
+                    <strong>Nombre:</strong> {archivoVistaPrevia.nombreOriginal}
+                  </p>
+                  <p className="text-xs text-gray-500 mb-2">
+                    <strong>Tipo:</strong> {
+                      esWord(archivoVistaPrevia.tipoMime) ? 'Microsoft Word' :
+                      esExcel(archivoVistaPrevia.tipoMime) ? 'Microsoft Excel' :
+                      'Microsoft PowerPoint'
+                    }
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    <strong>Tamaño:</strong> {formatearTamano(archivoVistaPrevia.tamano)}
+                  </p>
+                </div>
+
+                {esAdministrador() ? (
+                  <button
+                    onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
+                    className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
+                  >
+                    <Download className="w-5 h-5" />
+                    Descargar y Abrir con Office
+                  </button>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md flex items-start gap-3">
+                    <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-semibold text-amber-900 mb-1">Descarga Restringida</p>
+                      <p className="text-xs text-amber-700">
+                        Los archivos de Office solo pueden ser descargados por administradores. Contacta con un administrador si necesitas acceder a este archivo.
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
-                      className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
-                    >
-                      <Download className="w-5 h-5" />
-                      Descargar y Abrir con Office
-                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ARCHIVOS DE TEXTO */}
+          {esTexto(archivoVistaPrevia.tipoMime) && (
+            <div className="relative w-full h-full">
+              <iframe
+                src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
+                className="w-full h-full rounded-lg border-0 shadow-lg bg-white p-4"
+                title={archivoVistaPrevia.nombreOriginal}
+                onError={(e) => {
+                  console.error('Error al cargar archivo de texto:', e);
+                }}
+                onLoad={() => {
+                  console.log('Archivo de texto cargado correctamente');
+                }}
+              />
+              {/* Overlay para usuarios no admin */}
+              {!esAdministrador() && (
+                <div 
+                  className="absolute inset-0 pointer-events-auto"
+                  onContextMenu={handleContextMenu}
+                  style={{ background: 'transparent' }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* OTROS ARCHIVOS SIN VISTA PREVIA */}
+          {!puedeVistaPrevia(archivoVistaPrevia) && (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <FileText className="w-16 h-16 text-gray-300 mb-4" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">Vista previa no disponible</p>
+              <p className="text-sm text-gray-500 mb-4">Este tipo de archivo no se puede previsualizar</p>
+              
+              {esAdministrador() ? (
+                <p className="text-xs text-gray-400">Puedes descargarlo para verlo en tu dispositivo</p>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-semibold text-amber-900 mb-1">Acceso Restringido</p>
+                    <p className="text-xs text-amber-700">
+                      Este archivo no tiene vista previa disponible y solo los administradores pueden descargarlo.
+                    </p>
                   </div>
                 </div>
               )}
-              {esTexto(archivoVistaPrevia.tipoMime) && (
-                <iframe
-                  src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
-                  className="w-full h-full rounded-lg border-0 shadow-lg bg-white p-4"
-                  title={archivoVistaPrevia.nombreOriginal}
-                  onError={(e) => {
-                    console.error('Error al cargar archivo de texto:', e);
-                  }}
-                  onLoad={() => {
-                    console.log('Archivo de texto cargado correctamente');
-                  }}
-                />
-              )}
-              {!puedeVistaPrevia(archivoVistaPrevia) && (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <FileText className="w-16 h-16 text-gray-300 mb-4" />
-                  <p className="text-lg font-semibold text-gray-700 mb-2">Vista previa no disponible</p>
-                  <p className="text-sm text-gray-500">Este tipo de archivo no se puede previsualizar</p>
-                  <p className="text-xs text-gray-400 mt-2">Puedes descargarlo para verlo en tu dispositivo</p>
-                </div>
-              )}
             </div>
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button
-                onClick={handleCerrarVistaPrevia}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-              >
-                Cerrar
-              </button>
+          )}
+        </div>
+        
+        {/* Footer con botones */}
+        <div className="flex items-center justify-between p-6 border-t border-gray-100">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            {!esAdministrador() && (
+              <>
+                <Lock className="w-4 h-4 text-amber-600" />
+                <span className="text-amber-600 font-medium">Modo solo visualización</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCerrarVistaPrevia}
+              className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              Cerrar
+            </button>
+            
+            {/* BOTÓN DE DESCARGA: Solo para administradores */}
+            {esAdministrador() && (
               <button
                 onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
                 className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
@@ -678,68 +878,74 @@ const ArchivosDigitales = ({ paciente }) => {
                 <Download className="w-4 h-4" />
                 Descargar
               </button>
-            </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* Modal de Confirmación de Eliminación */}
-      {openConfirmacion && archivoAEliminar && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
-                  <p className="text-sm text-gray-500 mt-1">Esta acción no se puede deshacer</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{archivoAEliminar.nombreOriginal}</p>
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{archivoAEliminar.descripcion}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                        {archivoAEliminar.tipoArchivo?.nombre || 'Sin tipo'}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                        {formatearTamano(archivoAEliminar.tamano)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 text-center mt-6">
-                ¿Estás seguro de que quieres eliminar este archivo?
-              </p>
-            </div>
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button
-                onClick={cancelarEliminacion}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarEliminacion}
-                className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition-all shadow-sm"
-              >
-                <Trash2 className="w-4 h-4" />
-                Eliminar Archivo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
-  );
-};
+  )}
 
+  {/* Modal de Confirmación de Eliminación */}
+  {openConfirmacion && archivoAEliminar && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
+              <p className="text-sm text-gray-500 mt-1">Esta acción no se puede deshacer</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{archivoAEliminar.nombreOriginal}</p>
+                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{archivoAEliminar.descripcion}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                    {archivoAEliminar.tipoArchivo?.nombre || 'Sin tipo'}
+                  </span>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                    {formatearTamano(archivoAEliminar.tamano)}
+                  </span>
+                  {archivoAEliminar.terapeuta && (
+                    <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">
+                      Subido por: {archivoAEliminar.terapeuta.nombres} {archivoAEliminar.terapeuta.apellidos}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-gray-700 text-center mt-6">
+            ¿Estás seguro de que quieres eliminar este archivo?
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
+          <button
+            onClick={cancelarEliminacion}
+            className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmarEliminacion}
+            className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition-all shadow-sm"
+          >
+            <Trash2 className="w-4 h-4" />
+            Eliminar Archivo
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+);
+};
 export default ArchivosDigitales;

@@ -15,7 +15,8 @@ const CalendarioSemanal = ({
   getEstadoColor,
   fechaActual = new Date(),
   onFechaChange,
-  currentUser = null
+  currentUser = null,
+  cargando = false
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
 
@@ -236,10 +237,17 @@ const CalendarioSemanal = ({
         </div>
       </div>
 
-      {/* Columnas de días independientes */}
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max">
-          {diasSemana.map((dia) => {
+      {/* ✅ Indicador de carga */}
+      {cargando ? (
+        <div className="flex items-center justify-center p-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B1FA2]"></div>
+        </div>
+      ) : (
+        <>
+          {/* Columnas de días independientes */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-180px)]">
+            <div className="flex min-w-max">
+              {diasSemana.map((dia) => {
             const horasDelDia = generarHorasPorDia(dia.fecha.getDay());
             const esHoy = dia.fechaString === new Date().toISOString().split('T')[0];
             const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
@@ -247,7 +255,7 @@ const CalendarioSemanal = ({
             return (
               <div key={dia.fechaString} className="flex-1 min-w-[200px] border-r border-gray-200 last:border-r-0">
                 {/* Header del día */}
-                <div className={`p-3 text-center border-b border-gray-200 ${
+                <div className={`p-3 text-center border-b border-gray-200 sticky top-0 z-30 ${
                   esHoy ? 'bg-purple-50 border-b-2 border-b-[#7B1FA2]' : 'bg-gradient-to-r from-gray-50 to-gray-100'
                 }`}>
                   <div className="capitalize text-sm font-semibold text-gray-600">
@@ -343,16 +351,28 @@ const CalendarioSemanal = ({
                                 );
                               })()}
 
-                              <div className="font-bold text-blue-700 text-xs leading-tight truncate">
+                              <div className="font-bold text-blue-700 text-[9px] leading-[1.2] break-words line-clamp-2">
                                 {(() => {
-                                  const nombre = cita.paciente_nombre ||
-                                                (typeof cita.paciente === 'string' ? cita.paciente : cita.paciente?.nombres) ||
-                                                'Paciente';
-                                  return nombre.substring(0, 20) + (nombre.length > 20 ? '...' : '');
+                                  let nombre = cita.paciente_nombre || 'Paciente';
+
+                                  // Si no hay paciente_nombre, construir nombre completo
+                                  if (!cita.paciente_nombre && cita.paciente) {
+                                    if (typeof cita.paciente === 'string') {
+                                      nombre = cita.paciente;
+                                    } else {
+                                      const nombres = cita.paciente.nombres || '';
+                                      const apellidos = cita.paciente.apellidos ||
+                                                       (cita.paciente.apellido_paterno || '') +
+                                                       (cita.paciente.apellido_materno ? ' ' + cita.paciente.apellido_materno : '');
+                                      nombre = `${nombres} ${apellidos}`.trim() || 'Paciente';
+                                    }
+                                  }
+
+                                  return nombre;
                                 })()}
                               </div>
 
-                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0.5 flex items-center gap-1">
+                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0 flex items-center gap-1">
                                 {(() => {
                                   const tipoCita = cita.tipo_cita;
 
@@ -386,7 +406,7 @@ const CalendarioSemanal = ({
                                 })()}
                               </div>
 
-                              <div className="flex items-center justify-between mt-1">
+                              <div className="flex items-center justify-between mt-0">
                                 <span className="text-[10px] font-bold text-gray-600">
                                   {formatearHora(cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora)}-{obtenerHoraFin(cita)}
                                 </span>
@@ -406,6 +426,8 @@ const CalendarioSemanal = ({
           })}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

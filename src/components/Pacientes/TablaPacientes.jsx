@@ -412,7 +412,7 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
             className="flex items-center gap-2 bg-[#A3C644] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
           >
             <Edit2 className="w-4 h-4" />
-            Editar
+            Visualizar
           </button>
 
           {isAdministrador(user) && (

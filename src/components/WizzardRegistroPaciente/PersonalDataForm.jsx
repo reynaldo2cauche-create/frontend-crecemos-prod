@@ -50,9 +50,12 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
         const formatGeneros = Array.isArray(generosData) ? generosData : [];
         const formatDistritos = Array.isArray(distritosData) ? distritosData : [];
 
+        // Filtrar solo distritos con provincia_id = 1
+        const distritosFiltrados = formatDistritos.filter(distrito => distrito.id_provincia === 1);
+
         setTiposDocumento(formatDocumentos);
         setGeneros(formatGeneros);
-        setDistritos(formatDistritos);
+        setDistritos(distritosFiltrados);
         setError(null);
       } catch (error) {
         console.error("Error al cargar datos del formulario:", error);

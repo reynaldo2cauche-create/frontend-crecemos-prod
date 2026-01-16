@@ -140,20 +140,7 @@ export const AdultoPsicologiaIndividualPage = () => {
             <p>Conoce a las especialistas encargadas de brindar las terapias de lenguaje.</p>
           </div>
           <div className="row justify-content-center">
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img src="/assets/img/servicios/Lic. Giselle (1).png" alt="Lic. Giselle Burgos" style={{ height: "300px" }} />
-                <div className="team-content">
-                  <h3 className="title">Lic. Giselle Burgos</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">66683</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            
           </div>
         </div>
       </section>
