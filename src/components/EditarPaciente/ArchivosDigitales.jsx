@@ -431,6 +431,16 @@ const ArchivosDigitales = ({ paciente }) => {
                     </button>
                   )}
 
+                   {esAdministrador() && (
+                    <button
+                      onClick={() => handleEliminarArchivo(archivo)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      title="Eliminar archivo"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+
                   {/* ELIMINACIÓN DESHABILITADA: Los archivos no pueden ser eliminados por ningún usuario */}
                 </div>
               </div>

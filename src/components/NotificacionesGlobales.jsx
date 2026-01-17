@@ -12,9 +12,10 @@ import {
   FileText,
   Loader2,
   PartyPopper,
-  Briefcase
+  Briefcase,
+  Check
 } from 'lucide-react';
-import { obtenerNotificacionesRecientes } from '../services/notificacionesService';
+import { obtenerNotificacionesRecientes, marcarTodasComoLeidas as marcarLeidasAPI, marcarComoLeida } from '../services/notificacionesService';
 
 const NotificacionesGlobales = () => {
   const [mostrarPanel, setMostrarPanel] = useState(false);
@@ -23,14 +24,17 @@ const NotificacionesGlobales = () => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+ useEffect(() => {
     cargarNotificaciones();
-    const intervalo = setInterval(cargarNotificaciones, 60000);
+    // ✅ CAMBIADO: Actualización cada 5 segundos (5000ms)
+    const intervalo = setInterval(cargarNotificaciones, 5000);
+    console.log('Intervalo de notificaciones iniciado cada 5 segundos.');
     return () => clearInterval(intervalo);
   }, []);
 
   const cargarNotificaciones = async () => {
     try {
+       console.log('Cargando notificaciones...');
       setCargando(true);
       setError(null);
       const response = await obtenerNotificacionesRecientes();
@@ -87,10 +91,26 @@ const NotificacionesGlobales = () => {
     return `Hace ${Math.floor(diff / 86400)} días`;
   };
 
-  const marcarTodasComoLeidas = () => {
-    setNotificaciones([]);
-    setTotalNotificaciones(0);
-    setMostrarPanel(false);
+  const marcarUnaComoLeida = async (notificacionId) => {
+    try {
+      await marcarComoLeida(notificacionId);
+      // Remover la notificación de la lista localmente
+      setNotificaciones(prev => prev.filter(n => n.id !== notificacionId));
+      setTotalNotificaciones(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error al marcar notificación como leída:', error);
+    }
+  };
+
+  const marcarTodasComoLeidas = async () => {
+    try {
+      await marcarLeidasAPI();
+      setNotificaciones([]);
+      setTotalNotificaciones(0);
+      setMostrarPanel(false);
+    } catch (error) {
+      console.error('Error al marcar todas como leídas:', error);
+    }
   };
 
   return (
@@ -179,6 +199,16 @@ const NotificacionesGlobales = () => {
                             <h4 className="font-semibold text-sm text-gray-800 line-clamp-1">
                               {notif.titulo}
                             </h4>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                marcarUnaComoLeida(notif.id);
+                              }}
+                              className="flex-shrink-0 p-1.5 rounded-full hover:bg-green-100 text-green-600 hover:text-green-700 transition-colors"
+                              title="Marcar como leída"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
                           </div>
 
                           <p className="text-xs text-gray-600 mb-2" style={{ lineHeight: '1.4' }}>

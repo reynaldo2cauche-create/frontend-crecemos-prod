@@ -353,22 +353,27 @@ const CalendarioSemanal = ({
 
                               <div className="font-bold text-blue-700 text-[9px] leading-[1.2] break-words line-clamp-2">
                                 {(() => {
-                                  let nombre = cita.paciente_nombre || 'Paciente';
+                                  let primerNombre = '';
+                                  let primerApellido = '';
 
-                                  // Si no hay paciente_nombre, construir nombre completo
-                                  if (!cita.paciente_nombre && cita.paciente) {
-                                    if (typeof cita.paciente === 'string') {
-                                      nombre = cita.paciente;
-                                    } else {
-                                      const nombres = cita.paciente.nombres || '';
-                                      const apellidos = cita.paciente.apellidos ||
-                                                       (cita.paciente.apellido_paterno || '') +
-                                                       (cita.paciente.apellido_materno ? ' ' + cita.paciente.apellido_materno : '');
-                                      nombre = `${nombres} ${apellidos}`.trim() || 'Paciente';
-                                    }
+                                  // Extraer del objeto paciente directamente
+                                  if (cita.paciente && typeof cita.paciente === 'object') {
+                                    // Obtener primer nombre (si hay varios nombres, tomar el primero)
+                                    const nombres = cita.paciente.nombres || '';
+                                    primerNombre = nombres.trim().split(/\s+/)[0] || '';
+
+                                    // Obtener primer apellido
+                                    primerApellido = cita.paciente.apellido_paterno ||
+                                                    (cita.paciente.apellidos || '').trim().split(/\s+/)[0] || '';
+                                  } else if (cita.paciente_nombre || (cita.paciente && typeof cita.paciente === 'string')) {
+                                    // Si viene como string, dividir
+                                    const nombreCompleto = cita.paciente_nombre || cita.paciente || '';
+                                    const palabras = nombreCompleto.trim().split(/\s+/);
+                                    primerNombre = palabras[0] || '';
+                                    primerApellido = palabras[1] || '';
                                   }
 
-                                  return nombre;
+                                  return `${primerNombre} ${primerApellido}`.trim() || 'Paciente';
                                 })()}
                               </div>
 

@@ -5,7 +5,7 @@ const BASE_URL = 'notificaciones';
 /**
  * Obtiene todas las notificaciones para el usuario autenticado
  * @param {number} limite - Cantidad de notificaciones a obtener (opcional, default: 50)
- * @returns {Promise<Object>} - { total, rol_id, notificaciones }
+ * @returns {Promise<Object>} - { total, rol_id, usuario_id, notificaciones }
  */
 export const obtenerNotificaciones = async (limite = 50) => {
   try {
@@ -21,7 +21,7 @@ export const obtenerNotificaciones = async (limite = 50) => {
 
 /**
  * Obtiene las notificaciones recientes (últimas 24 horas)
- * @returns {Promise<Object>} - { total, rol_id, tiempo_actual, notificaciones }
+ * @returns {Promise<Object>} - { total, rol_id, usuario_id, tiempo_actual, notificaciones }
  */
 export const obtenerNotificacionesRecientes = async () => {
   try {
@@ -35,7 +35,7 @@ export const obtenerNotificacionesRecientes = async () => {
 
 /**
  * Obtiene el conteo total de notificaciones del usuario
- * @returns {Promise<Object>} - { rol_id, total }
+ * @returns {Promise<Object>} - { rol_id, usuario_id, total }
  */
 export const contarNotificaciones = async () => {
   try {
@@ -47,10 +47,41 @@ export const contarNotificaciones = async () => {
   }
 };
 
+/**
+ * Marca una notificación como leída
+ * @param {number} notificacionId - ID de la notificación
+ * @returns {Promise<Object>} - { success, message }
+ */
+export const marcarComoLeida = async (notificacionId) => {
+  try {
+    const response = await api.post(`${BASE_URL}/${notificacionId}/marcar-leida`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al marcar notificación como leída:', error);
+    throw error;
+  }
+};
+
+/**
+ * Marca todas las notificaciones como leídas
+ * @returns {Promise<Object>} - { success, message }
+ */
+export const marcarTodasComoLeidas = async () => {
+  try {
+    const response = await api.post(`${BASE_URL}/marcar-todas-leidas`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al marcar todas como leídas:', error);
+    throw error;
+  }
+};
+
 const notificacionesService = {
   obtenerNotificaciones,
   obtenerNotificacionesRecientes,
-  contarNotificaciones
+  contarNotificaciones,
+  marcarComoLeida,
+  marcarTodasComoLeidas
 };
 
 export default notificacionesService;
