@@ -68,7 +68,7 @@ export default function HomePage() {
   const interval = setInterval(() => {
     setCurrentImage((prev) => {
       const next = (prev + 1) % heroImages.length;
-      console.log('🎠 Carrusel rotando:', prev, '→', next);
+     
       return next;
     });
   }, 5000);

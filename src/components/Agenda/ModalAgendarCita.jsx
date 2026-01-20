@@ -83,7 +83,7 @@ const ModalAgendarCita = ({
   // Determinar permisos del usuario
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
   const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION;
-  const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION;
+  const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR; // Solo ADMINISTRADOR puede eliminar
 
   // Verificar si una hora está disponible
   const verificarDisponibilidad = (fechaString, hora, duracionMinutos) => {
