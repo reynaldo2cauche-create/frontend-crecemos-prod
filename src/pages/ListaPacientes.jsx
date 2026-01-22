@@ -600,11 +600,13 @@ export const ListaPacientes = () => {
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
                 >
                   <option value="">Todos los distritos</option>
-                  {distritos.map((distrito) => (
-                    <option key={distrito.id} value={distrito.id}>
-                      {distrito.nombre}
-                    </option>
-                  ))}
+                  {distritos
+                    .filter(distrito => distrito.id_provincia === 1)
+                    .map((distrito) => (
+                      <option key={distrito.id} value={distrito.id}>
+                        {distrito.nombre}
+                      </option>
+                    ))}
                 </select>
               )}
 

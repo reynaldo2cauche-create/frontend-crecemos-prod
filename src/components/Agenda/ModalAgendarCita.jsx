@@ -1551,6 +1551,33 @@ const handleGuardar = useCallback(() => {
                               <p className="text-sm text-gray-900 bg-gray-50 rounded-lg p-2">{item.nota}</p>
                             </div>
                           )}
+
+                          {/* Motivo de Modificación/Eliminación */}
+                          {item.motivo_accion && (item.tipo_operacion === 'UPDATE' || item.tipo_operacion === 'DELETE') && (
+                            <div className={`rounded-lg p-3 border ${
+                              item.tipo_operacion === 'DELETE'
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-yellow-50 border-yellow-200'
+                            }`}>
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                                  item.tipo_operacion === 'DELETE'
+                                    ? 'text-red-600'
+                                    : 'text-yellow-600'
+                                }`} />
+                                <div className="flex-1">
+                                  <p className={`text-xs font-bold mb-1 ${
+                                    item.tipo_operacion === 'DELETE'
+                                      ? 'text-red-900'
+                                      : 'text-yellow-900'
+                                  }`}>
+                                    {item.tipo_operacion === 'DELETE' ? 'Motivo de Eliminación:' : 'Motivo de Modificación:'}
+                                  </p>
+                                  <p className="text-sm text-gray-900 leading-relaxed">{item.motivo_accion}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

@@ -125,9 +125,13 @@ useEffect(() => {
   const cargarConvenios = async () => {
     try {
       setCargandoConvenios(true);
+
       const conveniosActivos = await conveniosService.getConveniosActivos();
-      console.log('Convenios activos obtenidos:', conveniosActivos);
-      setConvenios(conveniosActivos);
+      const conveniosFiltrados = conveniosActivos.filter(c => c.id !== 27);
+
+      console.log('Convenios activos obtenidos:', conveniosFiltrados);
+      setConvenios(conveniosFiltrados);
+      
     } catch (error) {
       console.error('Error al cargar convenios:', error);
       setConvenios([]);

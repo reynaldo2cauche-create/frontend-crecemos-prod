@@ -78,6 +78,7 @@ export default function NavBar() {
         zIndex: 997
       }}
     >
+      
       <div className="container-fluid container-xl position-relative d-flex align-items-center">
         <div className="header-container d-flex align-items-center justify-content-between w-100">
           <Link to="/" className="logo d-flex align-items-center">

@@ -18,6 +18,7 @@ import {
 // Componentes
 import ModalAgendarCita from '../components/Agenda/ModalAgendarCita';
 import CalendarioSemanal from '../components/Agenda/CalendarioSemanal';
+import EstadisticasCitas from '../components/Agenda/EstadisticasCitas';
 
 // Servicios
 import { 
@@ -740,35 +741,29 @@ const guardarCita = async (datosFormulario = null) => {
               <p className="text-gray-600">Gestiona y organiza las citas de tus pacientes</p>
             </div>
           </div>
-
-          {/* Estadísticas */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{citas?.length || 0}</div>
-                  <div className="text-xs text-gray-600 font-medium">Total Citas</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 col-span-2 sm:col-span-1">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {obtenerCitasSemana(citas, fechaCalendario)}
-                  </div>
-                  <div className="text-xs text-gray-600 font-medium">Esta Semana</div>
-                </div>
-              </div>
-            </div>
-          </div>
+              <EstadisticasCitas
+                fechaDesde={(() => {
+                  const fecha = new Date(fechaActual);
+                  const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+                  const year = primerDiaMes.getFullYear();
+                  const month = String(primerDiaMes.getMonth() + 1).padStart(2, '0');
+                  const day = String(primerDiaMes.getDate()).padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                })()}
+                fechaHasta={(() => {
+                  const fecha = new Date(fechaActual);
+                  const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+                  const year = ultimoDiaMes.getFullYear();
+                  const month = String(ultimoDiaMes.getMonth() + 1).padStart(2, '0');
+                  const day = String(ultimoDiaMes.getDate()).padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                })()}
+                terapeutaId={
+                  currentUser?.rol?.id === ROLES.TERAPEUTA
+                    ? currentUser.id
+                    : terapeutaFiltro || null  // ✅ Si no hay filtro, envía null para estadísticas globales
+                }
+              />
         </div>
 
         {/* Filtros */}
