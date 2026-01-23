@@ -106,7 +106,7 @@ const RegistroPacientePage = () => {
                 <div className="help-content-left">
                   <p className="help-title-left">¿Necesitas ayuda?</p>
                   <p className="help-text-left">Nuestro equipo está disponible para asistirte</p>
-                  <a href="https://wa.me/51999999999" className="help-button-left" target="_blank" rel="noopener noreferrer">
+                  <a href="https://wa.me/51957064401" className="help-button-left" target="_blank" rel="noopener noreferrer">
                     <i className="bi bi-whatsapp me-2"></i>
                     Contactar por WhatsApp
                   </a>
@@ -204,7 +204,7 @@ const RegistroPacientePage = () => {
                   <div className="help-content">
                     <p className="help-title">¿Necesitas ayuda?</p>
                     <p className="help-text">Nuestro equipo está disponible para asistirte</p>
-                    <a href="https://wa.me/51999999999" className="help-button" target="_blank" rel="noopener noreferrer">
+                    <a href="https://wa.me/51957064401" className="help-button" target="_blank" rel="noopener noreferrer">
                       <i className="bi bi-whatsapp me-2"></i>
                       Contactar por WhatsApp
                     </a>

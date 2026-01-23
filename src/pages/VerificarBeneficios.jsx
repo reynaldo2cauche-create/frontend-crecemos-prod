@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { verificarPacienteYObtenerBeneficios } from '../services/pacienteService';
+import { getTerminosPorBeneficio } from '../services/conveniosService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 
 const VerificarBeneficios = () => {
@@ -11,6 +12,12 @@ const VerificarBeneficios = () => {
   const [error, setError] = useState('');
   const [estado, setEstado] = useState('idle');
   const [estadoTexto, setEstadoTexto] = useState('Esperando DNI…');
+
+  // Estados para modal de términos
+  const [modalTerminos, setModalTerminos] = useState(false);
+  const [beneficioSeleccionado, setBeneficioSeleccionado] = useState(null);
+  const [terminos, setTerminos] = useState([]);
+  const [loadingTerminos, setLoadingTerminos] = useState(false);
 
   // Validar y obtener beneficios desde la API real
   const validarBeneficiosHandler = async (dniValidar) => {
@@ -115,6 +122,28 @@ const VerificarBeneficios = () => {
 
   const handleImprimirBeneficios = () => {
     window.print();
+  };
+
+  const handleAbrirTerminos = async (beneficio) => {
+    setBeneficioSeleccionado(beneficio);
+    setModalTerminos(true);
+    setLoadingTerminos(true);
+
+    try {
+      const data = await getTerminosPorBeneficio(beneficio.id, true);
+      setTerminos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error al cargar términos:', error);
+      setTerminos([]);
+    } finally {
+      setLoadingTerminos(false);
+    }
+  };
+
+  const handleCerrarTerminos = () => {
+    setModalTerminos(false);
+    setBeneficioSeleccionado(null);
+    setTerminos([]);
   };
 
 
@@ -559,6 +588,34 @@ const VerificarBeneficios = () => {
           padding-top: 14px;
           border-top: 1.5px solid #f1f5f9;
           margin-top: auto;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .btn-ver-terminos {
+          padding: 6px 12px;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-ver-terminos:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        }
+
+        .btn-ver-terminos:active {
+          transform: translateY(0);
         }
 
         .beneficio-categoria {
@@ -656,7 +713,12 @@ const VerificarBeneficios = () => {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+
+
+          
         }
+
+        
       `}</style>
 
       {/* Hero Header */}
@@ -816,16 +878,24 @@ const VerificarBeneficios = () => {
                       <div className="beneficio-card-body">
                         <p className="beneficio-descripcion">{beneficio.descripcion}</p>
 
-                        {beneficio.categoria?.nombre && (
-                          <div className="beneficio-footer">
+                        <div className="beneficio-footer">
+                          {beneficio.categoria?.nombre && (
                             <div className="beneficio-categoria">
                               <svg className="categoria-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                               </svg>
                               {beneficio.categoria.nombre}
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          <a
+                            onClick={() => handleAbrirTerminos(beneficio)}
+                            className="link-ver-terminos no-print"
+                            style={{ cursor: 'pointer' }}
+                          >
+                            Términos y Condiciones
+                          </a>
+                        </div>
                       </div>
                     </div>
                   );
@@ -833,6 +903,20 @@ const VerificarBeneficios = () => {
               </div>
             )}
 
+            <style>{`
+              .link-ver-terminos {
+                color: #174ea6;
+                font-size: 0.875rem;
+                font-weight: 500;
+                text-decoration: underline;
+                transition: all 0.2s ease;
+              }
+
+              .link-ver-terminos:hover {
+                color: #c263f9;
+                text-decoration: underline;
+              }
+            `}</style>
             {paciente && beneficios.length === 0 && (
               <div className="alert alert-info">
                 <strong>Sin beneficios</strong><br />
@@ -841,6 +925,299 @@ const VerificarBeneficios = () => {
             )}
         </div>
       </div>
+
+<style>{`
+  .link-ver-terminos {
+    color: #174ea6;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: underline;
+    transition: all 0.2s ease;
+  }
+
+  .link-ver-terminos:hover {
+    color: #c263f9;
+    text-decoration: underline;
+  }
+`}</style>
+
+{/* MODAL DE TÉRMINOS Y CONDICIONES */}
+{modalTerminos && beneficioSeleccionado && (
+  <div
+    style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0, 0, 0, 0.4)',
+      backdropFilter: 'blur(3px)',
+      padding: '20px'
+    }}
+    onClick={handleCerrarTerminos}
+  >
+    <style>{`
+      @keyframes modalSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .terminos-modal {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(23, 78, 166, 0.12);
+        width: 100%;
+        max-width: 550px;
+        max-height: 75vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: modalSlideIn 0.25s ease-out;
+      }
+
+      .terminos-header {
+        padding: 24px 28px;
+        border-bottom: 1px solid #e8f1ff;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .terminos-header-content {
+        flex: 1;
+      }
+
+      .terminos-title {
+        color: #174ea6;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 6px 0;
+        letter-spacing: -0.3px;
+      }
+
+      .terminos-subtitle {
+        color: #64748b;
+        font-size: 0.875rem;
+        margin: 0;
+        font-weight: 400;
+      }
+
+      .terminos-close {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #94a3b8;
+        flex-shrink: 0;
+      }
+
+      .terminos-close:hover {
+        background: #f1f5f9;
+        color: #64748b;
+      }
+
+      .terminos-body {
+        padding: 28px;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .terminos-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      
+      .terminos-list .termino{
+        padding:4px;}
+
+      .termino {
+        display: flex;
+        gap: 8px;
+        padding: 2px 0;
+        border-bottom: 1px solid #f1f5f9;
+        list-style: none !important;
+        align-items: flex-start;
+      }
+
+      .termino::before {
+        display: none !important;
+      }
+
+      .termino::marker {
+        display: none !important;
+      }
+
+      .termino:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .termino:first-child {
+        padding-top: 0;
+      }
+
+      .termino-bullet {
+        flex-shrink: 0;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #174ea6 0%, #c263f9 100%);
+        margin-top: 9px;
+      }
+
+      .termino-text {
+        flex: 1;
+        color: #475569;
+        line-height: 1.1 !important;
+        font-size: 0.9rem;
+        margin: 0;
+        padding: 0;
+      }
+
+      .terminos-empty {
+        text-align: center;
+        padding: 48px 20px;
+      }
+
+      .terminos-empty-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 16px;
+        color: #cbd5e1;
+      }
+
+      .terminos-empty-title {
+        color: #475569;
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 6px 0;
+      }
+
+      .terminos-empty-desc {
+        color: #94a3b8;
+        font-size: 0.875rem;
+        margin: 0;
+      }
+
+      .terminos-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 20px;
+        gap: 16px;
+      }
+
+      .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid #f1f5f9;
+        border-top-color: #174ea6;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .loading-text {
+        color: #64748b;
+        font-size: 0.875rem;
+      }
+
+      @media (max-width: 640px) {
+        .terminos-modal {
+          max-width: 100%;
+          max-height: 90vh;
+        }
+
+        .terminos-header {
+          padding: 20px 24px;
+        }
+
+        .terminos-title {
+          font-size: 1.125rem;
+        }
+
+        .terminos-body {
+          padding: 24px;
+        }
+
+        .termino {
+          gap: 6px;
+          padding: 1px 0;
+        }
+
+        .termino-text {
+          font-size: 0.875rem;
+          line-height: 1.05 !important;
+        }
+        
+        .termino-bullet {
+          margin-top: 8px;
+          width: 3px;
+          height: 3px;
+        }
+      }
+    `}</style>
+
+    <div className="terminos-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="terminos-header">
+        <div className="terminos-header-content">
+          <h2 className="terminos-title">Términos y Condiciones</h2>
+          <p className="terminos-subtitle">{beneficioSeleccionado.nombre}</p>
+        </div>
+        <button className="terminos-close" onClick={handleCerrarTerminos}>
+          <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="terminos-body">
+        {loadingTerminos ? (
+          <div className="terminos-loading">
+            <div className="loading-spinner"></div>
+            <p className="loading-text">Cargando términos...</p>
+          </div>
+        ) : terminos.length === 0 ? (
+          <div className="terminos-empty">
+            <svg className="terminos-empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 className="terminos-empty-title">Sin términos disponibles</h3>
+            <p className="terminos-empty-desc">Este beneficio no tiene términos registrados</p>
+          </div>
+        ) : (
+          <ul className="terminos-list">
+            {terminos.map((termino) => (
+              <li key={termino.id} className="termino">
+                <span className="termino-bullet"></span>
+                <p className="termino-text">{termino.descripcion}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
