@@ -339,6 +339,58 @@ export const blogMetadata = [
   readTime: '12 min lectura',
   author: 'Centro Crecemos',
   heroImage: '/assets/img/blog/depresion-portada.jpg'
+},
+{
+  id: 27,
+  slug: 'mi-hijo-necesita-terapia-lenguaje-senales-tempranas',
+  title: '¿Mi hijo necesita terapia de lenguaje? Señales tempranas que no deben ignorarse',
+  excerpt: 'Como terapeuta de lenguaje infantil con más de 10 años de experiencia clínica, una de las preguntas más frecuentes que recibo de los padres es: "¿Será normal que mi hijo aún no hable?" Descubre las señales de alerta y cuándo es importante buscar ayuda profesional.',
+  image: '/assets/img/blog/terapia-lenguaje-portada.jpg',
+  date: '23 Enero 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '15 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/terapia-lenguaje-portada.jpg'
+},
+{
+  id: 28,
+  slug: 'estimulacion-lenguaje-embarazo-desarrollo-infantil',
+  title: 'Antes de nacer, ya escuchaban mi voz: cómo la estimulación del lenguaje desde el embarazo influye en el desarrollo infantil',
+  excerpt: 'Soy terapeuta de lenguaje infantil y también madre de dos niños. Desde el momento en que supe que existían dentro de mí, les hablé todos los días. Descubre cómo la estimulación prenatal del lenguaje, respaldada por la ciencia, puede marcar la diferencia en el desarrollo de tu bebé.',
+  image: '/assets/img/blog/estimulacion-prenatal-portada.jpg',
+  date: '24 Enero 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '12 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/estimulacion-prenatal-portada.jpg'
+},
+{
+  id: 29,
+  slug: 'tartamudez-infantil-etapa-o-preocupacion',
+  title: '¿Es solo una etapa o debo preocuparme? Cómo identificar la tartamudez entre los 2 y 4 años',
+  excerpt: 'Soy terapeuta de lenguaje infantil y una de las frases que más escucho es: "A veces se traba al hablar... ¿es normal o puede ser tartamudez?" Te ayudo a entender qué disfluencias son esperables, qué señales requieren atención y cuándo buscar evaluación especializada.',
+  image: '/assets/img/blog/tartamudez-infantil-portada.jpg',
+  date: '25 Enero 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '14 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/tartamudez-infantil-portada.jpg'
+},
+{
+  id: 30,
+  slug: 'vacaciones-mejor-momento-evaluar-terapia-lenguaje',
+  title: 'Vacaciones: el mejor momento para evaluar el lenguaje e iniciar terapia en tu niño',
+  excerpt: 'Las vacaciones no solo representan descanso. Son una de las mejores oportunidades para evaluar el desarrollo del lenguaje e iniciar terapia de manera más efectiva. Descubre por qué enero ofrece condiciones ideales para mejores resultados en menos tiempo.',
+  image: '/assets/img/blog/vacaciones-terapia-portada.jpg',
+  date: '26 Enero 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '10 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/vacaciones-terapia-portada.jpg'
 }
   // Aquí agregas más blogs...
 ];

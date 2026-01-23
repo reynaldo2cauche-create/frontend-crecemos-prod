@@ -36,7 +36,10 @@ import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
 import DiaDerechosHumanosBlog from './efemerides/DiaDerechosHumanosBlog';
 
 // Blogs de Terapias
-// import EjemploBlog from './terapias/EjemploBlog';
+import TerapiaLenguajeBlog from './terapias/TerapiaLenguajeBlog';
+import EstimulacionPrenatalLenguajeBlog from './terapias/EstimulacionPrenatalLenguajeBlog';
+import TartamudezInfantilBlog from './terapias/TartamudezInfantilBlog';
+import VacacionesTerapiaBlog from './terapias/VacacionesTerapiaBlog';
 
 // Blogs de Familia
 // import EjemploBlog from './familia/EjemploBlog';
@@ -72,6 +75,10 @@ export const blogComponents = {
   'pistachos-fruto-seco-seguro-ninos': PistachosBlog,
   'patrones-crianza-romper-circulo': PatronesCrianzaBlog,
   '13-enero-dia-mundial-lucha-depresion': DiaDepresionBlog,
+  'mi-hijo-necesita-terapia-lenguaje-senales-tempranas': TerapiaLenguajeBlog,
+  'estimulacion-lenguaje-embarazo-desarrollo-infantil': EstimulacionPrenatalLenguajeBlog,
+  'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
+  'vacaciones-mejor-momento-evaluar-terapia-lenguaje': VacacionesTerapiaBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -90,4 +97,8 @@ export {
   DiaDerechosHumanosBlog,
   PatronesCrianzaBlog,
   DiaDepresionBlog,
+  TerapiaLenguajeBlog,
+  EstimulacionPrenatalLenguajeBlog,
+  TartamudezInfantilBlog,
+  VacacionesTerapiaBlog,
 };
