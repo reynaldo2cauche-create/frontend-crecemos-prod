@@ -7,6 +7,23 @@ const RegistroPacientePage = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
 
+ 
+
+  // 📱 Mensaje predeterminado para WhatsApp
+  const mensajeWhatsApp = encodeURIComponent(
+    `Hola, necesito ayuda con el registro de paciente. 
+Estoy en el Paso ${currentStep} de ${totalSteps} (${
+      currentStep === 1 ? 'Datos Personales' :
+      currentStep === 2 ? 'Información de Contacto' :
+      currentStep === 3 ? 'Datos Médicos' :
+      'Confirmación'
+    }).
+
+¿Podrían asistirme?`
+  );
+
+  const urlWhatsApp = `https://wa.me/51957064401?text=${mensajeWhatsApp}`;
+
   return (
     <div className="registro-paciente-page">
       {/* Partículas decorativas de fondo */}
@@ -106,7 +123,7 @@ const RegistroPacientePage = () => {
                 <div className="help-content-left">
                   <p className="help-title-left">¿Necesitas ayuda?</p>
                   <p className="help-text-left">Nuestro equipo está disponible para asistirte</p>
-                  <a href="https://wa.me/51957064401" className="help-button-left" target="_blank" rel="noopener noreferrer">
+                  <a href={urlWhatsApp} className="help-button-left" target="_blank" rel="noopener noreferrer">
                     <i className="bi bi-whatsapp me-2"></i>
                     Contactar por WhatsApp
                   </a>

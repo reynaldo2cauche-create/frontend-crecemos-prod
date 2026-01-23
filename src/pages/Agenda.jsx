@@ -741,7 +741,7 @@ const guardarCita = async (datosFormulario = null) => {
               <p className="text-gray-600">Gestiona y organiza las citas de tus pacientes</p>
             </div>
           </div>
-              <EstadisticasCitas
+             <EstadisticasCitas
                 fechaDesde={(() => {
                   const fecha = new Date(fechaActual);
                   const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
@@ -758,11 +758,15 @@ const guardarCita = async (datosFormulario = null) => {
                   const day = String(ultimoDiaMes.getDate()).padStart(2, '0');
                   return `${year}-${month}-${day}`;
                 })()}
-                terapeutaId={
-                  currentUser?.rol?.id === ROLES.TERAPEUTA
-                    ? currentUser.id
-                    : terapeutaFiltro || null  // ✅ Si no hay filtro, envía null para estadísticas globales
-                }
+                terapeutaId={terapeutaFiltro || null}
+                fechaReferencia={terapeutaFiltro ? (() => {
+                  // Solo enviar fecha de referencia si hay terapeuta seleccionado
+                  const fecha = new Date(fechaActual);
+                  const year = fecha.getFullYear();
+                  const month = String(fecha.getMonth() + 1).padStart(2, '0');
+                  const day = String(fecha.getDate()).padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                })() : null}
               />
         </div>
 
