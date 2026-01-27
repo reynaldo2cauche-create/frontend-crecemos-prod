@@ -42,4 +42,58 @@ export function calcularEdadDetallada(fecha) {
   }
 
   return { años, meses, texto };
+}
+
+/**
+ * Formatea una fecha para enviar al backend en formato YYYY-MM-DD
+ * evitando problemas de zona horaria
+ * @param {string} fechaString - Fecha en formato YYYY-MM-DD del input
+ * @returns {string} - Fecha formateada YYYY-MM-DD
+ */
+export function formatearFechaParaBackend(fechaString) {
+  if (!fechaString) return '';
+
+  // Si ya viene en formato correcto YYYY-MM-DD, devolverla tal cual
+  if (typeof fechaString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaString)) {
+    return fechaString;
+  }
+
+  // Si es un objeto Date, formatear correctamente
+  const fecha = new Date(fechaString);
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+
+  return `${año}-${mes}-${dia}`;
+}
+
+/**
+ * Formatea una fecha del backend para mostrar en input date
+ * Evita problemas de timezone restando un día
+ * @param {string} fechaString - Fecha del backend (puede incluir hora)
+ * @returns {string} - Fecha en formato YYYY-MM-DD para input date
+ */
+export function formatearFechaParaInput(fechaString) {
+  if (!fechaString) return '';
+
+  // Extraer solo la parte de la fecha (YYYY-MM-DD)
+  // Esto evita problemas con la zona horaria
+  const soloFecha = fechaString.split('T')[0].split(' ')[0];
+
+  return soloFecha;
+}
+
+/**
+ * Formatea una fecha para mostrar en formato DD/MM/YYYY
+ * @param {string} fechaString - Fecha en formato YYYY-MM-DD
+ * @returns {string} - Fecha en formato DD/MM/YYYY
+ */
+export function formatearFechaParaMostrar(fechaString) {
+  if (!fechaString) return '';
+
+  // Extraer solo la parte de la fecha
+  const soloFecha = fechaString.split('T')[0].split(' ')[0];
+  const [año, mes, dia] = soloFecha.split('-');
+
+  return `${dia}/${mes}/${año}`;
 } 

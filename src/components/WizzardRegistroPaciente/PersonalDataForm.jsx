@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Form, Button, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import { useFormContext } from 'react-hook-form';
 import { getDistritos, getGeneros, getTiposDocumento } from '../../services/catalogoService';
@@ -16,6 +16,7 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
   const tipoDocumento = watch('tipoDocumento') || '';
   const [checkingDocumento, setCheckingDocumento] = useState(false);
   const [documentoExistente, setDocumentoExistente] = useState(false);
+  const validationTimeoutRef = useRef(null);
 
   // Calcular edad y si es mayor de edad
   const fechaNacimiento = watch('fechaNacimiento');
@@ -64,9 +65,18 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
     loadData();
   }, []);
 
-  const handleNumeroDocumentoChange = async (e) => {
-    let value = e.target.value;
-    value = value.replace(/[^0-9]/g, '');
+  // Cleanup del timeout cuando el componente se desmonte
+  useEffect(() => {
+    return () => {
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNumeroDocumentoChange = (e) => {
+    const rawValue = e.target.value;
+    let value = rawValue.replace(/[^0-9]/g, '');
 
     if (tipoDocumento === '1') {
       value = value.slice(0, 8);
@@ -74,36 +84,48 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
       value = value.slice(0, 12);
     }
 
-    setValue('numeroDocumento', value);
-    setDocumentoExistente(false); // Resetear el estado al cambiar el documento
+    // Solo actualizar si el valor cambió después del filtrado
+    if (value !== rawValue) {
+      e.target.value = value;
+    }
 
+    // Limpiar timeout anterior si existe
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+      validationTimeoutRef.current = null;
+    }
+
+    setDocumentoExistente(false);
+
+    // Validar solo cuando llegue a 8 dígitos (DNI completo)
     if (tipoDocumento === '1' && value.length === 8) {
-      setCheckingDocumento(true);
-      try {
-        const result = await checkDocumentoExists(value);
-        if (result.exists) {
-          setDocumentoExistente(true);
-          setValue('numeroDocumento', '');
+      validationTimeoutRef.current = setTimeout(async () => {
+        setCheckingDocumento(true);
+        try {
+          const result = await checkDocumentoExists(value);
+          if (result.exists) {
+            setDocumentoExistente(true);
+            if (setSnackbar) {
+              setSnackbar({
+                open: true,
+                message: `El DNI ${value} ya está registrado en el sistema. Por favor, verifique el número ingresado.`,
+                severity: 'error'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error al verificar documento:', error);
           if (setSnackbar) {
             setSnackbar({
               open: true,
-              message: `El DNI ${value} ya está registrado en el sistema. Por favor, verifique el número ingresado.`,
+              message: 'Error al verificar el documento. Por favor, intente nuevamente.',
               severity: 'error'
             });
           }
+        } finally {
+          setCheckingDocumento(false);
         }
-      } catch (error) {
-        console.error('Error al verificar documento:', error);
-        if (setSnackbar) {
-          setSnackbar({
-            open: true,
-            message: 'Error al verificar el documento. Por favor, intente nuevamente.',
-            severity: 'error'
-          });
-        }
-      } finally {
-        setCheckingDocumento(false);
-      }
+      }, 500);
     }
   };
 
@@ -270,10 +292,9 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
                         }
                         return true;
                       }
-                    }
+                    },
+                    onChange: handleNumeroDocumentoChange
                   })}
-                  onChange={handleNumeroDocumentoChange}
-                  value={watch('numeroDocumento') || ''}
                   isInvalid={!!errors.numeroDocumento || documentoExistente}
                   disabled={!tipoDocumento || checkingDocumento}
                   inputMode="numeric"

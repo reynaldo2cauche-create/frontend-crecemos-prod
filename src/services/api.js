@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // URL base del servidor (para archivos estáticos como imágenes)
-export const SERVER_BASE_URL = 'http://localhost:3001';
-// export const SERVER_BASE_URL = 'https://www.crecemos.com.pe';
+// export const SERVER_BASE_URL = 'http://localhost:3001';
+export const SERVER_BASE_URL = 'https://www.crecemos.com.pe';
 
 // URL base de la API
 export const API_BASE_URL = `${SERVER_BASE_URL}/backend_api`;

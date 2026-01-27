@@ -6,6 +6,7 @@ import AdditionalInfo from './AdditionalInfo';
 import MedicalInfo from './MedicalInfo';
 import ConsentForm from './ConsentForm';
 import { createPaciente } from '../../services/pacienteService';
+import { formatearFechaParaBackend } from '../../utils/date';
 import '../../styles/global.css';
 // import PersonalDataForm from './PersonalDataForm';
 // import ContactDataForm from './ContactDataForm';
@@ -140,7 +141,7 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
           nombres: data.nombre,
           apellido_paterno: data.apellidoPaterno,
           apellido_materno: data.apellidoMaterno,
-          fecha_nacimiento: data.fechaNacimiento,
+          fecha_nacimiento: formatearFechaParaBackend(data.fechaNacimiento),
           tipo_documento_id: parseInt(data.tipoDocumento),
           numero_documento: data.numeroDocumento,
           sexo_id: parseInt(data.sexo),
