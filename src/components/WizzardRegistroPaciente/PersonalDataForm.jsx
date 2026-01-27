@@ -405,11 +405,11 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Celular 2 <span className="text-danger">*</span></Form.Label>
+              <Form.Label>Celular 2 </Form.Label>
               <Form.Control
                 type="text"
                 {...register('celular2', {
-                  required: 'Campo obligatorio',
+                 
                   pattern: {
                     value: /^9\d{8}$/,
                     message: 'El celular debe tener 9 dígitos y comenzar con 9'

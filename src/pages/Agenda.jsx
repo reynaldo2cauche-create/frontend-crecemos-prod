@@ -41,8 +41,15 @@ import { ROLES } from '../constants/roles';
 
 const Agenda = () => {
   const currentUser = useCurrentUser();
-  const [fechaActual, setFechaActual] = useState(new Date());
-  const [fechaCalendario, setFechaCalendario] = useState(new Date());
+  // Inicializar con la fecha actual de Perú
+  const [fechaActual, setFechaActual] = useState(() => {
+    const ahora = new Date();
+    return new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+  });
+  const [fechaCalendario, setFechaCalendario] = useState(() => {
+    const ahora = new Date();
+    return new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+  });
   const [modalAbierto, setModalAbierto] = useState(false);
   const [slotSeleccionado, setSlotSeleccionado] = useState(null);
   const [terapeutaFiltro, setTerapeutaFiltro] = useState('');
@@ -79,6 +86,9 @@ const Agenda = () => {
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  // Estado para forzar recarga de estadísticas
+  const [recargarEstadisticas, setRecargarEstadisticas] = useState(0);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -583,6 +593,9 @@ const guardarCita = async (datosFormulario = null) => {
     setCitas(citasActualizadas);
     setTodasLasCitas(citasActualizadas);
 
+    // 🔥 Forzar recarga de estadísticas
+    setRecargarEstadisticas(prev => prev + 1);
+
     cerrarModal();
   } catch (error) {
     console.error('❌ Error guardando cita:', error);
@@ -623,6 +636,9 @@ const guardarCita = async (datosFormulario = null) => {
       const citasActualizadas = await listarCitas(params);
       setCitas(citasActualizadas);
       setTodasLasCitas(citasActualizadas);
+
+      // 🔥 Forzar recarga de estadísticas
+      setRecargarEstadisticas(prev => prev + 1);
 
       cerrarModal();
     } catch (error) {
@@ -742,6 +758,7 @@ const guardarCita = async (datosFormulario = null) => {
             </div>
           </div>
              <EstadisticasCitas
+                key={recargarEstadisticas}
                 fechaDesde={(() => {
                   const fecha = new Date(fechaActual);
                   const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
@@ -759,14 +776,14 @@ const guardarCita = async (datosFormulario = null) => {
                   return `${year}-${month}-${day}`;
                 })()}
                 terapeutaId={terapeutaFiltro || null}
-                fechaReferencia={terapeutaFiltro ? (() => {
-                  // Solo enviar fecha de referencia si hay terapeuta seleccionado
+                fechaReferencia={(() => {
+                  // Siempre enviar la fecha visible del calendario
                   const fecha = new Date(fechaActual);
                   const year = fecha.getFullYear();
                   const month = String(fecha.getMonth() + 1).padStart(2, '0');
                   const day = String(fecha.getDate()).padStart(2, '0');
                   return `${year}-${month}-${day}`;
-                })() : null}
+                })()}
               />
         </div>
 

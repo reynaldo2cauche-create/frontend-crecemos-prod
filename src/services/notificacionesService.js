@@ -64,9 +64,9 @@ export const marcarComoLeida = async (notificacionId) => {
 export const marcarTodasComoLeidas = async () => {
   try {
     console.log('📤 Enviando petición POST para marcar TODAS como leídas');
-    console.log('📤 URL: /backend_api/notificaciones/marcar-todas-leidas');
-    
-    const response = await api.post('/backend_api/notificaciones/marcar-todas-leidas');
+    console.log('📤 URL: /notificaciones/marcar-todas-leidas');
+
+    const response = await api.post('/notificaciones/marcar-todas-leidas');
     
     console.log('✅ Respuesta del servidor:', response.data);
     

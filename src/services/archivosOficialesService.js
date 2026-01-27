@@ -2,6 +2,7 @@
 // src/services/archivosOficialesService.js
 // ============================================
 import api from './api';
+import { downloadPDFWithWatermark } from '../utils/pdfWatermark';
 
 const API_PATH = '/archivos-oficiales';
 
@@ -188,6 +189,72 @@ const archivosOficialesService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
+    }
+  },
+
+  /**
+   * Descargar archivo validado (público - sin autenticación) con marca de agua
+   * @param {number} id - ID del archivo
+   * @param {string} codigo - Código del documento para la marca de agua
+   */
+  descargarArchivoValidado: async (id, codigo = '') => {
+    try {
+      console.log('Descargando archivo validado ID:', id);
+      const response = await api.get(`${API_PATH}/descargar-validado/${id}`, {
+        responseType: 'blob',
+      });
+
+      console.log('Respuesta recibida:', response);
+
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'documento_oficial.pdf';
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      console.log('Nombre del archivo:', filename);
+
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/pdf'
+      });
+
+      console.log('Blob creado, tamaño:', blob.size);
+      console.log('Agregando marca de agua...');
+
+      // Agregar marca de agua distribuida en todas las páginas
+      const result = await downloadPDFWithWatermark(blob, filename, {
+        codigo: codigo,
+        opacity: 0.8,
+        logoPath: '/assets/img/documento-logo.png',
+        logoWidth: 200,
+        logoHeight: 200,
+        rotation: 45,
+        distributeAcrossPage: true
+      });
+
+      console.log('Descarga completada con marca de agua');
+      return result;
+    } catch (error) {
+      console.error('Error detallado al descargar:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      console.error('Error message:', error.message);
+
+      // Construir un error más descriptivo
+      const errorInfo = {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: `${API_PATH}/descargar-validado/${id}`,
+        id: id
+      };
+
+      throw errorInfo;
     }
   },
 

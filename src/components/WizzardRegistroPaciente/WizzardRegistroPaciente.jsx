@@ -235,43 +235,104 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
           {activeStep === 3 && <ConsentForm onSubmit={handleConfirmSubmit} onBack={handleBack} captchaValue={captchaValue} setCaptchaValue={setCaptchaValue} />}
         </div>
 
-        {/* Modal de éxito */}
+               {/* 🎉 MODAL DE ÉXITO MINIMALISTA */}
         <Dialog
           open={openSuccessDialog}
           onClose={() => setOpenSuccessDialog(false)}
-          aria-labelledby="success-dialog-title"
-          aria-describedby="success-dialog-description"
+          maxWidth="xs"
+          fullWidth
           PaperProps={{
-            className: 'success-dialog'
+            style: {
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 40px rgba(23, 78, 166, 0.15)',
+              background: '#ffffff'
+            }
           }}
         >
-          <DialogTitle id="success-dialog-title" className="success-dialog-title">
-            <div className="success-icon-wrapper">
-              <div className="success-icon">
-                <svg width="36" height="36" fill="none" viewBox="0 0 24 24">
-                  <path d="M20 6L9 17l-5-5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+          <DialogContent style={{ 
+            padding: '48px 32px', 
+            textAlign: 'center'
+          }}>
+            {/* Icono de check simple */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 24px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #174ea6 0%, #c263f9 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'scaleIn 0.4s ease-out'
+            }}>
+              <svg 
+                width="40" 
+                height="40" 
+                viewBox="0 0 24 24" 
+                fill="none"
+              >
+                <path 
+                  d="M20 6L9 17l-5-5" 
+                  stroke="#fff" 
+                  strokeWidth="3" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
-            <div className="success-title">¡Registro exitoso!</div>
-          </DialogTitle>
-          <DialogContent className="success-dialog-content">
-            El paciente fue registrado correctamente.
+
+            {/* Título */}
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#1e293b',
+              marginBottom: '12px'
+            }}>
+              ¡Registro Exitoso!
+            </h2>
+
+            {/* Descripción */}
+            <p style={{
+              fontSize: '15px',
+              color: '#64748b',
+              lineHeight: '1.5',
+              margin: 0
+            }}>
+              El paciente fue registrado correctamente.
+            </p>
           </DialogContent>
         </Dialog>
-      </div>
 
-      {/* Snackbar para mensajes */}
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+        {/* Snackbar para mensajes */}
+        <Snackbar
+          open={openSnackbar}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
+
+        {/* Estilos de animaciones */}
+        <style>{`
+          @keyframes scaleIn {
+            0% {
+              transform: scale(0);
+              opacity: 0;
+            }
+            50% {
+              transform: scale(1.1);
+            }
+            100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </div>
     </FormProvider>
   );
 };

@@ -1,3 +1,11 @@
+# --- MIME TYPES PARA VITE ---
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType application/javascript .mjs
+  AddType text/css .css
+  AddType application/json .json
+</IfModule>
+
 # --- INICIO DE LA REGLA PARA EL FRONTEND ---
 <IfModule mod_rewrite.c>
   RewriteEngine On
