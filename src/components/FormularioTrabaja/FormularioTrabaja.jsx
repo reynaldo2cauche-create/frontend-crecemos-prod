@@ -53,7 +53,8 @@ const FormularioTrabaja = () => {
       try {
         setLoadingDistritos(true);
         const distritos = await getDistritos();
-        setDistritosDisponibles(distritos || []);
+        const distritosFiltrados= distritos.filter(distrito => distrito.id_provincia === 1);
+        setDistritosDisponibles(distritosFiltrados || []);
       } catch (error) {
         console.error('Error al cargar distritos:', error);
         setDistritosDisponibles([]);

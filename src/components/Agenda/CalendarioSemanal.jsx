@@ -249,7 +249,11 @@ const CalendarioSemanal = ({
             <div className="flex min-w-max">
               {diasSemana.map((dia) => {
             const horasDelDia = generarHorasPorDia(dia.fecha.getDay());
-            const esHoy = dia.fechaString === new Date().toISOString().split('T')[0];
+            // ✅ Usar zona horaria de Perú para detectar "hoy"
+            const ahora = new Date();
+            const fechaPeru = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+            const hoyString = `${fechaPeru.getFullYear()}-${String(fechaPeru.getMonth() + 1).padStart(2, '0')}-${String(fechaPeru.getDate()).padStart(2, '0')}`;
+            const esHoy = dia.fechaString === hoyString;
             const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
 
             return (

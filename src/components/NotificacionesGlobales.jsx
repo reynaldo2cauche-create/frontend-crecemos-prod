@@ -132,13 +132,19 @@ const NotificacionesGlobales = () => {
   };
 
   const formatearTiempo = (fecha) => {
-    const ahora = new Date();
     const fechaNotif = new Date(fecha);
-    const diff = Math.floor((ahora - fechaNotif) / 1000);
-    if (diff < 60) return 'Hace un momento';
-    if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
-    if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} h`;
-    return `Hace ${Math.floor(diff / 86400)} días`;
+
+    // Formato: "30 ene 2026, 10:45 AM"
+    const opciones = {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+
+    return fechaNotif.toLocaleString('es-ES', opciones).replace(',', ' -');
   };
 
   const marcarUnaComoLeida = async (notificacionId) => {
@@ -276,7 +282,7 @@ const NotificacionesGlobales = () => {
                             <div className="flex items-center justify-between">
                               <span className={`text-xs flex items-center gap-1 transition-colors ${esLeida ? 'text-gray-400' : 'text-gray-600'}`}>
                                 <Clock className="w-3 h-3" />
-                                {notif.tiempo_relativo || formatearTiempo(notif.fecha_creacion)}
+                                {formatearTiempo(notif.fecha_creacion)}
                               </span>
                               {esLeida && (
                                 <span className="text-xs text-gray-400 flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">

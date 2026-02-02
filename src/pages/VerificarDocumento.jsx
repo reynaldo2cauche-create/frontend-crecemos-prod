@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import archivosOficialesService from '../services/archivosOficialesService';
 
 
@@ -9,6 +9,7 @@ const VerificarDocumentos = () => {
   const [error, setError] = useState('');
   const [estado, setEstado] = useState('idle');
   const [estadoTexto, setEstadoTexto] = useState('Esperando código…');
+  const resultsRef = useRef(null);
 
   const mostrarDNI = (dni) => dni || '********';
 
@@ -47,11 +48,16 @@ const VerificarDocumentos = () => {
       }
 
       setDocumento(data);
+
+      // Scroll automático hacia los resultados
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } catch (err) {
       console.error('Error completo:', err);
-      
+
       let errorMessage = 'Documento no encontrado. Verifique el código e intente nuevamente.';
-      
+
       if (err.response) {
         const status = err.response.status;
         if (status === 404) {
@@ -66,11 +72,16 @@ const VerificarDocumentos = () => {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       setEstado('error');
       setEstadoTexto('Error en validación');
       setDocumento(null);
+
+      // Scroll automático hacia el error
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } finally {
       setLoading(false);
     }
@@ -1633,7 +1644,7 @@ const VerificarDocumentos = () => {
 
       {/* Results Section */}
       {(documento || error) && (
-        <section className="results-section">
+        <section className="results-section" ref={resultsRef}>
           <div className="results-container">
             
             {/* Status Alert */}

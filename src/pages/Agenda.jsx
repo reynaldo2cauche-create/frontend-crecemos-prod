@@ -124,6 +124,25 @@ const Agenda = () => {
     cargarDatosIniciales();
   }, []);
 
+  // 🕐 Auto-actualizar fecha a medianoche
+  useEffect(() => {
+    const ahora = new Date();
+    const proximaMedianoche = new Date(ahora);
+    proximaMedianoche.setHours(24, 0, 0, 0); // Siguiente medianoche
+    const msHastaMedianoche = proximaMedianoche.getTime() - ahora.getTime();
+
+    const timer = setTimeout(() => {
+      // Actualizar a la fecha actual de Perú cuando llegue medianoche
+      const nuevaFecha = new Date();
+      const fechaPeru = new Date(nuevaFecha.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+      setFechaActual(fechaPeru);
+      setFechaCalendario(fechaPeru);
+      console.log('🕐 Fecha actualizada automáticamente a medianoche:', fechaPeru);
+    }, msHastaMedianoche);
+
+    return () => clearTimeout(timer);
+  }, [fechaActual]); // Se reconfigura cada vez que cambia fechaActual
+
   // Cargar citas
   useEffect(() => {
     const cargarCitas = async () => {
@@ -141,14 +160,15 @@ const Agenda = () => {
           params.terapeuta_id = terapeutaFiltro;
         }
 
-        // Calcular el rango de fechas: toda la semana visible y el resto del mes
+        // Calcular el rango de fechas: incluir semanas completas que tocan el mes
         const fecha = new Date(fechaActual);
 
-        // Obtener el primer día del mes
-        const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-
-        // Obtener el último día del mes
-        const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+        // 🕐 LOG DETALLADO PARA DEBUGGING
+        console.log('🕐 DEBUGGING - Hora actual navegador:', new Date().toISOString());
+        console.log('🕐 DEBUGGING - fechaActual state:', fechaActual);
+        console.log('🕐 DEBUGGING - fecha usada para cálculo:', fecha);
+        console.log('🕐 DEBUGGING - Mes de fecha:', fecha.getMonth() + 1);
+        console.log('🕐 DEBUGGING - Año de fecha:', fecha.getFullYear());
 
         // Formatear fechas como YYYY-MM-DD
         const formatearFecha = (f) => {
@@ -158,10 +178,23 @@ const Agenda = () => {
           return `${year}-${month}-${day}`;
         };
 
-        params.fecha_desde = formatearFecha(primerDiaMes);
-        params.fecha_hasta = formatearFecha(ultimoDiaMes);
+        // 🔥 NUEVA LÓGICA: Expandir rango para incluir semanas completas
+        // Obtener el primer día del mes
+        const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+        // Retroceder hasta el lunes de esa semana (o hasta 7 días antes para incluir la semana anterior)
+        const primerDiaExpandido = new Date(primerDiaMes);
+        primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
 
-        console.log(`📅 Cargando citas del ${params.fecha_desde} al ${params.fecha_hasta}`);
+        // Obtener el último día del mes
+        const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+        // Avanzar hasta 7 días después para incluir la siguiente semana
+        const ultimoDiaExpandido = new Date(ultimoDiaMes);
+        ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
+
+        params.fecha_desde = formatearFecha(primerDiaExpandido);
+        params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
+
+        console.log(`📅 Cargando citas del ${params.fecha_desde} al ${params.fecha_hasta} (expandido para incluir semanas completas)`);
 
         // Cargar citas filtradas para mostrar en el calendario
         const citasRes = await listarCitas(params);

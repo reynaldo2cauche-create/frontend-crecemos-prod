@@ -561,7 +561,6 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
             <Briefcase className="w-3 h-3 flex-shrink-0 text-orange-500" />
             <span className="text-gray-600">
               {empleado.cargo.nombre}
-              {empleado.cargo.es_jefe}
             </span>
           </div>
         )}
@@ -3063,7 +3062,7 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
                   <p className="font-semibold text-gray-900">
                     {empleado.nombres} {empleado.apellidos}
                   </p>
-                  <p className="text-sm text-gray-500">{empleado.cargo}</p>
+                  <p className="text-sm text-gray-500">{empleado.cargo?.nombre || 'Sin cargo'}</p>
                 </div>
               </div>
 

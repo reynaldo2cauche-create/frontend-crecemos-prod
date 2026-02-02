@@ -91,6 +91,14 @@ const GestionArchivosOficiales = () => {
   const [errorFechaVigencia, setErrorFechaVigencia] = useState('');
   const [datosInicializados, setDatosInicializados] = useState(false);
 
+  // Estados para autocompletado
+  const [searchPaciente, setSearchPaciente] = useState('');
+  const [searchTrabajador, setSearchTrabajador] = useState('');
+  const [searchTerapeuta, setSearchTerapeuta] = useState('');
+  const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
+  const [showTrabajadorDropdown, setShowTrabajadorDropdown] = useState(false);
+  const [showTerapeutaDropdown, setShowTerapeutaDropdown] = useState(false);
+
   // ✅ Obtener usuario desde localStorage
   const [currentUser] = useState(() => {
     try {
@@ -117,6 +125,22 @@ const GestionArchivosOficiales = () => {
       cargarDocumentos();
     }
   }, [tabValue, datosInicializados]);
+
+  // Cerrar dropdowns al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const target = event.target;
+      // Verificar si el clic fue fuera de los dropdowns
+      if (!target.closest('.autocomplete-container')) {
+        setShowPacienteDropdown(false);
+        setShowTrabajadorDropdown(false);
+        setShowTerapeutaDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let filtered = [...documentos];
@@ -179,10 +203,43 @@ const GestionArchivosOficiales = () => {
   };
 
   const tiposArchivoFiltrados = useMemo(() => {
-    return tiposArchivoCompletos.filter(tipo => 
+    return tiposArchivoCompletos.filter(tipo =>
       tipo.destinatario_tipo === tipoDestinatario || tipo.destinatario_tipo === 'ambos'
     );
   }, [tiposArchivoCompletos, tipoDestinatario]);
+
+  // Filtrar pacientes por búsqueda
+  const pacientesFiltrados = useMemo(() => {
+    if (!searchPaciente.trim()) return pacientes;
+    const term = searchPaciente.toLowerCase();
+    return pacientes.filter(p => {
+      const nombreCompleto = `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno}`.toLowerCase();
+      const doc = p.numero_documento?.toLowerCase() || '';
+      return nombreCompleto.includes(term) || doc.includes(term);
+    });
+  }, [pacientes, searchPaciente]);
+
+  // Filtrar trabajadores por búsqueda
+  const trabajadoresFiltrados = useMemo(() => {
+    if (!searchTrabajador.trim()) return trabajadores;
+    const term = searchTrabajador.toLowerCase();
+    return trabajadores.filter(t => {
+      const nombreCompleto = `${t.nombres} ${t.apellidos}`.toLowerCase();
+      const doc = t.dni?.toLowerCase() || '';
+      return nombreCompleto.includes(term) || doc.includes(term);
+    });
+  }, [trabajadores, searchTrabajador]);
+
+  // Filtrar terapeutas por búsqueda
+  const terapeutasFiltrados = useMemo(() => {
+    if (!searchTerapeuta.trim()) return terapeutas;
+    const term = searchTerapeuta.toLowerCase();
+    return terapeutas.filter(t => {
+      const nombreCompleto = `${t.nombres} ${t.apellidos}`.toLowerCase();
+      const doc = t.dni?.toLowerCase() || '';
+      return nombreCompleto.includes(term) || doc.includes(term);
+    });
+  }, [terapeutas, searchTerapeuta]);
 
   const calcularFechaVigencia = (fechaEmision, vigenciaMeses) => {
     if (!vigenciaMeses || !fechaEmision) return '';
@@ -367,13 +424,17 @@ const GestionArchivosOficiales = () => {
 
   const handleTipoDestinatarioChange = (nuevoTipo) => {
     setTipoDestinatario(nuevoTipo);
-    
+
     if (nuevoTipo === 'paciente') {
       setTrabajadorSeleccionado(null);
       setFormData(prev => ({ ...prev, trabajadorId: '', pacienteId: '' }));
+      setSearchTrabajador('');
+      setShowTrabajadorDropdown(false);
     } else {
       setPacienteSeleccionado(null);
       setFormData(prev => ({ ...prev, pacienteId: '', trabajadorId: '' }));
+      setSearchPaciente('');
+      setShowPacienteDropdown(false);
     }
     setError('');
   };
@@ -490,6 +551,12 @@ const GestionArchivosOficiales = () => {
         setCodigoGeneradoPreview('');
         setTipoDestinatario('paciente');
         setTipoSeleccionado(null);
+        setSearchPaciente('');
+        setSearchTrabajador('');
+        setSearchTerapeuta('');
+        setShowPacienteDropdown(false);
+        setShowTrabajadorDropdown(false);
+        setShowTerapeutaDropdown(false);
         
         const input = document.getElementById('file-upload');
         if (input) input.value = '';
@@ -1213,64 +1280,221 @@ const GestionArchivosOficiales = () => {
                     </button>
                   </div>
 
-                  {/* Selector de persona */}
-                  <div className="mb-4">
+                  {/* Selector de persona con autocompletado */}
+                  <div className="mb-4 relative autocomplete-container">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       {tipoDestinatario === 'paciente' ? 'Seleccionar Paciente' : 'Seleccionar Trabajador'}
                     </label>
-                    <select
-                      value={tipoDestinatario === 'paciente' ? formData.pacienteId : formData.trabajadorId}
-                      onChange={(e) => {
-                        if (tipoDestinatario === 'paciente') {
-                          const paciente = pacientes.find(p => p.id == e.target.value);
-                          setPacienteSeleccionado(paciente);
-                          setFormData(prev => ({ ...prev, pacienteId: e.target.value, trabajadorId: '' }));
-                        } else {
-                          const trabajador = trabajadores.find(t => t.id == e.target.value);
-                          setTrabajadorSeleccionado(trabajador);
-                          setFormData(prev => ({ ...prev, trabajadorId: e.target.value, pacienteId: '' }));
-                        }
-                      }}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {tipoDestinatario === 'paciente'
-                        ? pacientes.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.nombres} {p.apellido_paterno} {p.apellido_materno} - {p.numero_documento}
-                            </option>
-                          ))
-                        : trabajadores.map(t => (
-                            <option key={t.id} value={t.id}>
-                              {t.nombres} {t.apellidos} {t.dni ? `- ${t.dni}` : ''}
-                            </option>
-                          ))
-                      }
-                    </select>
+
+                    {tipoDestinatario === 'paciente' ? (
+                      <>
+                        <div className="relative autocomplete-container">
+                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                          <input
+                            type="text"
+                            value={pacienteSeleccionado ? `${pacienteSeleccionado.nombres} ${pacienteSeleccionado.apellido_paterno} ${pacienteSeleccionado.apellido_materno}` : searchPaciente}
+                            onChange={(e) => {
+                              setSearchPaciente(e.target.value);
+                              setPacienteSeleccionado(null);
+                              setFormData(prev => ({ ...prev, pacienteId: '' }));
+                              setShowPacienteDropdown(e.target.value.trim().length > 0);
+                            }}
+                            onFocus={(e) => {
+                              // Solo mostrar dropdown si ya hay texto
+                              if (e.target.value.trim().length > 0) {
+                                setShowPacienteDropdown(true);
+                              }
+                            }}
+                            placeholder="Buscar paciente por nombre o documento..."
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                          />
+                          {pacienteSeleccionado && (
+                            <button
+                              onClick={() => {
+                                setPacienteSeleccionado(null);
+                                setSearchPaciente('');
+                                setFormData(prev => ({ ...prev, pacienteId: '' }));
+                              }}
+                              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {showPacienteDropdown && !pacienteSeleccionado && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {pacientesFiltrados.length > 0 ? (
+                              pacientesFiltrados.map((p) => (
+                                <button
+                                  key={p.id}
+                                  onClick={() => {
+                                    setPacienteSeleccionado(p);
+                                    setFormData(prev => ({ ...prev, pacienteId: p.id, trabajadorId: '' }));
+                                    setShowPacienteDropdown(false);
+                                    setSearchPaciente('');
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-sm text-gray-900">
+                                    {p.nombres} {p.apellido_paterno} {p.apellido_materno}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    DNI: {p.numero_documento}
+                                  </div>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                No se encontraron pacientes
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="relative autocomplete-container">
+                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                        <input
+                          type="text"
+                          value={trabajadorSeleccionado ? `${trabajadorSeleccionado.nombres} ${trabajadorSeleccionado.apellidos}` : searchTrabajador}
+                          onChange={(e) => {
+                            setSearchTrabajador(e.target.value);
+                            setTrabajadorSeleccionado(null);
+                            setFormData(prev => ({ ...prev, trabajadorId: '' }));
+                            setShowTrabajadorDropdown(e.target.value.trim().length > 0);
+                          }}
+                          onFocus={(e) => {
+                            // Solo mostrar dropdown si ya hay texto
+                            if (e.target.value.trim().length > 0) {
+                              setShowTrabajadorDropdown(true);
+                            }
+                          }}
+                          placeholder="Buscar trabajador por nombre o DNI..."
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                        />
+                          {trabajadorSeleccionado && (
+                            <button
+                              onClick={() => {
+                                setTrabajadorSeleccionado(null);
+                                setSearchTrabajador('');
+                                setFormData(prev => ({ ...prev, trabajadorId: '' }));
+                              }}
+                              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {showTrabajadorDropdown && !trabajadorSeleccionado && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {trabajadoresFiltrados.length > 0 ? (
+                              trabajadoresFiltrados.map((t) => (
+                                <button
+                                  key={t.id}
+                                  onClick={() => {
+                                    setTrabajadorSeleccionado(t);
+                                    setFormData(prev => ({ ...prev, trabajadorId: t.id, pacienteId: '' }));
+                                    setShowTrabajadorDropdown(false);
+                                    setSearchTrabajador('');
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-sm text-gray-900">
+                                    {t.nombres} {t.apellidos}
+                                  </div>
+                                  {t.dni && (
+                                    <div className="text-xs text-gray-500">
+                                      DNI: {t.dni}
+                                    </div>
+                                  )}
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                No se encontraron trabajadores
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
 
-                  {/* Terapeuta (solo para pacientes) */}
+                  {/* Terapeuta (solo para pacientes) con autocompletado */}
                   {tipoDestinatario === 'paciente' && (
-                    <div>
+                    <div className="relative autocomplete-container">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Terapeuta Responsable
                       </label>
-                      <select
-                        value={formData.terapeutaId}
-                        onChange={(e) => {
-                          const terapeuta = terapeutas.find(t => t.id == e.target.value);
-                          setTerapeutaSeleccionado(terapeuta);
-                          setFormData(prev => ({ ...prev, terapeutaId: e.target.value }));
-                        }}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
-                      >
-                        <option value="">Seleccionar terapeuta...</option>
-                        {terapeutas.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.nombres} {t.apellidos} {t.dni ? `- ${t.dni}` : ''}
-                          </option>
-                        ))}
-                      </select>
+
+                      <div className="relative autocomplete-container">
+                        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                        <input
+                          type="text"
+                          value={terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos}` : searchTerapeuta}
+                          onChange={(e) => {
+                            setSearchTerapeuta(e.target.value);
+                            setTerapeutaSeleccionado(null);
+                            setFormData(prev => ({ ...prev, terapeutaId: '' }));
+                            setShowTerapeutaDropdown(e.target.value.trim().length > 0);
+                          }}
+                          onFocus={(e) => {
+                            // Solo mostrar dropdown si ya hay texto
+                            if (e.target.value.trim().length > 0) {
+                              setShowTerapeutaDropdown(true);
+                            }
+                          }}
+                          placeholder="Buscar terapeuta por nombre o DNI..."
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                        />
+                        {terapeutaSeleccionado && (
+                          <button
+                            onClick={() => {
+                              setTerapeutaSeleccionado(null);
+                              setSearchTerapeuta('');
+                              setFormData(prev => ({ ...prev, terapeutaId: '' }));
+                            }}
+                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {showTerapeutaDropdown && !terapeutaSeleccionado && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                          {terapeutasFiltrados.length > 0 ? (
+                            terapeutasFiltrados.map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  setTerapeutaSeleccionado(t);
+                                  setFormData(prev => ({ ...prev, terapeutaId: t.id }));
+                                  setShowTerapeutaDropdown(false);
+                                  setSearchTerapeuta('');
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-sm text-gray-900">
+                                  {t.nombres} {t.apellidos}
+                                </div>
+                                {t.dni && (
+                                  <div className="text-xs text-gray-500">
+                                    DNI: {t.dni}
+                                  </div>
+                                )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                              No se encontraron terapeutas
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
