@@ -1618,7 +1618,7 @@ const GestionArchivosOficiales = () => {
                         id="file-upload"
                         type="file"
                         hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.webp"
                         onChange={handleArchivoChange}
                       />
                     </div>

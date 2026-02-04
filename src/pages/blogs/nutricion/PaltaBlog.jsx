@@ -95,7 +95,7 @@ export default function PaltaBlog() {
         <h3 className="recipe-title">Puré de palta</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/palta-pure.jpg" alt="Puré de palta suave" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/palta-pure.webp" alt="Puré de palta suave" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Aplastar la palta hasta obtener un puré suave y cremoso. Esta es la forma más segura y fácil de digerir para niños pequeños.</p>
         </div>
@@ -106,7 +106,7 @@ export default function PaltaBlog() {
         <h3 className="recipe-title">Trocitos blandos</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/palta-trozos.jpg" alt="Palta en trocitos blandos" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/palta-trozos.webp" alt="Palta en trocitos blandos" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Ofrecerla en trocitos blandos cuando el niño ya mastica mejor. Cortar en cubos pequeños y suaves.</p>
         </div>
@@ -117,7 +117,7 @@ export default function PaltaBlog() {
         <h3 className="recipe-title">Mezclada con otros alimentos</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/palta-mezclada.jpg" alt="Palta mezclada con otros alimentos" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/palta-mezclada.webp" alt="Palta mezclada con otros alimentos" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Mezclarla con otros alimentos suaves si el niño lo tolera: arroz, quinua, verduras cocidas, plátano.</p>
         </div>
@@ -128,7 +128,7 @@ export default function PaltaBlog() {
         <h3 className="recipe-title">Palta sola</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/palta-sola.jpg" alt="Palta servida sola" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/palta-sola.webp" alt="Palta servida sola" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Servirla sola en casos de alta selectividad alimentaria. La palta es uno de los alimentos mejor tolerados.</p>
         </div>

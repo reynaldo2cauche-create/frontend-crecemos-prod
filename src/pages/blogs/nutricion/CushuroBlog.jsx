@@ -88,7 +88,7 @@ export default function CushuroBlog() {
         <h3 className="recipe-title">Ensalada de verduras frescas</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/blog.png" alt="Ensalada con cushuro" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/blog.webp" alt="Ensalada con cushuro" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Ingredientes:</strong> Cushuro entero + tomate + pepino + unas gotas de limón.</p>
           <p>Una opción refrescante y fácil de adaptar a la tolerancia sensorial del niño.</p>
@@ -100,7 +100,7 @@ export default function CushuroBlog() {
         <h3 className="recipe-title">Ensalada de frutas</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/2.ensaladadefruta.png" alt="Cushuro con frutas" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/2.ensaladadefruta.webp" alt="Cushuro con frutas" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Combinación suave:</strong> Papaya, manzana, plátano o fresas.</p>
           <p>El cushuro entero se mezcla de forma natural gracias a su textura gelatinosa.</p>
@@ -112,7 +112,7 @@ export default function CushuroBlog() {
         <h3 className="recipe-title">Desayuno fresco tipo bowl</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/3.desayunobowl.png" alt="Bowl con cushuro" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+            <img src="/assets/img/blog/3.desayunobowl.webp" alt="Bowl con cushuro" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
           </div>
           <ul className="mt-3">
             <li>Frutas frescas picadas</li>
@@ -128,7 +128,7 @@ export default function CushuroBlog() {
         <h3 className="recipe-title">Para llevar al colegio o estimulación temprana</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/4.parallevarcolegio.png" alt="Lonchera con cushuro" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/4.parallevarcolegio.webp" alt="Lonchera con cushuro" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Preparaciones fáciles de transportar:</strong></p>
           <ul>

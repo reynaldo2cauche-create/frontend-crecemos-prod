@@ -8,8 +8,8 @@ import DialogNotice from '../components/DialogNotice/DialogNotice';
 
 
 const heroImages = [
-  '/assets/img/index/Carrusel servicios.png',
-  '/assets/img/index/Psicologia Infantil.png',
+  '/assets/img/index/Carrusel servicios.webp',
+  '/assets/img/index/Psicologia Infantil.webp',
 ];
 
 export default function HomePage() {
@@ -456,7 +456,7 @@ const cerrarPopup = () => {
           <div className="row g-5">
             <div className="col-lg-4" data-aos="fade-up" data-aos-delay="100">
               <div className="testimonial-item">
-                <img src="videologo.png" className="testimonial-img" alt="¿Cuándo llevar al psicólogo?" />
+                <img src="videologo.webp" className="testimonial-img" alt="¿Cuándo llevar al psicólogo?" />
                 <h3>¿Cuándo debo llevar a mi hijo al psicólogo?</h3>
                 <h4>Psicología Infantil</h4>
                 <div className="stars">
@@ -474,7 +474,7 @@ const cerrarPopup = () => {
 
             <div className="col-lg-4" data-aos="fade-up" data-aos-delay="200">
               <div className="testimonial-item">
-                <img src="videologo.png" className="testimonial-img" alt="TEA - Signos de Alerta" />
+                <img src="videologo.webp" className="testimonial-img" alt="TEA - Signos de Alerta" />
                 <h3>TEA - Signos de Alerta y Tratamiento</h3>
                 <h4>Trastorno del Espectro Autista</h4>
                 <div className="stars">
@@ -492,7 +492,7 @@ const cerrarPopup = () => {
 
             <div className="col-lg-4" data-aos="fade-up" data-aos-delay="300">
               <div className="testimonial-item">
-                <img src="videologo.png" className="testimonial-img" alt="Desarrollo del Lenguaje" />
+                <img src="videologo.webp" className="testimonial-img" alt="Desarrollo del Lenguaje" />
                 <h3>Signos de Alerta en el Desarrollo del Lenguaje</h3>
                 <h4>Lic. Merlin Fernández</h4>
                 <div className="stars">
@@ -589,7 +589,7 @@ const cerrarPopup = () => {
                   ? (convenio.logo_url.startsWith('/')
                     ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
                     : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
-                  : '/assets/img/index/default-logo.png'}
+                  : '/assets/img/index/default-logo.webp'}
                 className="img-fluid"
                 alt={convenio.empresa}
                 style={{
@@ -603,7 +603,7 @@ const cerrarPopup = () => {
                 }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = '/assets/img/index/default-logo.png';
+                  e.target.src = '/assets/img/index/default-logo.webp';
                 }}
               />
             </div>

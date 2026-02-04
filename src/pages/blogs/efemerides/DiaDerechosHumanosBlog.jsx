@@ -31,7 +31,7 @@ export default function DiaDerechosHumanosBlog() {
       {/* Imagen placeholder 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/derechos-humanos-historia.jpg"
+          src="/assets/img/blog/derechos-humanos-historia.webp"
           alt="Historia de los Derechos Humanos"
           onError={(e) => e.target.style.display = 'none'}
         />
@@ -85,7 +85,7 @@ export default function DiaDerechosHumanosBlog() {
       {/* Imagen placeholder 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/derechos-humanos-significado.jpg"
+          src="/assets/img/blog/derechos-humanos-significado.webp"
           alt="Significado de los Derechos Humanos"
           onError={(e) => e.target.style.display = 'none'}
         />
@@ -159,7 +159,7 @@ export default function DiaDerechosHumanosBlog() {
       {/* Imagen placeholder 4 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/derechos-humanos-servicios.jpg"
+          src="/assets/img/blog/derechos-humanos-servicios.webp"
           alt="Acceso a servicios básicos"
           onError={(e) => e.target.style.display = 'none'}
         />
@@ -214,7 +214,7 @@ export default function DiaDerechosHumanosBlog() {
       {/* Imagen placeholder 5 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/derechos-humanos-salud-mental.jpg"
+          src="/assets/img/blog/derechos-humanos-salud-mental.webp"
           alt="Derecho a la salud mental"
           onError={(e) => e.target.style.display = 'none'}
         />

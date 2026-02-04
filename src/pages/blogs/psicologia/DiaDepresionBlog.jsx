@@ -66,7 +66,7 @@ export default function DiaDepresionBlog() {
       {/* Imagen placeholder 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/depresion1.jpg"
+          src="/assets/img/blog/depresion1.webp"
           alt="La depresión afecta múltiples áreas"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -106,7 +106,7 @@ export default function DiaDepresionBlog() {
       {/* Imagen placeholder 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/depresion2.jpg"
+          src="/assets/img/blog/depresion2.webp"
           alt="El malestar interno de la depresión"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -195,7 +195,7 @@ export default function DiaDepresionBlog() {
       {/* Imagen placeholder 4 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/depresion3.jpg"
+          src="/assets/img/blog/depresion3.webp"
           alt="La importancia del diagnóstico profesional"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -231,7 +231,7 @@ export default function DiaDepresionBlog() {
       {/* Imagen placeholder 5 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/depresion4.jpg"
+          src="/assets/img/blog/depresion4.webp"
           alt="Pedir ayuda es un acto de valentía"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -271,7 +271,7 @@ export default function DiaDepresionBlog() {
       {/* Imagen placeholder 6 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/depresion5.jpg"
+          src="/assets/img/blog/depresion5.webp"
           alt="Acompañar con presencia y respeto"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

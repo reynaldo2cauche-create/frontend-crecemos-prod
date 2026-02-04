@@ -933,7 +933,7 @@ const DocumentosSection = ({
                     <input
                       type="file"
                       className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      accept=".pdf,.jpg,.jpeg,.webp"
                       onChange={(e) => handleFileUpload('dni', e.target.files[0])}
                       disabled={uploadingDNI}
                     />
@@ -1568,7 +1568,7 @@ const handleGuardar = async () => {
                     <input
                       type="file"
                       className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      accept=".pdf,.jpg,.jpeg,.webp"
                       onChange={(e) => handleFileChange('dni', e.target.files[0])}
                     />
                   </label>

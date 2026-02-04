@@ -66,7 +66,7 @@ export default function DiaDiscapacidadBlog() {
       {/* Imagen placeholder 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/discapacidad-historia.jpg"
+          src="/assets/img/blog/discapacidad-historia.webp"
           alt="Historia del Día Internacional de las Personas con Discapacidad"
           onError={(e) => e.target.style.display = 'none'}
         />
@@ -141,7 +141,7 @@ export default function DiaDiscapacidadBlog() {
       {/* Imagen placeholder 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/discapacidad-inclusion.jpg"
+          src="/assets/img/blog/discapacidad-inclusion.webp"
           alt="Inclusión de personas con discapacidad"
           onError={(e) => e.target.style.display = 'none'}
         />
@@ -215,7 +215,7 @@ export default function DiaDiscapacidadBlog() {
       {/* Imagen placeholder 4 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/discapacidad-accion.jpg"
+          src="/assets/img/blog/discapacidad-accion.webp"
           alt="Acciones para la inclusión"
           onError={(e) => e.target.style.display = 'none'}
         />

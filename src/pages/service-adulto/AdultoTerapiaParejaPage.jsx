@@ -100,7 +100,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/queesterapiapeareja.jpg"
+                    src="/assets/img/servicios/queesterapiapeareja.webp"
                     alt="Terapia de Pareja"
                     className="img-fluid"
                   />
@@ -146,7 +146,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/cuandoirterapiaparema.jpg"
+                    src="/assets/img/servicios/cuandoirterapiaparema.webp"
                     alt="Cuándo acudir a Terapia de Pareja"
                     className="img-fluid"
                   />
@@ -197,7 +197,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/procesoterapiapareja.jpg"
+                    src="/assets/img/servicios/procesoterapiapareja.webp"
                     alt="Cómo trabajamos en Terapia de Pareja"
                     className="img-fluid"
                   />
@@ -228,7 +228,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/Lic. Giselle (1).png"
+                  src="/assets/img/servicios/Lic. Giselle (1).webp"
                   alt="Lic. Giselle Burgos"
                   style={{ height: "300px" }}
                 />

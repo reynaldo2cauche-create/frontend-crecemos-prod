@@ -109,7 +109,7 @@ export default function NuezBlog() {
         <h3 className="recipe-title">Nuez molida finamente</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/nuez-molida.jpg" alt="Nuez molida finamente" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/nuez-molida.webp" alt="Nuez molida finamente" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Regla de seguridad:</strong> Nunca ofrecer nueces enteras o en trozos grandes.</p>
           <p>Ofrecerla molida finamente o triturada hasta obtener una consistencia similar a polvo o harina fina.</p>
@@ -121,7 +121,7 @@ export default function NuezBlog() {
         <h3 className="recipe-title">Mezclada en purés</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/nuez-pure.jpg" alt="Puré con nuez molida" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/nuez-pure.webp" alt="Puré con nuez molida" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <ul className="mt-3">
             <li>Mezclarla en purés de frutas (plátano, manzana, pera)</li>
@@ -136,7 +136,7 @@ export default function NuezBlog() {
         <h3 className="recipe-title">Pasta de nuez natural</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/nuez-pasta.jpg" alt="Pasta de nuez natural" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/nuez-pasta.webp" alt="Pasta de nuez natural" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Preparaciones con pasta de nuez:</strong></p>
           <ul>

@@ -173,7 +173,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/terapeutica-cherQui.jpg"
+                  src="/assets/img/servicios/terapeutica-cherQui.webp"
                   alt="Lic.Cherly Quiquia"
                 />
                 <div className="team-content">
@@ -194,7 +194,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/Lic. Giselle (1).png"
+                  src="/assets/img/servicios/Lic. Giselle (1).webp"
                   alt="Lic. Giselle Burgos"
                   style={{ height: "300px" }}
                 />

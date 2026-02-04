@@ -24,7 +24,7 @@ export default function EstimulacionPrenatalLenguajeBlog() {
       {/* Imagen hero 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/estimulacion-prenatal-1.jpg"
+          src="/assets/img/blog/estimulacion-prenatal-1.webp"
           alt="Madre embarazada hablando a su bebé"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -138,7 +138,7 @@ export default function EstimulacionPrenatalLenguajeBlog() {
       {/* Imagen 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/estimulacion-prenatal-2.jpg"
+          src="/assets/img/blog/estimulacion-prenatal-2.webp"
           alt="Desarrollo cerebral prenatal y estimulación auditiva"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -264,7 +264,7 @@ export default function EstimulacionPrenatalLenguajeBlog() {
       {/* Imagen 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/estimulacion-prenatal-3.jpg"
+          src="/assets/img/blog/estimulacion-prenatal-3.webp"
           alt="Familia interactuando con niños pequeños"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

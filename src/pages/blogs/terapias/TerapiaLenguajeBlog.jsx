@@ -19,7 +19,7 @@ export default function TerapiaLenguajeBlog() {
       {/* Imagen hero 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/terapia-lenguaje-1.jpg"
+          src="/assets/img/blog/terapia-lenguaje-1.webp"
           alt="Niño en terapia de lenguaje con terapeuta"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -103,7 +103,7 @@ export default function TerapiaLenguajeBlog() {
       {/* Imagen placeholder 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/terapia-lenguaje-2.jpg"
+          src="/assets/img/blog/terapia-lenguaje-2.webp"
           alt="Desarrollo del lenguaje por edades"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -185,7 +185,7 @@ export default function TerapiaLenguajeBlog() {
       {/* Imagen placeholder 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/terapia-lenguaje-3.jpg"
+          src="/assets/img/blog/terapia-lenguaje-3.webp"
           alt="Factores que afectan el desarrollo del lenguaje"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -268,7 +268,7 @@ export default function TerapiaLenguajeBlog() {
       {/* Imagen placeholder 4 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/terapia-lenguaje-4.jpg"
+          src="/assets/img/blog/terapia-lenguaje-4.webp"
           alt="Evaluación profesional del lenguaje infantil"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

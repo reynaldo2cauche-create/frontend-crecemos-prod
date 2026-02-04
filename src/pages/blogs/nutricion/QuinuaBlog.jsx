@@ -98,7 +98,7 @@ export default function QuinuaBlog() {
         <h3 className="recipe-title">Ensalada fresca de quinua</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/quinua.1.jpg" alt="Ensalada con quinua" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/quinua.1.webp" alt="Ensalada con quinua" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Ingredientes:</strong> Quinua cocida + pepino + tomate + zanahoria rallada + limón.</p>
           <p>Una opción refrescante, colorida y fácil de aceptar por su textura suave.</p>
@@ -110,7 +110,7 @@ export default function QuinuaBlog() {
         <h3 className="recipe-title">Bowl dulce de quinua</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/quinua.2.jpg" alt="Bowl de quinua con frutas" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/quinua.2.webp" alt="Bowl de quinua con frutas" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Combinación suave:</strong> Quinua cocida + frutas frescas (plátano, fresas, arándanos) + un toque de canela.</p>
           <p>Ideal para desayuno o merienda sin azúcar añadido.</p>
@@ -122,7 +122,7 @@ export default function QuinuaBlog() {
         <h3 className="recipe-title">Guarnición suave</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/qinua.3.jpg" alt="Quinua como guarnición" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/qinua.3.webp" alt="Quinua como guarnición" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <ul className="mt-3">
             <li>Quinua cocida al lado de pollo, pescado o huevo</li>
@@ -138,7 +138,7 @@ export default function QuinuaBlog() {
         <h3 className="recipe-title">Para llevar al colegio o terapia</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/qinua.4.jpg" alt="Lonchera con quinua" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/qinua.4.webp" alt="Lonchera con quinua" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Preparaciones fáciles de transportar:</strong></p>
           <ul>
@@ -154,7 +154,7 @@ export default function QuinuaBlog() {
         <h3 className="recipe-title">Preparaciones creativas</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/quinua.5.jpg" alt="Preparaciones creativas con quinua" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/quinua.5.webp" alt="Preparaciones creativas con quinua" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Ideal en:</strong></p>
           <ul>

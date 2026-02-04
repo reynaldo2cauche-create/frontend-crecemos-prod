@@ -98,7 +98,7 @@ export const Staff = () => {
       const staffFormateado = await Promise.all(
         data.map(async (item) => {
           // Generar URL correcta para la foto
-          let imgUrl = 'assets/img/servicios/default-avatar.jpg';
+          let imgUrl = 'assets/img/servicios/default-avatar.webp';
           if (item.foto) {
             const filename = item.foto.split('/').pop();
             imgUrl = `${API_BASE_URL}/staff/foto/${filename}`;

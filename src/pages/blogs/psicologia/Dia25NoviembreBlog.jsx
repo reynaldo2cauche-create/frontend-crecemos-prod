@@ -13,7 +13,7 @@ export default function Dia25NoviembreBlog() {
       {/* Imagen principal - placeholder 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/25nov-portada.jpg"
+          src="/assets/img/blog/25nov-portada.webp"
           alt="Día Internacional de la Eliminación de la Violencia contra la Mujer"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -41,7 +41,7 @@ export default function Dia25NoviembreBlog() {
       {/* Imagen placeholder 2 - Hermanas Mirabal */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/25nov1.jpg"
+          src="/assets/img/blog/25nov1.webp"
           alt="Hermanas Mirabal - Símbolo de resistencia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -73,7 +73,7 @@ export default function Dia25NoviembreBlog() {
       {/* Imagen placeholder 3 - Estadísticas */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/25nov2.jpg"
+          src="/assets/img/blog/25nov2.webp"
           alt="Realidades de la violencia contra la mujer"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -128,7 +128,7 @@ export default function Dia25NoviembreBlog() {
       {/* Imagen placeholder 4 - Compromiso colectivo */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/25nov3.jpg"
+          src="/assets/img/blog/25nov3.webp"
           alt="Compromiso colectivo contra la violencia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -187,7 +187,7 @@ export default function Dia25NoviembreBlog() {
       {/* Imagen placeholder 5 - Ser aliados */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/25nov4.jpg"
+          src="/assets/img/blog/25nov4.webp"
           alt="Ser aliados en la lucha contra la violencia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -265,7 +265,7 @@ export default function Dia25NoviembreBlog() {
       {/* Imagen placeholder 6 - Esperanza */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/25nov5.jpg"
+          src="/assets/img/blog/25nov5.webp"
           alt="Un futuro sin violencia es posible"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

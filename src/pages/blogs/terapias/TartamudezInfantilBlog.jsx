@@ -19,7 +19,7 @@ export default function TartamudezInfantilBlog() {
       {/* Imagen hero 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tartamudez-infantil-1.jpg"
+          src="/assets/img/blog/tartamudez-infantil-1.webp"
           alt="Niño hablando con terapeuta de lenguaje"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -161,7 +161,7 @@ export default function TartamudezInfantilBlog() {
       {/* Imagen 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tartamudez-infantil-2.jpg"
+          src="/assets/img/blog/tartamudez-infantil-2.webp"
           alt="Desarrollo normal del habla en niños pequeños"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -295,7 +295,7 @@ export default function TartamudezInfantilBlog() {
       {/* Imagen 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tartamudez-infantil-3.jpg"
+          src="/assets/img/blog/tartamudez-infantil-3.webp"
           alt="Padre escuchando atentamente a su hijo pequeño"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

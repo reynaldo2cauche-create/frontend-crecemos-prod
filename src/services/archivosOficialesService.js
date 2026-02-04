@@ -229,7 +229,7 @@ const archivosOficialesService = {
       const result = await downloadPDFWithWatermark(blob, filename, {
         codigo: codigo,
         opacity: 0.8,
-        logoPath: '/assets/img/documento-logo.png',
+        logoPath: '/assets/img/documento-logo.webp',
         logoWidth: 200,
         logoHeight: 200,
         rotation: 45,

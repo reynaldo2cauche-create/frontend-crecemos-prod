@@ -117,7 +117,7 @@ const OrientacionVocacionalPage = () => {
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/porqueelegircarrera.jpg"
+                    src="/assets/img/servicios/porqueelegircarrera.webp"
                     alt="Por qué es importante la Orientación Vocacional"
                     className="img-fluid"
                   />
@@ -160,7 +160,7 @@ const OrientacionVocacionalPage = () => {
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/aquienorientacion.jpg"
+                    src="/assets/img/servicios/aquienorientacion.webp"
                     alt="A quién va dirigida la Orientación Vocacional"
                     className="img-fluid"
                   />
@@ -217,7 +217,7 @@ const OrientacionVocacionalPage = () => {
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/procesoorientacion.jpg"
+                    src="/assets/img/servicios/procesoorientacion.webp"
                     alt="Proceso de Orientación Vocacional"
                     className="img-fluid"
                   />
@@ -248,7 +248,7 @@ const OrientacionVocacionalPage = () => {
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/Lic. Giselle (1).png"
+                  src="/assets/img/servicios/Lic. Giselle (1).webp"
                   alt="Lic. Giselle Burgos"
                   style={{ height: "300px" }}
                 />

@@ -7,390 +7,390 @@ export const blogMetadata = [
     slug: 'cushuro-superalimento-peruano-ninos-neurodivergentes',
     title: 'Cushuro: Un superalimento peruano ideal para niños neurodivergentes desde el primer año',
     excerpt: 'El cushuro, también conocido como llullucha, es una alga andina que crece en lagunas de altura. Su textura suave, fresca y gelatinosa lo convierte en un alimento muy interesante para niños neurodivergentes.',
-    image: '/assets/img/blog/cuch.png',
+    image: '/assets/img/blog/cuch.webp',
     date: '15 Noviembre 2025',
     category: 'nutricion',
     categoryName: 'Nutrición',
     readTime: '8 min lectura',
     author: 'Centro Crecemos',
-    heroImage: '/assets/img/blog/cuch.png'
+    heroImage: '/assets/img/blog/cuch.webp'
   },
   {
     id: 2,
     slug: 'quinua-superalimento-peruano-ninos-neurodivergentes',
     title: 'Quinua: El superalimento peruano ideal para niños neurodivergentes',
     excerpt: 'La quinua es un pseudocereal andino con un perfil nutricional excepcional. Su textura suave, versatilidad y riqueza en nutrientes esenciales la convierte en un aliado fundamental para el desarrollo de niños neurodivergentes.',
-    image: '/assets/img/blog/qinua-portada.jpg',
+    image: '/assets/img/blog/qinua-portada.webp',
     date: '20 Noviembre 2025',
     category: 'nutricion',
     categoryName: 'Nutrición',
     readTime: '10 min lectura',
     author: 'Centro Crecemos',
-    heroImage: '/assets/img/blog/qinua-portada.jpg'
+    heroImage: '/assets/img/blog/qinua-portada.webp'
   },
   {
     id: 3,
     slug: 'violencia-domestica-adultos-mayores-historia-muchas-capas',
     title: 'Más allá de la violencia doméstica: una historia con muchas capas',
     excerpt: 'A muchos adultos mayores la vida no les pesa por los años, sino por las historias que han cargado desde la infancia: silencios impuestos, miedos aprendidos, sacrificios exigidos y una forma de amar marcada por el deber.',
-    image: '/assets/img/blog/violencia 1.jpg',
+    image: '/assets/img/blog/violencia 1.webp',
     date: '24 Noviembre 2025',
     category: 'psicologia',
     categoryName: 'Psicología',
     readTime: '25 min lectura',
     author: 'Lic. Giselle Burgos Del Rosario',
-    heroImage: '/assets/img/blog/violencia-adultos-mayores.jpg'
+    heroImage: '/assets/img/blog/violencia-adultos-mayores.webp'
   },
   {
     id: 4,
     slug: 'alimentos-omega-3-ninos-neurodivergentes',
     title: 'Alimentos que contienen Omega 3: Guía completa para niños neurodivergentes',
     excerpt: 'El Omega 3 es un nutriente esencial para el desarrollo cerebral, la regulación emocional y el bienestar general. Descubre qué alimentos naturales aportan Omega 3 y cómo incluirlos en la alimentación infantil.',
-    image: '/assets/img/blog/omega.jpg',
+    image: '/assets/img/blog/omega.webp',
     date: '24 Noviembre 2025',
     category: 'nutricion',
     categoryName: 'Nutrición',
     readTime: '12 min lectura',
     author: 'Leonardo Yactayo Uceda',
-    heroImage: '/assets/img/blog/omega3-portada.jpg'
+    heroImage: '/assets/img/blog/omega3-portada.webp'
   },
   {
     id: 5,
     slug: '25-noviembre-dia-eliminacion-violencia-mujer',
     title: '25 de Noviembre: El Día que Nos Recuerda que la Lucha Continúa',
     excerpt: 'El color naranja inunda las calles, redes sociales y espacios públicos. La razón detrás de su uso es muy importante: se conmemoró el Día Internacional de la Eliminación de la Violencia contra la Mujer.',
-    image: '/assets/img/blog/25nov-portada.jpg',
+    image: '/assets/img/blog/25nov-portada.webp',
     date: '25 Noviembre 2025',
     category: 'psicologia',
     categoryName: 'Psicología',
     readTime: '8 min lectura',
     author: 'Lic. Giselle Burgos Del Rosario',
-    heroImage: '/assets/img/blog/25noviembre1.jpg'
+    heroImage: '/assets/img/blog/25noviembre1.webp'
   },
   {
     id: 6,
     slug: 'tumbo-fruta-andina-ninos-neurodivergentes',
     title: 'Tumbo: Una fruta andina ideal para niños neurodivergentes desde el primer año',
     excerpt: 'El tumbo, también llamado curuba o parcha andina, es una fruta originaria de los Andes. Su pulpa suave y jugosa, junto con su sabor ligeramente ácido, la convierten en una opción muy adecuada para niños neurodivergentes.',
-    image: '/assets/img/blog/tumboportada.jpg',
+    image: '/assets/img/blog/tumboportada.webp',
     date: '28 Noviembre 2025',
     category: 'nutricion',
     categoryName: 'Nutrición',
     readTime: '8 min lectura',
     author: 'Leonardo Yactayo Uceda',
-    heroImage: '/assets/img/blog/tumbo-portada.jpg'
+    heroImage: '/assets/img/blog/tumbo-portada.webp'
   },
   {
     id: 7,
     slug: '30-noviembre-trastornos-conducta-alimentaria',
     title: '30 de Noviembre: Un recordatorio necesario de la lucha contra los Trastornos de Conducta Alimentaria',
     excerpt: 'Imaginemos un lugar pequeño, una cárcel que no tiene barrotes, pero que a pesar de que intentamos salir, existe un carcelero, la voz interna, que constantemente nos dice que no es suficiente. Este 30 de noviembre, alzamos la voz contra los TCA.',
-    image: '/assets/img/blog/tca-portada.jpg',
+    image: '/assets/img/blog/tca-portada.webp',
     date: '30 Noviembre 2025',
     category: 'psicologia',
     categoryName: 'Psicología',
     readTime: '12 min lectura',
     author: 'Lic. Giselle Burgos Del Rosario',
-    heroImage: '/assets/img/blog/tca.jpg'
+    heroImage: '/assets/img/blog/tca.webp'
   },
   {
     id: 8,
     slug: '3-diciembre-dia-internacional-personas-discapacidad',
     title: 'Día Internacional de las Personas con Discapacidad: el camino hacia la Inclusión',
     excerpt: 'Hoy conmemoramos el Día Internacional de las Personas con Discapacidad, una fecha de suma importancia para visibilizar, promover los derechos y el bienestar de las personas con discapacidad en todos los ámbitos de la sociedad.',
-    image: '/assets/img/blog/discapacidad-portada.png',
+    image: '/assets/img/blog/discapacidad-portada.webp',
     date: '3 Diciembre 2025',
     category: 'efemerides',
     categoryName: 'Eventos Conmemorativos',
     readTime: '10 min lectura',
     author: 'Centro Crecemos',
-    heroImage: '/assets/img/blog/discapacidad-hero.jpg'
+    heroImage: '/assets/img/blog/discapacidad-hero.webp'
   },
   {
     id: 9,
     slug: '10-diciembre-dia-derechos-humanos',
     title: '¡El 10 de Diciembre: Día para honrar los Derechos Humanos y la dignidad!',
     excerpt: 'El 10 de diciembre no es solo una fecha más; es el Día de los Derechos Humanos, un llamado urgente a la conciencia. Esta conmemoración nos obliga a reconocer el valor único de cada persona.',
-    image: '/assets/img/blog/derechos-humanos-portada.jpg',
+    image: '/assets/img/blog/derechos-humanos-portada.webp',
     date: '10 Diciembre 2025',
     category: 'efemerides',
     categoryName: 'Eventos Conmemorativos',
     readTime: '12 min lectura',
     author: 'Centro Crecemos',
-    heroImage: '/assets/img/blog/derechos-humanos-hero.jpg'
+    heroImage: '/assets/img/blog/derechos-humanos-hero.webp'
   },
   {
     id: 10,
     slug: 'choclo-alimento-natural-energetico-ninos-neurodivergentes',
     title: 'Choclo: Un alimento natural y energético para niños desde 1 año, incluyendo niños neurodivergentes',
     excerpt: 'El choclo (maíz tierno) es un alimento tradicional y muy presente en la alimentación familiar. Gracias a su sabor suave, textura blanda cuando está bien cocido y buen aporte de energía, puede incorporarse de manera segura desde el primer año de vida.',
-    image: '/assets/img/blog/choclo-portada.jpg',
+    image: '/assets/img/blog/choclo-portada.webp',
     date: '12 Diciembre 2025',
     category: 'nutricion',
     categoryName: 'Nutrición',
     readTime: '10 min lectura',
     author: 'Leonardo Yactayo Uceda',
-    heroImage: '/assets/img/blog/choclo-hero.jpg'
+    heroImage: '/assets/img/blog/choclo-hero.webp'
   },
   {
   id: 11,
   slug: 'esparrago-alimento-nutritivo-ninos-neurodivergentes',
   title: 'Espárrago: Un alimento nutritivo y suave para niños desde 1 año, incluyendo niños neurodivergentes',
   excerpt: 'El espárrago es una verdura natural rica en nutrientes esenciales que puede incorporarse de manera segura en la alimentación infantil a partir del primer año de vida. Cuando se prepara correctamente, su textura es suave y fácil de manejar.',
-  image: '/assets/img/blog/esparrago-portada.jpg',
+  image: '/assets/img/blog/esparrago-portada.webp',
   date: '13 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '8 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/esparrago-hero.jpg'
+  heroImage: '/assets/img/blog/esparrago-hero.webp'
 },
 {
   id: 12,
   slug: 'nuez-alimento-nutritivo-ninos-neurodivergentes',
   title: 'Nuez: Un alimento nutritivo que requiere adaptación segura para niños desde 1 año',
   excerpt: 'La nuez es un fruto seco con alto valor nutricional, rico en Omega 3 y grasas saludables. Puede formar parte de la alimentación infantil desde el primer año, siempre que se ofrezca de manera segura y adaptada.',
-  image: '/assets/img/blog/nuez-portada.jpg',
+  image: '/assets/img/blog/nuez-portada.webp',
   date: '14 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '10 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/nuez-hero.jpg'
+  heroImage: '/assets/img/blog/nuez-hero.webp'
 },
 {
   id: 13,
   slug: 'palta-alimento-suave-nutritivo-ninos-neurodivergentes',
   title: 'Palta: Un alimento suave y altamente nutritivo para niños desde 1 año',
   excerpt: 'La palta es uno de los alimentos más completos y versátiles para la alimentación infantil. Su textura cremosa, sabor suave y alto contenido de grasas saludables la hacen ideal para niños neurodivergentes.',
-  image: '/assets/img/blog/palta-portada.jpg',
+  image: '/assets/img/blog/palta-portada.webp',
   date: '15 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '9 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/palta-hero.jpg'
+  heroImage: '/assets/img/blog/palta-hero.webp'
 },
 {
   id: 14,
   slug: 'pecana-fruto-seco-nutritivo-ninos-neurodivergentes',
   title: 'Pecana: Un fruto seco nutritivo para niños desde 1 año',
   excerpt: 'La pecana es un fruto seco rico en grasas saludables, vitaminas y minerales. Puede aportar importantes beneficios a la alimentación infantil cuando se ofrece de forma segura y adaptada.',
-  image: '/assets/img/blog/pecana-portada.jpg',
+  image: '/assets/img/blog/pecana-portada.webp',
   date: '16 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '10 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/pecana-hero.jpg'
+  heroImage: '/assets/img/blog/pecana-hero.webp'
 },
 {
   id: 15,
   slug: 'agua-coco-bebida-natural-hidratante-ninos',
   title: 'Agua de coco: Una bebida natural hidratante para niños desde 1 año, incluyendo niños neurodivergentes',
   excerpt: 'El agua de coco es una bebida natural obtenida del interior del coco verde. Destaca por su alto contenido de agua, minerales y electrolitos naturales, lo que la convierte en una opción hidratante cuando se ofrece de manera adecuada.',
-  image: '/assets/img/blog/unagua-coco-portada.jpg',
+  image: '/assets/img/blog/unagua-coco-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '8 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/agua-coco-hero.jpg'
+  heroImage: '/assets/img/blog/agua-coco-hero.webp'
 },
 {
   id: 16,
   slug: 'arandanos-fruta-antioxidantes-ninos',
   title: 'Arándanos: Una fruta rica en antioxidantes para niños desde 1 año',
   excerpt: 'Los arándanos son una fruta pequeña con alto valor nutricional, rica en antioxidantes y vitaminas. Pueden incorporarse en la alimentación infantil desde el primer año, adaptando su textura para garantizar una ingesta segura y nutritiva.',
-  image: '/assets/img/blog/arandanos-portada.jpeg',
+  image: '/assets/img/blog/arandanos-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '7 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/arandanos-hero.jpg'
+  heroImage: '/assets/img/blog/arandanos-hero.webp'
 },
 {
   id: 17,
   slug: 'camote-alimento-energetico-nutritivo-ninos',
   title: 'Camote: Un alimento energético, suave y nutritivo para niños desde 1 año, incluyendo niños neurodivergentes',
   excerpt: 'El camote es un tubérculo natural muy valorado en la alimentación infantil por su sabor dulce natural, textura suave al cocinarse y su alto aporte de nutrientes. Puede incorporarse de manera segura en la dieta de los niños a partir del primer año de vida.',
-  image: '/assets/img/blog/camote-portada.jpg',
+  image: '/assets/img/blog/camote-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '8 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/camote-hero.jpeg'
+  heroImage: '/assets/img/blog/camote-hero.webp'
 },
 {
   id: 18,
   slug: 'cerezas-fruta-antioxidantes-ninos',
   title: 'Cerezas: Una fruta natural rica en antioxidantes para niños desde 1 año',
   excerpt: 'Las cerezas son una fruta de sabor suave que aporta vitaminas y antioxidantes. Pueden ofrecerse desde el primer año siempre sin pepa y con textura adecuada para garantizar una ingesta segura.',
-  image: '/assets/img/blog/cerezas-portada.jpg',
+  image: '/assets/img/blog/cerezas-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '6 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/cerezas-hero.jpg'
+  heroImage: '/assets/img/blog/cerezas-hero.webp'
 },
 {
   id: 19,
   slug: 'gaseosas-por-que-evitar-consumo-ninos',
   title: 'Por qué es importante evitar el consumo de gaseosas en niños',
   excerpt: 'Las gaseosas son bebidas ultraprocesadas que contienen altas cantidades de azúcar, aditivos, colorantes y gas. No aportan beneficios nutricionales reales para el crecimiento infantil y su consumo no es recomendado en ninguna etapa de la infancia.',
-  image: '/assets/img/blog/gaseosas-portada.jpg',
+  image: '/assets/img/blog/gaseosas-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '7 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/gaseosas-hero.jpg'
+  heroImage: '/assets/img/blog/gaseosas-hero.webp'
 },
 {
   id: 20,
   slug: 'golosinas-por-que-evitar-consumo-ninos',
   title: 'Por qué es importante evitar el consumo de golosinas en niños',
   excerpt: 'Las golosinas como caramelos, chupetines, gomitas y chocolates azucarados son productos ultraprocesados con alto contenido de azúcar, colorantes y aditivos, y bajo o nulo valor nutricional. Su consumo frecuente no es recomendable en la infancia.',
-  image: '/assets/img/blog/golosinas-portada.jpg',
+  image: '/assets/img/blog/golosinas-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '7 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/golosinas-hero.jpg'
+  heroImage: '/assets/img/blog/golosinas-hero.webp'
 },
 {
   id: 21,
   slug: 'lentejas-bebe-fuente-vegetal-hierro-ninos',
   title: 'Lentejas bebé: Una fuente vegetal de hierro y proteína para niños desde 1 año',
   excerpt: 'Las lentejas bebé son una variedad de lenteja pequeña, de cáscara más delgada y cocción rápida, lo que las hace más fáciles de digerir que otras menestras. Pueden incorporarse en la alimentación infantil a partir del primer año, siempre que se ofrezcan bien cocidas y con una preparación adecuada.',
-  image: '/assets/img/blog/lentejas-bebe-portada.jpg',
+  image: '/assets/img/blog/lentejas-bebe-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '10 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/lentejas-bebe-hero.jpg'
+  heroImage: '/assets/img/blog/lentejas-bebe-hero.webp'
 },
 {
   id: 22,
   slug: 'naranja-jugo-fruta-vitamina-c-ninos',
   title: 'Naranja de jugo: Una fruta rica en vitamina C para niños desde 1 año',
   excerpt: 'La naranja de jugo es una fruta cítrica conocida por su alto contenido de vitamina C, agua y antioxidantes naturales. Puede incorporarse en la alimentación infantil a partir del primer año, siempre que se ofrezca principalmente como fruta fresca y no como jugo concentrado.',
-  image: '/assets/img/blog/naranja-jugo-portada.jpg',
+  image: '/assets/img/blog/naranja-jugo-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '9 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/naranja-jugo-hero.jpg'
+  heroImage: '/assets/img/blog/naranja-jugo-hero.webp'
 },
 {
   id: 23,
   slug: 'pasas-alimento-energetico-moderacion-ninos',
   title: 'Pasas: Un alimento energético y natural que debe ofrecerse con moderación a niños desde 1 año',
   excerpt: 'Las pasas son uvas deshidratadas de sabor dulce natural y alta concentración de nutrientes. Aportan energía, fibra y minerales, por lo que pueden incorporarse en la alimentación infantil a partir del primer año, siempre que se ofrezcan en pequeñas cantidades y con la textura adaptada.',
-  image: '/assets/img/blog/pasas-portada.jpg',
+  image: '/assets/img/blog/pasas-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '9 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/pasas-hero.jpg'
+  heroImage: '/assets/img/blog/pasas-hero.webp'
 },
 {
   id: 24,
   slug: 'pistachos-fruto-seco-seguro-ninos',
   title: 'Pistachos: Un fruto seco nutritivo que debe ofrecerse de forma segura a niños desde 1 año',
   excerpt: 'Los pistachos son un fruto seco con alto valor nutricional, ricos en proteínas vegetales, grasas saludables, fibra y antioxidantes. Pueden formar parte de la alimentación infantil a partir del primer año, siempre que se presenten bien adaptados en textura, ya que no deben ofrecerse enteros por riesgo de atragantamiento.',
-  image: '/assets/img/blog/pistachos-portada.jpg',
+  image: '/assets/img/blog/pistachos-portada.webp',
   date: '20 Diciembre 2025',
   category: 'nutricion',
   categoryName: 'Nutrición',
   readTime: '9 min lectura',
   author: 'Leonardo Yactayo Uceda',
-  heroImage: '/assets/img/blog/pistachos-hero.jpg'
+  heroImage: '/assets/img/blog/pistachos-hero.webp'
 },
 {
   id: 25,
   slug: 'patrones-crianza-romper-circulo',
   title: 'Romper el círculo: patrones de crianza',
   excerpt: 'Muchos adultos recuerdan el miedo que sentían al escuchar los gritos de padres autoritarios y sus castigos. Hoy, el objetivo para muchas familias es claro: es vital que este ciclo termine. Descubre cómo romper patrones heredados e implementar una crianza positiva.',
-  image: '/assets/img/blog/crianza-portada.jpg',
+  image: '/assets/img/blog/crianza-portada.webp',
   date: '30 Diciembre 2025',
   category: 'psicologia',
   categoryName: 'Psicología',
   readTime: '20 min lectura',
   author: 'Centro Crecemos' ,
-  heroImage: '/assets/img/blog/crianza-portada.jpg'
+  heroImage: '/assets/img/blog/crianza-portada.webp'
 },
 {
   id: 26,
   slug: '13-enero-dia-mundial-lucha-depresion',
   title: '13 de Enero: Día Mundial de la Lucha contra la Depresión',
   excerpt: 'En este día resulta fundamental reconocer la lucha que atraviesan las personas que viven con depresión. Muchas veces se presenta en silencio, en personas que continúan con sus responsabilidades mientras internamente sienten que todo les resulta más pesado.',
-  image: '/assets/img/blog/depresion-portada.jpg',
+  image: '/assets/img/blog/depresion-portada.webp',
   date: '13 Enero 2026',
   category: 'efemerides',
   categoryName: 'Eventos Conmemorativos',
   readTime: '12 min lectura',
   author: 'Centro Crecemos',
-  heroImage: '/assets/img/blog/depresion-portada.jpg'
+  heroImage: '/assets/img/blog/depresion-portada.webp'
 },
 {
   id: 27,
   slug: 'mi-hijo-necesita-terapia-lenguaje-senales-tempranas',
   title: '¿Mi hijo necesita terapia de lenguaje? Señales tempranas que no deben ignorarse',
   excerpt: 'Como terapeuta de lenguaje infantil con más de 10 años de experiencia clínica, una de las preguntas más frecuentes que recibo de los padres es: "¿Será normal que mi hijo aún no hable?" Descubre las señales de alerta y cuándo es importante buscar ayuda profesional.',
-  image: '/assets/img/blog/terapia-lenguaje-portada.jpg',
+  image: '/assets/img/blog/terapia-lenguaje-portada.webp',
   date: '23 Enero 2026',
   category: 'terapias',
   categoryName: 'Terapias',
   readTime: '15 min lectura',
   author: 'Lic. Merlin Fernández Guadalupe',
-  heroImage: '/assets/img/blog/terapia-lenguaje-portada.jpg'
+  heroImage: '/assets/img/blog/terapia-lenguaje-portada.webp'
 },
 {
   id: 28,
   slug: 'estimulacion-lenguaje-embarazo-desarrollo-infantil',
   title: 'Antes de nacer, ya escuchaban mi voz: cómo la estimulación del lenguaje desde el embarazo influye en el desarrollo infantil',
   excerpt: 'Soy terapeuta de lenguaje infantil y también madre de dos niños. Desde el momento en que supe que existían dentro de mí, les hablé todos los días. Descubre cómo la estimulación prenatal del lenguaje, respaldada por la ciencia, puede marcar la diferencia en el desarrollo de tu bebé.',
-  image: '/assets/img/blog/estimulacion-prenatal-portada.jpg',
+  image: '/assets/img/blog/estimulacion-prenatal-portada.webp',
   date: '24 Enero 2026',
   category: 'terapias',
   categoryName: 'Terapias',
   readTime: '12 min lectura',
   author: 'Lic. Merlin Fernández Guadalupe',
-  heroImage: '/assets/img/blog/estimulacion-prenatal-portada.jpg'
+  heroImage: '/assets/img/blog/estimulacion-prenatal-portada.webp'
 },
 {
   id: 29,
   slug: 'tartamudez-infantil-etapa-o-preocupacion',
   title: '¿Es solo una etapa o debo preocuparme? Cómo identificar la tartamudez entre los 2 y 4 años',
   excerpt: 'Soy terapeuta de lenguaje infantil y una de las frases que más escucho es: "A veces se traba al hablar... ¿es normal o puede ser tartamudez?" Te ayudo a entender qué disfluencias son esperables, qué señales requieren atención y cuándo buscar evaluación especializada.',
-  image: '/assets/img/blog/tartamudez-infantil-portada.jpg',
+  image: '/assets/img/blog/tartamudez-infantil-portada.webp',
   date: '25 Enero 2026',
   category: 'terapias',
   categoryName: 'Terapias',
   readTime: '14 min lectura',
   author: 'Lic. Merlin Fernández Guadalupe',
-  heroImage: '/assets/img/blog/tartamudez-infantil-portada.jpg'
+  heroImage: '/assets/img/blog/tartamudez-infantil-portada.webp'
 },
 {
   id: 30,
   slug: 'vacaciones-mejor-momento-evaluar-terapia-lenguaje',
   title: 'Vacaciones: el mejor momento para evaluar el lenguaje e iniciar terapia en tu niño',
   excerpt: 'Las vacaciones no solo representan descanso. Son una de las mejores oportunidades para evaluar el desarrollo del lenguaje e iniciar terapia de manera más efectiva. Descubre por qué enero ofrece condiciones ideales para mejores resultados en menos tiempo.',
-  image: '/assets/img/blog/vacaciones-terapia-portada.jpg',
+  image: '/assets/img/blog/vacaciones-terapia-portada.webp',
   date: '26 Enero 2026',
   category: 'terapias',
   categoryName: 'Terapias',
   readTime: '10 min lectura',
   author: 'Lic. Merlin Fernández Guadalupe',
-  heroImage: '/assets/img/blog/vacaciones-terapia-portada.jpg'
+  heroImage: '/assets/img/blog/vacaciones-terapia-portada.webp'
 }
   // Aquí agregas más blogs...
 ];

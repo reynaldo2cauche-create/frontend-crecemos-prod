@@ -77,7 +77,7 @@ export default function EsparragoBlog() {
         <h3 className="recipe-title">Cocción adecuada</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/esparrago-cocido.jpg" alt="Espárragos bien cocidos" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/esparrago-cocido.webp" alt="Espárragos bien cocidos" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Cocinar el espárrago hasta que esté muy suave. Es fundamental que la textura sea lo suficientemente blanda para facilitar la masticación y digestión.</p>
         </div>
@@ -88,7 +88,7 @@ export default function EsparragoBlog() {
         <h3 className="recipe-title">Preparación segura</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/esparrago-preparado.jpg" alt="Espárragos preparados para niños" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/esparrago-preparado.webp" alt="Espárragos preparados para niños" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <ul className="mt-3">
             <li>Retirar la parte dura o fibrosa del tallo</li>

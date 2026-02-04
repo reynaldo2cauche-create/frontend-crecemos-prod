@@ -10,7 +10,7 @@ export default function Omega3Blog() {
       {/* Imagen placeholder 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/omega1.jpg"
+          src="/assets/img/blog/omega1.webp"
           alt="Alimentos ricos en Omega 3"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -86,7 +86,7 @@ export default function Omega3Blog() {
       {/* Imagen placeholder 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/omega2.jpg"
+          src="/assets/img/blog/omega2.webp"
           alt="Pescados ricos en Omega 3"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -142,7 +142,7 @@ export default function Omega3Blog() {
       {/* Imagen placeholder 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/omega3.jpg"
+          src="/assets/img/blog/omega3.webp"
           alt="Semillas y frutos con Omega 3"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -208,7 +208,7 @@ export default function Omega3Blog() {
       {/* Imagen placeholder 4 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/omega4.jpg"
+          src="/assets/img/blog/omega4.webp"
           alt="Verduras con Omega 3"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -274,7 +274,7 @@ export default function Omega3Blog() {
       {/* Imagen placeholder 5 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/omega5.jpg"
+          src="/assets/img/blog/omega5.webp"
           alt="Alimentos adicionales con Omega 3"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

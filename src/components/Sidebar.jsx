@@ -21,7 +21,8 @@ import {
   ChevronDownIcon,
   CalendarIcon,
   ShieldCheckIcon,
-  AcademicCapIcon
+  AcademicCapIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 
 // Contexto para compartir el estado del sidebar
@@ -47,6 +48,18 @@ export const SidebarProvider = ({ children }) => {
 };
 
 const menuItems = [
+  {
+    text: 'Asistencias',
+    icon: ClipboardDocumentCheckIcon,
+    isDropdown: true,
+    adminOnly: true,
+    subItems: [
+      { text: 'Por Terapeuta', path: '/intranet/asistencias/terapeuta', icon: UserIcon },
+      { text: 'Por Paciente', path: '/intranet/asistencias/paciente', icon: UserGroupIcon },
+      { text: 'Inconsistencias', path: '/intranet/asistencias/inconsistencias', icon: ShieldCheckIcon },
+      { text: 'Gestión Admin', path: '/intranet/asistencias/admin', icon: ShieldCheckIcon }
+    ]
+  },
   { text: 'Agenda', path: '/intranet/agenda', icon: CalendarDaysIcon },
   { text: 'Pacientes', path: '/intranet/lista-pacientes', icon: UserGroupIcon },
   { text: 'Reportes', path: '/intranet/reportes-evaluaciones', icon: DocumentChartBarIcon },
@@ -68,7 +81,7 @@ const menuItems = [
     ]
   },
   { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon, adminOnly: true },
-  { text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi', isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.png' },
+  { text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi', isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.webp' },
 ];
 
 const Sidebar = () => {

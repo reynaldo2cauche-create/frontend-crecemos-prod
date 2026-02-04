@@ -26,7 +26,7 @@ export async function addWatermarkToPDF(pdfBytes, options = {}) {
     const {
       codigo = '',
       opacity = 0.8,
-      logoPath = '/assets/img/documento-logo.png',
+      logoPath = '/assets/img/documento-logo.webp',
       logoWidth = 200,
       logoHeight = 200,
       distributeAcrossPage = true,

@@ -32,7 +32,7 @@ const UsPage = () => {
             <div className="row align-items-center">
               
               <div className="col-lg-6" data-aos="fade-right" data-aos-delay="100">
-                <img src="/assets/img/nosotros/historia.jpg" alt="Centro de Terapias Crecemos" className="img-fluid rounded" />
+                <img src="/assets/img/nosotros/historia.webp" alt="Centro de Terapias Crecemos" className="img-fluid rounded" />
               </div>
 
               <div className="col-lg-6" data-aos="fade-left" data-aos-delay="200">
@@ -131,7 +131,7 @@ const UsPage = () => {
               <div className="col-lg-6" data-aos="fade-up" data-aos-delay="100">
                 <div className="mission-vision-card">
                   <div className="card-icon">
-                    <img src="/assets/img/nosotros/mision.jpg" alt="Misión - Centro Crecemos" />
+                    <img src="/assets/img/nosotros/mision.webp" alt="Misión - Centro Crecemos" />
                   </div>
                   <h3>Misión</h3>
                   <p>
@@ -143,7 +143,7 @@ const UsPage = () => {
               <div className="col-lg-6" data-aos="fade-up" data-aos-delay="200">
                 <div className="mission-vision-card">
                   <div className="card-icon">
-                    <img src="/assets/img/nosotros/vision.jpg" alt="Visión - Centro Crecemos" />
+                    <img src="/assets/img/nosotros/vision.webp" alt="Visión - Centro Crecemos" />
                   </div>
                   <h3>Visión</h3>
                   <p>

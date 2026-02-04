@@ -15,7 +15,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia 1.jpg"
+          src="/assets/img/blog/violencia 1.webp"
           alt="Adultos mayores reflexionando sobre su historia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -55,7 +55,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia2.jpg"
+          src="/assets/img/blog/violencia2.webp"
           alt="La herencia invisible del miedo - Memoria emocional en adultos mayores"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -106,7 +106,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia3.jpg"
+          src="/assets/img/blog/violencia3.webp"
           alt="El impacto de la infancia en los patrones de violencia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -203,7 +203,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 4 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia4.jpg"
+          src="/assets/img/blog/violencia4.webp"
           alt="La responsabilidad social con los adultos mayores"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -291,7 +291,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 5 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia5.jpg"
+          src="/assets/img/blog/violencia5.webp"
           alt="Comprendiendo las huellas de la violencia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -367,7 +367,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 6 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia6.jpg"
+          src="/assets/img/blog/violencia6.webp"
           alt="Los efectos neuropsicológicos de la violencia"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -484,7 +484,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 7 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia7.jpg"
+          src="/assets/img/blog/violencia7.webp"
           alt="La violencia emocional invisible"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -643,7 +643,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 8 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia8.jpg"
+          src="/assets/img/blog/violencia8.webp"
           alt="Consecuencias psicológicas en adultos mayores"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -793,7 +793,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 9 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia9.jpg"
+          src="/assets/img/blog/violencia9.webp"
           alt="Recursos de apoyo para adultos mayores"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -858,7 +858,7 @@ export default function ViolenciaDomesticaBlog() {
       {/* Imagen placeholder 10 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/violencia10.jpg"
+          src="/assets/img/blog/violencia10.webp"
           alt="La importancia de la terapia en adultos mayores"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

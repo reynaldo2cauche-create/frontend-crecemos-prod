@@ -58,6 +58,12 @@ import GestionStaff from '../pages/GestionStaff';
 // Páginas de Auditoría
 import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
 
+// Páginas de Asistencias
+import AsistenciasPorTerapeuta from '../pages/Asistencias/AsistenciasPorTerapeuta';
+import AsistenciasPorPaciente from '../pages/Asistencias/AsistenciasPorPaciente';
+import Inconsistencias from '../pages/Asistencias/Inconsistencias';
+import GestionAsistenciasAdmin from '../pages/Asistencias/GestionAsistenciasAdmin';
+
 export const AppRouter = () => {
   return (
     <>
@@ -186,6 +192,51 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <HistorialAuditoria />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* Rutas de Asistencias */}
+        <Route path="/intranet/asistencias/terapeuta" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <AsistenciasPorTerapeuta />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/paciente" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <AsistenciasPorPaciente />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/inconsistencias" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <Inconsistencias />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/admin" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestionAsistenciasAdmin />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

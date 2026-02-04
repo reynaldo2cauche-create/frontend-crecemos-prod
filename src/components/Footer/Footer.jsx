@@ -122,7 +122,7 @@ export default function Footer() {
                     }}
                   >
                     <img 
-                      src="/assets/img/libro-reclamaciones.png" 
+                      src="/assets/img/libro-reclamaciones.webp" 
                       alt="Libro de Reclamaciones" 
                       style={{
                         width: '100px',

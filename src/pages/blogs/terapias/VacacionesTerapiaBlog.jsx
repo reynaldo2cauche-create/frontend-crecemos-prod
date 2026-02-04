@@ -18,7 +18,7 @@ export default function VacacionesTerapiaBlog() {
       {/* Imagen hero 1 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/vacaciones-terapia-1.jpg"
+          src="/assets/img/blog/vacaciones-terapia-1.webp"
           alt="Niño feliz en terapia de lenguaje durante vacaciones"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -148,7 +148,7 @@ export default function VacacionesTerapiaBlog() {
       {/* Imagen 2 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/vacaciones-terapia-2.jpg"
+          src="/assets/img/blog/vacaciones-terapia-2.webp"
           alt="Familia practicando ejercicios de lenguaje en casa"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -314,7 +314,7 @@ export default function VacacionesTerapiaBlog() {
       {/* Imagen 3 */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/vacaciones-terapia-3.jpg"
+          src="/assets/img/blog/vacaciones-terapia-3.webp"
           alt="Niño motivado participando en terapia de lenguaje"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

@@ -76,7 +76,7 @@ export const AdultoPsicologiaIndividualPage = () => {
                   </p>
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img src="/assets/img/servicios/queespsicoterapia.png" alt="Psicoterapia Individual" className="img-fluid" />
+                  <img src="/assets/img/servicios/queespsicoterapia.webp" alt="Psicoterapia Individual" className="img-fluid" />
                 </div>
               </div>
             </div>
@@ -95,7 +95,7 @@ export const AdultoPsicologiaIndividualPage = () => {
                   </ul>
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img src="/assets/img/servicios/cuandoirapsicoterapia.jpg" alt="Cuándo acudir a terapia" className="img-fluid" />
+                  <img src="/assets/img/servicios/cuandoirapsicoterapia.webp" alt="Cuándo acudir a terapia" className="img-fluid" />
                 </div>
               </div>
             </div>
@@ -124,7 +124,7 @@ export const AdultoPsicologiaIndividualPage = () => {
                   </div>
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img src="/assets/img/servicios/comoloayudamos.jpg" alt="Cómo te ayudamos en Psicoterapia" className="img-fluid" />
+                  <img src="/assets/img/servicios/comoloayudamos.webp" alt="Cómo te ayudamos en Psicoterapia" className="img-fluid" />
                 </div>
               </div>
             </div>

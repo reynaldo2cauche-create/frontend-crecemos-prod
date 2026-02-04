@@ -15,7 +15,10 @@ import {
   Users,
   Building2,
   Phone,
-  AlertCircle
+  AlertCircle,
+  MessageCircle,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
 import { useServicios } from '../../hooks/useServicios';
@@ -23,6 +26,7 @@ import { useMotivosCita } from '../../hooks/useMotivosCita';
 import { useHistorialCita } from '../../hooks/useHistorialCita';
 import { useTrabajadores } from '../../hooks/useTrabajadores';
 import { ROLES } from '../../constants/roles';
+import api from '../../services/api';
 
 const ModalAgendarCita = ({
   open,
@@ -58,6 +62,79 @@ const ModalAgendarCita = ({
   const [tipoCita, setTipoCita] = useState(null);
   const [terapeutasReunion, setTerapeutasReunion] = useState([]);
 
+  // Estados para asistencia
+  const [seguimientoAsistencia, setSeguimientoAsistencia] = useState(null);
+  const [cargandoAsistencia, setCargandoAsistencia] = useState(false);
+  const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
+
+  // Estados para el tab de recordatorio
+  const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
+  const [copiado, setCopiado] = useState(false);
+
+// Determinar permisos
+const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
+
+
+// Cargar seguimiento de asistencia
+const cargarSeguimientoAsistencia = useCallback(async () => {
+  if (!citaEditando?.id) return;
+
+  setCargandoAsistencia(true);
+  try {
+    const response = await api.get(`/asistencia/seguimiento/${citaEditando.id}`);
+    setSeguimientoAsistencia(response.data);
+  } catch (error) {
+    console.error('Error al cargar seguimiento:', error);
+  } finally {
+    setCargandoAsistencia(false);
+  }
+}, [citaEditando?.id]);
+
+// Marcar llegada (Recepción)
+const handleRecepcionMarcar = async (estadoId) => {
+  setGuardandoAsistencia(true);
+  try {
+    await api.post('/asistencia/registrar-recepcion', {
+      cita_id: citaEditando.id,
+      usuario_id: currentUser.id,
+      estado_id: estadoId
+    });
+
+    await cargarSeguimientoAsistencia();
+  } catch (error) {
+    console.error('Error al registrar:', error);
+    alert(error.response?.data?.message || 'Error al registrar');
+  } finally {
+    setGuardandoAsistencia(false);
+  }
+};
+
+// Marcar sesión completada (Terapeuta)
+const handleTerapeutaMarcar = async (estadoId) => {
+  setGuardandoAsistencia(true);
+  try {
+    await api.post('/asistencia/registrar-terapeuta', {
+      cita_id: citaEditando.id,
+      terapeuta_id: currentUser.id,
+      estado_id: estadoId
+    });
+
+    await cargarSeguimientoAsistencia();
+  } catch (error) {
+    console.error('Error al registrar:', error);
+    alert(error.response?.data?.message || 'Error al registrar');
+  } finally {
+    setGuardandoAsistencia(false);
+  }
+};
+
+// Cargar seguimiento cuando se abre el tab
+useEffect(() => {
+  if (tabValue === 2 && modoEdicion && citaEditando?.id) {
+    cargarSeguimientoAsistencia();
+  }
+}, [tabValue, modoEdicion, citaEditando?.id, cargarSeguimientoAsistencia]);
+
   // ✅ useCallback para el onChange del campo motivo - Actualiza en el PADRE
   const handleMotivoChange = useCallback((e) => {
     const nuevoValor = e.target.value;
@@ -82,8 +159,162 @@ const ModalAgendarCita = ({
 
   // Determinar permisos del usuario
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
-  const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION;
+  const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION || currentUser?.rol?.id === ROLES.TERAPEUTA;
   const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR; // Solo ADMINISTRADOR puede eliminar
+
+  // Función para generar mensaje de recordatorio
+  const generarMensajeRecordatorio = useCallback(() => {
+    // En modo edición, usar los datos reales de citaEditando
+    if (modoEdicion && citaEditando) {
+      // Validar que exista fecha y hora_inicio
+      if (!citaEditando.fecha || !citaEditando.hora_inicio) {
+        console.warn('No hay fecha u hora_inicio disponible para generar el mensaje');
+        return;
+      }
+
+      // Formatear la fecha usando la fecha real de la cita
+      // IMPORTANTE: Combinar fecha y hora_inicio
+      const fechaStr = citaEditando.fecha; // formato: YYYY-MM-DD
+      const horaStr = citaEditando.hora_inicio; // formato: HH:MM:SS
+
+      // Parsear manualmente para evitar problemas de zona horaria
+      const [year, month, day] = fechaStr.split('-').map(Number);
+      const [hours, minutes] = horaStr.split(':').map(Number);
+
+      // Crear fecha en zona horaria local
+      const fechaObj = new Date(year, month - 1, day, hours, minutes);
+
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+      const diaSemana = diasSemana[fechaObj.getDay()];
+      const dia = fechaObj.getDate();
+      const mes = meses[fechaObj.getMonth()];
+
+      // Formatear la hora
+      let horas = fechaObj.getHours();
+      let minutos = fechaObj.getMinutes();
+      const ampm = horas >= 12 ? 'pm' : 'am';
+      horas = horas % 12;
+      horas = horas ? horas : 12; // la hora 0 se convierte en 12
+      const horaFormateada = `${horas}:${minutos.toString().padStart(2, '0')} ${ampm}`;
+
+      // Obtener servicio
+      let servicioNombre = 'Servicio no especificado';
+      if (citaEditando.tipo_cita === 'NORMAL' && citaEditando.servicio) {
+        servicioNombre = citaEditando.servicio.nombre;
+      } else if (citaEditando.tipo_cita === 'VISITA_ESCOLAR') {
+        servicioNombre = 'Visita Escolar';
+      } else if (citaEditando.tipo_cita === 'REUNION_CLINICA') {
+        servicioNombre = 'Reunión Clínica';
+      }
+
+      // Obtener terapeuta
+      let terapeutaNombre = 'Terapeuta no especificado';
+      if (citaEditando.tipo_cita === 'NORMAL' || citaEditando.tipo_cita === 'VISITA_ESCOLAR') {
+        if (citaEditando.doctor) {
+          terapeutaNombre = `Lic. ${citaEditando.doctor.nombres || ''} ${citaEditando.doctor.apellidos || ''}`.trim();
+        }
+      } else if (citaEditando.tipo_cita === 'REUNION_CLINICA' && citaEditando.terapeutas && citaEditando.terapeutas.length > 0) {
+        terapeutaNombre = 'Equipo de Terapeutas';
+      }
+
+      // Generar mensaje
+      const mensaje = `Buenas tardes, Sr(a).
+Le hacemos recordar su cita para el día de mañana
+🗓️ ${diaSemana}, ${dia} de ${mes}
+🕓 ${horaFormateada}
+💜 ${servicioNombre}
+✨ ${terapeutaNombre}
+
+🥳 ¡Los esperamos! ✨`;
+
+      setMensajeRecordatorio(mensaje);
+      setCopiado(false);
+    } else {
+      // Modo creación: usar datos del formulario
+      if (!formularioCita.paciente || !formularioCita.fechasHoras?.[0]) {
+        alert('No hay suficiente información para generar el mensaje');
+        return;
+      }
+
+      // Obtener fecha y hora de la primera cita
+      const fechaHora = formularioCita.fechasHoras[0];
+
+      // Formatear la fecha
+      const fechaObj = new Date(`${fechaHora.fecha}T${fechaHora.horaInicio}`);
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+      const diaSemana = diasSemana[fechaObj.getDay()];
+      const dia = fechaObj.getDate();
+      const mes = meses[fechaObj.getMonth()];
+
+      // Formatear la hora
+      let horas = fechaObj.getHours();
+      let minutos = fechaObj.getMinutes();
+      const ampm = horas >= 12 ? 'pm' : 'am';
+      horas = horas % 12;
+      horas = horas ? horas : 12; // la hora 0 se convierte en 12
+      const horaFormateada = `${horas}:${minutos.toString().padStart(2, '0')} ${ampm}`;
+
+      // Obtener servicio
+      let servicioNombre = 'Servicio no especificado';
+      if (tipoCita === 'NORMAL' && formularioCita.servicio_id) {
+        const servicio = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []))
+          .find(s => s.id === parseInt(formularioCita.servicio_id));
+        servicioNombre = servicio?.nombre || 'Servicio no especificado';
+      } else if (tipoCita === 'VISITA_ESCOLAR') {
+        servicioNombre = 'Visita Escolar';
+      } else if (tipoCita === 'REUNION_CLINICA') {
+        servicioNombre = 'Reunión Clínica';
+      }
+
+      // Obtener terapeuta
+      let terapeutaNombre = 'Terapeuta no especificado';
+      if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
+        if (terapeutaSeleccionado) {
+          terapeutaNombre = `Lic. ${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim();
+        }
+      } else if (tipoCita === 'REUNION_CLINICA' && terapeutasReunion.length > 0) {
+        terapeutaNombre = 'Equipo de Terapeutas';
+      }
+
+      // Generar mensaje
+      const mensaje = `Buenas tardes, Sr(a).
+Le hacemos recordar su cita para el día de mañana
+🗓️ ${diaSemana}, ${dia} de ${mes}
+🕓 ${horaFormateada}
+💜 ${servicioNombre}
+✨ ${terapeutaNombre}
+
+🥳 ¡Los esperamos! ✨`;
+
+      setMensajeRecordatorio(mensaje);
+      setCopiado(false);
+    }
+  }, [modoEdicion, citaEditando, tipoCita, formularioCita, serviciosApi, servicios, terapeutaSeleccionado, terapeutasReunion]);
+
+  // Función para copiar al portapapeles
+  const copiarAlPortapapeles = async () => {
+    try {
+      await navigator.clipboard.writeText(mensajeRecordatorio);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch (err) {
+      console.error('Error al copiar:', err);
+      alert('Error al copiar el mensaje');
+    }
+  };
+
+  // Generar mensaje automáticamente cuando se abre el tab de recordatorio
+  useEffect(() => {
+    if (tabValue === 3 && modoEdicion && citaEditando) {
+      if (citaEditando.fecha && citaEditando.hora_inicio) {
+        generarMensajeRecordatorio();
+      }
+    }
+  }, [tabValue, modoEdicion, citaEditando, generarMensajeRecordatorio]);
 
   // Verificar si una hora está disponible
   const verificarDisponibilidad = (fechaString, hora, duracionMinutos) => {
@@ -211,8 +442,8 @@ const ModalAgendarCita = ({
     }
     // Lunes a viernes (1-5)
     else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Horario de la mañana: 9:00 AM hasta 12:40 PM (incluido)
-      horas.push('09:00', '09:40', '10:20', '11:00', '11:40', '12:20');
+      // Horario de la mañana: 8:00 AM hasta 12:40 PM (incluido)
+      horas.push('08:00', '08:40', '09:20', '10:00', '10:40', '11:20', '12:00', '12:40');
 
       // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
       let minutos = 14 * 60; // 14:00 PM (2:00 PM)
@@ -246,6 +477,8 @@ const ModalAgendarCita = ({
       setQueryPaciente('');
       setTabValue(0);
       setDialogoEliminarAbierto(false);
+      setMensajeRecordatorio(''); // Limpiar mensaje al abrir
+      setCopiado(false); // Limpiar estado de copiado
 
       // ✅ RESETEAR motivo de eliminación SOLO al abrir
       setMotivoEliminacion('');
@@ -464,6 +697,7 @@ const handleGuardar = useCallback(() => {
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
+                
                 <button
                   onClick={() => setTabValue(1)}
                   className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
@@ -475,6 +709,38 @@ const handleGuardar = useCallback(() => {
                   <History className="w-4 h-4" />
                   Historial
                   {tabValue === 1 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
+                  )}
+                </button>
+
+                {/* 🆕 TAB DE ASISTENCIA */}
+                <button
+                  onClick={() => setTabValue(2)}
+                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
+                    tabValue === 2
+                      ? 'text-[#7B1FA2]'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  Asistencia
+                  {tabValue === 2 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
+                  )}
+                </button>
+
+                {/* 🆕 TAB DE RECORDATORIO */}
+                <button
+                  onClick={() => setTabValue(3)}
+                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
+                    tabValue === 3
+                      ? 'text-[#7B1FA2]'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Recordatorio
+                  {tabValue === 3 && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
@@ -1585,6 +1851,363 @@ const handleGuardar = useCallback(() => {
                 )}
               </div>
             )}
+
+            {/* TAB DE ASISTENCIA */}
+{modoEdicion && puedeVerHistorial && tabValue === 2 && (
+  <div className="space-y-5">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-bold text-gray-900">Control de Asistencia</h3>
+      {cargandoAsistencia && (
+        <div className="w-5 h-5 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
+      )}
+    </div>
+
+    {/* RECEPCIONISTA - Marcar llegada */}
+    {esRecepcionista && (
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+            <User className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-gray-900">Recepción</h4>
+            <p className="text-xs text-gray-600">¿El paciente llegó a su cita?</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleRecepcionMarcar(7)}
+            disabled={guardandoAsistencia || seguimientoAsistencia?.recepcion_marco}
+            className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ✓ Asistió
+          </button>
+
+          <button
+            onClick={() => handleRecepcionMarcar(6)}
+            disabled={guardandoAsistencia || seguimientoAsistencia?.recepcion_marco}
+            className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ◆ Sesión Dictada
+          </button>
+        </div>
+
+        {seguimientoAsistencia?.recepcion_marco === 1 && (
+          <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded-lg text-center">
+            <p className="text-xs text-green-800 font-bold">Ya registrado</p>
+          </div>
+        )}
+
+        {guardandoAsistencia && (
+          <div className="mt-3 text-center text-sm text-gray-600 flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            Guardando...
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* TERAPEUTA - Marcar sesión */}
+    {esTerapeuta && (
+      <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+            <Briefcase className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-gray-900">Terapeuta</h4>
+            <p className="text-xs text-gray-600">Registrar resultado de la sesión</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleTerapeutaMarcar(7)}
+            disabled={guardandoAsistencia || seguimientoAsistencia?.terapeuta_marco}
+            className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ✓ Asistió
+          </button>
+
+          <button
+            onClick={() => handleTerapeutaMarcar(6)}
+            disabled={guardandoAsistencia || seguimientoAsistencia?.terapeuta_marco}
+            className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ◆ Sesión Dictada
+          </button>
+        </div>
+
+        {seguimientoAsistencia?.terapeuta_marco === 1 && (
+          <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded-lg text-center">
+            <p className="text-xs text-green-800 font-bold">Ya registrado</p>
+          </div>
+        )}
+
+        {guardandoAsistencia && (
+          <div className="mt-3 text-center text-sm text-gray-600 flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            Guardando...
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Resumen de registros */}
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <h4 className="text-sm font-bold text-gray-900 mb-3">Registros</h4>
+
+      <div className="space-y-2">
+        {/* Registro Recepción */}
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">Recepción</span>
+          </div>
+
+          {seguimientoAsistencia?.recepcion_marco === 1 ? (
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded font-bold ${
+                seguimientoAsistencia.recepcion_estado_id === 7
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-orange-100 text-orange-800'
+              }`}>
+                {seguimientoAsistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+              </span>
+              {seguimientoAsistencia?.recepcion_fecha && (
+                <span className="text-xs text-gray-500">
+                  {new Date(seguimientoAsistencia.recepcion_fecha).toLocaleString('es-PE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }).replace(',', '')}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">
+              Pendiente
+            </span>
+          )}
+        </div>
+
+        {/* Registro Terapeuta */}
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">Terapeuta</span>
+          </div>
+
+          {seguimientoAsistencia?.terapeuta_marco === 1 ? (
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded font-bold ${
+                seguimientoAsistencia.terapeuta_estado_id === 7
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-orange-100 text-orange-800'
+              }`}>
+                {seguimientoAsistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+              </span>
+              {seguimientoAsistencia?.terapeuta_fecha && (
+                <span className="text-xs text-gray-500">
+                  {new Date(seguimientoAsistencia.terapeuta_fecha).toLocaleString('es-PE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }).replace(',', '')}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">
+              Pendiente
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Alerta si hay discrepancia */}
+      {seguimientoAsistencia?.recepcion_marco === 1 && seguimientoAsistencia?.terapeuta_marco === 1 &&
+       !((seguimientoAsistencia.recepcion_estado_id === 7 && seguimientoAsistencia.terapeuta_estado_id === 7) ||
+         (seguimientoAsistencia.recepcion_estado_id === 6 && seguimientoAsistencia.terapeuta_estado_id === 6)) && (
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-600" />
+          <p className="text-xs text-red-800 font-medium">
+            Discrepancia detectada - Se notificará a Administración
+          </p>
+        </div>
+      )}
+
+      {/* Mensaje de éxito */}
+      {seguimientoAsistencia?.recepcion_marco === 1 && seguimientoAsistencia?.terapeuta_marco === 1 &&
+       seguimientoAsistencia.recepcion_estado_id === 7 && seguimientoAsistencia.terapeuta_estado_id === 7 && (
+        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+          <span className="text-green-600 font-bold">✓</span>
+          <p className="text-xs text-green-800 font-medium">
+            Asistencia validada correctamente
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+            {/* 🆕 TAB DE RECORDATORIO */}
+            {modoEdicion && puedeVerHistorial && tabValue === 3 && (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Mensaje de Recordatorio</h3>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-[#7B1FA2]" />
+                    <span className="text-sm font-medium text-gray-600">Para enviar por WhatsApp</span>
+                  </div>
+                </div>
+
+                {/* Información de la cita */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4">
+                  <h4 className="text-sm font-bold text-gray-900 mb-3">Resumen de la Cita</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Paciente:</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {citaEditando?.paciente ?
+                          `${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()
+                          : 'No especificado'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Fecha:</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {citaEditando?.fecha ? (() => {
+                          // Parsear fecha correctamente sin problemas de zona horaria
+                          const [year, month, day] = citaEditando.fecha.split('-').map(Number);
+                          const fechaLocal = new Date(year, month - 1, day);
+                          return fechaLocal.toLocaleDateString('es-ES', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long'
+                          });
+                        })() : 'No especificada'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Hora:</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {citaEditando?.hora_inicio ? (() => {
+                          // Extraer hora correctamente
+                          const [hours, minutes] = citaEditando.hora_inicio.split(':').map(Number);
+                          const ampm = hours >= 12 ? 'pm' : 'am';
+                          const horasFormateadas = hours % 12 || 12;
+                          return `${horasFormateadas}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                        })() : 'No especificada'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Tipo:</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {citaEditando?.tipo_cita === 'NORMAL' ? 'Cita Normal' :
+                         citaEditando?.tipo_cita === 'REUNION_CLINICA' ? 'Reunión Clínica' :
+                         citaEditando?.tipo_cita === 'VISITA_ESCOLAR' ? 'Visita Escolar' : 'No especificado'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botón para generar mensaje */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                      <MessageCircle className="w-8 h-8 text-white" />
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">Generar Mensaje de Recordatorio</h4>
+                    <p className="text-sm text-gray-600 mb-4 max-w-md">
+                      Genera un mensaje personalizado con los datos de la cita para enviar por WhatsApp al paciente
+                    </p>
+                    <button
+                      onClick={generarMensajeRecordatorio}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all hover:scale-[1.02]"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Generar Mensaje
+                    </button>
+                  </div>
+                </div>
+
+                {/* Área del mensaje generado */}
+                {mensajeRecordatorio && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-gray-900">Mensaje Generado</h4>
+                      <button
+                        onClick={copiarAlPortapapeles}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-lg font-bold text-sm hover:shadow-md transition-all"
+                      >
+                        {copiado ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            ¡Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            Copiar Mensaje
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                      <div className="bg-white rounded-lg p-4 border border-gray-300">
+                        <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans">
+                          {mensajeRecordatorio}
+                        </pre>
+                      </div>
+                      
+                      <div className="mt-3 flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Listo para copiar y pegar en WhatsApp</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {mensajeRecordatorio.length} caracteres
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-yellow-900 mb-1">Instrucciones:</p>
+                          <ul className="text-xs text-yellow-800 space-y-1">
+                            <li>1. Haz clic en "Copiar Mensaje" para copiar el texto al portapapeles</li>
+                            <li>2. Abre WhatsApp y selecciona el contacto del paciente</li>
+                            <li>3. Pega el mensaje (Ctrl+V o Cmd+V) en el chat</li>
+                            <li>4. Revisa que toda la información sea correcta antes de enviar</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!mensajeRecordatorio && (
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-8 text-center">
+                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <MessageCircle className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">Mensaje no generado</h4>
+                    <p className="text-sm text-gray-600 max-w-md mx-auto">
+                      Haz clic en "Generar Mensaje" para crear un mensaje de recordatorio personalizado con los datos de la cita actual.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -1742,5 +2365,3 @@ const handleGuardar = useCallback(() => {
 
 // Memorizar el componente para evitar re-renders innecesarios
 export default React.memo(ModalAgendarCita);
-
-

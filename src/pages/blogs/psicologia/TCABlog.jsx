@@ -18,7 +18,7 @@ export default function TCABlog() {
           y en conflicto interno. Ilustración digital profesional, mood emotivo y reflexivo." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca-portada.jpg"
+          src="/assets/img/blog/tca-portada.webp"
           alt="Día Internacional de la lucha contra los TCA"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -59,7 +59,7 @@ export default function TCABlog() {
           ilustración vectorial profesional. Fondo blanco o gradiente suave." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca1.jpg"
+          src="/assets/img/blog/tca1.webp"
           alt="Factores que influyen en los TCA"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -127,7 +127,7 @@ export default function TCABlog() {
           Fondo oscuro o degradado. Ilustración médica profesional con sensibilidad artística." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca2.jpg"
+          src="/assets/img/blog/tca2.webp"
           alt="Impacto en la salud física y mental"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -198,7 +198,7 @@ export default function TCABlog() {
           menta y durazno. Ilustración digital profesional, composición simétrica." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca3.jpg"
+          src="/assets/img/blog/tca3.webp"
           alt="Tipos de Trastornos de Conducta Alimentaria"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -267,7 +267,7 @@ export default function TCABlog() {
           vectorial. Composición balanceada y clara." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca4.png"
+          src="/assets/img/blog/tca4.webp"
           alt="Señales de alerta de los TCA"
           style={{ width: '100%', height: '650px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -352,7 +352,7 @@ export default function TCABlog() {
           Fondo con elementos abstractos que sugieren apoyo y seguridad." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca5.png"
+          src="/assets/img/blog/tca5.webp"
           alt="Ofreciendo apoyo a personas con TCA"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -467,7 +467,7 @@ export default function TCABlog() {
           superación y nueva vida. Composición vertical ascendente." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/tca6.png"
+          src="/assets/img/blog/tca6.webp"
           alt="Esperanza y recuperación de los TCA"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
