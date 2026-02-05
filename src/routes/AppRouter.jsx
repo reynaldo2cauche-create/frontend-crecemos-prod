@@ -31,6 +31,7 @@ import  AdultoEvalPsicolUniverPage  from '../pages/service-adulto/AdultoEvalPsic
 import Sidebar, { SidebarProvider, SidebarContentWrapper } from '../components/Sidebar';
 import Login from '../components/Login';
 import PrivateRoute from '../components/PrivateRoute';
+
 import MiPerfil from '../pages/MiPerfil';
 import Agenda from '../pages/Agenda';
 import ReglamentoInterno from '../pages/ReglamentoInterno';
@@ -101,12 +102,14 @@ export const AppRouter = () => {
         } />
         <Route path="/intranet/agenda" element={
           <PrivateRoute>
-            <SidebarProvider>
-              <Sidebar />
-              <SidebarContentWrapper>
-                <Agenda />
-              </SidebarContentWrapper>
-            </SidebarProvider>
+          
+              <SidebarProvider>
+                <Sidebar />
+                <SidebarContentWrapper>
+                  <Agenda />
+                </SidebarContentWrapper>
+              </SidebarProvider>
+      
           </PrivateRoute>
         } />
         <Route path="/intranet/postulaciones" element={

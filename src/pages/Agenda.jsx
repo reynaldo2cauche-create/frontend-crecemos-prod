@@ -808,7 +808,7 @@ const guardarCita = async (datosFormulario = null) => {
                   const day = String(ultimoDiaMes.getDate()).padStart(2, '0');
                   return `${year}-${month}-${day}`;
                 })()}
-                terapeutaId={terapeutaFiltro || null}
+                terapeutaId={currentUser?.rol?.id === ROLES.TERAPEUTA ? currentUser.id : terapeutaFiltro}
                 fechaReferencia={(() => {
                   // Siempre enviar la fecha visible del calendario
                   const fecha = new Date(fechaActual);

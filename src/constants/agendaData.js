@@ -3,9 +3,9 @@
 export const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // Horarios fijos para el calendario (40 minutos de intervalo)
-// Cubre desde 8:00 AM hasta 8:00 PM (lunes-viernes)
+// Cubre desde 8:20 AM hasta 8:00 PM (lunes-viernes)
 export const horas = [
-  '08:00', '08:40', '09:20', '10:00', '10:40', '11:20', '12:00', '12:40',
+  '08:20', '09:00', '09:40', '10:20', '11:00', '11:40', '12:20',
   '14:00', '14:40', '15:20', '16:00', '16:40', '17:20', '18:00',
   '18:40', '19:20', '20:00'
 ];
@@ -130,8 +130,8 @@ export const generarHorasDisponibles = (duracionMinutos, diaSemana) => {
     inicioMin = 8 * 60; // 8:00 = 480 minutos
     finMin = 14 * 60; // 14:00 = 840 minutos
   } else {
-    // Lunes a Viernes: 8:00 AM a 8:00 PM
-    inicioMin = 8 * 60; // 8:00 = 480 minutos
+    // Lunes a Viernes: 8:20 AM a 8:00 PM
+    inicioMin = 8 * 60 + 20; // 8:20 = 500 minutos
     finMin = 20 * 60; // 20:00 = 1200 minutos
   }
 
@@ -201,12 +201,12 @@ export const esHorarioBloqueado = (hora, diaSemana) => {
     return false; // Dentro del horario permitido en sábado
   }
 
-  // Lunes a Viernes: 8:00 AM a 8:00 PM
+  // Lunes a Viernes: 8:20 AM a 8:00 PM
   if (diaSemana >= 1 && diaSemana <= 5) {
-    const inicioLaboral = 8 * 60; // 8:00 = 480 minutos
+    const inicioLaboral = 8 * 60 + 20; // 8:20 = 500 minutos
     const finLaboral = 20 * 60; // 20:00 = 1200 minutos
 
-    // Bloquear antes de las 8:00 AM o después de las 8:00 PM
+    // Bloquear antes de las 8:20 AM o después de las 8:00 PM
     if (horaMinutos < inicioLaboral || horaMinutos >= finLaboral) {
       return true;
     }

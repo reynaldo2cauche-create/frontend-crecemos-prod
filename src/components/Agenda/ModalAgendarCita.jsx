@@ -442,8 +442,8 @@ Le hacemos recordar su cita para el día de mañana
     }
     // Lunes a viernes (1-5)
     else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Horario de la mañana: 8:00 AM hasta 12:40 PM (incluido)
-      horas.push('08:00', '08:40', '09:20', '10:00', '10:40', '11:20', '12:00', '12:40');
+      // Horario de la mañana: 8:20 AM hasta 12:20 PM (incluido)
+      horas.push('08:20', '09:00', '09:40', '10:20', '11:00', '11:40', '12:20');
 
       // Horario de la tarde: desde 2:00 PM (14:00) hasta 8:00 PM (20:00)
       let minutos = 14 * 60; // 14:00 PM (2:00 PM)
@@ -681,33 +681,35 @@ const handleGuardar = useCallback(() => {
 
           {/* Tabs */}
           {modoEdicion && puedeVerHistorial && (
-            <div className="border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
-              <div className="flex px-2">
+            <div className="border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white overflow-x-auto">
+              <div className="flex px-2 min-w-max">
                 <button
                   onClick={() => setTabValue(0)}
-                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
+                  className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
                     tabValue === 0
                       ? 'text-[#7B1FA2]'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
-                  Detalles
+                  <span className="hidden sm:inline">Detalles</span>
+                  <span className="sm:hidden">Det.</span>
                   {tabValue === 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
-                
+
                 <button
                   onClick={() => setTabValue(1)}
-                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
+                  className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
                     tabValue === 1
                       ? 'text-[#7B1FA2]'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <History className="w-4 h-4" />
-                  Historial
+                  <span className="hidden sm:inline">Historial</span>
+                  <span className="sm:hidden">Hist.</span>
                   {tabValue === 1 && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
@@ -716,34 +718,38 @@ const handleGuardar = useCallback(() => {
                 {/* 🆕 TAB DE ASISTENCIA */}
                 <button
                   onClick={() => setTabValue(2)}
-                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
+                  className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
                     tabValue === 2
                       ? 'text-[#7B1FA2]'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <User className="w-4 h-4" />
-                  Asistencia
+                  <span className="hidden sm:inline">Asistencia</span>
+                  <span className="sm:hidden">Asist.</span>
                   {tabValue === 2 && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
 
-                {/* 🆕 TAB DE RECORDATORIO */}
-                <button
-                  onClick={() => setTabValue(3)}
-                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200 relative ${
-                    tabValue === 3
-                      ? 'text-[#7B1FA2]'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Recordatorio
-                  {tabValue === 3 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
-                  )}
-                </button>
+                {/* 🆕 TAB DE RECORDATORIO - Solo para Admisión y Administración */}
+                {!esTerapeuta && (
+                  <button
+                    onClick={() => setTabValue(3)}
+                    className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
+                      tabValue === 3
+                        ? 'text-[#7B1FA2]'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="hidden sm:inline">Recordatorio</span>
+                    <span className="sm:hidden">Rec.</span>
+                    {tabValue === 3 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}

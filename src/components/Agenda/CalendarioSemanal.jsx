@@ -39,17 +39,17 @@ const CalendarioSemanal = ({
     }
     // Lunes a viernes (1-5)
     else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Lunes a Viernes: 8:00 AM a 8:00 PM
+      // Lunes a Viernes: 8:20 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
-      // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
+      // Última cita antes del break: 12:20 PM (puede extenderse hasta 13:00 si es de 40 min)
       // Primera cita después del break: 14:00 PM (2:00 PM)
 
-      let minutos = 8 * 60; // 8:00 AM
-      const ultimaCitaAntesBreak = 12 * 60 + 40; // 12:40 PM
+      let minutos = 8 * 60 + 20; // 8:20 AM
+      const ultimaCitaAntesBreak = 12 * 60 + 20; // 12:20 PM
       const primeraCitaDespuesBreak = 14 * 60; // 14:00 PM (2:00 PM)
       const finMinutos = 20 * 60; // 8:00 PM
 
-      // Horario de la mañana: 8:00 AM hasta 12:40 PM (incluido)
+      // Horario de la mañana: 8:20 AM hasta 12:20 PM (incluido)
       while (minutos <= ultimaCitaAntesBreak) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
@@ -337,15 +337,35 @@ const CalendarioSemanal = ({
                               }}
                               className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
                             >
-                              {/* Badge de tipo de cita */}
+                              {/* Badge de motivo de cita */}
                               {(() => {
-                                const tipoCita = cita.tipo_cita;
-                                let badge = { text: 'Cita', color: 'bg-blue-500' };
+                                // Obtener el motivo de la cita
+                                const motivoNombre = cita.motivo?.nombre || '';
+                                let badge = { text: 'CITA', color: 'bg-gray-500' };
 
-                                if (tipoCita === 'REUNION_CLINICA') {
-                                  badge = { text: 'RC', color: 'bg-purple-500' };
-                                } else if (tipoCita === 'VISITA_ESCOLAR') {
-                                  badge = { text: 'VE', color: 'bg-orange-500' };
+                                // Abreviaturas según los motivos reales del sistema
+                                // ⚠️ IMPORTANTE: Verificar "reevaluación" ANTES que "evaluación"
+                                // porque "reevaluación" contiene la palabra "evaluación"
+                                if (motivoNombre.toLowerCase().includes('entrevista de padres') || motivoNombre.toLowerCase().includes('entrevista padres')) {
+                                  badge = { text: 'EP', color: 'bg-green-500' }; // Entrevista de Padres
+                                } else if (motivoNombre.toLowerCase().includes('entrevista adolescentes') || motivoNombre.toLowerCase().includes('entrevista adultos')) {
+                                  badge = { text: 'EA', color: 'bg-emerald-500' }; // Entrevista Adolescentes/Adultos
+                                } else if (motivoNombre.toLowerCase().includes('reevaluación') || motivoNombre.toLowerCase().includes('reevaluacion')) {
+                                  badge = { text: 'REEV', color: 'bg-orange-500' }; // Reevaluación
+                                } else if (motivoNombre.toLowerCase().includes('evaluación') || motivoNombre.toLowerCase().includes('evaluacion')) {
+                                  badge = { text: 'EVAL', color: 'bg-yellow-500' }; // Evaluación
+                                } else if (motivoNombre.toLowerCase().includes('sesión de terapia') || motivoNombre.toLowerCase().includes('sesion de terapia')) {
+                                  badge = { text: 'ST', color: 'bg-blue-500' }; // Sesión de Terapia
+                                } else if (motivoNombre.toLowerCase().includes('informe verbal')) {
+                                  badge = { text: 'IV', color: 'bg-indigo-500' }; // Informe Verbal
+                                } else if (motivoNombre.toLowerCase().includes('reunión clínica') || motivoNombre.toLowerCase().includes('reunion clinica')) {
+                                  badge = { text: 'RC', color: 'bg-purple-500' }; // Reunión Clínica
+                                } else if (motivoNombre.toLowerCase().includes('visita escolar')) {
+                                  badge = { text: 'VE', color: 'bg-teal-500' }; // Visita Escolar
+                                } else if (motivoNombre) {
+                                  // Generar abreviatura automática si hay un motivo nuevo
+                                  const palabras = motivoNombre.split(' ').filter(p => p.length > 2);
+                                  badge.text = palabras.slice(0, 2).map(p => p[0]).join('').toUpperCase();
                                 }
 
                                 return (
