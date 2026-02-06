@@ -1,5 +1,8 @@
 import axios from "axios";
 import { obtenerUbicacionActual } from "./geolocationService";
+import ReactDOM from 'react-dom/client';
+import React from 'react';
+import SessionExpiredModal from '../components/SessionExpiredModal';
 
 // URL base del servidor (para archivos estáticos como imágenes)
 export const SERVER_BASE_URL = 'http://localhost:3001';
@@ -74,6 +77,38 @@ api.interceptors.response.use(
       const isPublicEndpoint = publicEndpoints.some(endpoint => requestUrl.includes(endpoint));
 
       if (!isPublicEndpoint) {
+        const errorData = error.response.data;
+
+        // 🔒 Detectar si la sesión fue cerrada por login en otro dispositivo
+        if (errorData?.code === 'SESSION_EXPIRED' || errorData?.message?.includes('sesión en otro dispositivo')) {
+          // Mostrar modal profesional
+          console.log('🔒 Sesión cerrada: Login detectado en otro dispositivo');
+
+          // Crear contenedor para el modal si no existe
+          let modalContainer = document.getElementById('session-expired-modal-root');
+          if (!modalContainer) {
+            modalContainer = document.createElement('div');
+            modalContainer.id = 'session-expired-modal-root';
+            document.body.appendChild(modalContainer);
+          }
+
+          // Renderizar modal con React
+          const root = ReactDOM.createRoot(modalContainer);
+          root.render(
+            React.createElement(SessionExpiredModal, {
+              isOpen: true,
+              onClose: () => {
+                // Limpiar sesión y redirigir
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('user');
+                window.location.href = '/intranet';
+              }
+            })
+          );
+
+          return Promise.reject(error);
+        }
+
         // Token inválido o expirado, redirigir al login solo si NO es endpoint público
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
