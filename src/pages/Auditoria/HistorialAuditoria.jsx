@@ -12,7 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  MapPin,
+  Globe
 } from 'lucide-react';
 import { obtenerHistorial, obtenerEstadisticas } from '../../services/auditoriaService';
 
@@ -376,6 +378,12 @@ const HistorialAuditoria = () => {
                           Descripción
                         </div>
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Ubicación GPS
+                        </div>
+                      </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">IP</th>
                     </tr>
                   </thead>
@@ -421,6 +429,27 @@ const HistorialAuditoria = () => {
                             <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed" title={registro.descripcion}>
                               {registro.descripcion}
                             </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            {registro.latitud && registro.longitud ? (
+                              <div className="flex items-center gap-1.5">
+                                <a
+                                  href={`https://www.google.com/maps?q=${registro.latitud},${registro.longitud}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg text-xs font-medium text-green-700 hover:shadow-md hover:from-green-100 hover:to-emerald-100 transition-all group"
+                                  title={`Ver en Google Maps\nLat: ${registro.latitud}\nLng: ${registro.longitud}`}
+                                >
+                                  <MapPin className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                                  <span className="font-mono">{parseFloat(registro.latitud).toFixed(4)}</span>
+                                  <span className="text-green-400">,</span>
+                                  <span className="font-mono">{parseFloat(registro.longitud).toFixed(4)}</span>
+                                  <Globe className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                </a>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">Sin ubicación</span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <span className="text-xs text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded whitespace-nowrap block w-fit">

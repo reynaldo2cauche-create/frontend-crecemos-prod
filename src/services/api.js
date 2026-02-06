@@ -1,4 +1,5 @@
 import axios from "axios";
+import { obtenerUbicacionActual } from "./geolocationService";
 
 // URL base del servidor (para archivos estáticos como imágenes)
 export const SERVER_BASE_URL = 'http://localhost:3001';
@@ -12,13 +13,36 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
-// Interceptor para agregar el token en cada petición
+// Interceptor para agregar el token Y coordenadas GPS en cada petición
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // 1. Agregar token de autenticación
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // 2. Agregar coordenadas GPS PARA TODOS LOS USUARIOS (auditoría)
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+
+        // Intentar obtener ubicación para TODOS los usuarios (para auditoría)
+        try {
+          const ubicacion = await obtenerUbicacionActual();
+          config.headers['x-user-latitude'] = ubicacion.lat.toString();
+          config.headers['x-user-longitude'] = ubicacion.lng.toString();
+          console.log(`📍 Coordenadas agregadas al request: ${ubicacion.lat}, ${ubicacion.lng}`);
+        } catch (gpsError) {
+          console.warn('⚠️ No se pudo obtener ubicación GPS:', gpsError.message);
+          // No bloqueamos el request si falla el GPS
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Error al procesar ubicación GPS:', error.message);
+    }
+
     return config;
   },
   (error) => {
@@ -26,10 +50,11 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar errores de autenticación
+// Interceptor para manejar errores de autenticación Y geofencing
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Manejar error 401 (No autenticado)
     if (error.response && error.response.status === 401) {
       // Endpoints públicos que NO deben redirigir al login
       const publicEndpoints = [
@@ -55,6 +80,37 @@ api.interceptors.response.use(
         window.location.href = '/intranet';
       }
     }
+
+    // Manejar error 403 (Fuera del perímetro de geofencing)
+    if (error.response && error.response.status === 403) {
+      const errorData = error.response.data;
+
+      if (errorData.code === 'FUERA_DEL_PERIMETRO') {
+        console.error('❌ Acceso denegado por geofencing:', errorData);
+
+        // Agregar información del error para que el componente pueda mostrarla
+        error.geofencingError = {
+          message: errorData.message,
+          distancia: errorData.details?.distancia,
+          radioPermitido: errorData.details?.radioPermitido
+        };
+      }
+    }
+
+    // Manejar error 400 (Ubicación requerida)
+    if (error.response && error.response.status === 400) {
+      const errorData = error.response.data;
+
+      if (errorData.code === 'UBICACION_REQUERIDA' || errorData.code === 'COORDENADAS_INVALIDAS') {
+        console.error('⚠️ Error de ubicación:', errorData);
+
+        error.geofencingError = {
+          message: errorData.message,
+          details: errorData.details
+        };
+      }
+    }
+
     return Promise.reject(error);
   }
 );

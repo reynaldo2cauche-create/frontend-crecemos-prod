@@ -31,10 +31,12 @@ import  AdultoEvalPsicolUniverPage  from '../pages/service-adulto/AdultoEvalPsic
 import Sidebar, { SidebarProvider, SidebarContentWrapper } from '../components/Sidebar';
 import Login from '../components/Login';
 import PrivateRoute from '../components/PrivateRoute';
+import GeofencingGuard from '../components/GeofencingGuard';
 
 import MiPerfil from '../pages/MiPerfil';
 import Agenda from '../pages/Agenda';
 import ReglamentoInterno from '../pages/ReglamentoInterno';
+import TestUbicacion from '../pages/TestUbicacion';
 import PoliticaPrivacidad from '../pages/PoliticaPrivacidad';
 import Mantenimiento from '../pages/Mantenimiento';
 import LibroReclamaciones from '../pages/LibroReclamaciones';
@@ -70,24 +72,30 @@ export const AppRouter = () => {
     <>
       <Routes>
         <Route path="/intranet" element={<Login />} />
+        <Route path="/test-ubicacion" element={<TestUbicacion />} />
+     
         <Route path="/intranet/lista-pacientes" element={
           <PrivateRoute>
-            <SidebarProvider>
-              <Sidebar />
-              <SidebarContentWrapper>
-                <ListaPacientes />
-              </SidebarContentWrapper>
-            </SidebarProvider>
+            <GeofencingGuard>
+              <SidebarProvider>
+                <Sidebar />
+                <SidebarContentWrapper>
+                  <ListaPacientes />
+                </SidebarContentWrapper>
+              </SidebarProvider>
+            </GeofencingGuard>
           </PrivateRoute>
         } />
         <Route path="/intranet/reportes-evaluaciones" element={
           <PrivateRoute>
-            <SidebarProvider>
-              <Sidebar />
-              <SidebarContentWrapper>
-                <ReportesEvaluaciones />
-              </SidebarContentWrapper>
-            </SidebarProvider>
+            <GeofencingGuard>
+              <SidebarProvider>
+                <Sidebar />
+                <SidebarContentWrapper>
+                  <ReportesEvaluaciones />
+                </SidebarContentWrapper>
+              </SidebarProvider>
+            </GeofencingGuard>
           </PrivateRoute>
         } />
         <Route path="/intranet/mi-perfil" element={
