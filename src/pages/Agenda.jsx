@@ -36,11 +36,13 @@ import { actualizarCita } from '../services/citaService';
 
 // Hooks y utilidades
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { usePerformanceConfig } from '../hooks/useDeviceOptimization';
 import { getEstadoColor } from '../utils/agendaUtils';
 import { ROLES } from '../constants/roles';
 
 const Agenda = () => {
   const currentUser = useCurrentUser();
+  const performanceConfig = usePerformanceConfig(); // ✅ Detectar y optimizar para tablets
   // Inicializar con la fecha actual de Perú
   const [fechaActual, setFechaActual] = useState(() => {
     const ahora = new Date();
@@ -81,6 +83,7 @@ const Agenda = () => {
   const [estados, setEstados] = useState([]);
   const [trabajadores, setTrabajadores] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [cargandoCita, setCargandoCita] = useState(false); // ✅ Loading para abrir modal
 
   // Estados para notificaciones
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -319,8 +322,8 @@ const Agenda = () => {
   };
 
   const handleCitaClick = async (citaData) => {
+    setCargandoCita(true); // ✅ Mostrar loading inmediatamente
     try {
-   
       const citaCompleta = await getCitaById(citaData.cita.id);
 
       
@@ -381,6 +384,8 @@ const Agenda = () => {
       setSnackbarMessage('Error al cargar la cita');
       setSnackbarSeverity('error');
       setShowSnackbar(true);
+    } finally {
+      setCargandoCita(false); // ✅ Ocultar loading
     }
   };
 
@@ -763,6 +768,16 @@ const guardarCita = async (datosFormulario = null) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* ✅ Loading overlay al abrir cita */}
+      {cargandoCita && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border-4 border-[#7B1FA2] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-700 font-semibold">Cargando detalles de la cita...</p>
+          </div>
+        </div>
+      )}
+
       {/* Snackbar de notificaciones */}
       {showSnackbar && (
         <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
@@ -785,10 +800,19 @@ const guardarCita = async (datosFormulario = null) => {
             <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda de Citas</h1>
               <p className="text-gray-600">Gestiona y organiza las citas de tus pacientes</p>
             </div>
+            {/* ✅ Indicador de modo optimizado para tablets */}
+            {performanceConfig.device.shouldOptimize && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                <Sparkles className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-semibold text-green-700">
+                  Modo optimizado {performanceConfig.device.isTablet ? 'Tablet' : 'Móvil'}
+                </span>
+              </div>
+            )}
           </div>
              <EstadisticasCitas
                 key={recargarEstadisticas}

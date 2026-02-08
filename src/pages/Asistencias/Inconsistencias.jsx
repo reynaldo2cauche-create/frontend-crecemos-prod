@@ -1,14 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldCheckIcon, ExclamationTriangleIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  CalendarIcon,
+  UserIcon,
+  UsersIcon,
+  FunnelIcon,
+  XMarkIcon,
+  MagnifyingGlassIcon,
+  AdjustmentsHorizontalIcon,
+  ArrowPathIcon,
+  ChevronDownIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon
+} from '@heroicons/react/24/outline';
 import { obtenerInconsistenciasAsistencia } from '../../services/api';
+import { getTrabajadores } from '../../services/trabajadorService';
+import { buscarPacientes } from '../../services/pacienteService';
 
 const Inconsistencias = () => {
   const [inconsistencias, setInconsistencias] = useState([]);
+  const [inconsistenciasFiltradas, setInconsistenciasFiltradas] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Filtros avanzados
+  const [filtros, setFiltros] = useState({
+    terapeuta: '',
+    paciente: '',
+    tipoInconsistencia: '',
+    estadoRecepcion: '',
+    estadoTerapeuta: '',
+  });
+
+  // Estados para terapeutas y pacientes
+  const [terapeutas, setTerapeutas] = useState([]);
+  const [pacientesSugerencias, setPacientesSugerencias] = useState([]);
+  const [busquedaPaciente, setBusquedaPaciente] = useState('');
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   useEffect(() => {
     // Establecer fechas por defecto (semana actual: lunes a sábado)
@@ -17,14 +51,14 @@ const Inconsistencias = () => {
 
     // Calcular el lunes de esta semana
     const lunes = new Date(hoy);
-    const diasDesdeElLunes = diaSemana === 0 ? 6 : diaSemana - 1; // Si es domingo, retroceder 6 días
+    const diasDesdeElLunes = diaSemana === 0 ? 6 : diaSemana - 1;
     lunes.setDate(hoy.getDate() - diasDesdeElLunes);
 
     // Calcular el sábado de esta semana
     const sabado = new Date(lunes);
-    sabado.setDate(lunes.getDate() + 5); // Lunes + 5 días = Sábado
+    sabado.setDate(lunes.getDate() + 5);
 
-    // Formatear fechas sin conversión a UTC (usar fecha local)
+    // Formatear fechas
     const formatearFecha = (fecha) => {
       const year = fecha.getFullYear();
       const month = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -39,7 +73,106 @@ const Inconsistencias = () => {
     setFechaFin(fechaFinStr);
 
     cargarInconsistencias(fechaInicioStr, fechaFinStr);
+    cargarTerapeutas();
   }, []);
+
+  // Cargar lista de terapeutas
+  const cargarTerapeutas = async () => {
+    try {
+      const response = await getTrabajadores();
+      console.log('📋 Respuesta de getTrabajadores:', response);
+
+      if (!response || response.length === 0) {
+        console.warn('⚠️ No se encontraron trabajadores');
+        return;
+      }
+
+      // Verificar qué campos tienen los trabajadores
+      console.log('📊 Ejemplo completo de UN trabajador:', response[0]);
+      console.log('🔍 Rol del trabajador:', response[0].rol);
+
+      // Filtrar trabajadores activos (estado es booleano true)
+      // Y filtrar solo terapeutas (rol.id === 4)
+      const trabajadoresActivos = response
+        .filter(t => {
+          const esActivo = t.estado === true || t.estado === 1;
+          const esTerapeuta = t.rol && t.rol.id === 4;
+          return esActivo && esTerapeuta;
+        })
+        .sort((a, b) => {
+          const nombreA = a.nombres || '';
+          const nombreB = b.nombres || '';
+          return nombreA.localeCompare(nombreB);
+        });
+
+      console.log('✅ Terapeutas activos cargados:', trabajadoresActivos.length);
+
+      // Si no hay terapeutas, mostrar todos los activos
+      if (trabajadoresActivos.length === 0) {
+        console.warn('⚠️ No hay terapeutas con rol.id=4, mostrando todos los trabajadores activos');
+        const todosActivos = response
+          .filter(t => t.estado === true || t.estado === 1)
+          .sort((a, b) => {
+            const nombreA = a.nombres || '';
+            const nombreB = b.nombres || '';
+            return nombreA.localeCompare(nombreB);
+          });
+        setTerapeutas(todosActivos);
+      } else {
+        setTerapeutas(trabajadoresActivos);
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar terapeutas:', error);
+    }
+  };
+
+  // Buscar pacientes con autocomplete
+  const handleBuscarPaciente = async (query) => {
+    setBusquedaPaciente(query);
+    console.log('🔎 Buscando paciente:', query);
+
+    if (query.length >= 2) {
+      try {
+        const resultados = await buscarPacientes(query);
+        console.log('✅ Pacientes encontrados:', resultados);
+        console.log('📝 Total de pacientes:', resultados.length);
+        if (resultados.length > 0) {
+          console.log('🔍 Estructura del primer paciente:', resultados[0]);
+          console.log('🔍 Claves del paciente:', Object.keys(resultados[0]));
+        }
+        setPacientesSugerencias(resultados);
+        setMostrarSugerencias(true);
+        console.log('👁️ Mostrando sugerencias: true');
+      } catch (error) {
+        console.error('❌ Error al buscar pacientes:', error);
+        setPacientesSugerencias([]);
+      }
+    } else {
+      setPacientesSugerencias([]);
+      setMostrarSugerencias(false);
+    }
+  };
+
+  // Seleccionar un paciente de las sugerencias
+  const seleccionarPaciente = (paciente) => {
+    const nombreCompleto = paciente.nombre_completo || '';
+    setBusquedaPaciente(nombreCompleto);
+    setFiltros(prev => ({ ...prev, paciente: nombreCompleto }));
+    setMostrarSugerencias(false);
+  };
+
+  // Monitorear cambios en sugerencias de pacientes
+  useEffect(() => {
+    console.log('🔄 Estado actualizado - mostrarSugerencias:', mostrarSugerencias);
+    console.log('🔄 Estado actualizado - pacientesSugerencias:', pacientesSugerencias.length);
+  }, [mostrarSugerencias, pacientesSugerencias]);
+
+  // Aplicar filtros cuando cambien los filtros o las inconsistencias
+  useEffect(() => {
+    if (inconsistencias.length > 0) {
+      aplicarFiltros();
+    }
+  }, [filtros, inconsistencias]);
 
   const cargarInconsistencias = async (inicio, fin) => {
     if (!inicio || !fin) {
@@ -59,9 +192,97 @@ const Inconsistencias = () => {
     }
   };
 
+  const aplicarFiltros = () => {
+    let resultados = [...inconsistencias];
+
+    // Filtro por terapeuta (ahora es un ID)
+    if (filtros.terapeuta) {
+      const terapeutaSeleccionado = terapeutas.find(t => t.id === parseInt(filtros.terapeuta));
+      if (terapeutaSeleccionado) {
+        const nombreTerapeuta = `${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos}`.trim();
+        resultados = resultados.filter(item =>
+          item.terapeuta_nombre?.toLowerCase().includes(nombreTerapeuta.toLowerCase())
+        );
+      }
+    }
+
+    // Filtro por paciente
+    if (filtros.paciente) {
+      resultados = resultados.filter(item => 
+        item.paciente_nombre?.toLowerCase().includes(filtros.paciente.toLowerCase())
+      );
+    }
+
+    // Filtro por tipo de inconsistencia
+    if (filtros.tipoInconsistencia) {
+      resultados = resultados.filter(item => 
+        item.tipo_inconsistencia === filtros.tipoInconsistencia
+      );
+    }
+
+    // Filtro por estado recepción
+    if (filtros.estadoRecepcion !== '') {
+      if (filtros.estadoRecepcion === '0') {
+        resultados = resultados.filter(item => item.recepcion_marco === 0);
+      } else if (filtros.estadoRecepcion === '7') {
+        resultados = resultados.filter(item => item.recepcion_estado_id === 7);
+      } else if (filtros.estadoRecepcion === '6') {
+        resultados = resultados.filter(item => item.recepcion_estado_id === 6);
+      }
+    }
+
+    // Filtro por estado terapeuta
+    if (filtros.estadoTerapeuta !== '') {
+      if (filtros.estadoTerapeuta === '0') {
+        resultados = resultados.filter(item => item.terapeuta_marco === 0);
+      } else if (filtros.estadoTerapeuta === '7') {
+        resultados = resultados.filter(item => item.terapeuta_estado_id === 7);
+      } else if (filtros.estadoTerapeuta === '6') {
+        resultados = resultados.filter(item => item.terapeuta_estado_id === 6);
+      }
+    }
+
+    setInconsistenciasFiltradas(resultados);
+    setPage(0); // Resetear a la primera página
+  };
+
   const handleBuscar = () => {
     cargarInconsistencias(fechaInicio, fechaFin);
   };
+
+  const limpiarFiltros = () => {
+    setFiltros({
+      terapeuta: '',
+      paciente: '',
+      tipoInconsistencia: '',
+      estadoRecepcion: '',
+      estadoTerapeuta: '',
+    });
+    setBusquedaPaciente('');
+    setPacientesSugerencias([]);
+    setMostrarSugerencias(false);
+  };
+
+  const aplicarFiltroRapido = (dias) => {
+    const hoy = new Date();
+    const fechaInicioRapido = new Date(hoy);
+    fechaInicioRapido.setDate(hoy.getDate() - dias);
+    
+    const formatearFecha = (fecha) => {
+      const year = fecha.getFullYear();
+      const month = String(fecha.getMonth() + 1).padStart(2, '0');
+      const day = String(fecha.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    setFechaInicio(formatearFecha(fechaInicioRapido));
+    setFechaFin(formatearFecha(hoy));
+  };
+
+  // Extraer tipos de inconsistencia únicos para el select
+  const tiposInconsistencia = useMemo(() => {
+    return [...new Set(inconsistencias.map(item => item.tipo_inconsistencia).filter(Boolean))].sort();
+  }, [inconsistencias]);
 
   const formatearFecha = (fecha) => {
     return new Date(fecha).toLocaleString('es-PE', {
@@ -84,47 +305,20 @@ const Inconsistencias = () => {
     }
   };
 
-  const getInconsistenciaTipo = (recepcionEstado, terapeutaEstado, recepcionMarco, terapeutaMarco) => {
-    // Caso 1: Ninguno marcó asistencia
-    if (!recepcionMarco && !terapeutaMarco) {
-      return {
-        tipo: 'Ninguno marcó asistencia',
-        color: 'bg-red-100 text-red-800 border-red-200'
-      };
+  const getColorByTipo = (tipo) => {
+    if (tipo === 'Ninguno marcó asistencia') {
+      return 'bg-red-100 text-red-800 border-red-200';
+    } else if (tipo === 'Falta registro de admisión' || tipo === 'Falta registro del terapeuta') {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    } else if (tipo && tipo.startsWith('Estados no coinciden')) {
+      return 'bg-orange-100 text-orange-800 border-orange-200';
     }
-
-    // Caso 2: Falta registro de admisión (solo terapeuta marcó)
-    if (!recepcionMarco) {
-      return {
-        tipo: 'Falta registro de admisión',
-        color: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      };
-    }
-
-    // Caso 3: Falta registro del terapeuta (solo admisión marcó)
-    if (!terapeutaMarco) {
-      return {
-        tipo: 'Falta registro del terapeuta',
-        color: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      };
-    }
-
-    // Caso 4: Ambos marcaron pero estados no coinciden
-    if (recepcionEstado !== terapeutaEstado) {
-      const estadoAdmision = recepcionEstado === 7 ? 'Asistió' : 'Sesión Dictada';
-      const estadoTerapeuta = terapeutaEstado === 7 ? 'Asistió' : 'Sesión Dictada';
-
-      return {
-        tipo: `Estados no coinciden (Admisión: ${estadoAdmision}, Terapeuta: ${estadoTerapeuta})`,
-        color: 'bg-orange-100 text-orange-800 border-orange-200'
-      };
-    }
-
-    return {
-      tipo: 'Inconsistencia detectada',
-      color: 'bg-gray-100 text-gray-800 border-gray-200'
-    };
+    return 'bg-gray-100 text-gray-800 border-gray-200';
   };
+
+  // Datos para mostrar (con paginación)
+  const datosMostrados = inconsistenciasFiltradas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const totalPages = Math.ceil(inconsistenciasFiltradas.length / rowsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -141,9 +335,42 @@ const Inconsistencias = () => {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros Rápidos */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => aplicarFiltroRapido(1)}
+            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            Hoy
+          </button>
+          <button
+            onClick={() => aplicarFiltroRapido(7)}
+            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            Última semana
+          </button>
+          <button
+            onClick={() => aplicarFiltroRapido(30)}
+            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            Último mes
+          </button>
+          <div className="flex-1"></div>
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            <AdjustmentsHorizontalIcon className="w-4 h-4" />
+            {showAdvancedFilters ? 'Ocultar filtros' : 'Filtros avanzados'}
+            <ChevronDownIcon className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Filtros Básicos */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Fecha Inicio */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -181,17 +408,270 @@ const Inconsistencias = () => {
             </button>
           </div>
         </div>
+
+        {/* Filtros Avanzados */}
+        {showAdvancedFilters && (
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              {/* Terapeuta */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <UserIcon className="w-4 h-4 inline mr-1" />
+                  Terapeuta
+                </label>
+                <select
+                  value={filtros.terapeuta}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, terapeuta: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Todos los terapeutas</option>
+                  {terapeutas.map((terapeuta) => (
+                    <option key={terapeuta.id} value={terapeuta.id}>
+                      {terapeuta.nombres} {terapeuta.apellidos}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Paciente */}
+              <div style={{ position: 'relative', zIndex: mostrarSugerencias ? 100 : 1 }}>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <UsersIcon className="w-4 h-4 inline mr-1" />
+                  Paciente
+                </label>
+                <input
+                  type="text"
+                  placeholder="Buscar paciente (min. 2 caracteres)..."
+                  value={busquedaPaciente}
+                  onChange={(e) => handleBuscarPaciente(e.target.value)}
+                  onFocus={() => {
+                    if (pacientesSugerencias.length > 0) setMostrarSugerencias(true);
+                  }}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                {mostrarSugerencias && pacientesSugerencias.length > 0 && (
+                  <>
+                    <div
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 999,
+                        background: 'transparent'
+                      }}
+                      onClick={() => setMostrarSugerencias(false)}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        marginTop: '4px',
+                        backgroundColor: 'white',
+                        border: '2px solid #ef4444',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                        maxHeight: '240px',
+                        overflowY: 'auto',
+                        zIndex: 1000
+                      }}
+                    >
+                      {pacientesSugerencias.map((paciente) => (
+                        <button
+                          key={paciente.id}
+                          type="button"
+                          onClick={() => seleccionarPaciente(paciente)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            textAlign: 'left',
+                            border: 'none',
+                            borderBottom: '1px solid #e5e7eb',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                            display: 'block'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                        >
+                          <div style={{ fontWeight: 500, color: '#111827' }}>
+                            {paciente.nombre_completo}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Tipo de Inconsistencia */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tipo de Inconsistencia
+                </label>
+                <select
+                  value={filtros.tipoInconsistencia}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, tipoInconsistencia: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Todos los tipos</option>
+                  {tiposInconsistencia.map((tipo, index) => (
+                    <option key={index} value={tipo}>{tipo}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Estado Recepción */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Estado Recepción
+                </label>
+                <select
+                  value={filtros.estadoRecepcion}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, estadoRecepcion: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="0">No marcado</option>
+                  <option value="7">Asistió</option>
+                  <option value="6">Sesión Dictada</option>
+                </select>
+              </div>
+
+              {/* Estado Terapeuta */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Estado Terapeuta
+                </label>
+                <select
+                  value={filtros.estadoTerapeuta}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, estadoTerapeuta: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="0">No marcado</option>
+                  <option value="7">Asistió</option>
+                  <option value="6">Sesión Dictada</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Botones de acción filtros */}
+            <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={limpiarFiltros}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                  Limpiar Filtros
+                </button>
+                <button
+                  onClick={() => aplicarFiltros()}
+                  className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <MagnifyingGlassIcon className="w-4 h-4" />
+                  Aplicar
+                </button>
+              </div>
+
+            {/* Resumen de filtros activos */}
+            {(filtros.terapeuta || filtros.paciente || filtros.tipoInconsistencia || filtros.estadoRecepcion || filtros.estadoTerapeuta) && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FunnelIcon className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-semibold text-red-700">Filtros aplicados:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {filtros.terapeuta && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                      Terapeuta: {(() => {
+                        const t = terapeutas.find(ter => ter.id === parseInt(filtros.terapeuta));
+                        return t ? `${t.nombres} ${t.apellidos}` : filtros.terapeuta;
+                      })()}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, terapeuta: '' }))}>
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {filtros.paciente && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                      Paciente: {filtros.paciente}
+                      <button onClick={() => {
+                        setFiltros(prev => ({ ...prev, paciente: '' }));
+                        setBusquedaPaciente('');
+                      }}>
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {filtros.tipoInconsistencia && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                      Tipo: {filtros.tipoInconsistencia}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, tipoInconsistencia: '' }))}>
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {filtros.estadoRecepcion && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                      Recepción: {filtros.estadoRecepcion === '0' ? 'No marcado' : filtros.estadoRecepcion === '7' ? 'Asistió' : 'Sesión Dictada'}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, estadoRecepcion: '' }))}>
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {filtros.estadoTerapeuta && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                      Terapeuta: {filtros.estadoTerapeuta === '0' ? 'No marcado' : filtros.estadoTerapeuta === '7' ? 'Asistió' : 'Sesión Dictada'}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, estadoTerapeuta: '' }))}>
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Estadística Total */}
+      {/* Estadísticas */}
       {!cargando && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600 mb-1">Total de Inconsistencias Detectadas</p>
-              <p className="text-4xl font-bold text-red-900">{inconsistencias.length}</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="text-2xl font-bold text-gray-900 mb-1">{inconsistenciasFiltradas.length}</div>
+            <div className="text-sm text-gray-600">Total Filtrado</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {inconsistencias.length} totales
             </div>
-            <ShieldCheckIcon className="w-16 h-16 text-red-400" />
+          </div>
+          
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="text-2xl font-bold text-red-900 mb-1">
+              {inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Ninguno marcó asistencia').length}
+            </div>
+            <div className="text-sm text-gray-600">Ninguno marcó</div>
+          </div>
+          
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="text-2xl font-bold text-yellow-900 mb-1">
+              {inconsistenciasFiltradas.filter(i => 
+                i.tipo_inconsistencia === 'Falta registro de admisión' || 
+                i.tipo_inconsistencia === 'Falta registro del terapeuta'
+              ).length}
+            </div>
+            <div className="text-sm text-gray-600">Faltan registros</div>
+          </div>
+          
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="text-2xl font-bold text-orange-900 mb-1">
+              {inconsistenciasFiltradas.filter(i => 
+                i.tipo_inconsistencia && i.tipo_inconsistencia.startsWith('Estados no coinciden')
+              ).length}
+            </div>
+            <div className="text-sm text-gray-600">Estados diferentes</div>
           </div>
         </div>
       )}
@@ -209,118 +689,117 @@ const Inconsistencias = () => {
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recepción Marcó</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Terapeuta Marcó</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tipo de Inconsistencia</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Horas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {cargando ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center">
+                  <td colSpan="8" className="px-6 py-8 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
                       <span className="text-gray-600">Cargando inconsistencias...</span>
                     </div>
                   </td>
                 </tr>
-              ) : inconsistencias.length === 0 ? (
+              ) : datosMostrados.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center">
+                  <td colSpan="8" className="px-6 py-12 text-center">
                     <ShieldCheckIcon className="w-16 h-16 text-green-400 mx-auto mb-3" />
                     <p className="text-green-700 text-lg font-semibold">¡Excelente!</p>
-                    <p className="text-gray-500">No se encontraron inconsistencias en el rango seleccionado</p>
+                    <p className="text-gray-500">No se encontraron inconsistencias con los filtros aplicados</p>
                   </td>
                 </tr>
               ) : (
-                inconsistencias
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((item) => {
-                  // Determinar color basado en el tipo de inconsistencia
-                  const getColorByTipo = (tipo) => {
-                    if (tipo === 'Ninguno marcó asistencia') {
-                      return 'bg-red-100 text-red-800 border-red-200';
-                    } else if (tipo === 'Falta registro de admisión' || tipo === 'Falta registro del terapeuta') {
-                      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                    } else if (tipo && tipo.startsWith('Estados no coinciden')) {
-                      return 'bg-orange-100 text-orange-800 border-orange-200';
-                    }
-                    return 'bg-gray-100 text-gray-800 border-gray-200';
-                  };
-
-                  return (
-                    <tr key={item.id} className="hover:bg-red-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        #{item.cita_id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.paciente_nombre || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {item.terapeuta_nombre || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {item.fecha_cita ? formatearFecha(item.fecha_cita) : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {item.recepcion_marco ? (
-                          <>
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                              item.recepcion_estado_id === 7
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-orange-100 text-orange-800'
-                            }`}>
-                              {getEstadoTexto(item.recepcion_estado_id)}
-                            </span>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {item.recepcion_fecha ? formatearFecha(item.recepcion_fecha) : ''}
-                            </p>
-                          </>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Sin marcar
+                datosMostrados.map((item) => (
+                  <tr key={item.id} className="hover:bg-red-50 transition-colors">
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                      #{item.cita_id}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {item.paciente_nombre || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {item.terapeuta_nombre || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {item.fecha_cita ? formatearFecha(item.fecha_cita) : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.recepcion_marco ? (
+                        <>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                            item.recepcion_estado_id === 7
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {getEstadoTexto(item.recepcion_estado_id)}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {item.terapeuta_marco ? (
-                          <>
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                              item.terapeuta_estado_id === 7
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-orange-100 text-orange-800'
-                            }`}>
-                              {getEstadoTexto(item.terapeuta_estado_id)}
-                            </span>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {item.terapeuta_fecha ? formatearFecha(item.terapeuta_fecha) : ''}
-                            </p>
-                          </>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Sin marcar
+                          <p className="text-xs text-gray-500 mt-1">
+                            {item.recepcion_fecha ? formatearFecha(item.recepcion_fecha) : ''}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                          Sin marcar
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.terapeuta_marco ? (
+                        <>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                            item.terapeuta_estado_id === 7
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {getEstadoTexto(item.terapeuta_estado_id)}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${getColorByTipo(item.tipo_inconsistencia)}`}>
-                          <ExclamationTriangleIcon className="w-4 h-4 flex-shrink-0" />
-                          <span className="text-xs font-bold">
-                            {item.tipo_inconsistencia}
-                          </span>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {item.terapeuta_fecha ? formatearFecha(item.terapeuta_fecha) : ''}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                          Sin marcar
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${getColorByTipo(item.tipo_inconsistencia)}`}>
+                        <ExclamationTriangleIcon className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-xs font-bold">
+                          {item.tipo_inconsistencia}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.horas_transcurridas ? (
+                        <div className={`text-center ${
+                          item.horas_transcurridas > 24 ? 'text-red-600' : 
+                          item.horas_transcurridas > 12 ? 'text-orange-600' : 
+                          'text-green-600'
+                        }`}>
+                          <div className="text-sm font-bold">{item.horas_transcurridas}</div>
+                          <div className="text-xs">horas</div>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
         {/* Paginación */}
-        {!cargando && inconsistencias.length > 0 && (
+        {!cargando && inconsistenciasFiltradas.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
-                Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, inconsistencias.length)} de {inconsistencias.length} inconsistencias
+                Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, inconsistenciasFiltradas.length)} de {inconsistenciasFiltradas.length} inconsistencias
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -339,8 +818,7 @@ const Inconsistencias = () => {
                 </button>
 
                 <div className="flex gap-1">
-                  {Array.from({ length: Math.min(Math.ceil(inconsistencias.length / rowsPerPage), 3) }, (_, i) => {
-                    const totalPages = Math.ceil(inconsistencias.length / rowsPerPage);
+                  {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 3) {
                       pageNum = i;
@@ -370,19 +848,33 @@ const Inconsistencias = () => {
 
                 <button
                   onClick={() => setPage(page + 1)}
-                  disabled={page >= Math.ceil(inconsistencias.length / rowsPerPage) - 1}
+                  disabled={page >= totalPages - 1}
                   className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200"
                 >
                   Siguiente
                 </button>
                 <button
-                  onClick={() => setPage(Math.ceil(inconsistencias.length / rowsPerPage) - 1)}
-                  disabled={page >= Math.ceil(inconsistencias.length / rowsPerPage) - 1}
+                  onClick={() => setPage(totalPages - 1)}
+                  disabled={page >= totalPages - 1}
                   className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200"
                 >
                   Último
                 </button>
               </div>
+
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value));
+                  setPage(0);
+                }}
+                className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
+              >
+                <option value={10}>10 por página</option>
+                <option value={25}>25 por página</option>
+                <option value={50}>50 por página</option>
+                <option value={100}>100 por página</option>
+              </select>
             </div>
           </div>
         )}

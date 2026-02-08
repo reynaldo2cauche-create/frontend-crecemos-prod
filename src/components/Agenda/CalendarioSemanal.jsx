@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,6 +7,105 @@ import {
   School
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+
+// ✅ Componente memoizado para cada cita individual
+const CitaCard = React.memo(({
+  cita,
+  slotInfo,
+  index,
+  totalCitas,
+  onCitaClick,
+  getEstadoColor,
+  dia,
+  hora
+}) => {
+  const indiceCitaVisible = slotInfo.citas.filter(c => c.isTop).findIndex(c => c.cita.id === cita.id);
+  const anchoCita = totalCitas === 1 ? 'calc(100% - 8px)' : `calc(${100 / totalCitas}% - 4px)`;
+  const leftOffset = totalCitas === 1 ? '4px' : `calc(${(100 / totalCitas) * indiceCitaVisible}% + 2px)`;
+  const estadoColor = getEstadoColor ? getEstadoColor(cita.estado) : '#7B1FA2';
+
+  const handleClick = useCallback((e) => {
+    e.stopPropagation();
+    onCitaClick && onCitaClick({
+      id: cita.id,
+      fecha: dia.fechaString,
+      hora: hora,
+      cita
+    });
+  }, [cita, dia.fechaString, hora, onCitaClick]);
+
+  // Obtener el motivo de la cita
+  const motivoNombre = cita.motivo?.nombre || '';
+  let badge = { text: 'CITA', color: 'bg-gray-500' };
+
+  if (motivoNombre.toLowerCase().includes('entrevista de padres') || motivoNombre.toLowerCase().includes('entrevista padres')) {
+    badge = { text: 'EP', color: 'bg-green-500' };
+  } else if (motivoNombre.toLowerCase().includes('entrevista adolescentes') || motivoNombre.toLowerCase().includes('entrevista adultos')) {
+    badge = { text: 'EA', color: 'bg-emerald-500' };
+  } else if (motivoNombre.toLowerCase().includes('reevaluación') || motivoNombre.toLowerCase().includes('reevaluacion')) {
+    badge = { text: 'REEV', color: 'bg-orange-500' };
+  } else if (motivoNombre.toLowerCase().includes('evaluación') || motivoNombre.toLowerCase().includes('evaluacion')) {
+    badge = { text: 'EVAL', color: 'bg-yellow-500' };
+  } else if (motivoNombre.toLowerCase().includes('sesión de terapia') || motivoNombre.toLowerCase().includes('sesion de terapia')) {
+    badge = { text: 'ST', color: 'bg-blue-500' };
+  } else if (motivoNombre.toLowerCase().includes('informe verbal')) {
+    badge = { text: 'IV', color: 'bg-indigo-500' };
+  } else if (motivoNombre.toLowerCase().includes('reunión clínica') || motivoNombre.toLowerCase().includes('reunion clinica')) {
+    badge = { text: 'RC', color: 'bg-purple-500' };
+  } else if (motivoNombre.toLowerCase().includes('visita escolar')) {
+    badge = { text: 'VE', color: 'bg-teal-500' };
+  }
+
+  const obtenerHoraFin = (cita) => {
+    if (cita.hora_fin) return cita.hora_fin.substring(0, 5);
+    if (cita.hora_inicio && cita.duracion_minutos) {
+      const [h, m] = cita.hora_inicio.substring(0,5).split(':').map(x => parseInt(x, 10));
+      const total = h * 60 + m + parseInt(cita.duracion_minutos, 10);
+      const hh = Math.floor(total / 60) % 24;
+      const mm = total % 60;
+      return `${hh.toString().padStart(2,'0')}:${mm.toString().padStart(2,'0')}`;
+    }
+    return '';
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      style={{
+        width: anchoCita,
+        height: `${slotInfo.alturaTotal}px`,
+        left: leftOffset,
+        borderLeftColor: estadoColor
+      }}
+      className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
+    >
+      <span className={`absolute top-1 left-1 ${badge.color} text-white text-[9px] px-1.5 py-0.5 rounded font-bold`}>
+        {badge.text}
+      </span>
+
+      <div className="flex flex-col h-full justify-between text-xs">
+        <div className="mb-1">
+          <p className="font-bold text-gray-900 leading-tight truncate">
+            {cita.paciente?.nombres || cita.paciente_nombre || 'Sin paciente'}
+          </p>
+          <p className="text-[10px] text-gray-600 truncate">
+            {cita.hora_inicio?.substring(0,5) || cita.hora} - {obtenerHoraFin(cita)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Solo re-renderizar si cambian estos props
+  return (
+    prevProps.cita.id === nextProps.cita.id &&
+    prevProps.slotInfo.alturaTotal === nextProps.slotInfo.alturaTotal &&
+    prevProps.totalCitas === nextProps.totalCitas &&
+    prevProps.cita.estado === nextProps.cita.estado
+  );
+});
+
+CitaCard.displayName = 'CitaCard';
 
 const CalendarioSemanal = ({
   citas = [],

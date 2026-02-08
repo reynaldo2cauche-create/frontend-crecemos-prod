@@ -103,6 +103,16 @@ const ModalAgendarCita = ({
   // Marcar llegada (Recepción) - ✅ SIEMPRE PERMITIDO, INCLUSO FUERA DEL PERÍMETRO
   const handleRecepcionMarcar = async (estadoId) => {
     setGuardandoAsistencia(true);
+
+    // ✅ Actualización optimista: actualizar UI inmediatamente
+    const backupSeguimiento = seguimientoAsistencia;
+    setSeguimientoAsistencia(prev => prev ? {
+      ...prev,
+      recepcion_marco: 1,
+      recepcion_estado_id: estadoId,
+      recepcion_fecha: new Date().toISOString()
+    } : prev);
+
     try {
       await api.post('/asistencia/registrar-recepcion', {
         cita_id: citaEditando.id,
@@ -110,9 +120,12 @@ const ModalAgendarCita = ({
         estado_id: estadoId
       });
 
+      // Recargar para confirmar desde el servidor
       await cargarSeguimientoAsistencia();
     } catch (error) {
       console.error('Error al registrar:', error);
+      // ❌ Revertir cambio optimista si falla
+      setSeguimientoAsistencia(backupSeguimiento);
       alert(error.response?.data?.message || 'Error al registrar');
     } finally {
       setGuardandoAsistencia(false);
@@ -122,6 +135,16 @@ const ModalAgendarCita = ({
   // Marcar sesión completada (Terapeuta) - ✅ SIEMPRE PERMITIDO, INCLUSO FUERA DEL PERÍMETRO
   const handleTerapeutaMarcar = async (estadoId) => {
     setGuardandoAsistencia(true);
+
+    // ✅ Actualización optimista: actualizar UI inmediatamente
+    const backupSeguimiento = seguimientoAsistencia;
+    setSeguimientoAsistencia(prev => prev ? {
+      ...prev,
+      terapeuta_marco: 1,
+      terapeuta_estado_id: estadoId,
+      terapeuta_fecha: new Date().toISOString()
+    } : prev);
+
     try {
       await api.post('/asistencia/registrar-terapeuta', {
         cita_id: citaEditando.id,
@@ -129,9 +152,12 @@ const ModalAgendarCita = ({
         estado_id: estadoId
       });
 
+      // Recargar para confirmar desde el servidor
       await cargarSeguimientoAsistencia();
     } catch (error) {
       console.error('Error al registrar:', error);
+      // ❌ Revertir cambio optimista si falla
+      setSeguimientoAsistencia(backupSeguimiento);
       alert(error.response?.data?.message || 'Error al registrar');
     } finally {
       setGuardandoAsistencia(false);
@@ -1943,17 +1969,31 @@ Le hacemos recordar su cita para el día de mañana
                     <button
                       onClick={() => handleRecepcionMarcar(7)}
                       disabled={guardandoAsistencia || seguimientoAsistencia?.recepcion_marco}
-                      className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      ✓ Asistió
+                      {guardandoAsistencia ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : (
+                        '✓ Asistió'
+                      )}
                     </button>
 
                     <button
                       onClick={() => handleRecepcionMarcar(6)}
                       disabled={guardandoAsistencia || seguimientoAsistencia?.recepcion_marco}
-                      className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      ◆ Sesión Dictada
+                      {guardandoAsistencia ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : (
+                        '◆ Sesión Dictada'
+                      )}
                     </button>
                   </div>
 
@@ -1990,17 +2030,31 @@ Le hacemos recordar su cita para el día de mañana
                     <button
                       onClick={() => handleTerapeutaMarcar(7)}
                       disabled={guardandoAsistencia || seguimientoAsistencia?.terapeuta_marco}
-                      className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      ✓ Asistió
+                      {guardandoAsistencia ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : (
+                        '✓ Asistió'
+                      )}
                     </button>
 
                     <button
                       onClick={() => handleTerapeutaMarcar(6)}
                       disabled={guardandoAsistencia || seguimientoAsistencia?.terapeuta_marco}
-                      className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      ◆ Sesión Dictada
+                      {guardandoAsistencia ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : (
+                        '◆ Sesión Dictada'
+                      )}
                     </button>
                   </div>
 

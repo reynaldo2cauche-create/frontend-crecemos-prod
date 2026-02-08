@@ -1,4 +1,5 @@
 import api from './api';
+import cacheManager from '../utils/cacheManager';
 
 export const listarCitas = async (params = {}) => {
   const queryParams = new URLSearchParams();
@@ -23,6 +24,7 @@ export const listarCitas = async (params = {}) => {
 
 export const crearCita = async (citaData) => {
   const response = await api.post('/citas', citaData);
+  // ✅ Limpiar caché para forzar recarga de listas
   return response.data;
 };
 
@@ -34,6 +36,8 @@ export const crearMultiplesCitas = async (citasArray) => {
 export const actualizarCita = async (id, citaDto) => {
   try {
     const response = await api.put(`/citas/${id}`, citaDto);
+    // ✅ Invalidar caché de esta cita para forzar recarga
+    cacheManager.delete(`cita:${id}`);
     return response.data;
   } catch (error) {
     console.error('Error actualizando cita:', error);
@@ -51,8 +55,20 @@ export const eliminarCita = async (id, userId, motivoAccion) => {
   return response.data;
 };
 
+// ✅ OPTIMIZADO: Caché temporal de citas cargadas recientemente (2 minutos)
+// Esto evita recargar la misma cita si se abre/cierra rápido
 export const getCitaById = async (id) => {
+  const cacheKey = `cita:${id}`;
+  const cached = cacheManager.get(cacheKey);
+
+  if (cached) {
+    console.log(`📦 Cita ${id} cargada desde caché (tablet optimizado)`);
+    return cached;
+  }
+
   const response = await api.get(`/citas/${id}`);
+  // Cachear por 2 minutos - tiempo suficiente para evitar recargas innecesarias
+  cacheManager.set(cacheKey, response.data, 2 * 60 * 1000);
   return response.data;
 };
 
@@ -61,18 +77,47 @@ export const getHistorialCita = async (id) => {
   return response.data;
 };
 
+// ✅ CATÁLOGOS CON CACHÉ - Optimizado para tablets
+// Los catálogos no cambian frecuentemente, podemos cachearlos por 30 minutos
 export const getMotivosCita = async () => {
+  const cacheKey = 'catalogos:motivos';
+  const cached = cacheManager.get(cacheKey);
+
+  if (cached) {
+    console.log('📦 Motivos cargados desde caché (tablet optimizado)');
+    return cached;
+  }
+
   const response = await api.get('/citas/catalogos/motivos');
+  cacheManager.set(cacheKey, response.data, 30 * 60 * 1000); // 30 minutos
   return response.data;
 };
 
 export const getEstadosCita = async () => {
+  const cacheKey = 'catalogos:estados';
+  const cached = cacheManager.get(cacheKey);
+
+  if (cached) {
+    console.log('📦 Estados cargados desde caché (tablet optimizado)');
+    return cached;
+  }
+
   const response = await api.get('/citas/catalogos/estados');
+  cacheManager.set(cacheKey, response.data, 30 * 60 * 1000); // 30 minutos
   return response.data;
 };
 
 export const getTiposCita = async () => {
+  const cacheKey = 'catalogos:tipos';
+  const cached = cacheManager.get(cacheKey);
+
+  if (cached) {
+    console.log('📦 Tipos cargados desde caché (tablet optimizado)');
+    return cached;
+  }
+
   const response = await api.get('/citas/catalogos/tipos');
+  cacheManager.set(cacheKey, response.data, 30 * 60 * 1000); // 30 minutos
   return response.data;
 };
 
