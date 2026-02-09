@@ -148,7 +148,15 @@ const FiliacionView = ({
   const esTerapeuta = user?.rol?.id === ROLES.TERAPEUTA;
 
   useEffect(() => {
-    setLocalPacienteData(paciente);
+    // Normalizar la fecha de nacimiento al formato YYYY-MM-DD para evitar problemas de timezone
+    if (paciente) {
+      setLocalPacienteData({
+        ...paciente,
+        fecha_nacimiento: paciente.fecha_nacimiento
+          ? paciente.fecha_nacimiento.split('T')[0]
+          : paciente.fecha_nacimiento
+      });
+    }
   }, [paciente]);
 
   const handleLocalChange = (e) => {
@@ -178,7 +186,13 @@ const FiliacionView = ({
   };
 
   const handleCancelar = () => {
-    setLocalPacienteData(paciente);
+    // Normalizar la fecha de nacimiento al formato YYYY-MM-DD para evitar problemas de timezone
+    setLocalPacienteData({
+      ...paciente,
+      fecha_nacimiento: paciente.fecha_nacimiento
+        ? paciente.fecha_nacimiento.split('T')[0]
+        : paciente.fecha_nacimiento
+    });
     setModoEdicion(false);
   };
 

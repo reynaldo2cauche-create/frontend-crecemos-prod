@@ -497,33 +497,44 @@ const guardarCita = async (datosFormulario = null) => {
 
     // Agregar campos según tipo de cita
     if (tipoCita === 'NORMAL') {
-      if (!datos.doctor_id || !datos.servicio_id) {
+      // 🔥 Solo validar campos requeridos cuando se CREA una cita nueva
+      if (!citaEditando && (!datos.doctor_id || !datos.servicio_id)) {
         throw new Error('Se requiere terapeuta y servicio para cita normal');
       }
-      datosBase.doctor_id = parseInt(datos.doctor_id);
-      datosBase.servicio_id = parseInt(datos.servicio_id);
-    } 
+      if (datos.doctor_id) datosBase.doctor_id = parseInt(datos.doctor_id);
+      if (datos.servicio_id) datosBase.servicio_id = parseInt(datos.servicio_id);
+    }
     else if (tipoCita === 'REUNION_CLINICA') {
-      if (!datos.terapeutas_ids || datos.terapeutas_ids.length === 0) {
-        throw new Error('Se requiere al menos un terapeuta para reunión clínica');
+      // 🔥 Solo validar cuando se CREA
+      if (!citaEditando) {
+        if (!datos.terapeutas_ids || datos.terapeutas_ids.length === 0) {
+          throw new Error('Se requiere al menos un terapeuta para reunión clínica');
+        }
+        if (!datos.servicios_ids || datos.servicios_ids.length === 0) {
+          throw new Error('Se requiere al menos un servicio para reunión clínica');
+        }
       }
-      if (!datos.servicios_ids || datos.servicios_ids.length === 0) {
-        throw new Error('Se requiere al menos un servicio para reunión clínica');
+      if (datos.terapeutas_ids && datos.terapeutas_ids.length > 0) {
+        datosBase.terapeutas_ids = datos.terapeutas_ids.map(id => parseInt(id));
       }
-      datosBase.terapeutas_ids = datos.terapeutas_ids.map(id => parseInt(id));
-      datosBase.servicios_ids = datos.servicios_ids.map(id => parseInt(id));
-    } 
+      if (datos.servicios_ids && datos.servicios_ids.length > 0) {
+        datosBase.servicios_ids = datos.servicios_ids.map(id => parseInt(id));
+      }
+    }
     else if (tipoCita === 'VISITA_ESCOLAR') {
-      if (!datos.doctor_id) {
-        throw new Error('Se requiere terapeuta para visita escolar');
+      // 🔥 Solo validar cuando se CREA
+      if (!citaEditando) {
+        if (!datos.doctor_id) {
+          throw new Error('Se requiere terapeuta para visita escolar');
+        }
+        if (!datos.encargado?.nombre_completo || !datos.encargado?.institucion) {
+          throw new Error('Se requiere nombre del encargado y nombre de la institución');
+        }
       }
-      if (!datos.encargado?.nombre_completo || !datos.encargado?.institucion) {
-        throw new Error('Se requiere nombre del encargado y nombre de la institución');
-      }
-      datosBase.doctor_id = parseInt(datos.doctor_id);
-      datosBase.servicio_id = datos.servicio_id ? parseInt(datos.servicio_id) : null;
-      datosBase.encargado = datos.encargado;
-      datosBase.firma_documento = Boolean(datos.firma_documento);
+      if (datos.doctor_id) datosBase.doctor_id = parseInt(datos.doctor_id);
+      if (datos.servicio_id) datosBase.servicio_id = datos.servicio_id ? parseInt(datos.servicio_id) : null;
+      if (datos.encargado) datosBase.encargado = datos.encargado;
+      if (datos.firma_documento !== undefined) datosBase.firma_documento = Boolean(datos.firma_documento);
     }
 
     // Función auxiliar para calcular hora_fin

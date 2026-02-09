@@ -53,16 +53,21 @@ export function calcularEdadDetallada(fecha) {
 export function formatearFechaParaBackend(fechaString) {
   if (!fechaString) return '';
 
+  // Si es un string con timestamp (YYYY-MM-DDTHH:mm:ss o similar), extraer solo la fecha
+  if (typeof fechaString === 'string' && fechaString.includes('T')) {
+    return fechaString.split('T')[0];
+  }
+
   // Si ya viene en formato correcto YYYY-MM-DD, devolverla tal cual
   if (typeof fechaString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaString)) {
     return fechaString;
   }
 
-  // Si es un objeto Date, formatear correctamente
+  // Si es un objeto Date, formatear correctamente usando UTC para evitar problemas de timezone
   const fecha = new Date(fechaString);
-  const año = fecha.getFullYear();
-  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-  const dia = String(fecha.getDate()).padStart(2, '0');
+  const año = fecha.getUTCFullYear();
+  const mes = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getUTCDate()).padStart(2, '0');
 
   return `${año}-${mes}-${dia}`;
 }

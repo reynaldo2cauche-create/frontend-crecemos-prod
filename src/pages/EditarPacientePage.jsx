@@ -275,9 +275,11 @@ useEffect(() => {
     
     try {
       const response = await updatePacienteById(id, data);
+      // Usar los datos completos del response del backend en lugar de los datos locales
+      // Esto asegura que la fecha y otros campos se actualicen correctamente
       setPaciente(prev => ({
         ...prev,
-        ...pacienteData,
+        ...response,  // Usar response completo del backend
         updated_at: response.updated_at
       }));
       setSnackbar({ open: true, message: 'Datos guardados correctamente', severity: 'success' });
