@@ -2,39 +2,68 @@ import React from 'react';
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-import  {initializePageScripts}  from '../../utils/initScripts';
+import { initializePageScripts } from '../../utils/initScripts';
 
-
-
-  const EvaluacionPsicologicaColegioPage = () => {
-
+const EvaluacionPsicologicaColegioPage = () => {
   useEffect(() => {
-     initializePageScripts();
-   }, []); 
+    initializePageScripts();
+  }, []);
 
+  const headerStyle = {
+    backgroundImage: 'url("/assets/img/evaluacionpsico.jpg")',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    position: 'relative'
+  };
+
+  const overlayStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1
+  };
+
+  const contentStyle = {
+    position: 'relative',
+    zIndex: 2,
+    color: 'white'
+  };
+
+  const titleStyle = {
+    color: 'white'
+  };
+
+  const subtitleStyle = {
+    color: 'white'
+  };
+
+  const breadcrumbStyle = {
+    color: 'white'
+  };
 
   return (
     <main>
       {/* Page Title */}
-      <div className="page-title page-title-custom" data-aos="fade">
-        <span className="bubble bubble1"></span>
-        <span className="bubble bubble2"></span>
-        <span className="bubble bubble3"></span>
-
-        <div className="container text-center">
-          <h1 className="section-title text-center">
+      <div className="page-title page-title-custom" data-aos="fade" style={headerStyle}>
+        <div style={overlayStyle}></div>
+        <div className="container text-center" style={contentStyle}>
+          <h1 className="section-title text-center" style={titleStyle}>
             Evaluación Psicológica para el Colegio
           </h1>
-          <p className="page-subtitle">
+          <p className="page-subtitle" style={subtitleStyle}>
             Favorecemos la autonomía y el desarrollo de habilidades motoras,
             sociales y de vida diaria en niños, adolescentes y adultos, guiados
             por profesionales especializados.
           </p>
-          <nav className="breadcrumbs mt-3">
+          <nav className="breadcrumbs mt-3" style={breadcrumbStyle}>
             <ol>
-              <li><Link to="/">Inicio</Link></li>
-              <li><Link to="/servicios">Servicios</Link></li>
-              <li className="current">Evaluación Psicológica para el Colegio</li>
+              <li><Link to="/" style={{ color: 'white' }}>Inicio</Link></li>
+              <li><Link to="/servicios" style={{ color: 'white' }}>Servicios</Link></li>
+              <li className="current" style={{ color: 'white' }}>Evaluación Psicológica para el Colegio</li>
             </ol>
           </nav>
         </div>
@@ -85,6 +114,12 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                   </li>
                   <li>
                     <i className="bi bi-check-circle-fill"></i> 1 Informe Verbal
+                  </li>
+                  <li>
+                    <i className="bi bi-check-circle-fill"></i> 1 Informe Físico
+                  </li>
+                  <li>
+                    <i className="bi bi-check-circle-fill"></i> 1 Informe Electrónico
                   </li>
                 </ul>
 
@@ -142,10 +177,16 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                   <li>
                     <i className="bi bi-check-circle-fill"></i> 1 Informe Verbal
                   </li>
+                  <li>
+                    <i className="bi bi-check-circle-fill"></i> 1 Informe Físico
+                  </li>
+                  <li>
+                    <i className="bi bi-check-circle-fill"></i> 1 Informe Electrónico
+                  </li>
                 </ul>
 
                 <a href="#" className="btn btn-light">
-                  4 a 17 años <i className="bi bi-arrow-right"></i>
+                  5 a 17 años <i className="bi bi-arrow-right"></i>
                 </a>
               </div>
             </div>
@@ -173,7 +214,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/terapeutica-cherQui.jpg"
+                  src="/assets/img/servicios/terapeutica-cherQui.webp"
                   alt="Lic.Cherly Quiquia"
                 />
                 <div className="team-content">
@@ -188,31 +229,11 @@ import  {initializePageScripts}  from '../../utils/initScripts';
               </div>
             </div>
 
-            {/* Lic. Jhoselyn Quispe */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/jhoselyn.png"
-                  alt="Lic. Jhoselyn Quispe"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Jhoselyn Quispe</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">57370</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Lic. Giselle Burgos */}
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/Lic. Giselle (1).png"
+                  src="/assets/img/servicios/Lic. Giselle (1).webp"
                   alt="Lic. Giselle Burgos"
                   style={{ height: "300px" }}
                 />
@@ -233,4 +254,5 @@ import  {initializePageScripts}  from '../../utils/initScripts';
     </main>
   );
 };
+
 export default EvaluacionPsicologicaColegioPage;

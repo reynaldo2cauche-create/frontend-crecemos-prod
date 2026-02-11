@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import postulacionesService from '../../services/postulacionesService';
 import { getDistritos } from '../../services/catalogoService';
 import { getCargosPostulacion } from '../../services/cargoPostulacion';
@@ -53,7 +53,8 @@ const FormularioTrabaja = () => {
       try {
         setLoadingDistritos(true);
         const distritos = await getDistritos();
-        setDistritosDisponibles(distritos || []);
+        const distritosFiltrados= distritos.filter(distrito => distrito.id_provincia === 1);
+        setDistritosDisponibles(distritosFiltrados || []);
       } catch (error) {
         console.error('Error al cargar distritos:', error);
         setDistritosDisponibles([]);

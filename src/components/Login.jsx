@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
-import { Box, Grid, TextField, Button, Typography, Paper, useMediaQuery, Alert } from '@mui/material';
+import { 
+  Box, 
+  Grid, 
+  TextField, 
+  Button, 
+  Typography, 
+  Paper, 
+  useMediaQuery, 
+  Alert,
+  IconButton,
+  InputAdornment 
+} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { login } from '../services/authService';
 
 const Login = () => {
@@ -11,6 +23,7 @@ const Login = () => {
 
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +50,14 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClickMostrarContrasena = () => {
+    setMostrarContrasena(!mostrarContrasena);
+  };
+
+  const handleMouseDownContrasena = (e) => {
+    e.preventDefault();
   };
 
   return (
@@ -67,7 +88,6 @@ const Login = () => {
               alignItems: 'center',
               justifyContent: 'center',
               width: '100%',
-              // mb: isMobile ? 2 : 0,
             }}
           >
             <img
@@ -75,7 +95,6 @@ const Login = () => {
               alt="Logo Crecemos"
               style={{ maxWidth: 340, width: '90%', marginBottom: 0 }}
             />
-            
           </Box>
         </Grid>
 
@@ -116,12 +135,27 @@ const Login = () => {
                 margin="normal"
                 fullWidth
                 label="Contraseña"
-                type="password"
+                type={mostrarContrasena ? 'text' : 'password'}
                 variant="outlined"
                 autoComplete="current-password"
                 value={contrasena}
                 onChange={e => setContrasena(e.target.value)}
                 disabled={loading}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={mostrarContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}
+                        onClick={handleClickMostrarContrasena}
+                        onMouseDown={handleMouseDownContrasena}
+                        edge="end"
+                        disabled={loading}
+                      >
+                        {mostrarContrasena ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
               <Button
                 type="submit"
@@ -140,4 +174,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;

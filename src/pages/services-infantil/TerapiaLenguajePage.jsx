@@ -15,28 +15,28 @@ const TerapiaLenguajePage = () => {
 
   const tratamientos = [
     {
-      imagen: '/assets/img/servicios/1.jpeg',
+      imagen: '/assets/img/servicios/1.webp',
       titulo: 'Tratamiento de trastornos del habla',
       descripcion: 'Intervención para corregir dificultades en la pronunciación, fluidez o producción de sonidos.',
       colorClass: 'blue',
       delay: '100'
     },
     {
-      imagen: '/assets/img/servicios/2.jpeg',
+      imagen: '/assets/img/servicios/2.webp',
       titulo: 'Terapia del lenguaje receptivo y expresivo',
       descripcion: 'Mejora de la comprensión y expresión verbal en casos de retrasos del lenguaje.',
       colorClass: 'green',
       delay: '200'
     },
     {
-      imagen: '/assets/img/servicios/3.jpeg',
+      imagen: '/assets/img/servicios/3.webp',
       titulo: 'Rehabilitación de trastornos de la comunicación',
       descripcion: 'Ayuda en casos de afasia, apraxia o disartria, como resultado de condiciones neurológicas.',
       colorClass: 'orange',
       delay: '300'
     },
     {
-      imagen: '/assets/img/servicios/4.jpeg',
+      imagen: '/assets/img/servicios/4.webp',
       titulo: 'Estimulación del lenguaje en niños pequeños',
       descripcion: 'Fomento del desarrollo del lenguaje desde edades tempranas para prevenir retrasos.',
       colorClass: 'blue',
@@ -60,7 +60,7 @@ const TerapiaLenguajePage = () => {
       nombre: 'Lic. Merlín Fernandez',
       cargo: 'Terapeuta de Lenguaje',
       ctmp: '12937',
-      imagen: '/assets/img/servicios/merlin.jpg'
+      imagen: '/assets/img/servicios/merlin.webp'
     }
   ];
 
@@ -147,7 +147,7 @@ const TerapiaLenguajePage = () => {
                 {/* Columna de imagen */}
                 <Col lg={6} className="order-1 order-lg-2 text-center">
                   <img 
-                    src="/assets/img/servicios/terapia de lenguaje.jpg" 
+                    src="/assets/img/servicios/terapia de lenguaje.webp" 
                     alt="Terapia Infantil" 
                     className="img-fluid"
                   />

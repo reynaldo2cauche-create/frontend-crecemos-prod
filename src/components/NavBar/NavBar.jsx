@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function NavBar() {
   const [mobileNavActive, setMobileNavActive] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
   const toggleMobileNav = () => {
     setMobileNavActive(!mobileNavActive);
@@ -18,7 +17,6 @@ export default function NavBar() {
     setDropdownOpen(false);
   };
 
-  // Manejar hover en desktop
   const handleMouseEnter = () => {
     if (window.innerWidth >= 1200) {
       setDropdownOpen(true);
@@ -31,7 +29,6 @@ export default function NavBar() {
     }
   };
 
-  // Toggle para mobile - solo el ícono
   const handleDropdownToggle = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -40,12 +37,11 @@ export default function NavBar() {
     }
   };
 
-  // Manejar clic en el link de Servicios
-  const handleServiciosClick = () => {
-    if (window.innerWidth >= 1200) {
-      closeMobileNav();
+  const handleServiciosClick = (e) => {
+    if (window.innerWidth < 1200) {
+      e.preventDefault();
+      setDropdownOpen(!dropdownOpen);
     } else {
-      // En mobile, también cerrar el nav después de navegar
       closeMobileNav();
     }
   };
@@ -56,35 +52,26 @@ export default function NavBar() {
     };
   }, []);
 
-  // Cerrar menú móvil cuando cambia la ruta
   useEffect(() => {
     closeMobileNav();
   }, [location]);
 
-  // Verificar si está en la sección de servicios
   const isServiciosActive = location.pathname === '/servicios' || 
                            location.pathname.includes('/infantil-') || 
-                           location.pathname.includes('/adulto-') ||
-                           location.pathname.includes('/area-');
+                           location.pathname.includes('/adulto-');
 
   return (
-    <header 
-      className="header d-flex align-items-center fixed-top"
-      style={{ 
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 997
-      }}
-    >
+    <header id="header" className="header d-flex align-items-center fixed-top">
       <div className="container-fluid container-xl position-relative d-flex align-items-center">
-        <div className="header-container d-flex align-items-center justify-content-between w-100">
-          <Link to="/" className="logo d-flex align-items-center">
+        <div className="header-container">
+          
+          {/* Logo */}
+          <Link to="/" className="logo d-flex align-items-center me-auto me-xl-0">
             <img src="/logo-text-short.png" alt="Crecemos Logo" />
           </Link>
 
-          <nav className={`navmenu ${mobileNavActive ? 'mobile-nav-active' : ''}`}>
+          {/* Menú de Navegación */}
+          <nav id="navmenu" className="navmenu">
             <ul>
               <li>
                 <Link 
@@ -122,7 +109,7 @@ export default function NavBar() {
                     onClick={handleDropdownToggle}
                   />
                 </Link>
-                <ul className={dropdownOpen ? 'd-block' : ''}>
+                <ul>
                   <li className="dropdown-header">
                     <strong>Área Infantil y Adolescentes</strong>
                   </li>
@@ -220,15 +207,18 @@ export default function NavBar() {
                 </Link>
               </li>
             </ul>
+            
             <i 
               className={`mobile-nav-toggle d-xl-none bi ${mobileNavActive ? 'bi-x' : 'bi-list'}`}
               onClick={toggleMobileNav}
             />
           </nav>
 
-          <Link className="btn-getstarted" to="/contactanos">
+          {/* Botón CTA */}
+          <Link className="btn-getstarted" to="/contactanos" onClick={closeMobileNav}>
             Agenda tu cita
           </Link>
+
         </div>
       </div>
     </header>

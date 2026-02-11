@@ -109,7 +109,7 @@ export default function PecanaBlog() {
         <h3 className="recipe-title">Pecana molida finamente</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/pecana-molida.jpg" alt="Pecana molida finamente" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/pecana-molida.webp" alt="Pecana molida finamente" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Regla de seguridad:</strong> Nunca ofrecer pecanas enteras o en trozos grandes.</p>
           <p>Ofrecerla molida finamente o triturada hasta obtener una consistencia similar a polvo o harina fina. Esta es la forma más segura para niños pequeños.</p>
@@ -121,7 +121,7 @@ export default function PecanaBlog() {
         <h3 className="recipe-title">Mezclada en purés</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/pecana-pure.jpg" alt="Pecana en purés" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/pecana-pure.webp" alt="Pecana en purés" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <ul className="mt-3">
             <li>Mezclarla en purés de frutas (plátano, manzana, pera)</li>
@@ -136,7 +136,7 @@ export default function PecanaBlog() {
         <h3 className="recipe-title">Pasta de pecana natural</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/pecana-pasta.jpg" alt="Pasta de pecana natural" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/pecana-pasta.webp" alt="Pasta de pecana natural" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Preparaciones con pasta de pecana:</strong></p>
           <ul>

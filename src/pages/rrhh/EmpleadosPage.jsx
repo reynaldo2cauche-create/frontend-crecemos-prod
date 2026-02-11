@@ -4,7 +4,7 @@ import {
   Mail, Phone, MapPin, User, Users, Briefcase, Shield,
   DollarSign, Calendar, Building2, CreditCard,
   Settings, Trash2, CheckCircle, XCircle,
-  Info, Shirt
+  Info, Shirt, Upload, FileText, IdCard
 } from 'lucide-react';
 import {
   getTrabajadores,
@@ -14,23 +14,38 @@ import {
   getCargos,
   activarTrabajador,
   desactivarTrabajador,
-  updateTrabajador
+  updateTrabajador,
+  subirCV,
+  subirDNI,
+  verArchivo,
+  eliminarCV,
+  eliminarDNI,
+  abrirArchivo,
+// ← NUEVA
+  getTrabajadorById  
 } from '../../services/trabajadorService';
 import { registrarPagoMensual } from '../../services/rrhhService';
-import { getServicios } from '../../services/catalogoService';
+import { getServicios, getGeneros, getEstadosCiviles, getParentescos, getProvincias, getDistritosByProvincia, getNivelesEducacion } from '../../services/catalogoService';
 import { asignarServicio, getServiciosByTrabajador, desactivarServicio } from '../../services/trabajadorServicioService';
 import api from '../../services/api';
-import CuentasBancarias from '../../components/CuentasBancarias'; // Ajusta la ruta según tu estructura
+import CuentasBancarias from '../../components/CuentasBancarias';
+
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([]);
   const [roles, setRoles] = useState([]);
   const [especialidades, setEspecialidades] = useState([]);
   const [cargos, setCargos] = useState([]);
   const [servicios, setServicios] = useState([]);
+  const [generos, setGeneros] = useState([]);
+  const [estadosCiviles, setEstadosCiviles] = useState([]);
+  const [parentescos, setParentescos] = useState([]);
+  const [provincias, setProvincias] = useState([]);
+  const [distritos, setDistritos] = useState([]);
+  const [nivelesEducacion, setNivelesEducacion] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('activo'); // Por defecto solo activos
+  const [filtroEstado, setFiltroEstado] = useState('activo');
 
   // Estados de modales
   const [modalNuevo, setModalNuevo] = useState(false);
@@ -39,6 +54,14 @@ export default function EmpleadosPage() {
   const [modalPago, setModalPago] = useState(false);
   const [modalDelete, setModalDelete] = useState(false);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
+
+  // Modal de confirmación de eliminación de archivos
+  const [modalEliminarArchivo, setModalEliminarArchivo] = useState({
+    show: false,
+    tipo: null, // 'cv' o 'dni'
+    empleadoId: null,
+    callback: null
+  });
 
   // Notificaciones
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -50,18 +73,28 @@ export default function EmpleadosPage() {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [trabajadoresData, rolesData, especialidadesData, cargosData, serviciosData] = await Promise.all([
+      const [trabajadoresData, rolesData, especialidadesData, cargosData, serviciosData, generosData, estadosCivilesData, parentescosData, provinciasData, nivelesEducacionData] = await Promise.all([
         getTrabajadores(),
         getRoles(),
         getEspecialidades(),
         getCargos(),
-        getServicios()
+        getServicios(),
+        getGeneros(),
+        getEstadosCiviles(),
+        getParentescos(),
+        getProvincias(),
+        getNivelesEducacion()
       ]);
       setEmpleados(trabajadoresData);
       setRoles(rolesData);
       setEspecialidades(especialidadesData);
       setCargos(cargosData);
       setServicios(serviciosData);
+      setGeneros(generosData);
+      setEstadosCiviles(estadosCivilesData);
+      setParentescos(parentescosData);
+      setProvincias(provinciasData);
+      setNivelesEducacion(nivelesEducacionData);
 
       console.log('Datos cargados:', {
         empleados: trabajadoresData?.length,
@@ -69,6 +102,11 @@ export default function EmpleadosPage() {
         especialidades: especialidadesData?.length,
         cargos: cargosData?.length,
         servicios: serviciosData?.length,
+        generos: generosData?.length,
+        estadosCiviles: estadosCivilesData?.length,
+        parentescos: parentescosData?.length,
+        provincias: provinciasData?.length,
+        nivelesEducacion: nivelesEducacionData?.length,
         serviciosData
       });
     } catch (error) {
@@ -112,6 +150,15 @@ export default function EmpleadosPage() {
       console.error('Error al eliminar empleado:', error);
       showNotification('Error al eliminar el empleado', 'error');
     }
+  };
+
+  // Función para abrir el modal de confirmación de eliminación de archivos
+  const handleOpenDeleteArchivo = (tipo, callback) => {
+    setModalEliminarArchivo({
+      show: true,
+      tipo: tipo,
+      callback: callback
+    });
   };
 
   // Filtrar empleados
@@ -162,6 +209,62 @@ export default function EmpleadosPage() {
         } flex items-center gap-2.5`}>
           <div className={`w-1.5 h-1.5 rounded-full ${notification.type === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
           <span className="text-xs font-medium text-gray-700">{notification.message}</span>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación de Archivos */}
+      {modalEliminarArchivo.show && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-fade-in">
+            {/* Header del Modal */}
+            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Eliminar {modalEliminarArchivo.tipo === 'cv' ? 'CV' : 'DNI'}</h3>
+                  <p className="text-xs text-white/80">Esta acción no se puede deshacer</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="px-6 py-5">
+              <p className="text-gray-700 text-sm leading-relaxed mb-1">
+                ¿Estás seguro de que deseas eliminar el <span className="font-bold">{modalEliminarArchivo.tipo === 'cv' ? 'Curriculum Vitae' : 'DNI'}</span> del empleado?
+              </p>
+              <p className="text-gray-500 text-xs">
+                El archivo será eliminado permanentemente del sistema.
+              </p>
+            </div>
+
+            {/* Botones de Acción */}
+            <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end">
+              <button
+                onClick={() => setModalEliminarArchivo({ show: false, tipo: null, callback: null })}
+                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (modalEliminarArchivo.callback) {
+                    modalEliminarArchivo.callback();
+                  }
+                  setModalEliminarArchivo({ show: false, tipo: null, callback: null });
+                }}
+                className="px-4 py-2.5 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-all shadow-sm hover:shadow flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -314,38 +417,49 @@ export default function EmpleadosPage() {
 
       {/* Modales */}
       {modalNuevo && (
-  <ModalNuevoEmpleado
-    onClose={() => setModalNuevo(false)}
-    roles={roles}
-    especialidades={especialidades}
-    cargos={cargos}
-    servicios={servicios}
-    onSuccess={() => {
-      cargarDatos();
-      showNotification('Empleado creado correctamente', 'success');
-    }}
-    onError={(msg) => showNotification(msg, 'error')}
-  />
-)}
+        <ModalNuevoEmpleado
+          onClose={() => setModalNuevo(false)}
+          roles={roles}
+          especialidades={especialidades}
+          cargos={cargos}
+          servicios={servicios}
+          generos={generos}
+          estadosCiviles={estadosCiviles}
+          parentescos={parentescos}
+          provincias={provincias}
+          nivelesEducacion={nivelesEducacion}
+          onSuccess={() => {
+            cargarDatos();
+            showNotification('Empleado creado correctamente', 'success');
+          }}
+          onError={(msg) => showNotification(msg, 'error')}
+        />
+      )}
 
-{modalEditar && empleadoSeleccionado && (
-  <ModalEditarEmpleado
-    empleado={empleadoSeleccionado}
-    onClose={() => {
-      setModalEditar(false);
-      setEmpleadoSeleccionado(null);
-    }}
-    roles={roles}
-    especialidades={especialidades}
-    cargos={cargos}
-    servicios={servicios}
-    onSuccess={() => {
-      cargarDatos();
-      showNotification('Empleado actualizado correctamente', 'success');
-    }}
-    onError={(msg) => showNotification(msg, 'error')}
-  />
-)}
+      {modalEditar && empleadoSeleccionado && (
+        <ModalEditarEmpleado
+          empleado={empleadoSeleccionado}
+          onClose={() => {
+            setModalEditar(false);
+            setEmpleadoSeleccionado(null);
+          }}
+          roles={roles}
+          especialidades={especialidades}
+          cargos={cargos}
+          servicios={servicios}
+          generos={generos}
+          estadosCiviles={estadosCiviles}
+          parentescos={parentescos}
+          provincias={provincias}
+          nivelesEducacion={nivelesEducacion}
+          onSuccess={() => {
+            cargarDatos();
+            showNotification('Empleado actualizado correctamente', 'success');
+          }}
+          onError={(msg) => showNotification(msg, 'error')}
+          onOpenDeleteArchivo={handleOpenDeleteArchivo}
+        />
+      )}
 
       {modalDetalle && empleadoSeleccionado && (
         <ModalDetalleEmpleado
@@ -442,15 +556,14 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
           <span className="font-medium text-gray-700">{empleado.rol?.nombre}</span>
         </div>
 
-      {empleado.cargo && (
-            <div className="flex items-center gap-2 text-xs">
-              <Briefcase className="w-3 h-3 flex-shrink-0 text-orange-500" />
-              <span className="text-gray-600">
-                {empleado.cargo.nombre}
-                {empleado.cargo.es_jefe}
-              </span>
-            </div>
-          )}
+        {empleado.cargo && (
+          <div className="flex items-center gap-2 text-xs">
+            <Briefcase className="w-3 h-3 flex-shrink-0 text-orange-500" />
+            <span className="text-gray-600">
+              {empleado.cargo.nombre}
+            </span>
+          </div>
+        )}
 
         {empleado.sueldo_base && (
           <div className="flex items-center gap-2 text-xs">
@@ -510,8 +623,333 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
   );
 };
 
-// Modal Nuevo Empleado (simplificado - reutiliza componentes del módulo anterior)
-const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios, onSuccess, onError }) => {
+const DocumentosSection = ({
+  empleado,
+  onUploadCV,
+  onUploadDNI,
+  onViewCV,
+  onViewDNI,
+  onDeleteCV,
+  onDeleteDNI,
+  readOnly = false,
+  onRefresh, // ✅ Asegúrate de recibir esta prop
+  onOpenDeleteModal // ✅ Nueva prop para abrir el modal
+}) => {
+  const [uploadingCV, setUploadingCV] = useState(false);
+  const [uploadingDNI, setUploadingDNI] = useState(false);
+  const [deletingCV, setDeletingCV] = useState(false);
+  const [deletingDNI, setDeletingDNI] = useState(false);
+
+  // Prevenir el comportamiento por defecto del formulario
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  };
+
+  const handleFileUpload = async (type, file) => {
+    console.log('🎯 DocumentosSection.handleFileUpload llamado');
+    console.log('   Tipo:', type);
+    console.log('   Archivo:', file?.name);
+    console.log('   Tamaño:', file?.size);
+
+    if (!file) {
+      console.log('❌ No se recibió archivo');
+      return;
+    }
+
+    const validTypes = {
+      cv: ['.pdf', '.doc', '.docx'],
+      dni: ['.pdf', '.jpg', '.jpeg', '.png']
+    };
+
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    console.log('📄 Extensión del archivo:', ext);
+
+    if (!validTypes[type].includes(ext)) {
+      console.log('❌ Formato no válido:', ext);
+      alert(`Formato no válido. Formatos aceptados para ${type.toUpperCase()}: ${validTypes[type].join(', ')}`);
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      console.log('❌ Archivo demasiado grande:', file.size);
+      alert('El archivo es demasiado grande. Máximo 10MB.');
+      return;
+    }
+
+    console.log('✅ Archivo válido, procediendo a subir...');
+
+    try {
+      if (type === 'cv') {
+        console.log('📤 Subiendo CV...');
+        setUploadingCV(true);
+        await onUploadCV(file);
+        console.log('✅ onUploadCV completado');
+      } else {
+        console.log('📤 Subiendo DNI...');
+        setUploadingDNI(true);
+        await onUploadDNI(file);
+        console.log('✅ onUploadDNI completado');
+      }
+
+      // ✅ IMPORTANTE: El refresh ya se hace dentro de handleUploadCV/handleUploadDNI
+      // No es necesario hacerlo aquí también
+      console.log('✅ Archivo subido exitosamente');
+    } catch (error) {
+      console.error(`❌ Error al subir ${type}:`, error);
+      console.error('   Detalle:', error.message);
+      alert(`Error al subir el ${type.toUpperCase()}`);
+    } finally {
+      if (type === 'cv') setUploadingCV(false);
+      else setUploadingDNI(false);
+    }
+  };
+
+  const handleViewDocument = async (type) => {
+    try {
+      if (type === 'cv') await onViewCV();
+      else await onViewDNI();
+    } catch (error) {
+      console.error(`Error al ver ${type}:`, error);
+      alert(`Error al visualizar el ${type.toUpperCase()}`);
+    }
+  };
+
+  const handleDeleteDocument = async (type) => {
+    // Usar el modal personalizado en lugar de window.confirm
+    if (onOpenDeleteModal) {
+      onOpenDeleteModal(type, async () => {
+        try {
+          if (type === 'cv') {
+            setDeletingCV(true);
+            await onDeleteCV();
+          } else {
+            setDeletingDNI(true);
+            await onDeleteDNI();
+          }
+
+          // ✅ IMPORTANTE: Refrescar datos después de eliminar
+          if (onRefresh) {
+            // Esperar un momento para que el backend procese
+            setTimeout(async () => {
+              await onRefresh();
+            }, 300);
+          }
+        } catch (error) {
+          console.error(`Error al eliminar ${type}:`, error);
+          alert(`Error al eliminar el ${type.toUpperCase()}`);
+        } finally {
+          if (type === 'cv') setDeletingCV(false);
+          else setDeletingDNI(false);
+        }
+      });
+      return;
+    }
+
+    // Fallback a window.confirm si no se pasó la prop (por compatibilidad)
+    if (!window.confirm(`¿Estás seguro de eliminar el ${type.toUpperCase()}?`)) return;
+
+    try {
+      if (type === 'cv') {
+        setDeletingCV(true);
+        await onDeleteCV();
+      } else {
+        setDeletingDNI(true);
+        await onDeleteDNI();
+      }
+
+      // ✅ IMPORTANTE: Refrescar datos después de eliminar
+      if (onRefresh) {
+        // Esperar un momento para que el backend procese
+        setTimeout(async () => {
+          await onRefresh();
+        }, 300);
+      }
+    } catch (error) {
+      console.error(`Error al eliminar ${type}:`, error);
+      alert(`Error al eliminar el ${type.toUpperCase()}`);
+    } finally {
+      if (type === 'cv') setDeletingCV(false);
+      else setDeletingDNI(false);
+    }
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-xl p-4">
+      <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+        <Settings className="w-4 h-4" />
+        Documentos Adjuntos
+      </h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* CV */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <h4 className="font-medium text-gray-900">Curriculum Vitae</h4>
+            </div>
+            {empleado.archivo_cv && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                Subido
+              </span>
+            )}
+          </div>
+
+          {empleado.archivo_cv ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FileText className="w-4 h-4" />
+                <span className="truncate">{empleado.archivo_cv.split('/').pop()}</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleViewDocument('cv')}
+                  className="flex-1 flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-100 transition-all"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Ver
+                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDocument('cv')}
+                    disabled={deletingCV}
+                    className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-100 transition-all disabled:opacity-50"
+                  >
+                    {deletingCV ? (
+                      <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 mb-3">No se ha subido CV</p>
+          )}
+
+          {!readOnly && (
+            <div className="mt-3">
+              <form onSubmit={handleFormSubmit}>
+                <label className="block">
+                  <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-all ${uploadingCV ? 'border-gray-300 bg-gray-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}>
+                    {uploadingCV ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-gray-600">Subiendo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">Subir CV</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => handleFileUpload('cv', e.target.files[0])}
+                      disabled={uploadingCV}
+                    />
+                  </div>
+                </label>
+              </form>
+              <p className="text-xs text-gray-500 mt-2">Formatos: PDF, DOC, DOCX (Max. 10MB)</p>
+            </div>
+          )}
+        </div>
+
+        {/* DNI */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <IdCard className="w-5 h-5 text-green-600" />
+              <h4 className="font-medium text-gray-900">Copia de DNI</h4>
+            </div>
+            {empleado.archivo_dni && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                Subido
+              </span>
+            )}
+          </div>
+
+          {empleado.archivo_dni ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FileText className="w-4 h-4" />
+                <span className="truncate">{empleado.archivo_dni.split('/').pop()}</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleViewDocument('dni')}
+                  className="flex-1 flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-100 transition-all"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Ver
+                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDocument('dni')}
+                    disabled={deletingDNI}
+                    className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-100 transition-all disabled:opacity-50"
+                  >
+                    {deletingDNI ? (
+                      <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 mb-3">No se ha subido DNI</p>
+          )}
+
+          {!readOnly && (
+            <div className="mt-3">
+              <form onSubmit={handleFormSubmit}>
+                <label className="block">
+                  <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-all ${uploadingDNI ? 'border-gray-300 bg-gray-50' : 'border-gray-300 hover:border-green-400 hover:bg-green-50'}`}>
+                    {uploadingDNI ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-gray-600">Subiendo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">Subir DNI</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleFileUpload('dni', e.target.files[0])}
+                      disabled={uploadingDNI}
+                    />
+                  </div>
+                </label>
+              </form>
+              <p className="text-xs text-gray-500 mt-2">Formatos: PDF, JPG, PNG (Max. 10MB)</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+// Modal Nuevo Empleado
+const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios, generos, estadosCiviles, parentescos, provincias, nivelesEducacion, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',
@@ -529,14 +967,84 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     talla_polo: '',
     talla_pantalon: '',
     talla_zapatos: '',
+    numero_colegiatura: '',
+    fecha_nacimiento: '',
+    sexo_id: '',
+    estado_civil_id: '',
+    hijos: '',
+    pais: '',
+    referencia_direccion: '',
+    parentesco_emergencia_id: '',
+    provincia_id: '',
+    distrito_id: '',
+    procedencia_laboral: '',
+    area_laboral: '',
+    empresa_anterior: '',
+    motivo_renuncia: '',
+    hobbies: '',
+    nivel_educacion_id: '',
+    centro_estudios_principal: '',
+    carrera_estudiada_principal: '',
+    fecha_inicio_estudio: '',
+    fecha_termino_estudio: '',
     sueldo_base: '',
     fecha_ingreso: '',
     numero_cuenta: '',
-    banco: ''
+    banco: '',
+    opciones_regalo: ''
   });
+
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [distritosDisponibles, setDistritosDisponibles] = useState([]);
+
+  // Estado para manejar archivos
+  const [archivos, setArchivos] = useState({
+    cv: null,
+    dni: null
+  });
+
+  // Efecto para cargar distritos cuando cambia la provincia
+  useEffect(() => {
+    const cargarDistritos = async () => {
+      if (formData.provincia_id) {
+        try {
+          const distritosData = await getDistritosByProvincia(formData.provincia_id);
+          setDistritosDisponibles(distritosData);
+        } catch (error) {
+          console.error('Error al cargar distritos:', error);
+          setDistritosDisponibles([]);
+        }
+      } else {
+        setDistritosDisponibles([]);
+        setFormData(prev => ({ ...prev, distrito_id: '' }));
+      }
+    };
+    cargarDistritos();
+  }, [formData.provincia_id]);
+
+  const handleFileChange = (type, file) => {
+    if (!file) return;
+
+    const validTypes = {
+      cv: ['.pdf', '.doc', '.docx'],
+      dni: ['.pdf', '.jpg', '.jpeg', '.png']
+    };
+
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!validTypes[type].includes(ext)) {
+      alert(`Formato no válido. Formatos aceptados para ${type.toUpperCase()}: ${validTypes[type].join(', ')}`);
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('El archivo es demasiado grande. Máximo 10MB.');
+      return;
+    }
+
+    setArchivos(prev => ({ ...prev, [type]: file }));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -573,70 +1081,120 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     return Object.keys(erroresNuevos).length === 0;
   };
 
-  const handleGuardar = async () => {
-    if (!validarFormulario()) {
-      onError('Por favor corrige los errores');
-      return;
-    }
+const handleGuardar = async () => {
+  if (!validarFormulario()) {
+    showNotification('Por favor corrige los errores en el formulario', 'error');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const rolObj = roles.find(r => r.nombre === formData.rol);
-      const especialidadObj = especialidades.find(e => e.nombre === formData.especialidad);
+  try {
+    setGuardando(true);
 
-      const data = {
-        nombres: formData.nombres,
-        apellidos: formData.apellidos,
-        dni: formData.dni,
-        username: formData.usuario,
-        password: formData.contrasena,
-        email: formData.email,
-        correo_corporativo: formData.correo_corporativo || null,
-        rol_id: rolObj?.id,
-        especialidad_id: especialidadObj?.id || null,
-        cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
-        telefono: formData.telefono || null,
-        telefono_emergencia: formData.telefono_emergencia || null,
-        contacto_emergencia: formData.contacto_emergencia || null,
-        talla_polo: formData.talla_polo || null,
-        talla_pantalon: formData.talla_pantalon || null,
-        talla_zapatos: formData.talla_zapatos || null,
-        sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
-        fecha_ingreso: formData.fecha_ingreso || null,
-        numero_cuenta: formData.numero_cuenta || null,
-        banco: formData.banco || null
-      };
+    // ✅ OBTENER EL USUARIO LOGUEADO (Administrador)
+    const usuarioLogueado = JSON.parse(localStorage.getItem('user'));
 
-      const nuevoTrabajador = await crearTrabajador(data);
+    console.log('🔐 Usuario que edita:', {
+      id: usuarioLogueado.id,
+      nombre: usuarioLogueado.nombres,
+      rol: usuarioLogueado.rol?.nombre
+    });
 
-      // Si es terapeuta y tiene servicios seleccionados, asignarlos
-      if (esTerapeuta && serviciosSeleccionados.length > 0) {
-        const userId = localStorage.getItem('userId') || 1; // Obtener userId del usuario actual
-        const promesasServicios = serviciosSeleccionados.map(servicioId =>
-          asignarServicio(nuevoTrabajador.id, servicioId, null, userId)
-        );
-        await Promise.all(promesasServicios);
-      }
+    const rolObj = roles.find(r => r.nombre === formData.rol);
+    const especialidadObj = formData.especialidad 
+      ? especialidades.find(e => e.nombre === formData.especialidad)
+      : null;
+    const cargoObj = formData.cargo 
+      ? cargos.find(c => c.nombre === formData.cargo)
+      : null;
+    const jefeObj = formData.jefe_id 
+      ? { id: formData.jefe_id }
+      : null;
 
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error('Error al crear empleado:', error);
-      onError(error.response?.data?.message || 'Error al crear el empleado');
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('🔍 FRONTEND EDITAR - Preparando datos:', {
+      'formData.rol': formData.rol,
+      'formData.especialidad': formData.especialidad,
+      rolObj,
+      especialidadObj,
+      'especialidad_id a enviar': especialidadObj?.id || null
+    });
+
+    const dataToUpdate = {
+      nombres: formData.nombres,
+      apellidos: formData.apellidos,
+      dni: formData.dni,
+      username: formData.username,
+      email: formData.email,
+      correo_corporativo: formData.correo_corporativo || null,
+      telefono: formData.telefono || null,
+      telefono_emergencia: formData.telefono_emergencia || null,
+      contacto_emergencia: formData.contacto_emergencia || null,
+      direccion: formData.direccion || null,
+      distrito: formData.distrito || null,
+      provincia: formData.provincia || null,
+      departamento: formData.departamento || null,
+      talla_polo: formData.talla_polo || null,
+      talla_pantalon: formData.talla_pantalon || null,
+      talla_zapatos: formData.talla_zapatos || null,
+      numero_colegiatura: formData.numero_colegiatura || null,
+      
+      rol_id: rolObj?.id || null,
+      especialidad_id: especialidadObj?.id || null,
+      cargo_id: cargoObj?.id || null,
+      jefe_id: jefeObj?.id || null,
+      institucion_id: formData.institucion_id || null,
+
+      fecha_nacimiento: formData.fecha_nacimiento || null,
+      sexo_id: formData.sexo_id || null,
+      estado_civil_id: formData.estado_civil_id || null,
+      hijos: formData.hijos || null,
+      pais: formData.pais || null,
+      referencia_direccion: formData.referencia_direccion || null,
+      parentesco_emergencia_id: formData.parentesco_emergencia_id || null,
+      distrito_id: formData.distrito_id || null,
+      
+      procedencia_laboral: formData.procedencia_laboral || null,
+      area_laboral: formData.area_laboral || null,
+      empresa_anterior: formData.empresa_anterior || null,
+      motivo_renuncia: formData.motivo_renuncia || null,
+      
+      nivel_educacion_id: formData.nivel_educacion_id || null,
+      centro_estudios_principal: formData.centro_estudios_principal || null,
+      carrera_estudiada_principal: formData.carrera_estudiada_principal || null,
+      fecha_inicio_estudio: formData.fecha_inicio_estudio || null,
+      fecha_termino_estudio: formData.fecha_termino_estudio || null,
+      
+      hobbies: formData.hobbies || null,
+
+      // ✅ AGREGAR EL ID DEL USUARIO LOGUEADO (ADMINISTRADOR)
+      user_id_actua: usuarioLogueado.id
+    };
+
+    console.log('🚀 FRONTEND - Enviando al backend:', {
+      empleadoId: empleadoEditando.id,
+      dataCompleta: dataToUpdate,
+      'data.rol_id': dataToUpdate.rol_id,
+      'data.especialidad_id': dataToUpdate.especialidad_id,
+      'data.cargo_id': dataToUpdate.cargo_id,
+      'data.user_id_actua': dataToUpdate.user_id_actua // ✅ Verificar que se envía
+    });
+
+    await updateTrabajador(empleadoEditando.id, dataToUpdate);
+
+    showNotification('Empleado actualizado correctamente', 'success');
+    setMostrarModal(false);
+    setEmpleadoEditando(null);
+    cargarEmpleados();
+  } catch (error) {
+    console.error('Error al actualizar empleado:', error);
+    const mensajeError = error.response?.data?.message || 'Error al actualizar el empleado';
+    showNotification(mensajeError, 'error');
+  } finally {
+    setGuardando(false);
+  }
+};
 
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
-
-  console.log('ModalNuevoEmpleado - Debug:', {
-    rolSeleccionado,
-    esTerapeuta,
-    serviciosCount: servicios?.length,
-    serviciosSeleccionadosCount: serviciosSeleccionados.length
-  });
 
   return (
     <>
@@ -670,9 +1228,63 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                 <InputField label="Nombres" name="nombres" value={formData.nombres} onChange={handleChange} error={errors.nombres} required />
                 <InputField label="Apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} error={errors.apellidos} required />
                 <InputField label="DNI" name="dni" value={formData.dni} onChange={handleChange} error={errors.dni} maxLength={8} required />
+                <InputField label="Fecha de Nacimiento" name="fecha_nacimiento" type="date" value={formData.fecha_nacimiento} onChange={handleChange} />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Sexo
+                  </label>
+                  <select
+                    name="sexo_id"
+                    value={formData.sexo_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                  >
+                    <option value="">Seleccionar sexo</option>
+                    {generos?.map(g => (
+                      <option key={g.id} value={g.id}>{g.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Estado Civil
+                  </label>
+                  <select
+                    name="estado_civil_id"
+                    value={formData.estado_civil_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                  >
+                    <option value="">Seleccionar estado civil</option>
+                    {estadosCiviles?.map(ec => (
+                      <option key={ec.id} value={ec.id}>{ec.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <InputField label="Número de Hijos" name="hijos" type="number" value={formData.hijos} onChange={handleChange} min="0" />
                 <InputField label="Email Personal" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} required />
                 <InputField label="Email Corporativo" name="correo_corporativo" type="email" value={formData.correo_corporativo} onChange={handleChange} placeholder="correo@crecemos.com.pe" />
                 <InputField label="Teléfono" name="telefono" value={formData.telefono} onChange={handleChange} maxLength={9} />
+                <InputField label="Teléfono Emergencia" name="telefono_emergencia" value={formData.telefono_emergencia} onChange={handleChange} maxLength={9} />
+                <InputField label="Contacto Emergencia" name="contacto_emergencia" value={formData.contacto_emergencia} onChange={handleChange} />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Parentesco Contacto Emergencia
+                  </label>
+                  <select
+                    name="parentesco_emergencia_id"
+                    value={formData.parentesco_emergencia_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                  >
+                    <option value="">Seleccionar parentesco</option>
+                    {parentescos?.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <InputField label="País" name="pais" value={formData.pais} onChange={handleChange} placeholder="Perú" />
+                <InputField label="Referencia de Dirección" name="referencia_direccion" value={formData.referencia_direccion} onChange={handleChange} className="md:col-span-2" />
               </div>
             </div>
 
@@ -696,7 +1308,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                   required 
                 />
                 
-                {/* ✅ SELECT DE CARGO */}
                 <SelectField 
                   label="Cargo/Puesto de Trabajo" 
                   name="cargo_id" 
@@ -709,7 +1320,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                   isValueLabel={true}
                 />
 
-                {/* ✅ ESPECIALIDAD - Solo si es terapeuta */}
                 {esTerapeuta && (
                   <div className="md:col-span-2">
                     <SelectField
@@ -718,7 +1328,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                       value={formData.especialidad}
                       onChange={handleChange}
                       error={errors.especialidad}
-                      options={especialidades.filter(e => e.activo).map(e => e.nombre)}
+                      options={especialidades.filter(e => e.activo && e.nombre && e.nombre.trim() !== '').map(e => e.nombre)}
                       required
                     />
                   </div>
@@ -726,7 +1336,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
               </div>
             </div>
 
-            {/* ✅ SERVICIOS - Solo si es terapeuta */}
             {esTerapeuta && (
               <div>
                 <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
@@ -737,7 +1346,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                   <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Columna Infantil y Adolescentes */}
                     <div className="bg-white rounded-lg p-3 border border-blue-200">
                       <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
                         <Users className="w-3 h-3" />
@@ -766,7 +1374,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                       </div>
                     </div>
 
-                    {/* Columna Adultos */}
                     <div className="bg-white rounded-lg p-3 border border-purple-200">
                       <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
                         <User className="w-3 h-3" />
@@ -812,20 +1419,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
               </div>
             )}
 
-            {/* Contacto */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                Información de Contacto (Opcional)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Teléfono de Emergencia" name="telefono_emergencia" value={formData.telefono_emergencia} onChange={handleChange} maxLength={9} />
-                <div className="md:col-span-2">
-                  <InputField label="Contacto de Emergencia" name="contacto_emergencia" value={formData.contacto_emergencia} onChange={handleChange} placeholder="Nombre completo del contacto" />
-                </div>
-              </div>
-            </div>
-
             {/* Tallas */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
@@ -857,23 +1450,166 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
               </div>
             </div>
 
+            {/* Datos Profesionales */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Datos Profesionales (Opcional)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Número de Colegiatura" name="numero_colegiatura" value={formData.numero_colegiatura} onChange={handleChange} placeholder="Ej: CPsP 12345" />
+                <InputField label="Procedencia Laboral" name="procedencia_laboral" value={formData.procedencia_laboral} onChange={handleChange} placeholder="Lugar de trabajo anterior" />
+                <InputField label="Área Laboral" name="area_laboral" value={formData.area_laboral} onChange={handleChange} placeholder="Área de trabajo" />
+                <InputField label="Empresa Anterior" name="empresa_anterior" value={formData.empresa_anterior} onChange={handleChange} />
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Motivo de Renuncia</label>
+                  <textarea
+                    name="motivo_renuncia"
+                    value={formData.motivo_renuncia}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                    placeholder="Breve descripción del motivo..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Datos Adicionales */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Datos Adicionales (Opcional)
+              </h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Hobbies e Intereses</label>
+                  <textarea
+                    name="hobbies"
+                    value={formData.hobbies}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                    placeholder="Actividades, deportes, pasatiempos..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Opciones de Regalo</label>
+                  <textarea
+                    name="opciones_regalo" 
+                    value={formData.opciones_regalo} 
+                    onChange={handleChange} 
+                    multiline 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                    placeholder="Preferencias de regalo, tallas, etc."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Documentos */}
+            <div className="border border-gray-200 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Documentos Adjuntos
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* CV */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Curriculum Vitae (CV)
+                  </label>
+                  <label className="block">
+                    <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
+                      <Upload className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          {archivos.cv ? archivos.cv.name : 'Seleccionar archivo'}
+                        </p>
+                        <p className="text-xs text-gray-500">PDF, DOC, DOCX (Max. 10MB)</p>
+                      </div>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => handleFileChange('cv', e.target.files[0])}
+                    />
+                  </label>
+                  {archivos.cv && (
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{archivos.cv.name}</span>
+                      <button
+                        onClick={() => setArchivos(prev => ({ ...prev, cv: null }))}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* DNI */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Copia de DNI
+                  </label>
+                  <label className="block">
+                    <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
+                      <Upload className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          {archivos.dni ? archivos.dni.name : 'Seleccionar archivo'}
+                        </p>
+                        <p className="text-xs text-gray-500">PDF, JPG, PNG (Max. 10MB)</p>
+                      </div>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleFileChange('dni', e.target.files[0])}
+                    />
+                  </label>
+                  {archivos.dni && (
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{archivos.dni.name}</span>
+                      <button
+                        onClick={() => setArchivos(prev => ({ ...prev, dni: null }))}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Datos Financieros */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />
                 Datos Financieros (Opcional)
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <InputField label="Sueldo Base (S/)" name="sueldo_base" type="number" step="0.01" value={formData.sueldo_base} onChange={handleChange} />
                 <InputField label="Fecha de Ingreso" name="fecha_ingreso" type="date" value={formData.fecha_ingreso} onChange={handleChange} />
                 <SelectField
-                  label="Banco"
+                  label="Banco Principal"
                   name="banco"
                   value={formData.banco}
                   onChange={handleChange}
                   options={['BCP', 'BBVA', 'INTERBANK', 'SCOTIABANK', 'BANBIF', 'PICHINCHA', 'OTROS']}
                 />
-                <InputField label="Número de Cuenta" name="numero_cuenta" value={formData.numero_cuenta} onChange={handleChange} />
+                <InputField label="Número de Cuenta Principal" name="numero_cuenta" value={formData.numero_cuenta} onChange={handleChange} />
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                <p className="text-xs text-blue-800 flex items-center gap-2">
+                  <Info className="w-4 h-4 flex-shrink-0" />
+                  <span>Puedes agregar cuentas bancarias adicionales después de crear el empleado, editando su perfil.</span>
+                </p>
               </div>
             </div>
           </div>
@@ -910,8 +1646,8 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
   );
 };
 
-// ============== MODAL EDITAR EMPLEADO ==============
-const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, servicios, onSuccess, onError }) => {
+// Modal Editar Empleado
+const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, servicios, generos, estadosCiviles, parentescos, provincias, nivelesEducacion, onSuccess, onError, onOpenDeleteArchivo }) => {
   const [formData, setFormData] = useState({
     nombres: empleado.nombres || '',
     apellidos: empleado.apellidos || '',
@@ -929,41 +1665,196 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
     direccion: empleado.direccion || '',
     distrito: empleado.distrito || '',
     provincia: empleado.provincia || '',
+    provincia_id: empleado.distrito_rel?.provincia?.id || '',
+    distrito_id: empleado.distrito_id || '',
     departamento: empleado.departamento || '',
     talla_polo: empleado.talla_polo || '',
     talla_pantalon: empleado.talla_pantalon || '',
     talla_zapatos: empleado.talla_zapatos || '',
+    numero_colegiatura: empleado.numero_colegiatura || '',
+    fecha_nacimiento: empleado.fecha_nacimiento || '',
+    sexo_id: empleado.sexo?.id || '',
+    estado_civil_id: empleado.estado_civil?.id || '',
+    hijos: empleado.hijos || '',
+    pais: empleado.pais || '',
+    referencia_direccion: empleado.referencia_direccion || '',
+    parentesco_emergencia_id: empleado.parentesco_emergencia?.id || '',
+    procedencia_laboral: empleado.procedencia_laboral || '',
+    area_laboral: empleado.area_laboral || '',
+    empresa_anterior: empleado.empresa_anterior || '',
+    motivo_renuncia: empleado.motivo_renuncia || '',
+    hobbies: empleado.hobbies || '',
+    opciones_regalo: empleado.opciones_regalo || '', 
+    nivel_educacion_id: empleado.nivel_educacion?.id || '',
+    centro_estudios_principal: empleado.centro_estudios_principal || '',
+    carrera_estudiada_principal: empleado.carrera_estudiada_principal || '',
+    fecha_inicio_estudio: empleado.fecha_inicio_estudio || '',
+    fecha_termino_estudio: empleado.fecha_termino_estudio || '',
+    archivo_cv: empleado.archivo_cv || '',
+    archivo_dni: empleado.archivo_dni || '',
     sueldo_base: empleado.sueldo_base || '',
     fecha_ingreso: empleado.fecha_ingreso || ''
   });
+  
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
   const [serviciosOriginales, setServiciosOriginales] = useState([]);
+  const [cargandoServicios, setCargandoServicios] = useState(true);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [loadingServicios, setLoadingServicios] = useState(true);
+  const [empleadoActual, setEmpleadoActual] = useState(empleado);
+  const [distritosDisponibles, setDistritosDisponibles] = useState([]);
 
-  // Cargar servicios del empleado al abrir el modal
+  // Efecto para cargar distritos cuando cambia la provincia
   useEffect(() => {
-    const cargarServiciosEmpleado = async () => {
-      if (empleado.rol?.nombre === 'Terapeuta') {
+    const cargarDistritos = async () => {
+      if (formData.provincia_id) {
         try {
-          setLoadingServicios(true);
+          const distritosData = await getDistritosByProvincia(formData.provincia_id);
+          setDistritosDisponibles(distritosData);
+        } catch (error) {
+          console.error('Error al cargar distritos:', error);
+          setDistritosDisponibles([]);
+        }
+      } else {
+        setDistritosDisponibles([]);
+      }
+    };
+    cargarDistritos();
+  }, [formData.provincia_id]);
+
+  // Cargar servicios del empleado
+  useEffect(() => {
+    const cargarServicios = async () => {
+      if (empleado.rol?.nombre === 'Terapeuta') {
+        console.log('✅ Es Terapeuta, cargando servicios...');
+        try {
+          setCargandoServicios(true);
           const serviciosData = await getServiciosByTrabajador(empleado.id);
           const serviciosIds = serviciosData.map(s => s.id);
+
+          console.log('Servicios cargados del empleado:', serviciosData);
+          console.log('IDs de servicios:', serviciosIds);
+
           setServiciosSeleccionados(serviciosIds);
           setServiciosOriginales(serviciosIds);
         } catch (error) {
           console.error('Error al cargar servicios:', error);
         } finally {
-          setLoadingServicios(false);
+          setCargandoServicios(false);
         }
       } else {
-        setLoadingServicios(false);
+        console.log('❌ NO es Terapeuta, no se cargarán servicios');
+        setCargandoServicios(false);
       }
     };
 
-    cargarServiciosEmpleado();
-  }, [empleado.id, empleado.rol]);
+    cargarServicios();
+  }, [empleado.id, empleado.rol?.nombre]);
+
+
+
+  const handleCheckboxChange = (servicioId, isChecked) => {
+    console.log('Checkbox cambiado:', { servicioId, isChecked });
+    
+    if (isChecked) {
+      if (!serviciosSeleccionados.includes(servicioId)) {
+        setServiciosSeleccionados(prev => [...prev, servicioId]);
+      }
+    } else {
+      setServiciosSeleccionados(prev => prev.filter(id => id !== servicioId));
+    }
+  };
+
+  // Funciones para manejar documentos
+  const handleUploadCV = async (file) => {
+    console.log('📤 handleUploadCV - Subiendo CV...');
+    console.log('   Empleado ID:', empleado.id);
+    console.log('   Archivo:', file.name);
+    console.log('   Tamaño:', file.size);
+
+    try {
+      const resultado = await subirCV(empleado.id, file);
+      console.log('✅ CV subido exitosamente:', resultado);
+      await refrescarEmpleado(); // ✅ Refrescar después de subir
+    } catch (error) {
+      console.error('❌ Error al subir CV:', error);
+      console.error('   Detalle:', error.message);
+      throw error;
+    }
+  };
+
+  const handleUploadDNI = async (file) => {
+    console.log('📤 handleUploadDNI - Subiendo DNI...');
+    console.log('   Empleado ID:', empleado.id);
+    console.log('   Archivo:', file.name);
+    console.log('   Tamaño:', file.size);
+
+    try {
+      const resultado = await subirDNI(empleado.id, file);
+      console.log('✅ DNI subido exitosamente:', resultado);
+      await refrescarEmpleado(); // ✅ Refrescar después de subir
+    } catch (error) {
+      console.error('❌ Error al subir DNI:', error);
+      console.error('   Detalle:', error.message);
+      throw error;
+    }
+  };
+
+  const handleViewCV = async () => {
+  try {
+    // Usar el nombre del archivo directamente
+    if (empleadoActual.archivo_cv) {
+      await abrirArchivo(empleadoActual.archivo_cv);
+    } else {
+      alert('No hay CV subido');
+    }
+  } catch (error) {
+    console.error('Error al ver CV:', error);
+    alert('Error al abrir el CV');
+  }
+};
+
+const handleViewDNI = async () => {
+  try {
+    if (empleadoActual.archivo_dni) {
+      await abrirArchivo(empleadoActual.archivo_dni);
+    } else {
+      alert('No hay DNI subido');
+    }
+  } catch (error) {
+    console.error('Error al ver DNI:', error);
+    alert('Error al abrir el DNI');
+  }
+};
+
+// Función para refrescar los datos del empleado
+const refrescarEmpleado = async () => {
+  try {
+    console.log('🔄 Refrescando datos del empleado ID:', empleado.id);
+    const empleadoActualizado = await getTrabajadorById(empleado.id);
+    console.log('✅ Empleado actualizado obtenido:', {
+      id: empleadoActualizado.id,
+      archivo_cv: empleadoActualizado.archivo_cv,
+      archivo_dni: empleadoActualizado.archivo_dni
+    });
+    setEmpleadoActual(empleadoActualizado);
+    console.log('✅ Estado empleadoActual actualizado');
+    return empleadoActualizado; // Importante retornar
+  } catch (error) {
+    console.error('❌ Error al refrescar empleado:', error);
+  }
+};
+
+  const handleDeleteCV = async () => {
+    await eliminarCV(empleado.id);
+    await refrescarEmpleado(); // ✅ Refrescar después de eliminar
+  };
+
+  const handleDeleteDNI = async () => {
+    await eliminarDNI(empleado.id);
+    await refrescarEmpleado(); // ✅ Refrescar después de eliminar
+  };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -971,6 +1862,63 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
     if (errors[name]) {
       setErrors({ ...errors, [name]: null });
     }
+  };
+
+  const handleProvinciaChange = async (e) => {
+    const provinciaId = e.target.value === '' ? '' : parseInt(e.target.value);
+    const provinciaSeleccionada = provincias.find(p => p.id === provinciaId);
+
+    console.log('🌍 Cambiando provincia:', {
+      provinciaId,
+      nombre: provinciaSeleccionada?.nombre
+    });
+
+    // Actualizar provincia_id, provincia (nombre) y departamento
+    setFormData(prev => ({
+      ...prev,
+      provincia_id: provinciaId || '',
+      provincia: provinciaSeleccionada?.nombre || '',
+      departamento: provinciaSeleccionada?.region || '',
+      distrito_id: '',  // Limpiar distrito porque cambió provincia
+      distrito: ''
+    }));
+
+    // Cargar distritos de la nueva provincia
+    if (provinciaId) {
+      try {
+        const distritosData = await getDistritosByProvincia(provinciaId);
+        setDistritosDisponibles(distritosData || []);
+        console.log('✅ Distritos cargados:', distritosData?.length);
+      } catch (error) {
+        console.error('❌ Error al cargar distritos:', error);
+        setDistritosDisponibles([]);
+      }
+    } else {
+      setDistritosDisponibles([]);
+    }
+  };
+
+  const handleDistritoChange = (e) => {
+    const distritoId = e.target.value === '' ? '' : parseInt(e.target.value);
+    const distritoSeleccionado = distritosDisponibles.find(d => d.id === distritoId);
+
+    console.log('📍 Cambiando distrito:', {
+      distritoId,
+      tipo: typeof distritoId,
+      nombre: distritoSeleccionado?.nombre,
+      distritoSeleccionado
+    });
+
+    // Actualizar distrito_id y distrito (nombre)
+    setFormData(prev => {
+      const nuevoEstado = {
+        ...prev,
+        distrito_id: distritoId || '',
+        distrito: distritoSeleccionado?.nombre || ''
+      };
+      console.log('📊 Estado actualizado con distrito_id:', nuevoEstado.distrito_id);
+      return nuevoEstado;
+    });
   };
 
   const validarFormulario = () => {
@@ -1008,8 +1956,24 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
 
     setLoading(true);
     try {
+      // ✅ OBTENER EL USUARIO LOGUEADO (Administrador)
+      const usuarioLogueado = JSON.parse(localStorage.getItem('user'));
+
       const rolObj = roles.find(r => r.nombre === formData.rol);
       const especialidadObj = especialidades.find(e => e.nombre === formData.especialidad);
+
+      console.log('🔍 FRONTEND EDITAR - Preparando datos:', {
+        'formData.rol': formData.rol,
+        'formData.especialidad': formData.especialidad,
+        'rolObj': rolObj,
+        'especialidadObj': especialidadObj,
+        'especialidad_id a enviar': especialidadObj?.id || null,
+        '🌍 formData.provincia_id': formData.provincia_id,
+        '🌍 formData.distrito_id': formData.distrito_id,
+        '🌍 formData.distrito': formData.distrito,
+        '🌍 formData.provincia': formData.provincia,
+        '🌍 formData.departamento': formData.departamento
+      });
 
       const data = {
         nombres: formData.nombres,
@@ -1018,47 +1982,109 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
         username: formData.usuario,
         email: formData.email,
         correo_corporativo: formData.correo_corporativo || null,
-        rol_id: rolObj?.id,
+        rol_id: rolObj.id,
         especialidad_id: especialidadObj?.id || null,
         cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
         telefono: formData.telefono || null,
         telefono_emergencia: formData.telefono_emergencia || null,
         contacto_emergencia: formData.contacto_emergencia || null,
         direccion: formData.direccion || null,
-        distrito: formData.distrito || null,
-        provincia: formData.provincia || null,
-        departamento: formData.departamento || null,
+        // Los campos distrito, provincia y departamento se actualizan automáticamente en el backend basándose en distrito_id
         talla_polo: formData.talla_polo || null,
         talla_pantalon: formData.talla_pantalon || null,
         talla_zapatos: formData.talla_zapatos || null,
+        numero_colegiatura: formData.numero_colegiatura || null,
+        fecha_nacimiento: formData.fecha_nacimiento || null,
+        sexo_id: formData.sexo_id ? parseInt(formData.sexo_id) : null,
+        estado_civil_id: formData.estado_civil_id ? parseInt(formData.estado_civil_id) : null,
+        hijos: formData.hijos ? parseInt(formData.hijos) : null,
+        pais: formData.pais || null,
+        referencia_direccion: formData.referencia_direccion || null,
+        parentesco_emergencia_id: formData.parentesco_emergencia_id ? parseInt(formData.parentesco_emergencia_id) : null,
+        distrito_id: formData.distrito_id ? parseInt(formData.distrito_id) : null,
+        procedencia_laboral: formData.procedencia_laboral || null,
+        area_laboral: formData.area_laboral || null,
+        empresa_anterior: formData.empresa_anterior || null,
+        motivo_renuncia: formData.motivo_renuncia || null,
+        hobbies: formData.hobbies || null,
+        opciones_regalo: formData.opciones_regalo || null, 
+        nivel_educacion_id: formData.nivel_educacion_id ? parseInt(formData.nivel_educacion_id) : null,
+        centro_estudios_principal: formData.centro_estudios_principal || null,
+        carrera_estudiada_principal: formData.carrera_estudiada_principal || null,
+        fecha_inicio_estudio: formData.fecha_inicio_estudio || null,
+        fecha_termino_estudio: formData.fecha_termino_estudio || null,
+        // ❌ NO enviar archivo_cv y archivo_dni aquí - se manejan con endpoints separados
+        // archivo_cv: formData.archivo_cv || null,
+        // archivo_dni: formData.archivo_dni || null,
         sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
-        fecha_ingreso: formData.fecha_ingreso || null
+        fecha_ingreso: formData.fecha_ingreso || null,
+
+        // ✅ AGREGAR EL ID DEL USUARIO LOGUEADO (ADMINISTRADOR)
+        user_id_actua: usuarioLogueado.id
       };
 
       if (formData.contrasena?.trim()) {
         data.password = formData.contrasena;
       }
 
+      console.log('🚀 FRONTEND - Enviando al backend:', {
+        empleadoId: empleado.id,
+        dataCompleta: data,
+        'data.rol_id': data.rol_id,
+        'data.especialidad_id': data.especialidad_id,
+        'data.cargo_id': data.cargo_id,
+        '🌍 data.distrito_id': data.distrito_id,
+        '🌍 formData.distrito_id': formData.distrito_id,
+        'tipo distrito_id': typeof data.distrito_id
+      });
+
+      // Actualizar datos del empleado
       await updateTrabajador(empleado.id, data);
 
       // Si es terapeuta, actualizar servicios
       if (esTerapeuta) {
-        const userId = localStorage.getItem('userId') || 1;
+        console.log('Procesando servicios...');
+        console.log('Servicios originales:', serviciosOriginales);
+        console.log('Servicios seleccionados:', serviciosSeleccionados);
+        
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userId = user.id || 1;
 
-        // Servicios a agregar (están en seleccionados pero no en originales)
         const serviciosAgregar = serviciosSeleccionados.filter(id => !serviciosOriginales.includes(id));
-
-        // Servicios a eliminar (están en originales pero no en seleccionados)
         const serviciosEliminar = serviciosOriginales.filter(id => !serviciosSeleccionados.includes(id));
+
+        console.log('Servicios a agregar:', serviciosAgregar);
+        console.log('Servicios a eliminar:', serviciosEliminar);
 
         // Agregar nuevos servicios
         for (const servicioId of serviciosAgregar) {
-          await asignarServicio(empleado.id, servicioId, null, userId);
+          try {
+            await asignarServicio(empleado.id, servicioId, '', userId);
+            console.log(`Servicio ${servicioId} agregado exitosamente`);
+          } catch (error) {
+            console.error(`Error al agregar servicio ${servicioId}:`, error);
+          }
         }
 
         // Eliminar servicios
         for (const servicioId of serviciosEliminar) {
-          await desactivarServicio(empleado.id, servicioId, userId);
+          try {
+            await desactivarServicio(empleado.id, servicioId, userId);
+            console.log(`Servicio ${servicioId} eliminado exitosamente`);
+          } catch (error) {
+            console.error(`Error al eliminar servicio ${servicioId}:`, error);
+          }
+        }
+
+        // Recargar servicios desde el backend para sincronizar estado
+        try {
+          const serviciosActualizados = await getServiciosByTrabajador(empleado.id);
+          const serviciosIds = serviciosActualizados.map(s => s.id);
+          setServiciosOriginales(serviciosIds);
+          setServiciosSeleccionados(serviciosIds);
+          console.log('Servicios recargados después de guardar:', serviciosIds);
+        } catch (error) {
+          console.error('Error al recargar servicios:', error);
         }
       }
 
@@ -1076,13 +2102,9 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
 
-  console.log('ModalEditarEmpleado - Debug:', {
-    rolSeleccionado,
-    esTerapeuta,
-    serviciosCount: servicios?.length,
-    serviciosSeleccionadosCount: serviciosSeleccionados.length,
-    loadingServicios
-  });
+  // Servicios agrupados por área
+  const serviciosInfantiles = servicios.filter(s => s.activo && s.area?.id === 1);
+  const serviciosAdultos = servicios.filter(s => s.activo && s.area?.id === 2);
 
   return (
     <>
@@ -1103,68 +2125,115 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Datos Personales */}
-            <Section title="Datos Personales" icon={User}>
+            {/* Datos Básicos */}
+            <Section title="Datos Básicos" icon={User}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Nombres" name="nombres" value={formData.nombres} onChange={handleChange} error={errors.nombres} required />
-                <InputField label="Apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} error={errors.apellidos} required />
-                <InputField label="DNI" name="dni" value={formData.dni} onChange={handleChange} error={errors.dni} maxLength={8} required />
-                <InputField label="Email Personal" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} required />
-                <InputField label="Email Corporativo" name="correo_corporativo" type="email" value={formData.correo_corporativo} onChange={handleChange} placeholder="correo@crecemos.com.pe" />
-                <InputField label="Teléfono" name="telefono" value={formData.telefono} onChange={handleChange} maxLength={9} />
+                <InputField label="Nombres" name="nombres" value={formData.nombres} onChange={handleChange} required error={errors.nombres} />
+                <InputField label="Apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} required error={errors.apellidos} />
+                <InputField label="DNI" name="dni" value={formData.dni} onChange={handleChange} maxLength={8} required error={errors.dni} />
+                <InputField label="Fecha de Nacimiento" name="fecha_nacimiento" type="date" value={formData.fecha_nacimiento} onChange={handleChange} />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Sexo
+                  </label>
+                  <select
+                    name="sexo_id"
+                    value={formData.sexo_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar sexo</option>
+                    {generos?.map(g => (
+                      <option key={g.id} value={g.id}>{g.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Estado Civil
+                  </label>
+                  <select
+                    name="estado_civil_id"
+                    value={formData.estado_civil_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar estado civil</option>
+                    {estadosCiviles?.map(ec => (
+                      <option key={ec.id} value={ec.id}>{ec.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <InputField label="Número de Hijos" name="hijos" type="number" value={formData.hijos} onChange={handleChange} min="0" />
+                <InputField label="País" name="pais" value={formData.pais} onChange={handleChange} placeholder="Perú" />
+                <InputField label="Usuario" name="usuario" value={formData.usuario} onChange={handleChange} required error={errors.usuario} />
+                <InputField label="Nueva Contraseña" name="contrasena" type="password" value={formData.contrasena} onChange={handleChange} placeholder="Dejar en blanco para no cambiar" />
+                <InputField label="Email Personal" name="email" type="email" value={formData.email} onChange={handleChange} required error={errors.email} />
+                <InputField label="Email Corporativo" name="correo_corporativo" type="email" value={formData.correo_corporativo} onChange={handleChange} />
               </div>
             </Section>
 
-            {/* Acceso y Cargo */}
-            <Section title="Acceso y Cargo" icon={Shield}>
+            {/* Rol, Cargo y Especialidad */}
+            <Section title="Rol y Cargo" icon={Shield}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Usuario" name="usuario" value={formData.usuario} onChange={handleChange} error={errors.usuario} required />
-                <InputField label="Nueva Contraseña" name="contrasena" type="password" value={formData.contrasena} onChange={handleChange} placeholder="Dejar en blanco para mantener" />
-                
-                <SelectField 
-                  label="Rol del Sistema" 
-                  name="rol" 
-                  value={formData.rol} 
-                  onChange={handleChange} 
-                  error={errors.rol} 
-                  options={roles.map(r => r.nombre)} 
-                  required 
+                <SelectField
+                  label="Rol"
+                  name="rol"
+                  value={formData.rol}
+                  onChange={handleChange}
+                  options={roles.map(r => r.nombre)}
+                  required
+                  error={errors.rol}
                 />
-                
-                <SelectField 
-                  label="Cargo/Puesto de Trabajo" 
-                  name="cargo_id" 
-                  value={formData.cargo_id} 
-                  onChange={handleChange} 
-                  options={cargos.filter(c => c.activo).map(c => ({ 
-                    value: c.id, 
-                    label: `${c.nombre}` 
-                  }))}
-                  isValueLabel={true}
-                />
-
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Cargo
+                  </label>
+                  <select
+                    name="cargo_id"
+                    value={formData.cargo_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar cargo</option>
+                    {cargos.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
                 {esTerapeuta && (
-                  <div className="md:col-span-2">
-                    <SelectField
-                      label="Especialidad Terapéutica"
-                      name="especialidad"
-                      value={formData.especialidad}
-                      onChange={handleChange}
-                      error={errors.especialidad}
-                      options={especialidades.filter(e => e.activo).map(e => e.nombre)}
-                      required
-                    />
-                  </div>
+                  <>
+                    <div className="md:col-span-2">
+                      <SelectField
+                        label="Especialidad"
+                        name="especialidad"
+                        value={formData.especialidad}
+                        onChange={handleChange}
+                        options={especialidades.filter(e => e.nombre && e.nombre.trim() !== '').map(e => e.nombre)}
+                        required={esTerapeuta}
+                        error={errors.especialidad}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <InputField
+                        label="Número de Colegiatura"
+                        name="numero_colegiatura"
+                        value={formData.numero_colegiatura}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             </Section>
 
-            {/* ✅ SERVICIOS - Solo si es terapeuta */}
+            {/* SERVICIOS - Solo si es terapeuta */}
             {esTerapeuta && (
               <Section title="Servicios que Brinda" icon={Briefcase}>
-                {loadingServicios ? (
+                {cargandoServicios ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="w-8 h-8 border-4 border-gray-200 border-t-purple-600 rounded-full animate-spin"></div>
+                    <span className="ml-3 text-sm text-gray-600">Cargando servicios...</span>
                   </div>
                 ) : (
                   <>
@@ -1172,76 +2241,76 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Columna Infantil y Adolescentes */}
-                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                        <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          Infantil y Adolescentes
-                        </h4>
-                        <div className="space-y-1">
-                          {servicios
-                            .filter(s => s.activo && s.area.id === 1)
-                            .map(servicio => (
+                      {serviciosInfantiles.length > 0 && (
+                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                          <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            Infantil y Adolescentes ({serviciosInfantiles.length})
+                          </h4>
+                          <div className="space-y-1 max-h-60 overflow-y-auto">
+                            {serviciosInfantiles.map(servicio => (
                               <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-100 rounded cursor-pointer transition-all">
                                 <input
                                   type="checkbox"
                                   checked={serviciosSeleccionados.includes(servicio.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
-                                    } else {
-                                      setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
-                                    }
-                                  }}
+                                  onChange={(e) => handleCheckboxChange(servicio.id, e.target.checked)}
                                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 />
                                 <span className="text-sm text-gray-700">{servicio.nombre}</span>
                               </label>
                             ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Columna Adultos */}
-                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                        <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          Adultos
-                        </h4>
-                        <div className="space-y-1">
-                          {servicios
-                            .filter(s => s.activo && s.area.id === 2)
-                            .map(servicio => (
+                      {serviciosAdultos.length > 0 && (
+                        <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                          <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            Adultos ({serviciosAdultos.length})
+                          </h4>
+                          <div className="space-y-1 max-h-60 overflow-y-auto">
+                            {serviciosAdultos.map(servicio => (
                               <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-100 rounded cursor-pointer transition-all">
                                 <input
                                   type="checkbox"
                                   checked={serviciosSeleccionados.includes(servicio.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
-                                    } else {
-                                      setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
-                                    }
-                                  }}
+                                  onChange={(e) => handleCheckboxChange(servicio.id, e.target.checked)}
                                   className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                                 />
                                 <span className="text-sm text-gray-700">{servicio.nombre}</span>
                               </label>
                             ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
-                    {serviciosSeleccionados.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
-                        <Info className="w-3 h-3" />
-                        No has seleccionado ningún servicio
-                      </p>
-                    )}
-                    {serviciosSeleccionados.length > 0 && (
-                      <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length > 1 ? 's' : ''} seleccionado{serviciosSeleccionados.length > 1 ? 's' : ''}
-                      </p>
-                    )}
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium text-gray-700">
+                            Servicios seleccionados: <span className="font-bold">{serviciosSeleccionados.length}</span>
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {serviciosOriginales.length} servicios estaban asignados previamente
+                          </p>
+                        </div>
+                        {serviciosSeleccionados.length === 0 && (
+                          <p className="text-xs text-amber-600 flex items-center gap-1">
+                            <Info className="w-3 h-3" />
+                            No has seleccionado ningún servicio
+                          </p>
+                        )}
+                        {serviciosSeleccionados.length > 0 && (
+                          <p className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            {serviciosSeleccionados.length} seleccionados
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </>
                 )}
               </Section>
@@ -1255,12 +2324,124 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
                 <div className="md:col-span-2">
                   <InputField label="Contacto de Emergencia" name="contacto_emergencia" value={formData.contacto_emergencia} onChange={handleChange} placeholder="Nombre completo del contacto" />
                 </div>
-                <InputField label="Distrito" name="distrito" value={formData.distrito} onChange={handleChange} />
-                <InputField label="Provincia" name="provincia" value={formData.provincia} onChange={handleChange} />
-                <InputField label="Departamento" name="departamento" value={formData.departamento} onChange={handleChange} />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Parentesco Contacto Emergencia
+                  </label>
+                  <select
+                    name="parentesco_emergencia_id"
+                    value={formData.parentesco_emergencia_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar parentesco</option>
+                    {parentescos?.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Provincia
+                  </label>
+                  <select
+                    name="provincia_id"
+                    value={formData.provincia_id}
+                    onChange={handleProvinciaChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar provincia</option>
+                    {provincias?.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Distrito
+                  </label>
+                  <select
+                    name="distrito_id"
+                    value={formData.distrito_id}
+                    onChange={handleDistritoChange}
+                    disabled={!formData.provincia_id}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Seleccionar distrito</option>
+                    {distritosDisponibles?.map(d => (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Departamento
+                  </label>
+                  <input
+                    type="text"
+                    name="departamento"
+                    value={formData.departamento}
+                    readOnly
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600 font-medium cursor-not-allowed"
+                    placeholder="Se asigna automáticamente"
+                  />
+                </div>
                 <div className="md:col-span-2">
                   <InputField label="Dirección" name="direccion" value={formData.direccion} onChange={handleChange} multiline />
                 </div>
+                <div className="md:col-span-2">
+                  <InputField label="Referencia de Dirección" name="referencia_direccion" value={formData.referencia_direccion} onChange={handleChange} />
+                </div>
+              </div>
+            </Section>
+
+            {/* Experiencia Laboral Previa */}
+            <Section title="Experiencia Laboral Previa (Opcional)" icon={Briefcase}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Procedencia Laboral" name="procedencia_laboral" value={formData.procedencia_laboral} onChange={handleChange} placeholder="Lugar de trabajo anterior" />
+                <InputField label="Área Laboral" name="area_laboral" value={formData.area_laboral} onChange={handleChange} placeholder="Área de trabajo" />
+                <InputField label="Empresa Anterior" name="empresa_anterior" value={formData.empresa_anterior} onChange={handleChange} />
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Motivo de Renuncia
+                  </label>
+                  <textarea
+                    name="motivo_renuncia"
+                    value={formData.motivo_renuncia}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900"
+                    placeholder="Breve descripción del motivo..."
+                  />
+                </div>
+              </div>
+            </Section>
+
+            {/* Datos Académicos */}
+            <Section title="Datos Académicos Principales (Opcional)" icon={FileText}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Nivel de Educación
+                  </label>
+                  <select
+                    name="nivel_educacion_id"
+                    value={formData.nivel_educacion_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Seleccionar nivel</option>
+                    {nivelesEducacion?.map(n => (
+                      <option key={n.id} value={n.id}>{n.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <InputField label="Centro de Estudios Principal" name="centro_estudios_principal" value={formData.centro_estudios_principal} onChange={handleChange} placeholder="Universidad, instituto, etc." />
+                <div className="md:col-span-2">
+                  <InputField label="Carrera Estudiada Principal" name="carrera_estudiada_principal" value={formData.carrera_estudiada_principal} onChange={handleChange} placeholder="Nombre de la carrera" />
+                </div>
+                <InputField label="Fecha Inicio" name="fecha_inicio_estudio" type="date" value={formData.fecha_inicio_estudio} onChange={handleChange} />
+                <InputField label="Fecha Término" name="fecha_termino_estudio" type="date" value={formData.fecha_termino_estudio} onChange={handleChange} />
               </div>
             </Section>
 
@@ -1290,6 +2471,52 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
                 />
               </div>
             </Section>
+
+            {/* Hobbies e Intereses */}
+            <Section title="Hobbies e Intereses (Opcional)" icon={User}>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Hobbies e Intereses
+                  </label>
+                  <textarea
+                    name="hobbies"
+                    value={formData.hobbies}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900"
+                    placeholder="Actividades, deportes, pasatiempos..."
+                  />
+                </div>
+                 <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Opciones de Regalo
+                </label>
+                <textarea
+                  name="opciones_regalo"
+                  value={formData.opciones_regalo}
+                  onChange={handleChange}
+                  rows="2"
+                  className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900"
+                  placeholder="Preferencias de regalo, tallas, colores, etc."
+                />
+              </div>
+              </div>
+            </Section>
+
+            {/* Documentos */}
+            <DocumentosSection
+              empleado={empleadoActual} // ✅ CAMBIO IMPORTANTE
+              onUploadCV={handleUploadCV}
+              onUploadDNI={handleUploadDNI}
+              onViewCV={handleViewCV}
+              onViewDNI={handleViewDNI}
+              onDeleteCV={handleDeleteCV}
+              onDeleteDNI={handleDeleteDNI}
+              readOnly={false}
+              onRefresh={refrescarEmpleado} // ✅ PASAR callback
+              onOpenDeleteModal={onOpenDeleteArchivo} // ✅ Usar la prop, no la función del padre
+            />
 
             {/* Datos Financieros */}
             <Section title="Datos Financieros" icon={DollarSign}>
@@ -1336,9 +2563,38 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
   );
 };
 
-// Modal Detalle (igual que antes)
+// Modal Detalle Empleado
 const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
+  const [empleadoActual, setEmpleadoActual] = useState(empleado);
   const esActivo = empleado.estado === 1 || empleado.estado === true;
+
+  // Funciones para manejar documentos
+ const handleViewCV = async () => {
+  try {
+    if (empleado.archivo_cv) {
+      await abrirArchivo(empleado.archivo_cv, 'cv');
+    } else {
+      alert('No hay CV subido');
+    }
+  } catch (error) {
+    console.error('Error al ver CV:', error);
+    alert('Error al abrir el CV');
+  }
+};
+
+const handleViewDNI = async () => {
+  try {
+    if (empleado.archivo_dni) {
+      await abrirArchivo(empleado.archivo_dni, 'dni');
+    } else {
+      alert('No hay DNI subido');
+    }
+  } catch (error) {
+    console.error('Error al ver DNI:', error);
+    alert('Error al abrir el DNI');
+  }
+};
+
 
   return (
     <>
@@ -1381,6 +2637,11 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
                 <InfoField label="Nombres" value={empleado.nombres} />
                 <InfoField label="Apellidos" value={empleado.apellidos} />
                 <InfoField label="DNI" value={empleado.dni} />
+                <InfoField label="Fecha de Nacimiento" value={empleado.fecha_nacimiento ? empleado.fecha_nacimiento.split('-').reverse().join('/') : 'No registrada'} />
+                <InfoField label="Sexo" value={empleado.sexo?.nombre || 'No registrado'} />
+                <InfoField label="Estado Civil" value={empleado.estado_civil?.nombre || 'No registrado'} />
+                <InfoField label="Número de Hijos" value={empleado.hijos || '0'} />
+                <InfoField label="País" value={empleado.pais || 'No registrado'} />
                 <InfoField label="Email Personal" value={empleado.email} />
                 <InfoField label="Email Corporativo" value={empleado.correo_corporativo} />
                 <InfoField label="Teléfono" value={empleado.telefono} />
@@ -1391,19 +2652,46 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
            <DetalleSection title="Información Profesional">
               <div className="grid grid-cols-2 gap-4">
                 <InfoField label="Rol" value={empleado.rol?.nombre || 'N/A'} />
-                
+
                 {empleado.cargo && (
-                  <InfoField 
-                    label="Cargo/Puesto" 
-                    value={`${empleado.cargo.nombre}${empleado.cargo.es_jefe ? ' 👑' : ''}`} 
+                  <InfoField
+                    label="Cargo/Puesto"
+                    value={empleado.cargo.nombre}
                   />
                 )}
-                
+
                 {empleado.especialidad && (
                   <InfoField label="Especialidad" value={empleado.especialidad.nombre} />
                 )}
+
+                {empleado.numero_colegiatura && (
+                  <InfoField label="Número de Colegiatura" value={empleado.numero_colegiatura} />
+                )}
               </div>
             </DetalleSection>
+
+            {/* Experiencia Laboral Previa */}
+            {(empleado.procedencia_laboral || empleado.area_laboral || empleado.empresa_anterior || empleado.motivo_renuncia) && (
+              <DetalleSection title="Experiencia Laboral Previa">
+                <div className="grid grid-cols-2 gap-4">
+                  {empleado.procedencia_laboral && (
+                    <InfoField label="Procedencia Laboral" value={empleado.procedencia_laboral} />
+                  )}
+                  {empleado.area_laboral && (
+                    <InfoField label="Área Laboral" value={empleado.area_laboral} />
+                  )}
+                  {empleado.empresa_anterior && (
+                    <InfoField label="Empresa Anterior" value={empleado.empresa_anterior} />
+                  )}
+                  {empleado.motivo_renuncia && (
+                    <div className="col-span-2">
+                      <InfoField label="Motivo de Renuncia" value={empleado.motivo_renuncia} />
+                    </div>
+                  )}
+                </div>
+              </DetalleSection>
+            )}
+
             {/* Datos Financieros */}
             {(empleado.sueldo_base || empleado.banco) && (
               <DetalleSection title="Datos Financieros">
@@ -1417,7 +2705,7 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
                   <CuentasBancarias 
                     trabajadorId={empleado.id}
                     onUpdate={() => {
-                     
+                      // Actualizar si es necesario
                     }}
                     readOnly={true}
                   />
@@ -1433,6 +2721,9 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
                 <div className="col-span-2">
                   <InfoField label="Contacto de Emergencia" value={empleado.contacto_emergencia || 'No registrado'} />
                 </div>
+                {empleado.parentesco_emergencia && (
+                  <InfoField label="Parentesco" value={empleado.parentesco_emergencia.nombre} />
+                )}
               </div>
             </DetalleSection>
 
@@ -1443,8 +2734,13 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
                   <div className="col-span-2">
                     <InfoField label="Dirección Completa" value={empleado.direccion} />
                   </div>
-                  <InfoField label="Distrito" value={empleado.distrito} />
-                  <InfoField label="Provincia" value={empleado.provincia} />
+                  {empleado.referencia_direccion && (
+                    <div className="col-span-2">
+                      <InfoField label="Referencia" value={empleado.referencia_direccion} />
+                    </div>
+                  )}
+                  <InfoField label="Distrito" value={empleado.distrito_rel?.nombre || empleado.distrito || 'No registrado'} />
+                  <InfoField label="Provincia" value={empleado.distrito_rel?.provincia?.nombre || empleado.provincia || 'No registrada'} />
                   <InfoField label="Departamento" value={empleado.departamento} />
                 </div>
               </DetalleSection>
@@ -1457,6 +2753,96 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
                   <InfoField label="Polo/Camisa" value={empleado.talla_polo || 'No registrada'} />
                   <InfoField label="Pantalón" value={empleado.talla_pantalon || 'No registrada'} />
                   <InfoField label="Zapatos" value={empleado.talla_zapatos || 'No registrada'} />
+                </div>
+              </DetalleSection>
+            )}
+
+            {/* Hobbies e Intereses */}
+            {empleado.hobbies && (
+              <DetalleSection title="Hobbies e Intereses">
+                <div className="grid grid-cols-1 gap-4">
+                  <InfoField label="Hobbies" value={empleado.hobbies} />
+                </div>
+              </DetalleSection>
+            )}
+            {empleado.opciones_regalo && (
+              <DetalleSection title="Opciones de Regalo">
+                <div className="grid grid-cols-1 gap-4">
+                    <InfoField label="Opciones de Regalo" value={empleado.opciones_regalo} />
+                 </div>
+              </DetalleSection>
+            )}
+
+            {/* Datos Académicos Principales */}
+            {(empleado.nivel_educacion || empleado.centro_estudios_principal || empleado.carrera_estudiada_principal) && (
+              <DetalleSection title="Datos Académicos Principales">
+                <div className="grid grid-cols-2 gap-4">
+                  {empleado.nivel_educacion && (
+                    <InfoField label="Nivel de Educación" value={empleado.nivel_educacion?.nombre || 'No registrado'} />
+                  )}
+                  {empleado.centro_estudios_principal && (
+                    <InfoField label="Centro de Estudios" value={empleado.centro_estudios_principal} />
+                  )}
+                  {empleado.carrera_estudiada_principal && (
+                    <div className="col-span-2">
+                      <InfoField label="Carrera Estudiada" value={empleado.carrera_estudiada_principal} />
+                    </div>
+                  )}
+                  {empleado.fecha_inicio_estudio && (
+                    <InfoField label="Fecha Inicio" value={empleado.fecha_inicio_estudio.split('-').reverse().join('/')} />
+                  )}
+                  {empleado.fecha_termino_estudio && (
+                    <InfoField label="Fecha Término" value={empleado.fecha_termino_estudio.split('-').reverse().join('/')} />
+                  )}
+                </div>
+              </DetalleSection>
+            )}
+
+            {/* Documentos */}
+            {(empleado.archivo_cv || empleado.archivo_dni) && (
+              <DetalleSection title="Documentos Adjuntos">
+                <div className="grid grid-cols-2 gap-4">
+                  {empleado.archivo_cv && (
+                    <div className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium text-gray-900">Curriculum Vitae</span>
+                        </div>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Disponible
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleViewCV}
+                        className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg text-xs font-medium hover:bg-blue-100 transition-all"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Ver CV
+                      </button>
+                    </div>
+                  )}
+
+                  {empleado.archivo_dni && (
+                    <div className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <IdCard className="w-4 h-4 text-green-600" />
+                          <span className="text-sm font-medium text-gray-900">Copia de DNI</span>
+                        </div>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Disponible
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleViewDNI}
+                        className="w-full flex items-center justify-center gap-2 bg-green-50 text-green-600 border border-green-200 px-3 py-2 rounded-lg text-xs font-medium hover:bg-green-100 transition-all"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Ver DNI
+                      </button>
+                    </div>
+                  )}
                 </div>
               </DetalleSection>
             )}
@@ -1482,7 +2868,6 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
 
 // Modal Pago
 const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
-  // Mapeo de meses (ID -> nombre)
   const MESES = [
     { id: 1, nombre: 'enero' },
     { id: 2, nombre: 'febrero' },
@@ -1498,12 +2883,11 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
     { id: 12, nombre: 'diciembre' }
   ];
 
-  // Formatear fecha actual sin problemas de timezone
   const hoy = new Date();
   const fechaHoyFormateada = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
   const [pagoData, setPagoData] = useState({
-    mesId: new Date().getMonth() + 1, // ID del mes (1-12)
+    mesId: new Date().getMonth() + 1,
     anio: new Date().getFullYear(),
     fechaPago: fechaHoyFormateada
   });
@@ -1519,10 +2903,7 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
     setShowConfirm(false);
     setLoading(true);
     try {
-      // Obtener usuario logueado
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-      // Convertir sueldo_base a número y redondear a 2 decimales
       const montoNumero = parseFloat(parseFloat(empleado.sueldo_base).toFixed(2));
 
       console.log('Datos del pago:', {
@@ -1540,7 +2921,7 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
         anio: pagoData.anio,
         monto: montoNumero,
         fechaPago: pagoData.fechaPago,
-        userId: user.id // ✅ Enviamos el ID del usuario que registra
+        userId: user.id
       });
       onSuccess();
       onClose();
@@ -1681,7 +3062,7 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
                   <p className="font-semibold text-gray-900">
                     {empleado.nombres} {empleado.apellidos}
                   </p>
-                  <p className="text-sm text-gray-500">{empleado.cargo}</p>
+                  <p className="text-sm text-gray-500">{empleado.cargo?.nombre || 'Sin cargo'}</p>
                 </div>
               </div>
 
@@ -1860,18 +3241,16 @@ const SelectField = ({ label, name, value, onChange, error, options, required, i
       }`}
     >
       <option value="">Seleccionar {label.toLowerCase()}</option>
-      {options.map(option => {
-        // Si isValueLabel es true, significa que las opciones son objetos {value, label}
+      {options.map((option, index) => {
         if (isValueLabel && typeof option === 'object') {
           return (
-            <option key={option.value} value={option.value}>
+            <option key={`${option.value}-${index}`} value={option.value}>
               {option.label}
             </option>
           );
         }
-        // Si no, las opciones son strings simples
         return (
-          <option key={option} value={option}>
+          <option key={`${option}-${index}`} value={option}>
             {option}
           </option>
         );

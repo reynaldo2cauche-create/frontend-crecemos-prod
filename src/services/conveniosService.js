@@ -307,3 +307,97 @@ export const getConveniosActivosPorPaciente = async (pacienteId) => {
   const convenios = await getConveniosPorPaciente(pacienteId);
   return convenios.filter(pc => pc.activo);
 };
+
+// =============== TÉRMINOS Y CONDICIONES DE BENEFICIOS ===============
+
+/**
+ * Crear un nuevo término o condición para un beneficio
+ */
+export const crearBeneficioTermino = async (terminoData) => {
+  try {
+    const response = await api.post('/convenios/beneficios/terminos', terminoData);
+    return response.data;
+  } catch (error) {
+    console.error('Error en crearBeneficioTermino:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener todos los términos de un beneficio
+ */
+export const getTerminosPorBeneficio = async (beneficioId, activo) => {
+  try {
+    const params = activo !== undefined ? { activo } : {};
+    const response = await api.get(`/convenios/beneficios/${beneficioId}/terminos`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error en getTerminosPorBeneficio:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener un término por ID
+ */
+export const getTerminoPorId = async (id) => {
+  try {
+    const response = await api.get(`/convenios/beneficios/terminos/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error en getTerminoPorId:', error);
+    throw error;
+  }
+};
+
+/**
+ * Actualizar un término
+ */
+export const actualizarBeneficioTermino = async (id, terminoData) => {
+  try {
+    const response = await api.patch(`/convenios/beneficios/terminos/${id}`, terminoData);
+    return response.data;
+  } catch (error) {
+    console.error('Error en actualizarBeneficioTermino:', error);
+    throw error;
+  }
+};
+
+/**
+ * Eliminar un término
+ */
+export const eliminarBeneficioTermino = async (id) => {
+  try {
+    const response = await api.delete(`/convenios/beneficios/terminos/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error en eliminarBeneficioTermino:', error);
+    throw error;
+  }
+};
+
+/**
+ * Activar un término
+ */
+export const activarBeneficioTermino = async (id) => {
+  try {
+    const response = await api.put(`/convenios/beneficios/terminos/${id}/activar`);
+    return response.data;
+  } catch (error) {
+    console.error('Error en activarBeneficioTermino:', error);
+    throw error;
+  }
+};
+
+/**
+ * Desactivar un término
+ */
+export const desactivarBeneficioTermino = async (id) => {
+  try {
+    const response = await api.put(`/convenios/beneficios/terminos/${id}/desactivar`);
+    return response.data;
+  } catch (error) {
+    console.error('Error en desactivarBeneficioTermino:', error);
+    throw error;
+  }
+};

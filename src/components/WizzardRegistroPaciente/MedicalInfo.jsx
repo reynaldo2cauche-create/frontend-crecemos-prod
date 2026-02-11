@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, TextField, Typography, Button } from '@mui/material';
+import { Form, Button, Row, Col } from 'react-bootstrap';
 import { useFormContext } from 'react-hook-form';
+import '../../styles/global.css';
 
 const MedicalInfo = ({ onNext, onBack }) => {
   const { register, formState: { errors }, handleSubmit, watch, setValue } = useFormContext();
@@ -11,92 +12,111 @@ const MedicalInfo = ({ onNext, onBack }) => {
   };
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)}
-      sx={{ 
-        mt: 3, 
-        p: 4, 
-        borderRadius: 2, 
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)', 
-        backgroundColor: '#fff',
-      }}
-    >
-      
-      {/* Diagnósitco Médico */}
-      <TextField
-        label="Diagnósitco Médico"
-        variant="outlined"
-        fullWidth
-        multiline
-        rows={4}
-        sx={{ mb: 3 }}
-        {...register('diagnosticoMedico', { required: 'Campo obligatorio' })}
-        error={!!errors.diagnosticoMedico}
-        helperText={errors.diagnosticoMedico?.message}
-        value={watch('diagnosticoMedico') || ''}
-        onChange={e => setValue('diagnosticoMedico', e.target.value.toUpperCase())}
-        inputProps={{
-          style: { textTransform: 'uppercase' }
-        }}
-      />
+    <Form onSubmit={handleSubmit(onSubmit)} className="medical-info-form">
+      <div className="form-section">
+        <h5 className="form-section-title">
+          <i className="bi bi-heart-pulse-fill me-2"></i>
+          Información Médica
+        </h5>
 
-      {/* Alergias conocidas */}
-        <TextField
-          label="Alergias conocidas"
-          variant="outlined"
-          fullWidth
-          multiline
-          rows={3}
-          sx={{ mb: 3 }}
-          {...register('alergias', { required: 'Campo obligatorio' })}
-          error={!!errors.alergias}
-          helperText={errors.alergias?.message}
-          value={watch('alergias') || ''}
-          onChange={e => setValue('alergias', e.target.value.toUpperCase())}
-          inputProps={{
-            style: { textTransform: 'uppercase' }
-          }}
-        />
+        <p className="form-subtitle">
+          Esta información nos ayuda a brindarte una mejor atención personalizada
+        </p>
 
-      {/* Medicamentos actuales */}
-      <TextField
-        label="Medicamentos actuales"
-        variant="outlined"
-        fullWidth
-        multiline
-        rows={3}
-        sx={{ mb: 3 }}
-        {...register('medicamentos', { required: 'Campo obligatorio' })}
-        error={!!errors.medicamentos}
-        helperText={errors.medicamentos?.message}
-        value={watch('medicamentos') || ''}
-        onChange={e => setValue('medicamentos', e.target.value.toUpperCase())}
-        inputProps={{
-          style: { textTransform: 'uppercase' }
-        }}
-      />
+        {/* Diagnóstico Médico */}
+        <Form.Group className="mb-3">
+          <Form.Label>
+            Diagnóstico Médico
+            <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={4}
+            {...register('diagnosticoMedico', { required: 'Campo obligatorio' })}
+            isInvalid={!!errors.diagnosticoMedico}
+            value={watch('diagnosticoMedico') || ''}
+            onChange={e => setValue('diagnosticoMedico', e.target.value.toUpperCase())}
+            className="text-uppercase"
+            placeholder="Indica si tienes algún diagnóstico médico previo (ej: ansiedad, depresión, TDAH, etc.) o escribe 'NINGUNO'"
+          />
+          <Form.Control.Feedback type="invalid">
+            {errors.diagnosticoMedico?.message}
+          </Form.Control.Feedback>
+          <Form.Text className="text-muted">
+            Si no tienes ningún diagnóstico, escribe "NINGUNO"
+          </Form.Text>
+        </Form.Group>
+
+        {/* Alergias */}
+        <Form.Group className="mb-3">
+          <Form.Label>
+            Alergias Conocidas
+            <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={3}
+            {...register('alergias', { required: 'Campo obligatorio' })}
+            isInvalid={!!errors.alergias}
+            value={watch('alergias') || ''}
+            onChange={e => setValue('alergias', e.target.value.toUpperCase())}
+            className="text-uppercase"
+            placeholder="Indica si tienes alguna alergia (medicamentos, alimentos, etc.) o escribe 'NINGUNA'"
+          />
+          <Form.Control.Feedback type="invalid">
+            {errors.alergias?.message}
+          </Form.Control.Feedback>
+          <Form.Text className="text-muted">
+            Si no tienes alergias, escribe "NINGUNA"
+          </Form.Text>
+        </Form.Group>
+
+        {/* Medicamentos Actuales */}
+        <Form.Group className="mb-3">
+          <Form.Label>
+            Medicamentos Actuales
+            <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={3}
+            {...register('medicamentos', { required: 'Campo obligatorio' })}
+            isInvalid={!!errors.medicamentos}
+            value={watch('medicamentos') || ''}
+            onChange={e => setValue('medicamentos', e.target.value.toUpperCase())}
+            className="text-uppercase"
+            placeholder="Lista los medicamentos que tomas actualmente (nombre y dosis) o escribe 'NINGUNO'"
+          />
+          <Form.Control.Feedback type="invalid">
+            {errors.medicamentos?.message}
+          </Form.Control.Feedback>
+          <Form.Text className="text-muted">
+            Si no tomas medicamentos, escribe "NINGUNO"
+          </Form.Text>
+        </Form.Group>
+
+        <div className="info-box">
+          <i className="bi bi-shield-lock-fill me-2"></i>
+          <span>Tu información médica está protegida y será tratada con total confidencialidad</span>
+        </div>
+      </div>
 
       {/* Botones de navegación */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={onBack}
-          sx={{ textTransform: 'none', px: 4 }}
-        >
-          Atrás
-        </Button>
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          sx={{ textTransform: 'none', px: 4 }}
-        >
-          Siguiente
-        </Button>
-      </Box>
-    </Box>
+      <Row className="mt-4">
+        <Col xs={6}>
+          <Button variant="outline-secondary" onClick={onBack} size="lg" className="w-100 btn-back">
+            <i className="bi bi-arrow-left me-2"></i>
+            Atrás
+          </Button>
+        </Col>
+        <Col xs={6}>
+          <Button variant="primary" type="submit" size="lg" className="w-100 btn-next">
+            Siguiente
+            <i className="bi bi-arrow-right ms-2"></i>
+          </Button>
+        </Col>
+      </Row>
+    </Form>
   );
 };
 

@@ -77,7 +77,7 @@ export default function ChocloBlog() {
         <h3 className="recipe-title">Cocción adecuada</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/choclo-cocido.jpg" alt="Choclo bien cocido" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/choclo-cocido.webp" alt="Choclo bien cocido" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Cocinar el choclo hasta que esté muy suave. Es fundamental que los granos estén lo suficientemente blandos para facilitar la masticación y digestión.</p>
         </div>
@@ -88,7 +88,7 @@ export default function ChocloBlog() {
         <h3 className="recipe-title">Presentación segura</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/choclo-desmenuzado.jpg" alt="Granos de choclo desmenuzados" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/choclo-desmenuzado.webp" alt="Granos de choclo desmenuzados" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Retirar los granos y ofrecerlos desmenuzados para niños pequeños. Esto reduce el riesgo de atragantamiento y facilita la aceptación.</p>
           <div className="alert" style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '8px', padding: '1rem', marginTop: '1rem' }}>
@@ -103,7 +103,7 @@ export default function ChocloBlog() {
         <h3 className="recipe-title">Forma de servir</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/choclo-plato.jpg" alt="Choclo servido en plato" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/choclo-plato.webp" alt="Choclo servido en plato" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <ul className="mt-3">
             <li>Ofrecerlo solo o acompañado de alimentos suaves</li>

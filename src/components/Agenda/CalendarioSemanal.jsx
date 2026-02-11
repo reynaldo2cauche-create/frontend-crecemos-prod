@@ -1,10 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar
+  Calendar,
+  Users,
+  School
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+
+// ✅ Componente memoizado para cada cita individual
+const CitaCard = React.memo(({
+  cita,
+  slotInfo,
+  index,
+  totalCitas,
+  onCitaClick,
+  getEstadoColor,
+  dia,
+  hora
+}) => {
+  const indiceCitaVisible = slotInfo.citas.filter(c => c.isTop).findIndex(c => c.cita.id === cita.id);
+  const anchoCita = totalCitas === 1 ? 'calc(100% - 8px)' : `calc(${100 / totalCitas}% - 4px)`;
+  const leftOffset = totalCitas === 1 ? '4px' : `calc(${(100 / totalCitas) * indiceCitaVisible}% + 2px)`;
+  const estadoColor = getEstadoColor ? getEstadoColor(cita.estado) : '#7B1FA2';
+
+  const handleClick = useCallback((e) => {
+    e.stopPropagation();
+    onCitaClick && onCitaClick({
+      id: cita.id,
+      fecha: dia.fechaString,
+      hora: hora,
+      cita
+    });
+  }, [cita, dia.fechaString, hora, onCitaClick]);
+
+  // Obtener el motivo de la cita
+  const motivoNombre = cita.motivo?.nombre || '';
+  let badge = { text: 'CITA', color: 'bg-gray-500' };
+
+  if (motivoNombre.toLowerCase().includes('entrevista de padres') || motivoNombre.toLowerCase().includes('entrevista padres')) {
+    badge = { text: 'EP', color: 'bg-green-500' };
+  } else if (motivoNombre.toLowerCase().includes('entrevista adolescentes') || motivoNombre.toLowerCase().includes('entrevista adultos')) {
+    badge = { text: 'EA', color: 'bg-emerald-500' };
+  } else if (motivoNombre.toLowerCase().includes('reevaluación') || motivoNombre.toLowerCase().includes('reevaluacion')) {
+    badge = { text: 'REEV', color: 'bg-orange-500' };
+  } else if (motivoNombre.toLowerCase().includes('evaluación') || motivoNombre.toLowerCase().includes('evaluacion')) {
+    badge = { text: 'EVAL', color: 'bg-yellow-500' };
+  } else if (motivoNombre.toLowerCase().includes('sesión de terapia') || motivoNombre.toLowerCase().includes('sesion de terapia')) {
+    badge = { text: 'ST', color: 'bg-blue-500' };
+  } else if (motivoNombre.toLowerCase().includes('informe verbal')) {
+    badge = { text: 'IV', color: 'bg-indigo-500' };
+  } else if (motivoNombre.toLowerCase().includes('reunión clínica') || motivoNombre.toLowerCase().includes('reunion clinica')) {
+    badge = { text: 'RC', color: 'bg-purple-500' };
+  } else if (motivoNombre.toLowerCase().includes('visita escolar')) {
+    badge = { text: 'VE', color: 'bg-teal-500' };
+  }
+
+  const obtenerHoraFin = (cita) => {
+    if (cita.hora_fin) return cita.hora_fin.substring(0, 5);
+    if (cita.hora_inicio && cita.duracion_minutos) {
+      const [h, m] = cita.hora_inicio.substring(0,5).split(':').map(x => parseInt(x, 10));
+      const total = h * 60 + m + parseInt(cita.duracion_minutos, 10);
+      const hh = Math.floor(total / 60) % 24;
+      const mm = total % 60;
+      return `${hh.toString().padStart(2,'0')}:${mm.toString().padStart(2,'0')}`;
+    }
+    return '';
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      style={{
+        width: anchoCita,
+        height: `${slotInfo.alturaTotal}px`,
+        left: leftOffset,
+        borderLeftColor: estadoColor
+      }}
+      className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
+    >
+      <span className={`absolute top-1 left-1 ${badge.color} text-white text-[9px] px-1.5 py-0.5 rounded font-bold`}>
+        {badge.text}
+      </span>
+
+      <div className="flex flex-col h-full justify-between text-xs">
+        <div className="mb-1">
+          <p className="font-bold text-gray-900 leading-tight truncate">
+            {cita.paciente?.nombres || cita.paciente_nombre || 'Sin paciente'}
+          </p>
+          <p className="text-[10px] text-gray-600 truncate">
+            {cita.hora_inicio?.substring(0,5) || cita.hora} - {obtenerHoraFin(cita)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Solo re-renderizar si cambian estos props
+  return (
+    prevProps.cita.id === nextProps.cita.id &&
+    prevProps.slotInfo.alturaTotal === nextProps.slotInfo.alturaTotal &&
+    prevProps.totalCitas === nextProps.totalCitas &&
+    prevProps.cita.estado === nextProps.cita.estado
+  );
+});
+
+CitaCard.displayName = 'CitaCard';
 
 const CalendarioSemanal = ({
   citas = [],
@@ -13,7 +114,8 @@ const CalendarioSemanal = ({
   getEstadoColor,
   fechaActual = new Date(),
   onFechaChange,
-  currentUser = null
+  currentUser = null,
+  cargando = false
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
 
@@ -36,17 +138,17 @@ const CalendarioSemanal = ({
     }
     // Lunes a viernes (1-5)
     else if (diaSemana >= 1 && diaSemana <= 5) {
-      // Lunes a Viernes: 9:00 AM a 8:00 PM
+      // Lunes a Viernes: 8:20 AM a 8:00 PM
       // Break de 1:00 PM (13:00) a 2:00 PM (14:00)
-      // Última cita antes del break: 12:40 PM (puede extenderse hasta 13:10 si es de 50 min)
+      // Última cita antes del break: 12:20 PM (puede extenderse hasta 13:00 si es de 40 min)
       // Primera cita después del break: 14:00 PM (2:00 PM)
 
-      let minutos = 9 * 60; // 9:00 AM
-      const ultimaCitaAntesBreak = 12 * 60 + 40; // 12:40 PM
+      let minutos = 8 * 60 + 20; // 8:20 AM
+      const ultimaCitaAntesBreak = 12 * 60 + 20; // 12:20 PM
       const primeraCitaDespuesBreak = 14 * 60; // 14:00 PM (2:00 PM)
       const finMinutos = 20 * 60; // 8:00 PM
 
-      // Horario de la mañana: 9:00 AM hasta 12:40 PM (incluido)
+      // Horario de la mañana: 8:20 AM hasta 12:20 PM (incluido)
       while (minutos <= ultimaCitaAntesBreak) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
@@ -69,8 +171,6 @@ const CalendarioSemanal = ({
 
   useEffect(() => {
     const calcularDiasSemana = (fecha) => {
-
-
       // Normalizar a medianoche local para evitar problemas de zona horaria
       const lunes = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
       const diaSemana = fecha.getDay();
@@ -118,7 +218,7 @@ const CalendarioSemanal = ({
     // Log detallado solo la primera vez que se renderiza cada día
     const shouldLog = hora === '09:00' && citas.length > 0;
 
-    
+
 
     const citasEnSlot = citas.filter(c => {
       const coincide = c.fecha === dia.fechaString;
@@ -236,18 +336,29 @@ const CalendarioSemanal = ({
         </div>
       </div>
 
-      {/* Columnas de días independientes */}
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max">
-          {diasSemana.map((dia) => {
+      {/* ✅ Indicador de carga */}
+      {cargando ? (
+        <div className="flex items-center justify-center p-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B1FA2]"></div>
+        </div>
+      ) : (
+        <>
+          {/* Columnas de días independientes */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-180px)]">
+            <div className="flex min-w-max">
+              {diasSemana.map((dia) => {
             const horasDelDia = generarHorasPorDia(dia.fecha.getDay());
-            const esHoy = dia.fechaString === new Date().toISOString().split('T')[0];
+            // ✅ Usar zona horaria de Perú para detectar "hoy"
+            const ahora = new Date();
+            const fechaPeru = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+            const hoyString = `${fechaPeru.getFullYear()}-${String(fechaPeru.getMonth() + 1).padStart(2, '0')}-${String(fechaPeru.getDate()).padStart(2, '0')}`;
+            const esHoy = dia.fechaString === hoyString;
             const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
 
             return (
               <div key={dia.fechaString} className="flex-1 min-w-[200px] border-r border-gray-200 last:border-r-0">
                 {/* Header del día */}
-                <div className={`p-3 text-center border-b border-gray-200 ${
+                <div className={`p-3 text-center border-b border-gray-200 sticky top-0 z-30 ${
                   esHoy ? 'bg-purple-50 border-b-2 border-b-[#7B1FA2]' : 'bg-gradient-to-r from-gray-50 to-gray-100'
                 }`}>
                   <div className="capitalize text-sm font-semibold text-gray-600">
@@ -325,17 +436,105 @@ const CalendarioSemanal = ({
                               }}
                               className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
                             >
-                              <div className="font-bold text-blue-700 text-xs leading-tight truncate">
-                                {(cita.paciente_nombre || cita.paciente || 'Paciente').substring(0, 20)}
-                                {(cita.paciente_nombre || cita.paciente || 'Paciente').length > 20 ? '...' : ''}
+                              {/* Badge de motivo de cita */}
+                              {(() => {
+                                // Obtener el motivo de la cita
+                                const motivoNombre = cita.motivo?.nombre || '';
+                                let badge = { text: 'CITA', color: 'bg-gray-500' };
+
+                                // Abreviaturas según los motivos reales del sistema
+                                // ⚠️ IMPORTANTE: Verificar "reevaluación" ANTES que "evaluación"
+                                // porque "reevaluación" contiene la palabra "evaluación"
+                                if (motivoNombre.toLowerCase().includes('entrevista de padres') || motivoNombre.toLowerCase().includes('entrevista padres')) {
+                                  badge = { text: 'EP', color: 'bg-green-500' }; // Entrevista de Padres
+                                } else if (motivoNombre.toLowerCase().includes('entrevista adolescentes') || motivoNombre.toLowerCase().includes('entrevista adultos')) {
+                                  badge = { text: 'EA', color: 'bg-emerald-500' }; // Entrevista Adolescentes/Adultos
+                                } else if (motivoNombre.toLowerCase().includes('reevaluación') || motivoNombre.toLowerCase().includes('reevaluacion')) {
+                                  badge = { text: 'REEV', color: 'bg-orange-500' }; // Reevaluación
+                                } else if (motivoNombre.toLowerCase().includes('evaluación') || motivoNombre.toLowerCase().includes('evaluacion')) {
+                                  badge = { text: 'EVAL', color: 'bg-yellow-500' }; // Evaluación
+                                } else if (motivoNombre.toLowerCase().includes('sesión de terapia') || motivoNombre.toLowerCase().includes('sesion de terapia')) {
+                                  badge = { text: 'ST', color: 'bg-blue-500' }; // Sesión de Terapia
+                                } else if (motivoNombre.toLowerCase().includes('informe verbal')) {
+                                  badge = { text: 'IV', color: 'bg-indigo-500' }; // Informe Verbal
+                                } else if (motivoNombre.toLowerCase().includes('reunión clínica') || motivoNombre.toLowerCase().includes('reunion clinica')) {
+                                  badge = { text: 'RC', color: 'bg-purple-500' }; // Reunión Clínica
+                                } else if (motivoNombre.toLowerCase().includes('visita escolar')) {
+                                  badge = { text: 'VE', color: 'bg-teal-500' }; // Visita Escolar
+                                } else if (motivoNombre) {
+                                  // Generar abreviatura automática si hay un motivo nuevo
+                                  const palabras = motivoNombre.split(' ').filter(p => p.length > 2);
+                                  badge.text = palabras.slice(0, 2).map(p => p[0]).join('').toUpperCase();
+                                }
+
+                                return (
+                                  <div className={`absolute top-1 right-1 ${badge.color} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>
+                                    {badge.text}
+                                  </div>
+                                );
+                              })()}
+
+                              <div className="font-bold text-blue-700 text-[9px] leading-[1.2] break-words line-clamp-2">
+                                {(() => {
+                                  let primerNombre = '';
+                                  let primerApellido = '';
+
+                                  // Extraer del objeto paciente directamente
+                                  if (cita.paciente && typeof cita.paciente === 'object') {
+                                    // Obtener primer nombre (si hay varios nombres, tomar el primero)
+                                    const nombres = cita.paciente.nombres || '';
+                                    primerNombre = nombres.trim().split(/\s+/)[0] || '';
+
+                                    // Obtener primer apellido
+                                    primerApellido = cita.paciente.apellido_paterno ||
+                                                    (cita.paciente.apellidos || '').trim().split(/\s+/)[0] || '';
+                                  } else if (cita.paciente_nombre || (cita.paciente && typeof cita.paciente === 'string')) {
+                                    // Si viene como string, dividir
+                                    const nombreCompleto = cita.paciente_nombre || cita.paciente || '';
+                                    const palabras = nombreCompleto.trim().split(/\s+/);
+                                    primerNombre = palabras[0] || '';
+                                    primerApellido = palabras[1] || '';
+                                  }
+
+                                  return `${primerNombre} ${primerApellido}`.trim() || 'Paciente';
+                                })()}
                               </div>
 
-                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0.5">
-                                {(cita.servicio_nombre || 'Servicio').substring(0, 15)}
-                                {(cita.servicio_nombre || 'Servicio').length > 15 ? '...' : ''}
+                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0 flex items-center gap-1">
+                                {(() => {
+                                  const tipoCita = cita.tipo_cita;
+
+                                  // REUNIÓN CLÍNICA: Mostrar cantidad de terapeutas
+                                  if (tipoCita === 'REUNION_CLINICA') {
+                                    const cantTerapeutas = cita.terapeutas?.length || 0;
+                                    return (
+                                      <>
+                                        <Users className="w-3 h-3 flex-shrink-0 text-purple-600" />
+                                        <span className="truncate">{cantTerapeutas} terapeuta{cantTerapeutas !== 1 ? 's' : ''}</span>
+                                      </>
+                                    );
+                                  }
+
+                                  // VISITA ESCOLAR: Mostrar nombre del colegio
+                                  if (tipoCita === 'VISITA_ESCOLAR') {
+                                    const colegio = cita.nombre_colegio || 'Colegio';
+                                    return (
+                                      <>
+                                        <School className="w-3 h-3 flex-shrink-0 text-orange-600" />
+                                        <span className="truncate">{colegio.substring(0, 12)}{colegio.length > 12 ? '...' : ''}</span>
+                                      </>
+                                    );
+                                  }
+
+                                  // CITA NORMAL: Mostrar servicio
+                                  const servicio = cita.servicio_nombre ||
+                                                  (typeof cita.servicio === 'string' ? cita.servicio : cita.servicio?.nombre) ||
+                                                  'Servicio';
+                                  return <span className="truncate">{servicio.substring(0, 15) + (servicio.length > 15 ? '...' : '')}</span>;
+                                })()}
                               </div>
 
-                              <div className="flex items-center justify-between mt-1">
+                              <div className="flex items-center justify-between mt-0">
                                 <span className="text-[10px] font-bold text-gray-600">
                                   {formatearHora(cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora)}-{obtenerHoraFin(cita)}
                                 </span>
@@ -355,8 +554,11 @@ const CalendarioSemanal = ({
           })}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };
 
-export default CalendarioSemanal;
+// Memorizar el componente para evitar re-renders innecesarios
+export default React.memo(CalendarioSemanal);

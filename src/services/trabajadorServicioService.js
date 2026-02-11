@@ -60,9 +60,12 @@ export const asignarServicio = async (trabajadorId, servicioId, observaciones = 
  * @param {number} servicioId - ID del servicio
  * @returns {Promise<Object>} - Resultado de la desactivación
  */
-export const desactivarServicio = async (trabajadorId, servicioId) => {
+
+export const desactivarServicio = async (trabajadorId, servicioId, userId = null) => {
   try {
-    const response = await axios.delete(`${API_URL}/backend_api/trabajador-servicio/${trabajadorId}/${servicioId}`);
+    const response = await axios.delete(`${API_URL}/backend_api/trabajador-servicio/${trabajadorId}/${servicioId}`, {
+      data: { userId }
+    });
     return response.data;
   } catch (error) {
     console.error('Error al desactivar servicio:', error);

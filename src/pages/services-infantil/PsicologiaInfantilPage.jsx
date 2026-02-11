@@ -49,7 +49,7 @@ const PsicologiaInfantilPage = () => {
             {/* Card 1 */}
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="100">
               <div className="feature-box blue text-center">
-                <img src="/assets/img/servicios/1.jpeg" alt="Terapia Cognitivo-Conductual (TCC)" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
+                <img src="/assets/img/servicios/1.webp" alt="Terapia Cognitivo-Conductual (TCC)" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
                 <h4>Terapia Cognitivo-Conductual (TCC)</h4>
                 <p>
                   Ayuda a modificar patrones de pensamiento y comportamiento en niños con ansiedad, depresión,
@@ -61,7 +61,7 @@ const PsicologiaInfantilPage = () => {
             {/* Card 2 */}
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="200">
               <div className="feature-box green text-center">
-                <img src="/assets/img/servicios/2.jpeg" alt="Terapia de Juego" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
+                <img src="/assets/img/servicios/2.webp" alt="Terapia de Juego" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
                 <h4>Terapia de Juego</h4>
                 <p>
                   Utiliza el juego como herramienta para que los niños expresen emociones, superen traumas y
@@ -73,7 +73,7 @@ const PsicologiaInfantilPage = () => {
             {/* Card 3 */}
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="300">
               <div className="feature-box orange text-center">
-                <img src="/assets/img/servicios/3.jpeg" alt="Intervención en Problemas de Aprendizaje" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
+                <img src="/assets/img/servicios/3.webp" alt="Intervención en Problemas de Aprendizaje" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
                 <h4>Intervención en Problemas de Aprendizaje</h4>
                 <p>
                   Ofrece estrategias para superar dificultades académicas como dislexia, déficit de atención
@@ -85,7 +85,7 @@ const PsicologiaInfantilPage = () => {
             {/* Card 4 */}
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="400">
               <div className="feature-box blue text-center">
-                <img src="/assets/img/servicios/4.jpeg" alt="Orientación y Apoyo Familiar" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
+                <img src="/assets/img/servicios/4.webp" alt="Orientación y Apoyo Familiar" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
                 <h4>Orientación y Apoyo Familiar</h4>
                 <p>
                   Brinda herramientas a los padres para entender y manejar de manera efectiva las necesidades
@@ -123,7 +123,7 @@ const PsicologiaInfantilPage = () => {
 
                 {/* Imagen */}
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img src="/assets/img/servicios/psicologia.jpg" alt="Psicología Infantil" className="img-fluid rounded" />
+                  <img src="/assets/img/servicios/psicologia.webp" alt="Psicología Infantil" className="img-fluid rounded" />
                 </div>
               </div>
             </div>
@@ -143,7 +143,7 @@ const PsicologiaInfantilPage = () => {
             {/* Lic. Cherly Quiquia */}
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
-                <img src="/assets/img/servicios/terapeutica-cherQui.jpg" alt="Lic.Cherly Quiquia" />
+                <img src="/assets/img/servicios/terapeutica-cherQui.webp" alt="Lic.Cherly Quiquia" />
                 <div className="team-content">
                   <h3 className="title">Lic. Cherly Quiquia</h3>
                   <span className="post">Psicología</span>
@@ -156,24 +156,26 @@ const PsicologiaInfantilPage = () => {
               </div>
             </div>
 
-            {/* Lic. Jhoselyn Quispe */}
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
-                <img src="/assets/img/servicios/jhoselyn.png" alt="Lic. Jhoselyn Quispe" style={{ height: "300px" }} />
+                <img src="/assets/img/servicios/Lic. Giselle (1).webp" alt="Lic. Giselle Burgos" style={{ height: "300px" }} />
                 <div className="team-content">
-                  <h3 className="title">Lic. Jhoselyn Quispe</h3>
+                  <h3 className="title">Lic. Giselle Burgos</h3>
                   <span className="post">Psicología</span>
                   <div className="credential-info">
                     <i className="bi bi-award-fill"></i>
                     <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">57370</span>
+                    <span className="credential-number">66683</span>
                   </div>
                 </div>
               </div>
             </div>
+
+          
           </div>
         </div>
       </section>
+      
     </main>
   );
 };

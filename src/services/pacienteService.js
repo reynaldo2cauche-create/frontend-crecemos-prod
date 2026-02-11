@@ -94,3 +94,13 @@ export const getEstadisticasPacientes = async () => {
   const response = await api.get('/pacientes/estadisticas');
   return response.data;
 }
+
+export const getResponsablesPorPaciente = async (pacienteId) => {
+  const response = await api.get(`/pacientes/${pacienteId}/responsables`);
+  return response.data;
+}
+
+export const getProcesosLegalesInfantiles = async () => {
+  const response = await api.get('/procesos-legales-infantiles');
+  return response.data;
+}

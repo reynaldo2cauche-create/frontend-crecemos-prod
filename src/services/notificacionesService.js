@@ -1,69 +1,85 @@
 import api from './api';
-
-const BASE_URL = '/notificaciones';
-
-export const obtenerNotificaciones = async (filtros = {}) => {
+/**
+ * Obtiene notificaciones recientes (leídas y no leídas) del último mes
+ * @param {number} limite - Cantidad de notificaciones a obtener
+ * @param {number} offset - Offset para paginación
+ * @returns {Promise} Respuesta con notificaciones
+ */
+export const obtenerNotificacionesRecientes = async (limite = 20, offset = 0) => {
   try {
-    const params = new URLSearchParams();
-    if (filtros.leida !== undefined) params.append('leida', filtros.leida);
-    if (filtros.limite) params.append('limite', filtros.limite);
-
-    const response = await api.get(`${BASE_URL}?${params.toString()}`);
+    const response = await api.get('notificaciones/recientes', {
+      params: { limite, offset }
+    });
     return response.data;
   } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
+    console.error('❌ Error al obtener notificaciones recientes:', error);
     throw error;
   }
 };
 
-export const contarNotificacionesNoLeidas = async () => {
+/**
+ * Obtiene el conteo de notificaciones NO LEÍDAS
+ * @returns {Promise} Total de notificaciones sin leer
+ */
+export const contarNotificaciones = async () => {
   try {
-    const response = await api.get(`${BASE_URL}/contador/no-leidas`);
+    const response = await api.get('/notificaciones/count');
     return response.data;
   } catch (error) {
-    console.error('Error al contar notificaciones no leídas:', error);
+    console.error('❌ Error al contar notificaciones:', error);
     throw error;
   }
 };
 
-export const marcarNotificacionLeida = async (id) => {
+export const marcarComoLeida = async (notificacionId) => {
   try {
-    const response = await api.put(`${BASE_URL}/${id}/marcar-leida`);
+    console.log('📤 [SERVICE] Marcando como leída:', notificacionId);
+    
+    const response = await api.post(`/notificaciones/${notificacionId}/marcar-leida`);
+    
+    console.log('✅ [SERVICE] Respuesta completa:', response.data);
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Error del servidor');
+    }
+    
     return response.data;
+    
   } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
+    console.error('❌ [SERVICE] Error en marcarComoLeida:', error);
+    
+    if (error.response) {
+      console.error('❌ [SERVICE] Respuesta error:', error.response.data);
+      console.error('❌ [SERVICE] Status:', error.response.status);
+    }
+    
     throw error;
   }
 };
 
-export const marcarTodasNotificacionesLeidas = async () => {
+/**
+ * Marca TODAS las notificaciones como leídas (GUARDA EN LA TABLA notificaciones_leidas)
+ * @returns {Promise} Respuesta del servidor
+ */
+export const marcarTodasComoLeidas = async () => {
   try {
-    const response = await api.put(`${BASE_URL}/marcar-todas-leidas`);
+    console.log('📤 Enviando petición POST para marcar TODAS como leídas');
+    console.log('📤 URL: /notificaciones/marcar-todas-leidas');
+
+    const response = await api.post('/notificaciones/marcar-todas-leidas');
+    
+    console.log('✅ Respuesta del servidor:', response.data);
+    
+    if (response.data.success) {
+      console.log('✅ Todas las notificaciones marcadas como leídas en BD');
+    } else {
+      console.warn('⚠️ El servidor respondió pero success=false');
+    }
+    
     return response.data;
   } catch (error) {
-    console.error('Error al marcar todas las notificaciones como leídas:', error);
+    console.error('❌ Error al marcar todas como leídas:', error);
+    console.error('❌ Error details:', error.response?.data);
     throw error;
   }
-};
-
-export const obtenerNotificacionesNoLeidas = async (limite = 15) => {
-  try {
-    const response = await api.get(`${BASE_URL}?leida=false&limite=${limite}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error al obtener notificaciones no leídas:', error);
-    throw error;
-  }
-};
-
-// NOTA: El polling ya no es necesario, ahora usamos SSE (Server-Sent Events)
-// SSE permite que el servidor envíe actualizaciones en tiempo real al cliente
-// sin necesidad de WebSockets y funciona en cPanel
-
-export default {
-  obtenerNotificaciones,
-  contarNotificacionesNoLeidas,
-  marcarNotificacionLeida,
-  marcarTodasNotificacionesLeidas,
-  obtenerNotificacionesNoLeidas,
 };

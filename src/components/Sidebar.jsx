@@ -1,7 +1,8 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROLES_NAMES, ROLES } from '../constants/roles';
-// import NotificacionesGlobales from './NotificacionesGlobales';
+import NotificacionesGlobales from './NotificacionesGlobales';
+import { useGeofencing } from '../hooks/useGeofencing';
 import {
   CalendarDaysIcon,
   UserGroupIcon,
@@ -20,7 +21,9 @@ import {
   ChartBarIcon,
   ChevronDownIcon,
   CalendarIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  AcademicCapIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 
 // Contexto para compartir el estado del sidebar
@@ -46,9 +49,22 @@ export const SidebarProvider = ({ children }) => {
 };
 
 const menuItems = [
+  {
+    text: 'Asistencias',
+    icon: ClipboardDocumentCheckIcon,
+    isDropdown: true,
+    adminOnly: true,
+    subItems: [
+      { text: 'Por Terapeuta', path: '/intranet/asistencias/terapeuta', icon: UserIcon },
+      { text: 'Por Paciente', path: '/intranet/asistencias/paciente', icon: UserGroupIcon },
+      { text: 'Inconsistencias', path: '/intranet/asistencias/inconsistencias', icon: ShieldCheckIcon },
+      { text: 'Gestión Admin', path: '/intranet/asistencias/admin', icon: ShieldCheckIcon }
+    ]
+  },
   { text: 'Agenda', path: '/intranet/agenda', icon: CalendarDaysIcon },
   { text: 'Pacientes', path: '/intranet/lista-pacientes', icon: UserGroupIcon },
   { text: 'Reportes', path: '/intranet/reportes-evaluaciones', icon: DocumentChartBarIcon },
+  { text: 'Staff Web', path: '/intranet/gestion-staff', icon: AcademicCapIcon, adminOnly: true },
   { text: 'Popup Inicio', path: '/intranet/popup-promocional', icon: BellAlertIcon },
   { text: 'Postulaciones', path: '/intranet/postulaciones', icon: BriefcaseIcon },
   { text: 'Certificaciones', path: '/intranet/archivos-oficiales', icon: DocumentCheckIcon },
@@ -66,6 +82,7 @@ const menuItems = [
     ]
   },
   { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon, adminOnly: true },
+  { text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi', isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.webp' },
 ];
 
 const Sidebar = () => {
@@ -75,6 +92,14 @@ const Sidebar = () => {
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState({});
+
+  // 🔐 Geofencing - Solo para Terapeutas y Admisión
+  const rolesConGeofencing = [ROLES.TERAPEUTA, ROLES.ADMISION];
+  const requiereGeofencing = rolesConGeofencing.includes(user?.rol?.id);
+  const { dentroDelPerimetro, distancia } = useGeofencing(requiereGeofencing, 60000);
+
+  // Rutas permitidas fuera del perímetro
+  const rutasPermitidasFuera = ['/intranet/agenda', 'webmail'];
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -104,13 +129,13 @@ const Sidebar = () => {
 
     if (userRole === ROLES.TERAPEUTA) {
       return menuItems.filter(item =>
-        item.text === 'Agenda' || item.text === 'Pacientes'
+        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Webmail'
       );
     }
 
     if (userRole === ROLES.ADMISION) {
       return menuItems.filter(item =>
-        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Certificaciones'
+        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Certificaciones' || item.text === 'Webmail'
       );
     }
 
@@ -136,12 +161,19 @@ const Sidebar = () => {
       {/* Botón hamburguesa para móvil */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="mobile-hamburger fixed top-4 left-4 z-50 lg:hidden w-10 h-10 bg-white rounded-xl shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all"
+        className="mobile-hamburger fixed top-4 left-4 z-50 lg:hidden w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all active:scale-95"
+        style={{
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          cursor: 'pointer',
+          minWidth: '48px',
+          minHeight: '48px'
+        }}
       >
         {isMobileOpen ? (
-          <XMarkIcon className="w-6 h-6" />
+          <XMarkIcon className="w-6 h-6 pointer-events-none" />
         ) : (
-          <Bars3Icon className="w-6 h-6" />
+          <Bars3Icon className="w-6 h-6 pointer-events-none" />
         )}
       </button>
 
@@ -194,9 +226,9 @@ const Sidebar = () => {
             </div>
 
             {/* Notificaciones - Solo para administradores */}
-            {user?.rol?.id === ROLES.ADMINISTRADOR && (
+            {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION) && (
               <div className="flex-shrink-0">
-                {/* <NotificacionesGlobales /> */}
+                <NotificacionesGlobales />
               </div>
             )}
           </div>
@@ -269,7 +301,7 @@ const Sidebar = () => {
             }
           `}</style>
           <div className="space-y-1">
-            {filteredMenuItems.map((item, index) => {
+          {filteredMenuItems.map((item, index) => {
               const Icon = item.icon;
 
               if (item.isDropdown) {
@@ -341,44 +373,117 @@ const Sidebar = () => {
 
               const isActive = location.pathname === item.path;
 
-              return (
-                <button
-                  key={item.text}
-                  onClick={() => navigate(item.path)}
-                  className={`menu-item ${isActive ? 'active' : ''} w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
-                    isActive
-                      ? 'text-gray-900'
-                      : 'text-gray-600 hover:text-gray-900'
-                  } ${isCollapsed ? 'justify-center' : ''}`}
-                  title={isCollapsed ? item.text : ''}
-                  style={{
-                    animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
-                  }}
-                >
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                    isActive
-                      ? 'bg-[#7B1FA2] text-white shadow-md scale-105'
-                      : 'bg-transparent text-gray-500 group-hover:text-[#7B1FA2] group-hover:bg-purple-50 group-hover:scale-110'
-                  }`}>
-                    <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
-                  </div>
-                  <span
-                    className={`font-semibold text-sm flex-1 text-left transition-all duration-500 overflow-hidden ${
-                      isCollapsed ? 'opacity-0 w-0' : 'opacity-100'
-                    }`}
-                    style={{
-                      animation: !isCollapsed ? `slideIn 0.5s ease-out ${0.2 + index * 0.05}s both` : 'none'
-                    }}
-                  >
-                    {item.text}
-                  </span>
-                  {!isCollapsed && isActive && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0"></div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                        // ⚠️ VERIFICAR SI EL ITEM ESTÁ BLOQUEADO POR GEOFENCING
+              const itemBloqueado = requiereGeofencing &&
+                                    !dentroDelPerimetro &&
+                                    !rutasPermitidasFuera.some(ruta =>
+                                      item.path?.includes(ruta) || item.text.toLowerCase().includes(ruta)
+                                    );
+
+              // Manejar clicks
+              const handleClick = () => {
+                if (itemBloqueado) {
+                  alert(`⛔ Acceso Restringido\n\nEstás a ${distancia}m del centro.\nEsta sección solo está disponible dentro del centro de labores (100m).\n\nPuedes acceder a:\n- Agenda\n- Webmail`);
+                  return;
+                }
+
+                if (item.isExternal) {
+                  window.open(item.path, '_blank', 'noopener,noreferrer');
+                } else {
+                  navigate(item.path);
+                }
+              };
+
+              // Renderizado especial para Webmail con logo completo
+               // Renderizado especial para Webmail con logo completo
+                if (item.isWebmail) {
+                  return (
+                    <button
+                      key={item.text}
+                      onClick={handleClick}
+                      disabled={itemBloqueado}
+                      className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
+                        itemBloqueado 
+                          ? 'opacity-40 cursor-not-allowed' 
+                          : 'bg-transparent hover:bg-purple-50 cursor-pointer'
+                      } ${isCollapsed ? 'px-2' : ''}`}
+                      title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : item.text}
+                      style={{
+                        animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
+                      }}
+                    >
+                      <img
+                        src={item.fullLogo}
+                        alt={item.text}
+                        className={`transition-all duration-300 ${
+                          itemBloqueado ? '' : 'group-hover:scale-105'
+                        } ${isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'}`}
+                        style={{ 
+                          objectFit: 'contain',
+                          filter: itemBloqueado ? 'grayscale(100%)' : 'none'
+                        }}
+                      />
+                      {itemBloqueado && !isCollapsed && (
+                        <div className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">🔒</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                }
+               // Items normales
+                  return (
+                    <button
+                      key={item.text}
+                      onClick={handleClick}
+                      disabled={itemBloqueado}
+                      className={`menu-item w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
+                        itemBloqueado
+                          ? 'opacity-40 cursor-not-allowed' // 🔒 BLOQUEADO: Opaco, sin hover
+                          : isActive
+                          ? 'text-gray-900 cursor-pointer'
+                          : 'text-gray-600 hover:text-gray-900 cursor-pointer'
+                      } ${isCollapsed ? 'justify-center' : ''}`}
+                      title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : (isCollapsed ? item.text : '')}
+                      style={{
+                        animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
+                      }}
+                    >
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                        itemBloqueado
+                          ? 'bg-gray-200 text-gray-400' // 🔒 BLOQUEADO: Gris
+                          : isActive
+                          ? 'bg-[#7B1FA2] text-white shadow-md scale-105'
+                          : 'bg-transparent text-gray-500 group-hover:text-[#7B1FA2] group-hover:bg-purple-50 group-hover:scale-110'
+                      }`}>
+                        <Icon className={`w-5 h-5 transition-transform duration-300 ${itemBloqueado ? '' : 'group-hover:scale-110'}`} />
+                      </div>
+                      <span
+                        className={`font-semibold text-sm flex-1 text-left transition-all duration-500 overflow-hidden ${
+                          isCollapsed ? 'opacity-0 w-0' : 'opacity-100'
+                        }`}
+                        style={{
+                          animation: !isCollapsed ? `slideIn 0.5s ease-out ${0.2 + index * 0.05}s both` : 'none'
+                        }}
+                      >
+                        {item.text}
+                      </span>
+                      
+                      {/* Indicador de item activo */}
+                      {!isCollapsed && isActive && !itemBloqueado && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0"></div>
+                      )}
+                      
+                      {/* 🔒 Candado para items bloqueados */}
+                      {itemBloqueado && !isCollapsed && (
+                        <div className="flex items-center gap-1 text-red-500 flex-shrink-0">
+                          <span className="text-xs">🔒</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}          
+                </div>
         </nav>
 
         {/* User Profile */}

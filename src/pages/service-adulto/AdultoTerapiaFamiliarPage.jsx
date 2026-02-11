@@ -97,7 +97,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 text-center">
                   <img
-                    src="/assets/img/servicios/queesterapiafamiliar.jpg"
+                    src="/assets/img/servicios/queesterapiafamiliar.webp"
                     alt="Terapia Familiar"
                     className="img-fluid"
                   />
@@ -136,7 +136,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 text-center">
                   <img
-                    src="/assets/img/servicios/cuandoirterapiafamiliar.jpg"
+                    src="/assets/img/servicios/cuandoirterapiafamiliar.webp"
                     alt="Cuándo acudir a Terapia Familiar"
                     className="img-fluid"
                   />
@@ -184,7 +184,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 text-center">
                   <img
-                    src="/assets/img/servicios/procesoterapiafamiliar.jpg"
+                    src="/assets/img/servicios/procesoterapiafamiliar.webp"
                     alt="Cómo trabajamos en Terapia Familiar"
                     className="img-fluid"
                   />
@@ -211,7 +211,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="/assets/img/servicios/Lic. Giselle (1).png"
+                  src="/assets/img/servicios/Lic. Giselle (1).webp"
                   alt="Lic. Giselle Burgos"
                   style={{ height: "300px" }}
                 />

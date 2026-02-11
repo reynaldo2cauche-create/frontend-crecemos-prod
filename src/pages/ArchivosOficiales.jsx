@@ -30,6 +30,7 @@ import { getPacientesAll } from '../services/pacienteService';
 import { getTrabajadores } from '../services/trabajadorService';
 import archivosOficialesService from '../services/archivosOficialesService';
 import { getTiposDocumento } from '../services/tiposArchivoService';
+import { ROLES, isAdministrador } from '../constants/roles';
 
 const GestionArchivosOficiales = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -44,7 +45,7 @@ const GestionArchivosOficiales = () => {
   const [modalEliminar, setModalEliminar] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   // Cargar preferencia de vista desde localStorage
   const [viewMode, setViewMode] = useState(() => {
     const savedView = localStorage.getItem('archivosOficiales_viewMode');
@@ -90,6 +91,24 @@ const GestionArchivosOficiales = () => {
   const [errorFechaVigencia, setErrorFechaVigencia] = useState('');
   const [datosInicializados, setDatosInicializados] = useState(false);
 
+  // Estados para autocompletado
+  const [searchPaciente, setSearchPaciente] = useState('');
+  const [searchTrabajador, setSearchTrabajador] = useState('');
+  const [searchTerapeuta, setSearchTerapeuta] = useState('');
+  const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
+  const [showTrabajadorDropdown, setShowTrabajadorDropdown] = useState(false);
+  const [showTerapeutaDropdown, setShowTerapeutaDropdown] = useState(false);
+
+  // ✅ Obtener usuario desde localStorage
+  const [currentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const [copiado, setCopiado] = useState(false);
+
   useEffect(() => {
     if (datosInicializados) return;
     
@@ -106,6 +125,22 @@ const GestionArchivosOficiales = () => {
       cargarDocumentos();
     }
   }, [tabValue, datosInicializados]);
+
+  // Cerrar dropdowns al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const target = event.target;
+      // Verificar si el clic fue fuera de los dropdowns
+      if (!target.closest('.autocomplete-container')) {
+        setShowPacienteDropdown(false);
+        setShowTrabajadorDropdown(false);
+        setShowTerapeutaDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let filtered = [...documentos];
@@ -129,7 +164,7 @@ const GestionArchivosOficiales = () => {
     }
 
     if (filtroTipo) {
-      filtered = filtered.filter(doc => doc.tipoArchivo?.id === filtroTipo);
+      filtered = filtered.filter(doc => doc.tipoArchivo?.id === parseInt(filtroTipo));
     }
 
     setDocumentosFiltrados(filtered);
@@ -168,10 +203,43 @@ const GestionArchivosOficiales = () => {
   };
 
   const tiposArchivoFiltrados = useMemo(() => {
-    return tiposArchivoCompletos.filter(tipo => 
+    return tiposArchivoCompletos.filter(tipo =>
       tipo.destinatario_tipo === tipoDestinatario || tipo.destinatario_tipo === 'ambos'
     );
   }, [tiposArchivoCompletos, tipoDestinatario]);
+
+  // Filtrar pacientes por búsqueda
+  const pacientesFiltrados = useMemo(() => {
+    if (!searchPaciente.trim()) return pacientes;
+    const term = searchPaciente.toLowerCase();
+    return pacientes.filter(p => {
+      const nombreCompleto = `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno}`.toLowerCase();
+      const doc = p.numero_documento?.toLowerCase() || '';
+      return nombreCompleto.includes(term) || doc.includes(term);
+    });
+  }, [pacientes, searchPaciente]);
+
+  // Filtrar trabajadores por búsqueda
+  const trabajadoresFiltrados = useMemo(() => {
+    if (!searchTrabajador.trim()) return trabajadores;
+    const term = searchTrabajador.toLowerCase();
+    return trabajadores.filter(t => {
+      const nombreCompleto = `${t.nombres} ${t.apellidos}`.toLowerCase();
+      const doc = t.dni?.toLowerCase() || '';
+      return nombreCompleto.includes(term) || doc.includes(term);
+    });
+  }, [trabajadores, searchTrabajador]);
+
+  // Filtrar terapeutas por búsqueda
+  const terapeutasFiltrados = useMemo(() => {
+    if (!searchTerapeuta.trim()) return terapeutas;
+    const term = searchTerapeuta.toLowerCase();
+    return terapeutas.filter(t => {
+      const nombreCompleto = `${t.nombres} ${t.apellidos}`.toLowerCase();
+      const doc = t.dni?.toLowerCase() || '';
+      return nombreCompleto.includes(term) || doc.includes(term);
+    });
+  }, [terapeutas, searchTerapeuta]);
 
   const calcularFechaVigencia = (fechaEmision, vigenciaMeses) => {
     if (!vigenciaMeses || !fechaEmision) return '';
@@ -309,33 +377,64 @@ const GestionArchivosOficiales = () => {
     handleMenuClose();
   };
 
+  // ✅ Función para copiar código de validación
+  const copiarCodigo = (codigo) => {
+    navigator.clipboard.writeText(codigo).then(() => {
+      setCopiado(true);
+      setSuccess('Código copiado al portapapeles');
+      setTimeout(() => {
+        setCopiado(false);
+        setSuccess('');
+      }, 2000);
+    }).catch(err => {
+      console.error('Error al copiar:', err);
+      setError('Error al copiar el código');
+    });
+  };
+
   const handleEliminarConfirmar = async () => {
     try {
-      await archivosOficialesService.eliminarArchivo(documentoSeleccionado.id);
+      const idEliminar = modalEliminar?.id || documentoSeleccionado?.id;
+
+      if (!idEliminar) {
+        setError('No se pudo identificar el documento a eliminar');
+        setModalEliminar(null);
+        return;
+      }
+
+      console.log('🗑️ Eliminando documento ID:', idEliminar);
+
+      await archivosOficialesService.eliminarArchivo(idEliminar);
       setSuccess('Documento eliminado correctamente');
       setTimeout(() => setSuccess(''), 3000);
-      
+
       if (tabValue === 0) {
         cargarDocumentos();
       }
-      
+
       setModalEliminar(null);
       setDocumentoSeleccionado(null);
     } catch (error) {
-      setError('Error al eliminar el documento');
+      console.error('❌ Error al eliminar:', error);
+      setError(`Error al eliminar el documento: ${error.message || 'Error desconocido'}`);
+      setTimeout(() => setError(''), 5000);
       setModalEliminar(null);
     }
   };
 
   const handleTipoDestinatarioChange = (nuevoTipo) => {
     setTipoDestinatario(nuevoTipo);
-    
+
     if (nuevoTipo === 'paciente') {
       setTrabajadorSeleccionado(null);
       setFormData(prev => ({ ...prev, trabajadorId: '', pacienteId: '' }));
+      setSearchTrabajador('');
+      setShowTrabajadorDropdown(false);
     } else {
       setPacienteSeleccionado(null);
       setFormData(prev => ({ ...prev, pacienteId: '', trabajadorId: '' }));
+      setSearchPaciente('');
+      setShowPacienteDropdown(false);
     }
     setError('');
   };
@@ -452,6 +551,12 @@ const GestionArchivosOficiales = () => {
         setCodigoGeneradoPreview('');
         setTipoDestinatario('paciente');
         setTipoSeleccionado(null);
+        setSearchPaciente('');
+        setSearchTrabajador('');
+        setSearchTerapeuta('');
+        setShowPacienteDropdown(false);
+        setShowTrabajadorDropdown(false);
+        setShowTerapeutaDropdown(false);
         
         const input = document.getElementById('file-upload');
         if (input) input.value = '';
@@ -461,12 +566,6 @@ const GestionArchivosOficiales = () => {
       setError(err.message || 'Error al subir el archivo. Intente nuevamente.');
     } finally {
       setLoadingForm(false);
-    }
-  };
-
-  const copiarCodigo = () => {
-    if (codigoGenerado?.codigoValidacion) {
-      navigator.clipboard.writeText(codigoGenerado.codigoValidacion);
     }
   };
 
@@ -707,18 +806,10 @@ const GestionArchivosOficiales = () => {
                         Lista
                       </button>
                     </div>
-                    <button
-                      onClick={() => setShowFilters(!showFilters)}
-                      className="text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
-                    >
-                      {showFilters ? 'Ocultar' : 'Mostrar'}
-                    </button>
                   </div>
                 </div>
 
-                {showFilters && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                       <div className="relative">
                         <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <input
@@ -762,8 +853,6 @@ const GestionArchivosOficiales = () => {
                       <RefreshCw className="w-4 h-4" />
                       Actualizar
                     </button>
-                  </>
-                )}
               </div>
 
               {/* Lista de documentos */}
@@ -897,10 +986,10 @@ const GestionArchivosOficiales = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-48">
                                 Destinatario
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-36">
                                 Código
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -915,9 +1004,6 @@ const GestionArchivosOficiales = () => {
                               <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                 Estado
                               </th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                Acciones
-                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
@@ -925,7 +1011,11 @@ const GestionArchivosOficiales = () => {
                               const isPaciente = doc.paciente;
 
                               return (
-                                <tr key={doc.id} className="hover:bg-gray-50 transition-colors group">
+                                <tr
+                                  key={doc.id}
+                                  onClick={() => setModalVer(doc)}
+                                  className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                                >
                                   <td className="px-4 py-4">
                                     <div className="flex items-center gap-3">
                                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
@@ -947,13 +1037,13 @@ const GestionArchivosOficiales = () => {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-4">
+                                  <td className="px-4 py-4 whitespace-nowrap">
                                     <div className={`inline-block px-3 py-1.5 rounded-lg ${
                                       isPaciente
                                         ? 'bg-gradient-to-r from-blue-500 to-blue-600'
                                         : 'bg-gradient-to-r from-amber-500 to-amber-600'
                                     }`}>
-                                      <p className="text-xs font-mono font-bold text-white">
+                                      <p className="text-xs font-mono font-bold text-white whitespace-nowrap">
                                         {doc.codigoValidacion}
                                       </p>
                                     </div>
@@ -999,24 +1089,6 @@ const GestionArchivosOficiales = () => {
                                         <AlertCircle className="w-3 h-3" />
                                       )}
                                       {doc.estado || 'Activo'}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        onClick={() => setModalVer(doc)}
-                                        className="p-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
-                                        title="Ver detalles"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => handleMenuOpen(e, doc)}
-                                        className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                        title="Más opciones"
-                                      >
-                                        <MoreVertical className="w-4 h-4" />
-                                      </button>
                                     </div>
                                   </td>
                                 </tr>
@@ -1208,64 +1280,221 @@ const GestionArchivosOficiales = () => {
                     </button>
                   </div>
 
-                  {/* Selector de persona */}
-                  <div className="mb-4">
+                  {/* Selector de persona con autocompletado */}
+                  <div className="mb-4 relative autocomplete-container">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       {tipoDestinatario === 'paciente' ? 'Seleccionar Paciente' : 'Seleccionar Trabajador'}
                     </label>
-                    <select
-                      value={tipoDestinatario === 'paciente' ? formData.pacienteId : formData.trabajadorId}
-                      onChange={(e) => {
-                        if (tipoDestinatario === 'paciente') {
-                          const paciente = pacientes.find(p => p.id == e.target.value);
-                          setPacienteSeleccionado(paciente);
-                          setFormData(prev => ({ ...prev, pacienteId: e.target.value, trabajadorId: '' }));
-                        } else {
-                          const trabajador = trabajadores.find(t => t.id == e.target.value);
-                          setTrabajadorSeleccionado(trabajador);
-                          setFormData(prev => ({ ...prev, trabajadorId: e.target.value, pacienteId: '' }));
-                        }
-                      }}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {tipoDestinatario === 'paciente'
-                        ? pacientes.map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.nombres} {p.apellido_paterno} {p.apellido_materno} - {p.numero_documento}
-                            </option>
-                          ))
-                        : trabajadores.map(t => (
-                            <option key={t.id} value={t.id}>
-                              {t.nombres} {t.apellidos} {t.dni ? `- ${t.dni}` : ''}
-                            </option>
-                          ))
-                      }
-                    </select>
+
+                    {tipoDestinatario === 'paciente' ? (
+                      <>
+                        <div className="relative autocomplete-container">
+                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                          <input
+                            type="text"
+                            value={pacienteSeleccionado ? `${pacienteSeleccionado.nombres} ${pacienteSeleccionado.apellido_paterno} ${pacienteSeleccionado.apellido_materno}` : searchPaciente}
+                            onChange={(e) => {
+                              setSearchPaciente(e.target.value);
+                              setPacienteSeleccionado(null);
+                              setFormData(prev => ({ ...prev, pacienteId: '' }));
+                              setShowPacienteDropdown(e.target.value.trim().length > 0);
+                            }}
+                            onFocus={(e) => {
+                              // Solo mostrar dropdown si ya hay texto
+                              if (e.target.value.trim().length > 0) {
+                                setShowPacienteDropdown(true);
+                              }
+                            }}
+                            placeholder="Buscar paciente por nombre o documento..."
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                          />
+                          {pacienteSeleccionado && (
+                            <button
+                              onClick={() => {
+                                setPacienteSeleccionado(null);
+                                setSearchPaciente('');
+                                setFormData(prev => ({ ...prev, pacienteId: '' }));
+                              }}
+                              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {showPacienteDropdown && !pacienteSeleccionado && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {pacientesFiltrados.length > 0 ? (
+                              pacientesFiltrados.map((p) => (
+                                <button
+                                  key={p.id}
+                                  onClick={() => {
+                                    setPacienteSeleccionado(p);
+                                    setFormData(prev => ({ ...prev, pacienteId: p.id, trabajadorId: '' }));
+                                    setShowPacienteDropdown(false);
+                                    setSearchPaciente('');
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-sm text-gray-900">
+                                    {p.nombres} {p.apellido_paterno} {p.apellido_materno}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    DNI: {p.numero_documento}
+                                  </div>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                No se encontraron pacientes
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="relative autocomplete-container">
+                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                        <input
+                          type="text"
+                          value={trabajadorSeleccionado ? `${trabajadorSeleccionado.nombres} ${trabajadorSeleccionado.apellidos}` : searchTrabajador}
+                          onChange={(e) => {
+                            setSearchTrabajador(e.target.value);
+                            setTrabajadorSeleccionado(null);
+                            setFormData(prev => ({ ...prev, trabajadorId: '' }));
+                            setShowTrabajadorDropdown(e.target.value.trim().length > 0);
+                          }}
+                          onFocus={(e) => {
+                            // Solo mostrar dropdown si ya hay texto
+                            if (e.target.value.trim().length > 0) {
+                              setShowTrabajadorDropdown(true);
+                            }
+                          }}
+                          placeholder="Buscar trabajador por nombre o DNI..."
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                        />
+                          {trabajadorSeleccionado && (
+                            <button
+                              onClick={() => {
+                                setTrabajadorSeleccionado(null);
+                                setSearchTrabajador('');
+                                setFormData(prev => ({ ...prev, trabajadorId: '' }));
+                              }}
+                              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {showTrabajadorDropdown && !trabajadorSeleccionado && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            {trabajadoresFiltrados.length > 0 ? (
+                              trabajadoresFiltrados.map((t) => (
+                                <button
+                                  key={t.id}
+                                  onClick={() => {
+                                    setTrabajadorSeleccionado(t);
+                                    setFormData(prev => ({ ...prev, trabajadorId: t.id, pacienteId: '' }));
+                                    setShowTrabajadorDropdown(false);
+                                    setSearchTrabajador('');
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-sm text-gray-900">
+                                    {t.nombres} {t.apellidos}
+                                  </div>
+                                  {t.dni && (
+                                    <div className="text-xs text-gray-500">
+                                      DNI: {t.dni}
+                                    </div>
+                                  )}
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                No se encontraron trabajadores
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
 
-                  {/* Terapeuta (solo para pacientes) */}
+                  {/* Terapeuta (solo para pacientes) con autocompletado */}
                   {tipoDestinatario === 'paciente' && (
-                    <div>
+                    <div className="relative autocomplete-container">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Terapeuta Responsable
                       </label>
-                      <select
-                        value={formData.terapeutaId}
-                        onChange={(e) => {
-                          const terapeuta = terapeutas.find(t => t.id == e.target.value);
-                          setTerapeutaSeleccionado(terapeuta);
-                          setFormData(prev => ({ ...prev, terapeutaId: e.target.value }));
-                        }}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
-                      >
-                        <option value="">Seleccionar terapeuta...</option>
-                        {terapeutas.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.nombres} {t.apellidos} {t.dni ? `- ${t.dni}` : ''}
-                          </option>
-                        ))}
-                      </select>
+
+                      <div className="relative autocomplete-container">
+                        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                        <input
+                          type="text"
+                          value={terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos}` : searchTerapeuta}
+                          onChange={(e) => {
+                            setSearchTerapeuta(e.target.value);
+                            setTerapeutaSeleccionado(null);
+                            setFormData(prev => ({ ...prev, terapeutaId: '' }));
+                            setShowTerapeutaDropdown(e.target.value.trim().length > 0);
+                          }}
+                          onFocus={(e) => {
+                            // Solo mostrar dropdown si ya hay texto
+                            if (e.target.value.trim().length > 0) {
+                              setShowTerapeutaDropdown(true);
+                            }
+                          }}
+                          placeholder="Buscar terapeuta por nombre o DNI..."
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                        />
+                        {terapeutaSeleccionado && (
+                          <button
+                            onClick={() => {
+                              setTerapeutaSeleccionado(null);
+                              setSearchTerapeuta('');
+                              setFormData(prev => ({ ...prev, terapeutaId: '' }));
+                            }}
+                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {showTerapeutaDropdown && !terapeutaSeleccionado && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                          {terapeutasFiltrados.length > 0 ? (
+                            terapeutasFiltrados.map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  setTerapeutaSeleccionado(t);
+                                  setFormData(prev => ({ ...prev, terapeutaId: t.id }));
+                                  setShowTerapeutaDropdown(false);
+                                  setSearchTerapeuta('');
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-sm text-gray-900">
+                                  {t.nombres} {t.apellidos}
+                                </div>
+                                {t.dni && (
+                                  <div className="text-xs text-gray-500">
+                                    DNI: {t.dni}
+                                  </div>
+                                )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                              No se encontraron terapeutas
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1389,7 +1618,7 @@ const GestionArchivosOficiales = () => {
                         id="file-upload"
                         type="file"
                         hidden
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.webp"
                         onChange={handleArchivoChange}
                       />
                     </div>
@@ -1461,8 +1690,23 @@ const GestionArchivosOficiales = () => {
             <div className="p-6 space-y-6">
               {/* Código de validación */}
               <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-xl p-5">
-                <p className="text-xs text-white/70 font-bold uppercase mb-2 tracking-wide">Código de Validación</p>
-                <p className="text-3xl font-mono font-bold text-white">{modalVer.codigoValidacion}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-white/70 font-bold uppercase mb-2 tracking-wide">Código de Validación</p>
+                    <p className="text-3xl font-mono font-bold text-white">{modalVer.codigoValidacion}</p>
+                  </div>
+                  <button
+                    onClick={() => copiarCodigo(modalVer.codigoValidacion)}
+                    className="ml-4 p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all group"
+                    title="Copiar código"
+                  >
+                    {copiado ? (
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    ) : (
+                      <Copy className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Información */}
@@ -1555,6 +1799,21 @@ const GestionArchivosOficiales = () => {
             </div>
 
             <div className="border-t border-gray-200 p-4 flex gap-3 bg-gray-50">
+              {/* ✅ Botón Eliminar - Solo Admin */}
+              {isAdministrador(currentUser) && (
+                <button
+                  onClick={() => {
+                    setModalVer(null);
+                    setModalEliminar(modalVer);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-xl font-medium text-sm hover:bg-red-100 transition-all"
+                  title="Eliminar documento"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar
+                </button>
+              )}
+
               <button
                 onClick={async () => {
                   try {

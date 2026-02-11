@@ -97,7 +97,7 @@ export default function TumboBlog() {
         <h3 className="recipe-title">Pulpa fresca de tumbo (sin semillas para los más pequeños)</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/tumbo1.jpg" alt="Pulpa fresca de tumbo" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/tumbo1.webp" alt="Pulpa fresca de tumbo" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">La forma más segura y sencilla de ofrecerlo.</p>
           <p>Suave, jugosa y fácil de aceptar.</p>
@@ -109,7 +109,7 @@ export default function TumboBlog() {
         <h3 className="recipe-title">Tumbo en puré o machacado</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/tumbo2.jpg" alt="Tumbo en puré" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/tumbo2.webp" alt="Tumbo en puré" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Retirar semillas y aplastarlo ligeramente.</p>
           <p>Ideal para niños con dificultades de masticación o sensibilidad sensorial.</p>
@@ -121,7 +121,7 @@ export default function TumboBlog() {
         <h3 className="recipe-title">Tumbo combinado con frutas suaves</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/tumbo3.jpg" alt="Tumbo con frutas" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/tumbo3.webp" alt="Tumbo con frutas" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">Para mejorar la aceptación y balancear la acidez:</p>
           <ul>
@@ -138,7 +138,7 @@ export default function TumboBlog() {
         <h3 className="recipe-title">Para llevar en la lonchera</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/tumbo4.jpg" alt="Tumbo en lonchera" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/tumbo4.webp" alt="Tumbo en lonchera" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3"><strong>Presentaciones prácticas:</strong></p>
           <ul>
@@ -154,7 +154,7 @@ export default function TumboBlog() {
         <h3 className="recipe-title">Actividad sensorial controlada</h3>
         <div className="recipe-content">
           <div className="recipe-image-placeholder">
-            <img src="/assets/img/blog/tumbo5.jpg" alt="Actividad sensorial con tumbo" onError={(e) => e.target.style.display = 'none'} />
+            <img src="/assets/img/blog/tumbo5.webp" alt="Actividad sensorial con tumbo" onError={(e) => e.target.style.display = 'none'} />
           </div>
           <p className="mt-3">La pulpa gelatinosa del tumbo ayuda a que muchos niños acepten el alimento después de explorarlo con los dedos.</p>
         </div>

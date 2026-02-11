@@ -58,7 +58,7 @@ const TerapiaOcupacionalPage = () => {
             >
               <div className="feature-box blue text-center">
                 <img
-                  src="assets/img/servicios/1.jpeg"
+                  src="assets/img/servicios/1.webp"
                   alt="Terapia de Integración Sensorial"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -80,7 +80,7 @@ const TerapiaOcupacionalPage = () => {
             >
               <div className="feature-box green text-center">
                 <img
-                  src="assets/img/servicios/2.jpeg"
+                  src="assets/img/servicios/2.webp"
                   alt="Rehabilitación Motriz Fina y Gruesa"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -102,7 +102,7 @@ const TerapiaOcupacionalPage = () => {
             >
               <div className="feature-box orange text-center">
                 <img
-                  src="assets/img/servicios/3.jpeg"
+                  src="assets/img/servicios/3.webp"
                   alt="Entrenamiento en Habilidades de Vida Diaria"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -123,7 +123,7 @@ const TerapiaOcupacionalPage = () => {
             >
               <div className="feature-box blue text-center">
                 <img
-                  src="assets/img/servicios/4.jpeg"
+                  src="assets/img/servicios/4.webp"
                   alt="Intervención en Habilidades Sociales y Adaptativas"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -191,7 +191,7 @@ const TerapiaOcupacionalPage = () => {
                 {/* Columna de imagen */}
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="assets/img/servicios/terapia ocupacional.jpg"
+                    src="assets/img/servicios/terapia ocupacional.webp"
                     alt="Terapia Ocupacional"
                     className="img-fluid"
                   />
@@ -222,7 +222,7 @@ const TerapiaOcupacionalPage = () => {
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
                 <img
-                  src="assets/img/servicios/terapuet-danielac.png"
+                  src="assets/img/servicios/terapuet-danielac.webp"
                   alt="Lic. Daniela Calle"
                 />
                 <div className="team-content">

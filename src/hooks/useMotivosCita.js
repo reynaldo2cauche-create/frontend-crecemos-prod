@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMotivosCita } from '../services/catalogoService';
+import { getMotivosCita } from '../services/citaService';
 
 export const useMotivosCita = () => {
   const [motivos, setMotivos] = useState([]);

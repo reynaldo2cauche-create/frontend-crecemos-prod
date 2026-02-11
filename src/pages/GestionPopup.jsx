@@ -466,7 +466,7 @@ const GestionPopup = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-6 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
-              <h3 className="text-xl font-bold flex items-center gap-2">
+              <h3 className="text-xl font-bold flex items-center gap-2 text-white">
                 {dialogoCrear ? <Plus className="w-6 h-6" /> : <Edit className="w-6 h-6" />}
                 {dialogoCrear ? 'Crear Nuevo Popup' : 'Editar Popup'}
               </h3>

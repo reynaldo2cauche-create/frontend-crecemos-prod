@@ -105,7 +105,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/cuandoirlenguajeadulto.jpg"
+                    src="/assets/img/servicios/cuandoirlenguajeadulto.webp"
                     alt="Cuándo acudir a Terapia de Lenguaje en Adultos"
                     className="img-fluid"
                   />
@@ -139,7 +139,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/procesorlenguajeadulto.jpg"
+                    src="/assets/img/servicios/procesorlenguajeadulto.webp"
                     alt="Cómo ayudamos en Terapia de Lenguaje en Adultos"
                     className="img-fluid"
                   />
@@ -160,7 +160,7 @@ import  {initializePageScripts}  from '../../utils/initScripts';
           <div className="row justify-content-center">
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
-                <img src="/assets/img/servicios/merlin.jpg" alt="Lic. Merlín Fernandez" />
+                <img src="/assets/img/servicios/merlin.webp" alt="Lic. Merlín Fernandez" />
                 <div className="team-content">
                   <h3 className="title">Lic. Merlín Fernandez</h3>
                   <span className="post">Terapeuta de Lenguaje</span>

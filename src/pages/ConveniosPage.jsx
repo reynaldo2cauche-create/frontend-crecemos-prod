@@ -3,7 +3,7 @@ import {
   Plus, Edit2, Power, Check, X, Search, Eye, Trash2,
   CheckCircle, XCircle, Building2, FileText,
   Users, Calendar, AlertCircle, Upload, Gift, Tag,
-  AlertTriangle
+  AlertTriangle, List, ChevronUp, ChevronDown
 } from 'lucide-react';
 import {
   getConvenios,
@@ -19,7 +19,11 @@ import {
   eliminarBeneficio,
   activarBeneficio,
   desactivarBeneficio,
-  getCategoriasBeneficios
+  getCategoriasBeneficios,
+  getTerminosPorBeneficio,
+  crearBeneficioTermino,
+  actualizarBeneficioTermino,
+  eliminarBeneficioTermino
 } from '../services/conveniosService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 
@@ -52,6 +56,12 @@ export default function ConveniosPage() {
     descuento: '',
     convenio_id: ''
   });
+
+  // Estados para términos y condiciones
+  const [terminos, setTerminos] = useState([]);
+  const [terminosTemp, setTerminosTemp] = useState([]); // Para modal de crear
+  const [nuevoTermino, setNuevoTermino] = useState('');
+  const [terminoEditando, setTerminoEditando] = useState(null);
 
   // Notificaciones
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -154,10 +164,24 @@ export default function ConveniosPage() {
         activo: true
       };
 
-      await crearBeneficio(beneficioData);
+      const beneficioCreado = await crearBeneficio(beneficioData);
+
+      // Crear términos si existen
+      if (terminosTemp.length > 0) {
+        for (let i = 0; i < terminosTemp.length; i++) {
+          await crearBeneficioTermino({
+            beneficio_id: beneficioCreado.id,
+            descripcion: terminosTemp[i],
+            orden: i,
+            activo: true
+          });
+        }
+      }
 
       showNotification('Beneficio creado exitosamente', 'success');
       setModalNuevoBeneficio(false);
+      setTerminosTemp([]);
+      setNuevoTermino('');
       setFormBeneficio({
         nombre: '',
         descripcion: '',
@@ -172,7 +196,7 @@ export default function ConveniosPage() {
     }
   };
 
-  const handleAbrirEditarBeneficio = (beneficio) => {
+  const handleAbrirEditarBeneficio = async (beneficio) => {
     console.log('Abriendo editar beneficio:', beneficio);
     setBeneficioSeleccionado(beneficio);
     setFormBeneficio({
@@ -182,6 +206,10 @@ export default function ConveniosPage() {
       descuento: beneficio.descuento || '',
       convenio_id: String(beneficio.convenio_id)
     });
+
+    // Cargar términos del beneficio
+    await cargarTerminos(beneficio.id);
+
     setModalEditarBeneficio(true);
   };
 
@@ -266,6 +294,125 @@ export default function ConveniosPage() {
       console.error('Error al desactivar beneficio:', error);
       showNotification(error.response?.data?.message || 'Error al desactivar el beneficio', 'error');
       setModalEliminarBeneficio({ open: false, beneficio: null });
+    }
+  };
+
+  // =============== FUNCIONES PARA TÉRMINOS Y CONDICIONES ===============
+
+  const cargarTerminos = async (beneficioId) => {
+    try {
+      const data = await getTerminosPorBeneficio(beneficioId);
+      setTerminos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error al cargar términos:', error);
+      setTerminos([]);
+    }
+  };
+
+  // Funciones para términos temporales (modal de crear)
+  const handleAgregarTerminoTemp = () => {
+    if (!nuevoTermino.trim()) {
+      showNotification('Ingresa una descripción para el término', 'error');
+      return;
+    }
+
+    setTerminosTemp([...terminosTemp, nuevoTermino.trim()]);
+    setNuevoTermino('');
+    showNotification('Término agregado', 'success');
+  };
+
+  const handleEliminarTerminoTemp = (index) => {
+    setTerminosTemp(terminosTemp.filter((_, i) => i !== index));
+    showNotification('Término eliminado', 'success');
+  };
+
+  const handleMoverTerminoTemp = (index, direccion) => {
+    const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
+    if (nuevoIndice < 0 || nuevoIndice >= terminosTemp.length) return;
+
+    const nuevosTerminos = [...terminosTemp];
+    [nuevosTerminos[index], nuevosTerminos[nuevoIndice]] =
+    [nuevosTerminos[nuevoIndice], nuevosTerminos[index]];
+
+    setTerminosTemp(nuevosTerminos);
+  };
+
+  const handleAgregarTermino = async (beneficioId) => {
+    if (!nuevoTermino.trim()) {
+      showNotification('Ingresa una descripción para el término', 'error');
+      return;
+    }
+
+    try {
+      const orden = terminos.length;
+      await crearBeneficioTermino({
+        beneficio_id: beneficioId,
+        descripcion: nuevoTermino.trim(),
+        orden: orden,
+        activo: true
+      });
+
+      setNuevoTermino('');
+      await cargarTerminos(beneficioId);
+      showNotification('Término agregado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al agregar término:', error);
+      showNotification(error.response?.data?.message || 'Error al agregar el término', 'error');
+    }
+  };
+
+  const handleEditarTermino = async (terminoId, nuevaDescripcion) => {
+    if (!nuevaDescripcion.trim()) {
+      showNotification('La descripción no puede estar vacía', 'error');
+      return;
+    }
+
+    try {
+      await actualizarBeneficioTermino(terminoId, {
+        descripcion: nuevaDescripcion.trim()
+      });
+
+      await cargarTerminos(beneficioSeleccionado.id);
+      setTerminoEditando(null);
+      showNotification('Término actualizado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al editar término:', error);
+      showNotification(error.response?.data?.message || 'Error al editar el término', 'error');
+    }
+  };
+
+  const handleEliminarTermino = async (terminoId, beneficioId) => {
+    if (!window.confirm('¿Estás seguro de eliminar este término?')) return;
+
+    try {
+      await eliminarBeneficioTermino(terminoId);
+      await cargarTerminos(beneficioId);
+      showNotification('Término eliminado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al eliminar término:', error);
+      showNotification(error.response?.data?.message || 'Error al eliminar el término', 'error');
+    }
+  };
+
+  const handleMoverTermino = async (index, direccion) => {
+    const nuevoIndice = direccion === 'arriba' ? index - 1 : index + 1;
+    if (nuevoIndice < 0 || nuevoIndice >= terminos.length) return;
+
+    const terminosActualizados = [...terminos];
+    [terminosActualizados[index], terminosActualizados[nuevoIndice]] =
+    [terminosActualizados[nuevoIndice], terminosActualizados[index]];
+
+    try {
+      // Actualizar orden en backend
+      await Promise.all(terminosActualizados.map((termino, idx) =>
+        actualizarBeneficioTermino(termino.id, { orden: idx })
+      ));
+
+      setTerminos(terminosActualizados);
+      showNotification('Orden actualizado', 'success');
+    } catch (error) {
+      console.error('Error al reordenar términos:', error);
+      showNotification('Error al actualizar el orden', 'error');
     }
   };
 
@@ -520,6 +667,8 @@ export default function ConveniosPage() {
           onChange={(e) => setFormBeneficio({ ...formBeneficio, [e.target.name]: e.target.value })}
           onClose={() => {
             setModalNuevoBeneficio(false);
+            setTerminosTemp([]);
+            setNuevoTermino('');
             setFormBeneficio({
               nombre: '',
               descripcion: '',
@@ -529,6 +678,12 @@ export default function ConveniosPage() {
             });
           }}
           onSubmit={handleCrearBeneficio}
+          terminosTemp={terminosTemp}
+          nuevoTermino={nuevoTermino}
+          setNuevoTermino={setNuevoTermino}
+          onAgregarTerminoTemp={handleAgregarTerminoTemp}
+          onEliminarTerminoTemp={handleEliminarTerminoTemp}
+          onMoverTerminoTemp={handleMoverTerminoTemp}
         />
       )}
 
@@ -543,6 +698,9 @@ export default function ConveniosPage() {
           onClose={() => {
             setModalEditarBeneficio(false);
             setBeneficioSeleccionado(null);
+            setTerminos([]);
+            setNuevoTermino('');
+            setTerminoEditando(null);
             setFormBeneficio({
               nombre: '',
               descripcion: '',
@@ -552,6 +710,15 @@ export default function ConveniosPage() {
             });
           }}
           onSubmit={handleActualizarBeneficio}
+          terminos={terminos}
+          nuevoTermino={nuevoTermino}
+          setNuevoTermino={setNuevoTermino}
+          onAgregarTermino={handleAgregarTermino}
+          onEditarTermino={handleEditarTermino}
+          onEliminarTermino={handleEliminarTermino}
+          onMoverTermino={handleMoverTermino}
+          terminoEditando={terminoEditando}
+          setTerminoEditando={setTerminoEditando}
         />
       )}
 
@@ -1670,10 +1837,23 @@ const ModalBeneficios = ({ beneficios, convenios, loading, onClose, onNuevo, onE
 };
 
 // ============== MODAL NUEVO BENEFICIO ==============
-const ModalNuevoBeneficio = ({ convenios, categorias = [], formData, onChange, onClose, onSubmit }) => {
+const ModalNuevoBeneficio = ({
+  convenios,
+  categorias = [],
+  formData,
+  onChange,
+  onClose,
+  onSubmit,
+  terminosTemp,
+  nuevoTermino,
+  setNuevoTermino,
+  onAgregarTerminoTemp,
+  onEliminarTerminoTemp,
+  onMoverTerminoTemp
+}) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
@@ -1689,72 +1869,171 @@ const ModalNuevoBeneficio = ({ convenios, categorias = [], formData, onChange, o
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
-          <InputField
-            label="Nombre del Beneficio"
-            name="nombre"
-            value={formData.nombre}
-            onChange={onChange}
-            placeholder="Ej: Descuento en consultas"
-            required
-          />
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* SECCIÓN: DATOS DEL BENEFICIO */}
+          <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-[#7B1FA2]" />
+              Datos del Beneficio
+            </h3>
+            <div className="space-y-3">
+              <InputField
+                label="Nombre del Beneficio"
+                name="nombre"
+                value={formData.nombre}
+                onChange={onChange}
+                placeholder="Ej: Descuento en consultas"
+                required
+              />
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-              Convenio <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="convenio_id"
-              value={formData.convenio_id}
-              onChange={onChange}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
-              required
-            >
-              <option value="">Seleccionar convenio...</option>
-              {convenios.filter(c => c.activo).map(convenio => (
-                <option key={convenio.id} value={String(convenio.id)}>
-                  {convenio.empresa}
-                </option>
-              ))}
-            </select>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Convenio <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="convenio_id"
+                  value={formData.convenio_id}
+                  onChange={onChange}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                  required
+                >
+                  <option value="">Seleccionar convenio...</option>
+                  {convenios.filter(c => c.activo).map(convenio => (
+                    <option key={convenio.id} value={String(convenio.id)}>
+                      {convenio.empresa}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <TextAreaField
+                label="Descripción"
+                name="descripcion"
+                value={formData.descripcion}
+                onChange={onChange}
+                placeholder="Describe el beneficio en detalle"
+                rows={3}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Categoría
+                  </label>
+                  <select
+                    name="categoria_id"
+                    value={formData.categoria_id}
+                    onChange={onChange}
+                    className="w-full px-3 sm:px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                  >
+                    <option value="">Seleccionar categoría...</option>
+                    {categorias.map(categoria => (
+                      <option key={categoria.id} value={String(categoria.id)}>
+                        {categoria.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <InputField
+                  label="Descuento"
+                  name="descuento"
+                  value={formData.descuento}
+                  onChange={onChange}
+                  placeholder="Ej: 15%, S/50"
+                />
+              </div>
+            </div>
           </div>
 
-          <TextAreaField
-            label="Descripción"
-            name="descripcion"
-            value={formData.descripcion}
-            onChange={onChange}
-            placeholder="Describe el beneficio en detalle"
-            rows={3}
-          />
+          {/* SECCIÓN: TÉRMINOS Y CONDICIONES */}
+          <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <List className="w-4 h-4 text-[#7B1FA2]" />
+              Términos y Condiciones (Opcional)
+            </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                Categoría
-              </label>
-              <select
-                name="categoria_id"
-                value={formData.categoria_id}
-                onChange={onChange}
-                className="w-full px-3 sm:px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+            {/* Agregar nuevo término */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={nuevoTermino}
+                onChange={(e) => setNuevoTermino(e.target.value)}
+                placeholder="Escribe un término o condición..."
+                className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onAgregarTerminoTemp();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={onAgregarTerminoTemp}
+                className="px-4 py-2 bg-[#7B1FA2] text-white rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all flex items-center gap-2"
               >
-                <option value="">Seleccionar categoría...</option>
-                {categorias.map(categoria => (
-                  <option key={categoria.id} value={String(categoria.id)}>
-                    {categoria.nombre}
-                  </option>
-                ))}
-              </select>
+                <Plus className="w-4 h-4" />
+                Agregar
+              </button>
             </div>
 
-            <InputField
-              label="Descuento"
-              name="descuento"
-              value={formData.descuento}
-              onChange={onChange}
-              placeholder="Ej: 15%, S/50"
-            />
+            {/* Lista de términos */}
+            {terminosTemp.length === 0 ? (
+              <div className="text-center py-6 bg-white border-2 border-dashed border-purple-200 rounded-lg">
+                <List className="w-8 h-8 text-purple-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No hay términos agregados</p>
+                <p className="text-xs text-gray-400 mt-1">Agrega términos y condiciones para este beneficio</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {terminosTemp.map((termino, index) => (
+                  <div
+                    key={index}
+                    className="bg-white border-2 border-purple-100 rounded-lg p-3 flex items-start gap-3 hover:border-purple-300 transition-all"
+                  >
+                    <div className="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs font-bold text-[#7B1FA2]">
+                      {index + 1}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-700">{termino}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onEliminarTerminoTemp(index)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-all"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => onMoverTerminoTemp(index, 'arriba')}
+                          className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-all"
+                          title="Mover arriba"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                      )}
+                      {index < terminosTemp.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => onMoverTerminoTemp(index, 'abajo')}
+                          className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-all"
+                          title="Mover abajo"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1778,10 +2057,29 @@ const ModalNuevoBeneficio = ({ convenios, categorias = [], formData, onChange, o
 };
 
 // ============== MODAL EDITAR BENEFICIO ==============
-const ModalEditarBeneficio = ({ convenios, categorias = [], beneficio, formData, onChange, onClose, onSubmit }) => {
+const ModalEditarBeneficio = ({
+  convenios,
+  categorias = [],
+  beneficio,
+  formData,
+  onChange,
+  onClose,
+  onSubmit,
+  terminos,
+  nuevoTermino,
+  setNuevoTermino,
+  onAgregarTermino,
+  onEditarTermino,
+  onEliminarTermino,
+  onMoverTermino,
+  terminoEditando,
+  setTerminoEditando
+}) => {
+  const [descripcionEditando, setDescripcionEditando] = React.useState('');
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-4 sm:px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
@@ -1797,72 +2095,221 @@ const ModalEditarBeneficio = ({ convenios, categorias = [], beneficio, formData,
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
-          <InputField
-            label="Nombre del Beneficio"
-            name="nombre"
-            value={formData.nombre}
-            onChange={onChange}
-            placeholder="Ej: Descuento en consultas"
-            required
-          />
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* SECCIÓN: DATOS DEL BENEFICIO */}
+          <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-[#7B1FA2]" />
+              Datos del Beneficio
+            </h3>
+            <div className="space-y-3">
+              <InputField
+                label="Nombre del Beneficio"
+                name="nombre"
+                value={formData.nombre}
+                onChange={onChange}
+                placeholder="Ej: Descuento en consultas"
+                required
+              />
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-              Convenio <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="convenio_id"
-              value={formData.convenio_id}
-              onChange={onChange}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
-              required
-            >
-              <option value="">Seleccionar convenio...</option>
-              {convenios.filter(c => c.activo).map(convenio => (
-                <option key={convenio.id} value={String(convenio.id)}>
-                  {convenio.empresa}
-                </option>
-              ))}
-            </select>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Convenio <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="convenio_id"
+                  value={formData.convenio_id}
+                  onChange={onChange}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                  required
+                >
+                  <option value="">Seleccionar convenio...</option>
+                  {convenios.filter(c => c.activo).map(convenio => (
+                    <option key={convenio.id} value={String(convenio.id)}>
+                      {convenio.empresa}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <TextAreaField
+                label="Descripción"
+                name="descripcion"
+                value={formData.descripcion}
+                onChange={onChange}
+                placeholder="Describe el beneficio en detalle"
+                rows={3}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Categoría
+                  </label>
+                  <select
+                    name="categoria_id"
+                    value={formData.categoria_id}
+                    onChange={onChange}
+                    className="w-full px-3 sm:px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                  >
+                    <option value="">Seleccionar categoría...</option>
+                    {categorias.map(categoria => (
+                      <option key={categoria.id} value={String(categoria.id)}>
+                        {categoria.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <InputField
+                  label="Descuento"
+                  name="descuento"
+                  value={formData.descuento}
+                  onChange={onChange}
+                  placeholder="Ej: 15%, S/50"
+                />
+              </div>
+            </div>
           </div>
 
-          <TextAreaField
-            label="Descripción"
-            name="descripcion"
-            value={formData.descripcion}
-            onChange={onChange}
-            placeholder="Describe el beneficio en detalle"
-            rows={3}
-          />
+          {/* SECCIÓN: TÉRMINOS Y CONDICIONES */}
+          <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <List className="w-4 h-4 text-[#7B1FA2]" />
+              Términos y Condiciones
+            </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                Categoría
-              </label>
-              <select
-                name="categoria_id"
-                value={formData.categoria_id}
-                onChange={onChange}
-                className="w-full px-3 sm:px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+            {/* Agregar nuevo término */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={nuevoTermino}
+                onChange={(e) => setNuevoTermino(e.target.value)}
+                placeholder="Escribe un término o condición..."
+                className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    onAgregarTermino(beneficio.id);
+                  }
+                }}
+              />
+              <button
+                onClick={() => onAgregarTermino(beneficio.id)}
+                className="px-4 py-2 bg-[#7B1FA2] text-white rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all flex items-center gap-2"
               >
-                <option value="">Seleccionar categoría...</option>
-                {categorias.map(categoria => (
-                  <option key={categoria.id} value={String(categoria.id)}>
-                    {categoria.nombre}
-                  </option>
-                ))}
-              </select>
+                <Plus className="w-4 h-4" />
+                Agregar
+              </button>
             </div>
 
-            <InputField
-              label="Descuento"
-              name="descuento"
-              value={formData.descuento}
-              onChange={onChange}
-              placeholder="Ej: 15%, S/50"
-            />
+            {/* Lista de términos */}
+            {terminos.length === 0 ? (
+              <div className="text-center py-6 bg-white border-2 border-dashed border-purple-200 rounded-lg">
+                <List className="w-8 h-8 text-purple-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No hay términos agregados</p>
+                <p className="text-xs text-gray-400 mt-1">Agrega términos y condiciones para este beneficio</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {terminos.map((termino, index) => (
+                  <div
+                    key={termino.id}
+                    className="bg-white border-2 border-purple-100 rounded-lg p-3 flex items-start gap-3 hover:border-purple-300 transition-all"
+                  >
+                    {/* Número de orden */}
+                    <div className="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs font-bold text-[#7B1FA2]">
+                      {index + 1}
+                    </div>
+
+                    {/* Contenido */}
+                    <div className="flex-1 min-w-0">
+                      {terminoEditando === termino.id ? (
+                        <input
+                          type="text"
+                          defaultValue={termino.descripcion}
+                          value={descripcionEditando}
+                          onChange={(e) => setDescripcionEditando(e.target.value)}
+                          className="w-full px-2 py-1 border-2 border-purple-300 rounded text-sm focus:outline-none focus:border-[#7B1FA2]"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              onEditarTermino(termino.id, descripcionEditando);
+                            }
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-700">{termino.descripcion}</p>
+                      )}
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex items-center gap-1">
+                      {terminoEditando === termino.id ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              onEditarTermino(termino.id, descripcionEditando);
+                            }}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded transition-all"
+                            title="Guardar"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTerminoEditando(null);
+                              setDescripcionEditando('');
+                            }}
+                            className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-all"
+                            title="Cancelar"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setTerminoEditando(termino.id);
+                              setDescripcionEditando(termino.descripcion);
+                            }}
+                            className="p-1 text-[#7B1FA2] hover:bg-purple-50 rounded transition-all"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onEliminarTermino(termino.id, beneficio.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-all"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          {index > 0 && (
+                            <button
+                              onClick={() => onMoverTermino(index, 'arriba')}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-all"
+                              title="Mover arriba"
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+                          )}
+                          {index < terminos.length - 1 && (
+                            <button
+                              onClick={() => onMoverTermino(index, 'abajo')}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-all"
+                              title="Mover abajo"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

@@ -62,7 +62,7 @@ const TopMenu = () => {
       <Toolbar sx={{ minHeight: 64, display: 'flex', justifyContent: 'space-between',pr: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <img
-            src="/logo-text-short.png"
+            src="/logo-text-short.webp"
             alt="Logo"
             style={{ height: 48, marginRight: 40 }}
           />

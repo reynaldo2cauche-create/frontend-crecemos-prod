@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
-import { FormControlLabel, Checkbox, Box, Button, CircularProgress } from '@mui/material';
+import { Form, Button, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import { useFormContext } from 'react-hook-form';
 import ReCAPTCHA from 'react-google-recaptcha';
+import '../../styles/global.css';
 
-// const SITE_KEY = '6LdAwDErAAAAAMntfq1lMZZggms--K45BJE_JFQy'; // Tu clave de sitio v2 (checkbox)
 const SITE_KEY = '6Lck2jErAAAAAPqJ463t1EaXqMjlyTO15JMVZSqs';
 
 const ConsentForm = ({ onSubmit, onBack, captchaValue, setCaptchaValue }) => {
-  const { register, formState: { errors }, watch, setValue, getValues, handleSubmit } = useFormContext();
+  const { register, formState: { errors }, watch, setValue, handleSubmit } = useFormContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [captchaError, setCaptchaError] = useState('');
 
   const handleFormSubmit = async (data) => {
-    // if (!captchaValue) {
-    //   setCaptchaError('Por favor, verifica que no eres un robot.');
-    //   return;
-    // }
     setCaptchaError('');
     setIsSubmitting(true);
     try {
@@ -26,71 +22,148 @@ const ConsentForm = ({ onSubmit, onBack, captchaValue, setCaptchaValue }) => {
   };
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit(handleFormSubmit)}
-      sx={{ 
-        mt: 3, 
-        p: 3, 
-        border: '1px solid #e0e0e0', 
-        borderRadius: 2, 
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
-        backgroundColor: '#fff'
-      }}
-    >
-      <FormControlLabel
-        control={
-          <Checkbox
-            {...register('aceptaTerminos', { required: 'Debes aceptar los términos y condiciones' })}
-            checked={watch('aceptaTerminos') || false}
-            onChange={(e) => setValue('aceptaTerminos', e.target.checked)}
-          />
-        }
-        label="Acepto los términos y condiciones de la empresa"
-      />
-      {errors.aceptaTerminos && <span style={{ color: 'red' }}>{errors.aceptaTerminos.message}</span>}
-      
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={watch('autorizaInformacion') || false}
-            onChange={(e) => setValue('autorizaInformacion', e.target.checked)}
-          />
-        }
-        label="Autorizo el envío de información comercial"
-      />
+    <Form onSubmit={handleSubmit(handleFormSubmit)} className="consent-form">
+      <div className="form-section">
+        <div className="success-header">
+          <div className="success-icon-wrapper">
+            <i className="bi bi-check-circle-fill"></i>
+          </div>
+          <h5 className="form-section-title text-center mb-2">
+            ¡Último Paso!
+          </h5>
+          <p className="success-subtitle">
+            Por favor, revisa y acepta los términos para completar tu registro
+          </p>
+        </div>
 
-      <Box sx={{ my: 2 }}>
-        <ReCAPTCHA
-          sitekey={SITE_KEY}
-          onChange={value => {
-            setCaptchaValue(value);
-            setCaptchaError('');
-          }}
-        />
-        {captchaError && <span style={{ color: 'red', display: 'block', marginTop: 8 }}>{captchaError}</span>}
-      </Box>
-      
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={onBack}
-          disabled={isSubmitting}
-        >
-          Atrás
-        </Button>
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          disabled={isSubmitting}
-          startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
-        >
-          {isSubmitting ? 'Procesando...' : 'Finalizar'}
-        </Button>
-      </Box>
-    </Box>
+        {/* Términos y Condiciones */}
+        <div className="consent-box">
+          <div className="consent-header">
+            <i className="bi bi-file-earmark-text me-2"></i>
+            <span>Términos y Condiciones</span>
+          </div>
+          <div className="consent-content">
+            <p>Al registrarte, aceptas que:</p>
+            <ul>
+              <li>La información proporcionada es verídica y actualizada</li>
+              <li>Autorizas el tratamiento de tus datos personales según nuestra política de privacidad</li>
+              <li>Comprendes que la información médica será manejada de forma confidencial</li>
+              <li>Aceptas recibir comunicaciones relacionadas con tu tratamiento</li>
+            </ul>
+          </div>
+
+          <Form.Group className="mb-3">
+            <Form.Check
+              type="checkbox"
+              id="aceptaTerminos"
+              label={
+                <span className="consent-label">
+                  <strong>Acepto los términos y condiciones</strong>
+                  <span className="text-danger ms-1">*</span>
+                </span>
+              }
+              {...register('aceptaTerminos', { required: 'Debes aceptar los términos y condiciones' })}
+              isInvalid={!!errors.aceptaTerminos}
+              checked={watch('aceptaTerminos') || false}
+              onChange={(e) => setValue('aceptaTerminos', e.target.checked)}
+              className="consent-checkbox"
+            />
+            <Form.Control.Feedback type="invalid">
+              {errors.aceptaTerminos?.message}
+            </Form.Control.Feedback>
+          </Form.Group>
+        </div>
+
+        {/* Información Comercial */}
+        <div className="consent-box marketing-box">
+          <div className="consent-header">
+            <i className="bi bi-envelope-heart me-2"></i>
+            <span>Información Comercial (Opcional)</span>
+          </div>
+          <Form.Group className="mb-0">
+            <Form.Check
+              type="checkbox"
+              id="autorizaInformacion"
+              label={
+                <span className="consent-label">
+                  Deseo recibir información sobre promociones, eventos y novedades de Crecemos
+                </span>
+              }
+              checked={watch('autorizaInformacion') || false}
+              onChange={(e) => setValue('autorizaInformacion', e.target.checked)}
+              className="consent-checkbox"
+            />
+          </Form.Group>
+        </div>
+
+        {/* reCAPTCHA */}
+        <div className="captcha-wrapper">
+          <ReCAPTCHA
+            sitekey={SITE_KEY}
+            onChange={value => {
+              setCaptchaValue(value);
+              setCaptchaError('');
+            }}
+            theme="light"
+          />
+          {captchaError && (
+            <Alert variant="danger" className="mt-2 mb-0">
+              {captchaError}
+            </Alert>
+          )}
+        </div>
+
+        {/* Info de seguridad */}
+        <div className="security-badge">
+          <i className="bi bi-shield-fill-check me-2"></i>
+          <span>Tu información está protegida con encriptación SSL</span>
+        </div>
+      </div>
+
+      {/* Botones de navegación */}
+      <Row className="mt-4">
+        <Col xs={6}>
+          <Button
+            variant="outline-secondary"
+            onClick={onBack}
+            size="lg"
+            className="w-100 btn-back"
+            disabled={isSubmitting}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            Atrás
+          </Button>
+        </Col>
+        <Col xs={6}>
+          <Button
+            variant="success"
+            type="submit"
+            size="lg"
+            className="w-100 btn-finish"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Procesando...
+              </>
+            ) : (
+              <>
+                Finalizar
+                <i className="bi bi-check-lg ms-2"></i>
+              </>
+            )}
+          </Button>
+        </Col>
+      </Row>
+    </Form>
   );
 };
 

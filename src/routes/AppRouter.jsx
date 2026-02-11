@@ -31,9 +31,12 @@ import  AdultoEvalPsicolUniverPage  from '../pages/service-adulto/AdultoEvalPsic
 import Sidebar, { SidebarProvider, SidebarContentWrapper } from '../components/Sidebar';
 import Login from '../components/Login';
 import PrivateRoute from '../components/PrivateRoute';
+import GeofencingGuard from '../components/GeofencingGuard';
+
 import MiPerfil from '../pages/MiPerfil';
 import Agenda from '../pages/Agenda';
 import ReglamentoInterno from '../pages/ReglamentoInterno';
+import TestUbicacion from '../pages/TestUbicacion';
 import PoliticaPrivacidad from '../pages/PoliticaPrivacidad';
 import Mantenimiento from '../pages/Mantenimiento';
 import LibroReclamaciones from '../pages/LibroReclamaciones';
@@ -53,33 +56,46 @@ import HistorialPagosPage from '../pages/rrhh/HistorialPagosPage';
 import DashboardRRHH from '../pages/rrhh/DashboardRRHH';
 import VacacionesPage from '../pages/rrhh/VacacionesPage';
 import ConveniosPage from '../pages/ConveniosPage';
+import GestionStaff from '../pages/GestionStaff';
 
 // Páginas de Auditoría
 import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
+
+// Páginas de Asistencias
+import AsistenciasPorTerapeuta from '../pages/Asistencias/AsistenciasPorTerapeuta';
+import AsistenciasPorPaciente from '../pages/Asistencias/AsistenciasPorPaciente';
+import Inconsistencias from '../pages/Asistencias/Inconsistencias';
+import GestionAsistenciasAdmin from '../pages/Asistencias/GestionAsistenciasAdmin';
 
 export const AppRouter = () => {
   return (
     <>
       <Routes>
         <Route path="/intranet" element={<Login />} />
+        <Route path="/test-ubicacion" element={<TestUbicacion />} />
+     
         <Route path="/intranet/lista-pacientes" element={
           <PrivateRoute>
-            <SidebarProvider>
-              <Sidebar />
-              <SidebarContentWrapper>
-                <ListaPacientes />
-              </SidebarContentWrapper>
-            </SidebarProvider>
+            <GeofencingGuard>
+              <SidebarProvider>
+                <Sidebar />
+                <SidebarContentWrapper>
+                  <ListaPacientes />
+                </SidebarContentWrapper>
+              </SidebarProvider>
+            </GeofencingGuard>
           </PrivateRoute>
         } />
         <Route path="/intranet/reportes-evaluaciones" element={
           <PrivateRoute>
-            <SidebarProvider>
-              <Sidebar />
-              <SidebarContentWrapper>
-                <ReportesEvaluaciones />
-              </SidebarContentWrapper>
-            </SidebarProvider>
+            <GeofencingGuard>
+              <SidebarProvider>
+                <Sidebar />
+                <SidebarContentWrapper>
+                  <ReportesEvaluaciones />
+                </SidebarContentWrapper>
+              </SidebarProvider>
+            </GeofencingGuard>
           </PrivateRoute>
         } />
         <Route path="/intranet/mi-perfil" element={
@@ -94,12 +110,14 @@ export const AppRouter = () => {
         } />
         <Route path="/intranet/agenda" element={
           <PrivateRoute>
-            <SidebarProvider>
-              <Sidebar />
-              <SidebarContentWrapper>
-                <Agenda />
-              </SidebarContentWrapper>
-            </SidebarProvider>
+          
+              <SidebarProvider>
+                <Sidebar />
+                <SidebarContentWrapper>
+                  <Agenda />
+                </SidebarContentWrapper>
+              </SidebarProvider>
+      
           </PrivateRoute>
         } />
         <Route path="/intranet/postulaciones" element={
@@ -190,6 +208,51 @@ export const AppRouter = () => {
           </PrivateRoute>
         } />
 
+        {/* Rutas de Asistencias */}
+        <Route path="/intranet/asistencias/terapeuta" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <AsistenciasPorTerapeuta />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/paciente" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <AsistenciasPorPaciente />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/inconsistencias" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <Inconsistencias />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/admin" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestionAsistenciasAdmin />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
         <Route path="/intranet/popup-promocional" element={
           <PrivateRoute>
             <SidebarProvider>
@@ -217,6 +280,16 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <ConveniosPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/gestion-staff" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestionStaff />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

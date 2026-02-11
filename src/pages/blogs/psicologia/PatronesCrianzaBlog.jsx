@@ -38,7 +38,7 @@ export default function PatronesCrianzaBlog() {
           explícita. Ilustración vectorial moderna." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza1.jpg"
+          src="/assets/img/blog/crianza1.webp"
           alt="Consecuencias del castigo físico"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -107,7 +107,7 @@ export default function PatronesCrianzaBlog() {
           simbolizando patrones heredados." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza2.jpg"
+          src="/assets/img/blog/crianza2.webp"
           alt="Patrones invisibles de crianza"
           style={{ width: '100%', height: '400px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -280,7 +280,7 @@ export default function PatronesCrianzaBlog() {
           y limpio, colores diferenciados por cuadrante." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza3.jpg"
+          src="/assets/img/blog/crianza3.webp"
           alt="Estilos de crianza"
           style={{ width: '100%', height: '400px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -348,7 +348,7 @@ export default function PatronesCrianzaBlog() {
           vectorial profesional con iconos simples." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza4.jpg"
+          src="/assets/img/blog/crianza4.webp"
           alt="Mitos y verdades sobre crianza positiva"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -401,7 +401,7 @@ export default function PatronesCrianzaBlog() {
           Ilustración vectorial moderna que transmita soluciones prácticas." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza5.jpg"
+          src="/assets/img/blog/crianza5.webp"
           alt="Herramientas de crianza positiva"
           style={{ width: '100%', height: '400px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -507,7 +507,7 @@ export default function PatronesCrianzaBlog() {
           cálida y empática, luz natural suave." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza6.jpg"
+          src="/assets/img/blog/crianza6.webp"
           alt="Comunicación efectiva con los hijos"
           style={{ width: '100%', height: '400px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}
@@ -594,7 +594,7 @@ export default function PatronesCrianzaBlog() {
           emotiva y esperanzadora. Expresiones faciales de alivio y conexión." */}
       <div className="recipe-image-placeholder mb-5" data-aos="fade-up">
         <img
-          src="/assets/img/blog/crianza7.jpg"
+          src="/assets/img/blog/crianza7.webp"
           alt="La importancia de reparar la relación"
           style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '12px' }}
           onError={(e) => e.target.style.display = 'none'}

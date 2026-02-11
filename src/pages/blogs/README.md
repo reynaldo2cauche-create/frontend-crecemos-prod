@@ -62,13 +62,13 @@ Abre `src/data/blogMetadata.js` y agrega un nuevo objeto al array:
   slug: 'maca-superalimento-peruano-ninos', // URL amigable (sin espacios)
   title: 'Maca: El superalimento energético para niños',
   excerpt: 'Resumen corto del blog (1-2 oraciones)',
-  image: '/assets/img/blog/maca.png', // Imagen para el listado
+  image: '/assets/img/blog/maca.webp', // Imagen para el listado
   date: '25 Enero 2025',
   category: 'nutricion', // nutricion, desarrollo-infantil, psicologia, terapias, familia, educacion
   categoryName: 'Nutrición',
   readTime: '7 min lectura',
   author: 'Centro Crecemos',
-  heroImage: '/assets/img/blog/maca.png' // Imagen grande del blog
+  heroImage: '/assets/img/blog/maca.webp' // Imagen grande del blog
 }
 ```
 

@@ -1,97 +1,121 @@
-import React, { useState } from 'react'
-import { useEffect } from 'react';
-
-
-
-import  {initializePageScripts}  from '../utils/initScripts';
+import React, { useEffect } from 'react';
+import { initializePageScripts } from '../utils/initScripts';
 
 const PoliticaPrivacidad = () => {
-
   useEffect(() => {
-         initializePageScripts();
-       }, []); 
-
+    initializePageScripts();
+  }, []);
 
   const politicas = [
     {
       numero: 1,
-      titulo: "Finalidad del documento",
-      contenido: "Esta política tiene por finalidad informar a los pacientes, padres de familia, representantes legales y usuarios en general sobre la forma en que tratamos sus datos personales, conforme a lo establecido en la Ley N.º 29733 – Ley de Protección de Datos Personales y su reglamento."
+      titulo: "Identificación del Responsable del Tratamiento de Datos",
+      lista: [
+        "Nombre Comercial: Crecemos – Centro Integral de Terapias",
+        "Razón Social: CONTIGO CRECEMOS E.I.R.L.",
+        "RUC: 20601074380",
+        "Página web: www.crecemos.com.pe"
+      ],
+      contenido: "CONTIGO CRECEMOS E.I.R.L., en adelante Crecemos – Centro Integral de Terapias, es responsable del tratamiento de los datos personales proporcionados por sus usuarios, pacientes y representantes legales."
     },
     {
       numero: 2,
-      titulo: "Responsable del tratamiento",
-      contenido: "Contigo Crecemos E.I.R.L., con RUC N.º 20601074380 y domicilio en Mz. W1 Lote 5, Urb. El Pinar, Comas – Lima – Perú, es el titular del banco de datos personales."
-    },
-    {
-      numero: 3,
-      titulo: "Datos recopilados",
+      titulo: "Marco Legal",
+      contenido: "La presente Política de Privacidad se rige por lo dispuesto en:",
       lista: [
-        "Nombre completo, DNI, fecha de nacimiento, dirección",
-        "Teléfono y correo electrónico",
-        "Información médica, terapéutica y psicológica",
-        "Historial de sesiones, evaluaciones e informes",
-        "Datos de contacto de padres o apoderados",
-        "Información sobre pagos y facturación"
+        "La Ley N.º 29733 – Ley de Protección de Datos Personales",
+        "Su Reglamento aprobado por el D.S. N.º 003-2013-JUS",
+        "Demás normas complementarias vigentes en la República del Perú"
       ]
     },
     {
-      numero: 4,
-      titulo: "Finalidad del tratamiento",
-      contenido: "Los datos personales son utilizados para:",
+      numero: 3,
+      titulo: "Datos Personales que se Recopilan",
+      contenido: "Crecemos podrá recopilar y tratar los siguientes datos personales:",
       lista: [
-        "Registrar y gestionar la atención terapéutica",
-        "Mantener la historia clínica actualizada",
-        "Programar citas y seguimientos clínicos",
-        "Elaborar informes de evaluación y evolución",
-        "Realizar comunicación con tutores o responsables",
-        "Realizar procesos administrativos y contables",
-        "Supervisar la calidad del servicio"
+        "Datos de identificación (nombres, apellidos, DNI, fecha de nacimiento)",
+        "Datos de contacto (dirección, teléfono, correo electrónico)",
+        "Datos del representante legal (en caso de menores de edad)",
+        "Información clínica y terapéutica necesaria para la atención del paciente",
+        "Información administrativa y de facturación"
+      ],
+      nota: "El suministro de estos datos es necesario para la correcta prestación de los servicios terapéuticos."
+    },
+    {
+      numero: 4,
+      titulo: "Finalidad del Tratamiento de los Datos",
+      contenido: "Los datos personales serán utilizados exclusivamente para:",
+      lista: [
+        "Brindar evaluaciones, terapias y seguimiento profesional",
+        "Elaborar historias clínicas, informes terapéuticos y registros internos",
+        "Gestionar citas, pagos, reprogramaciones y comunicaciones administrativas",
+        "Cumplir obligaciones legales, regulatorias y contractuales",
+        "Mejorar la calidad del servicio y la experiencia del usuario"
       ]
     },
     {
       numero: 5,
-      titulo: "Consentimiento",
-      contenido: "El ingreso voluntario de información en nuestros formularios y la firma del consentimiento informado constituyen aceptación expresa para el tratamiento de sus datos personales."
+      titulo: "Datos Sensibles",
+      contenido: "Crecemos podrá tratar datos personales sensibles, como información relacionada con la salud física y mental del paciente, únicamente con el consentimiento expreso del titular o su representante legal, y solo para fines estrictamente terapéuticos y profesionales."
     },
     {
       numero: 6,
-      titulo: "Conservación de los datos",
-      contenido: "Los datos serán almacenados hasta por 5 años después de finalizada la atención, salvo que se solicite formalmente su eliminación con autorización firmada."
+      titulo: "Confidencialidad y Seguridad de la Información",
+      contenido: "Crecemos garantiza la confidencialidad de los datos personales y adopta medidas técnicas, organizativas y legales razonables para prevenir:",
+      lista: [
+        "Accesos no autorizados",
+        "Uso indebido",
+        "Pérdida o alteración de la información"
+      ],
+      nota: "El acceso a la información está restringido únicamente al personal autorizado."
     },
     {
       numero: 7,
-      titulo: "Seguridad y confidencialidad",
-      contenido: "Aplicamos medidas técnicas, organizativas y legales para proteger la confidencialidad e integridad de los datos. El acceso está restringido al personal autorizado."
+      titulo: "Conservación de los Datos",
+      contenido: "Los datos personales serán conservados únicamente durante el tiempo necesario para cumplir las finalidades para las cuales fueron recopilados, o mientras exista una relación terapéutica, contractual o una obligación legal vigente."
     },
     {
       numero: 8,
-      titulo: "Derechos del titular",
+      titulo: "Compartición de Información",
+      contenido: "Crecemos no comparte ni comercializa los datos personales con terceros, salvo en los siguientes casos:",
       lista: [
-        "Rectificación: Solo puede ser solicitada a través del área de Admisión.",
-        "Eliminación: Debe firmarse una autorización del Centro.",
-        "Acceso: El acceso a historias clínicas completas está restringido y sujeto a revisión por el Centro."
+        "Autorización expresa del titular o representante legal",
+        "Requerimiento de autoridad competente conforme a ley",
+        "Coordinación interdisciplinaria con profesionales de la salud, únicamente con fines terapéuticos y bajo confidencialidad"
       ]
     },
     {
       numero: 9,
-      titulo: "Transferencia de datos",
-      contenido: "Los datos no serán compartidos salvo:",
+      titulo: "Derechos del Titular de los Datos (Derechos ARCO)",
+      contenido: "El titular de los datos personales o su representante legal puede ejercer en cualquier momento sus derechos de:",
       lista: [
-        "Requerimientos judiciales o legales",
-        "Coordinación con instituciones educativas o médicas (con autorización)",
-        "Envío de informes a responsables legales autorizados"
-      ]
+        "Acceso",
+        "Rectificación",
+        "Cancelación",
+        "Oposición"
+      ],
+      nota: "Para ello, deberá presentar una solicitud por escrito a través de los canales oficiales de Crecemos – Centro Integral de Terapias."
     },
     {
       numero: 10,
-      titulo: "Modificaciones",
-      contenido: "Los cambios a esta política serán publicados oportunamente a través de nuestros canales oficiales."
+      titulo: "Uso de Material Audiovisual",
+      contenido: "Cualquier registro fotográfico, audiovisual o digital con fines terapéuticos, educativos o institucionales será realizado únicamente con autorización previa y expresa del titular de los datos o su representante legal."
     },
     {
       numero: 11,
-      titulo: "Aceptación",
+      titulo: "Consentimiento",
+      contenido: "El usuario, paciente o representante legal declara haber leído y comprendido la presente Política de Privacidad y otorga su consentimiento libre, previo, informado e inequívoco para el tratamiento de sus datos personales.",
       infoBox: true
+    },
+    {
+      numero: 12,
+      titulo: "Modificaciones de la Política de Privacidad",
+      contenido: "Crecemos – Centro Integral de Terapias se reserva el derecho de modificar la presente Política de Privacidad cuando sea necesario. Las modificaciones serán comunicadas a través de sus canales oficiales."
+    },
+    {
+      numero: 13,
+      titulo: "Autoridad Competente",
+      contenido: "En caso de controversias relacionadas con el tratamiento de datos personales, será competente la Autoridad Nacional de Protección de Datos Personales del Perú."
     }
   ];
 
@@ -233,6 +257,21 @@ const PoliticaPrivacidad = () => {
           font-size: 1.05rem;
         }
 
+        .nota-box {
+          background: color-mix(in srgb, var(--accent-color), transparent 97%);
+          border-left: 3px solid var(--accent-color);
+          padding: 15px 20px;
+          margin-top: 15px;
+          border-radius: 5px;
+        }
+
+        .nota-box p {
+          margin: 0;
+          font-size: 0.95rem;
+          font-style: italic;
+          color: var(--default-color);
+        }
+
         .empresa-info {
           background: var(--heading-color);
           color: var(--contrast-color);
@@ -358,10 +397,10 @@ const PoliticaPrivacidad = () => {
           <div className="container text-center">
             <h1 data-aos="fade-down">Política de Privacidad y Tratamiento de Datos Personales</h1>
             <p className="subtitle" data-aos="fade-up" data-aos-delay="100">
-              Centro de Terapias CRECEMOS
+              Crecemos – Centro Integral de Terapias
             </p>
             <p className="update-date" data-aos="fade-up" data-aos-delay="150">
-              Fecha de actualización: 29/09/2025
+              Fecha de actualización: 15/01/2026
             </p>
           </div>
         </div>
@@ -374,16 +413,16 @@ const PoliticaPrivacidad = () => {
                 Responsable del Tratamiento
               </h4>
               <p><strong>CONTIGO CRECEMOS E.I.R.L.</strong></p>
+              <p>Nombre Comercial: <strong>Crecemos – Centro Integral de Terapias</strong></p>
               <p><strong>RUC:</strong> 20601074380</p>
-              <p><strong>Dirección:</strong> Mz. W1 Lote 5, Urb. El Pinar, Parcela H</p>
-              <p>Comas – Lima – Perú</p>
+              <p><strong>Web:</strong> www.crecemos.com.pe</p>
             </div>
 
             <div className="intro-box" data-aos="fade-up" data-aos-delay="100">
               <p>
-                <strong>CONTIGO CRECEMOS E.I.R.L.</strong> se compromete con la protección de los datos personales 
-                de sus pacientes y usuarios, conforme a lo establecido en la <strong>Ley N.º 29733 - Ley de Protección 
-                de Datos Personales</strong>, su reglamento, y demás normativa aplicable.
+                <strong>CONTIGO CRECEMOS E.I.R.L.</strong>, en adelante <strong>Crecemos – Centro Integral de Terapias</strong>, 
+                se compromete con la protección de los datos personales de sus pacientes y usuarios, conforme a lo establecido 
+                en la <strong>Ley N.º 29733 - Ley de Protección de Datos Personales</strong>, su reglamento, y demás normativa aplicable.
               </p>
             </div>
 
@@ -405,6 +444,12 @@ const PoliticaPrivacidad = () => {
                       <li key={idx}>{item}</li>
                     ))}
                   </ul>
+                )}
+
+                {politica.nota && (
+                  <div className="nota-box">
+                    <p>{politica.nota}</p>
+                  </div>
                 )}
                 
                 {politica.infoBox && (

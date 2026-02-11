@@ -13,7 +13,7 @@ import EditarTerapeutaModal from '../components/EditarPaciente/EditarTerapeutaMo
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useServicios } from '../hooks/useServicios';
 import { useTerapeutas } from '../hooks/useTerapeutas';
-import { calcularEdad, calcularEdadDetallada } from '../utils/date';
+import { calcularEdad, calcularEdadDetallada, formatearFechaParaInput, formatearFechaParaBackend } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
 import { ROLES, canManagePatientStatus } from '../constants/roles';
 import {
@@ -160,20 +160,9 @@ useEffect(() => {
           parejas: data.parejas || []
         };
 
-        // Normalizar fecha de nacimiento para evitar problemas de timezone
+        // Normalizar fecha de nacimiento usando la función helper
         if (pacienteCompleto.fecha_nacimiento) {
-          const fechaStr = pacienteCompleto.fecha_nacimiento;
-          // Si ya está en formato YYYY-MM-DD, dejarlo así
-          if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
-            // Ya está bien, no hacer nada
-          } else {
-            // Si viene con hora (del backend), extraer solo la fecha en UTC para evitar desfase
-            const fecha = new Date(fechaStr);
-            const year = fecha.getUTCFullYear();
-            const month = String(fecha.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(fecha.getUTCDate()).padStart(2, '0');
-            pacienteCompleto.fecha_nacimiento = `${year}-${month}-${day}`;
-          }
+          pacienteCompleto.fecha_nacimiento = formatearFechaParaInput(pacienteCompleto.fecha_nacimiento);
         }
 
         const servicios = await getServiciosPorPaciente(id);
@@ -263,20 +252,11 @@ useEffect(() => {
 
     const pacienteData = datosActualizados || paciente;
 
-    // Ajustar fecha de nacimiento para evitar problemas de timezone
-    let fechaNacimientoAjustada = pacienteData.fecha_nacimiento;
-    if (fechaNacimientoAjustada && typeof fechaNacimientoAjustada === 'string') {
-      // Si es formato YYYY-MM-DD, agregar hora de mediodía para evitar cambios por timezone
-      if (/^\d{4}-\d{2}-\d{2}$/.test(fechaNacimientoAjustada)) {
-        fechaNacimientoAjustada = fechaNacimientoAjustada + 'T12:00:00';
-      }
-    }
-
     const data = {
     nombres: pacienteData.nombres,
     apellido_paterno: pacienteData.apellido_paterno,
     apellido_materno: pacienteData.apellido_materno,
-    fecha_nacimiento: fechaNacimientoAjustada,
+    fecha_nacimiento: formatearFechaParaBackend(pacienteData.fecha_nacimiento),
     tipo_documento_id: pacienteData.tipo_documento?.id || null,
     numero_documento: pacienteData.numero_documento,
     sexo_id: pacienteData.sexo?.id || null,
@@ -295,9 +275,11 @@ useEffect(() => {
     
     try {
       const response = await updatePacienteById(id, data);
+      // Usar los datos completos del response del backend en lugar de los datos locales
+      // Esto asegura que la fecha y otros campos se actualicen correctamente
       setPaciente(prev => ({
         ...prev,
-        ...pacienteData,
+        ...response,  // Usar response completo del backend
         updated_at: response.updated_at
       }));
       setSnackbar({ open: true, message: 'Datos guardados correctamente', severity: 'success' });

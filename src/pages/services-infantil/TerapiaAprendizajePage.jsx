@@ -57,7 +57,7 @@ const TerapiaAprendizajePage = () => {
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="100">
               <div className="feature-box blue text-center">
                 <img
-                  src="/assets/img/servicios/1.jpeg"
+                  src="/assets/img/servicios/1.webp"
                   alt="Estrategias para la atención y concentración"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -71,7 +71,7 @@ const TerapiaAprendizajePage = () => {
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="200">
               <div className="feature-box green text-center">
                 <img
-                  src="/assets/img/servicios/2.jpeg"
+                  src="/assets/img/servicios/2.webp"
                   alt="Estimulación de la memoria y el razonamiento"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -85,7 +85,7 @@ const TerapiaAprendizajePage = () => {
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="300">
               <div className="feature-box orange text-center">
                 <img
-                  src="/assets/img/servicios/3.jpeg"
+                  src="/assets/img/servicios/3.webp"
                   alt="Desarrollo de habilidades de lectoescritura"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -99,7 +99,7 @@ const TerapiaAprendizajePage = () => {
             <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="400">
               <div className="feature-box blue text-center">
                 <img
-                  src="/assets/img/servicios/4.jpeg"
+                  src="/assets/img/servicios/4.webp"
                   alt="Técnicas para el aprendizaje autónomo"
                   className="img-fluid mb-3 rounded"
                   style={{ width: "227px" }}
@@ -140,7 +140,7 @@ const TerapiaAprendizajePage = () => {
                 {/* Imagen */}
                 <div className="col-lg-6 order-1 order-lg-2 text-center">
                   <img
-                    src="/assets/img/servicios/terapia de aprendizaje.jpg"
+                    src="/assets/img/servicios/terapia de aprendizaje.webp"
                     alt="Terapia de Aprendizaje"
                     className="img-fluid rounded"
                   />
@@ -163,7 +163,7 @@ const TerapiaAprendizajePage = () => {
             {/* Cherly */}
             <div className="col-lg-4 col-md-6 col-sm-12">
               <div className="our-team">
-                <img src="/assets/img/servicios/terapeutica-cherQui.jpg" alt="Lic.Cherly Quiquia" />
+                <img src="/assets/img/servicios/terapeutica-cherQui.webp" alt="Lic.Cherly Quiquia" />
                 <div className="team-content">
                   <h3 className="title">Lic. Cherly Quiquia</h3>
                   <span className="post">Psicología</span>
@@ -178,25 +178,6 @@ const TerapiaAprendizajePage = () => {
 
           
 
-            {/* Jhoselyn */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/jhoselyn.png"
-                  alt="Lic. Jhoselyn Quispe"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Jhoselyn Quispe</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">57370</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>

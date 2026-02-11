@@ -8,8 +8,8 @@ import DialogNotice from '../components/DialogNotice/DialogNotice';
 
 
 const heroImages = [
-  '/assets/img/index/Carrusel servicios.png',
-  '/assets/img/index/carrusel psicologia infantil.png',
+  '/assets/img/index/Carrusel servicios.webp',
+  '/assets/img/index/Psicologia Infantil.webp',
 ];
 
 export default function HomePage() {
@@ -68,7 +68,7 @@ export default function HomePage() {
   const interval = setInterval(() => {
     setCurrentImage((prev) => {
       const next = (prev + 1) % heroImages.length;
-      console.log('🎠 Carrusel rotando:', prev, '→', next);
+     
       return next;
     });
   }, 5000);
@@ -125,9 +125,13 @@ useEffect(() => {
   const cargarConvenios = async () => {
     try {
       setCargandoConvenios(true);
+
       const conveniosActivos = await conveniosService.getConveniosActivos();
-      console.log('Convenios activos obtenidos:', conveniosActivos);
-      setConvenios(conveniosActivos);
+      const conveniosFiltrados = conveniosActivos.filter(c => c.id !== 27);
+
+      console.log('Convenios activos obtenidos:', conveniosFiltrados);
+      setConvenios(conveniosFiltrados);
+      
     } catch (error) {
       console.error('Error al cargar convenios:', error);
       setConvenios([]);
@@ -585,7 +589,7 @@ const cerrarPopup = () => {
                   ? (convenio.logo_url.startsWith('/')
                     ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
                     : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
-                  : '/assets/img/index/default-logo.png'}
+                  : '/assets/img/index/default-logo.webp'}
                 className="img-fluid"
                 alt={convenio.empresa}
                 style={{
@@ -599,7 +603,7 @@ const cerrarPopup = () => {
                 }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = '/assets/img/index/default-logo.png';
+                  e.target.src = '/assets/img/index/default-logo.webp';
                 }}
               />
             </div>

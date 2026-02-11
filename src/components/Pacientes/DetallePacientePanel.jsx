@@ -9,41 +9,11 @@ import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import { canViewContactInfo, isTerapeuta, canManagePatientStatus } from '../../constants/roles';
 import { cambiarVisibilidadPaciente } from '../../services/pacienteService';
+import { formatearFechaParaMostrar } from '../../utils/date';
 
 const DetallePacientePanel = ({ paciente, onEditar, user, onPacienteOcultado }) => {
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [ocultando, setOcultando] = useState(false);
-
-  const formatearFechaSinZonaHoraria = (fechaStr) => {
-    if (!fechaStr) return 'No especificada';
-
-    try {
-      // Si la fecha ya está en formato dd/mm/yyyy, devolverla tal cual
-      if (typeof fechaStr === 'string' && fechaStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-        return fechaStr;
-      }
-
-      // Si la fecha está en formato yyyy-mm-dd
-      if (typeof fechaStr === 'string' && fechaStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const [year, month, day] = fechaStr.split('-');
-        return `${day}/${month}/${year}`;
-      }
-
-      // Intentar parsear como fecha normal
-      const fecha = new Date(fechaStr);
-      if (isNaN(fecha.getTime())) {
-        return 'Fecha inválida';
-      }
-
-      const day = String(fecha.getDate()).padStart(2, '0');
-      const month = String(fecha.getMonth() + 1).padStart(2, '0');
-      const year = fecha.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch (error) {
-      console.error('Error al formatear fecha:', error);
-      return 'Fecha inválida';
-    }
-  };
 
   if (!paciente) {
     return (
@@ -108,11 +78,7 @@ const DetallePacientePanel = ({ paciente, onEditar, user, onPacienteOcultado }) 
           border: '1px solid #e0e0e0',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
-          mt: { xs: 2, md: 0 },
-          mr: { xs: 0, md: 2 },
-          mb: 2,
-          ml: { xs: 0, md: 4 },
+          height: '100%',
         }}
       >
         {/* Header con gradiente morado suave */}
@@ -246,7 +212,7 @@ const DetallePacientePanel = ({ paciente, onEditar, user, onPacienteOcultado }) 
                     Fecha Nacimiento
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {formatearFechaSinZonaHoraria(paciente.fecha_nacimiento)}
+                    {formatearFechaParaMostrar(paciente.fecha_nacimiento) || 'No especificada'}
                   </Typography>
                 </Box>
               </Grid>

@@ -107,7 +107,7 @@ const SideMenu = () => {
           }}
         >
           <img
-            src="/logo-text-short.png"
+            src="/logo-text-short.webp"
             alt="Logo"
             style={{
               width: 110,
