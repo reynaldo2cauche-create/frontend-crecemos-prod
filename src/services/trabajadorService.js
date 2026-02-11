@@ -24,6 +24,11 @@ export const getRoles = async () => {
 export const getEspecialidades = async () => {
   const response = await api.get('/especialidades');
   return response.data;
+};
+
+export const getCargos = async () => {
+  const response = await api.get('/cargos');
+  return response.data;
 }; 
 
 export const activarTrabajador = async (id) => {

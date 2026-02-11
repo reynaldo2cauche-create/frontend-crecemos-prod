@@ -17,8 +17,8 @@ export const subirArchivo = async (formData) => {
 };
 
 // Obtener archivos de un paciente
-export const getArchivosPorPaciente = async (terapeutaId, pacienteId) => {
-  const response = await api.get(`/archivos-digitales?terapeutaId=${terapeutaId}&pacienteId=${pacienteId}`);
+export const getArchivosPorPaciente = async (pacienteId) => {
+  const response = await api.get(`/archivos-digitales?pacienteId=${pacienteId}`);
   return response.data;
 };
 

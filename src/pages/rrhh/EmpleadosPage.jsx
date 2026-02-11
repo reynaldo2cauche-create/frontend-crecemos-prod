@@ -11,17 +11,22 @@ import {
   crearTrabajador,
   getRoles,
   getEspecialidades,
+  getCargos,
   activarTrabajador,
   desactivarTrabajador,
   updateTrabajador
 } from '../../services/trabajadorService';
 import { registrarPagoMensual } from '../../services/rrhhService';
+import { getServicios } from '../../services/catalogoService';
+import { asignarServicio, getServiciosByTrabajador, desactivarServicio } from '../../services/trabajadorServicioService';
 import api from '../../services/api';
 import CuentasBancarias from '../../components/CuentasBancarias'; // Ajusta la ruta según tu estructura
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([]);
   const [roles, setRoles] = useState([]);
   const [especialidades, setEspecialidades] = useState([]);
+  const [cargos, setCargos] = useState([]);
+  const [servicios, setServicios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
@@ -45,14 +50,27 @@ export default function EmpleadosPage() {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [trabajadoresData, rolesData, especialidadesData] = await Promise.all([
+      const [trabajadoresData, rolesData, especialidadesData, cargosData, serviciosData] = await Promise.all([
         getTrabajadores(),
         getRoles(),
-        getEspecialidades()
+        getEspecialidades(),
+        getCargos(),
+        getServicios()
       ]);
       setEmpleados(trabajadoresData);
       setRoles(rolesData);
       setEspecialidades(especialidadesData);
+      setCargos(cargosData);
+      setServicios(serviciosData);
+
+      console.log('Datos cargados:', {
+        empleados: trabajadoresData?.length,
+        roles: rolesData?.length,
+        especialidades: especialidadesData?.length,
+        cargos: cargosData?.length,
+        servicios: serviciosData?.length,
+        serviciosData
+      });
     } catch (error) {
       console.error('Error al cargar datos:', error);
       showNotification('Error al cargar los datos', 'error');
@@ -296,34 +314,38 @@ export default function EmpleadosPage() {
 
       {/* Modales */}
       {modalNuevo && (
-        <ModalNuevoEmpleado
-          onClose={() => setModalNuevo(false)}
-          roles={roles}
-          especialidades={especialidades}
-          onSuccess={() => {
-            cargarDatos();
-            showNotification('Empleado creado correctamente', 'success');
-          }}
-          onError={(msg) => showNotification(msg, 'error')}
-        />
-      )}
+  <ModalNuevoEmpleado
+    onClose={() => setModalNuevo(false)}
+    roles={roles}
+    especialidades={especialidades}
+    cargos={cargos}
+    servicios={servicios}
+    onSuccess={() => {
+      cargarDatos();
+      showNotification('Empleado creado correctamente', 'success');
+    }}
+    onError={(msg) => showNotification(msg, 'error')}
+  />
+)}
 
-      {modalEditar && empleadoSeleccionado && (
-        <ModalEditarEmpleado
-          empleado={empleadoSeleccionado}
-          onClose={() => {
-            setModalEditar(false);
-            setEmpleadoSeleccionado(null);
-          }}
-          roles={roles}
-          especialidades={especialidades}
-          onSuccess={() => {
-            cargarDatos();
-            showNotification('Empleado actualizado correctamente', 'success');
-          }}
-          onError={(msg) => showNotification(msg, 'error')}
-        />
-      )}
+{modalEditar && empleadoSeleccionado && (
+  <ModalEditarEmpleado
+    empleado={empleadoSeleccionado}
+    onClose={() => {
+      setModalEditar(false);
+      setEmpleadoSeleccionado(null);
+    }}
+    roles={roles}
+    especialidades={especialidades}
+    cargos={cargos}
+    servicios={servicios}
+    onSuccess={() => {
+      cargarDatos();
+      showNotification('Empleado actualizado correctamente', 'success');
+    }}
+    onError={(msg) => showNotification(msg, 'error')}
+  />
+)}
 
       {modalDetalle && empleadoSeleccionado && (
         <ModalDetalleEmpleado
@@ -420,12 +442,15 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
           <span className="font-medium text-gray-700">{empleado.rol?.nombre}</span>
         </div>
 
-        {empleado.especialidad && (
-          <div className="flex items-center gap-2 text-xs">
-            <Briefcase className="w-3 h-3 flex-shrink-0 text-orange-500" />
-            <span className="text-gray-600">{empleado.especialidad.nombre}</span>
-          </div>
-        )}
+      {empleado.cargo && (
+            <div className="flex items-center gap-2 text-xs">
+              <Briefcase className="w-3 h-3 flex-shrink-0 text-orange-500" />
+              <span className="text-gray-600">
+                {empleado.cargo.nombre}
+                {empleado.cargo.es_jefe}
+              </span>
+            </div>
+          )}
 
         {empleado.sueldo_base && (
           <div className="flex items-center gap-2 text-xs">
@@ -486,7 +511,7 @@ const TarjetaEmpleado = ({ empleado, onEditar, onToggleActivo, onVerDetalle, onP
 };
 
 // Modal Nuevo Empleado (simplificado - reutiliza componentes del módulo anterior)
-const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError }) => {
+const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',
@@ -497,7 +522,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
     correo_corporativo: '',
     rol: '',
     especialidad: '',
-    cargo: '',
+    cargo_id: '',
     telefono: '',
     telefono_emergencia: '',
     contacto_emergencia: '',
@@ -509,6 +534,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
     numero_cuenta: '',
     banco: ''
   });
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -567,26 +593,36 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
         email: formData.email,
         correo_corporativo: formData.correo_corporativo || null,
         rol_id: rolObj?.id,
-        rol: formData.rol,
         especialidad_id: especialidadObj?.id || null,
-        cargo: formData.cargo,
+        cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
         telefono: formData.telefono || null,
         telefono_emergencia: formData.telefono_emergencia || null,
         contacto_emergencia: formData.contacto_emergencia || null,
         talla_polo: formData.talla_polo || null,
         talla_pantalon: formData.talla_pantalon || null,
         talla_zapatos: formData.talla_zapatos || null,
-        sueldo_base: formData.sueldo_base || null,
+        sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
         fecha_ingreso: formData.fecha_ingreso || null,
         numero_cuenta: formData.numero_cuenta || null,
         banco: formData.banco || null
       };
 
-      await crearTrabajador(data);
+      const nuevoTrabajador = await crearTrabajador(data);
+
+      // Si es terapeuta y tiene servicios seleccionados, asignarlos
+      if (esTerapeuta && serviciosSeleccionados.length > 0) {
+        const userId = localStorage.getItem('userId') || 1; // Obtener userId del usuario actual
+        const promesasServicios = serviciosSeleccionados.map(servicioId =>
+          asignarServicio(nuevoTrabajador.id, servicioId, null, userId)
+        );
+        await Promise.all(promesasServicios);
+      }
+
       onSuccess();
       onClose();
     } catch (error) {
-      onError('Error al crear el empleado');
+      console.error('Error al crear empleado:', error);
+      onError(error.response?.data?.message || 'Error al crear el empleado');
     } finally {
       setLoading(false);
     }
@@ -595,12 +631,18 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
 
+  console.log('ModalNuevoEmpleado - Debug:', {
+    rolSeleccionado,
+    esTerapeuta,
+    serviciosCount: servicios?.length,
+    serviciosSeleccionadosCount: serviciosSeleccionados.length
+  });
+
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={onClose} />
 
       <div className="fixed right-0 top-0 bottom-0 w-full sm:max-w-3xl bg-white shadow-xl z-50 overflow-hidden flex flex-col">
-        {/* Header */}
         <div className="flex-shrink-0 bg-gradient-to-r from-[#7B1FA2] via-[#8E24AA] to-[#AB47BC] p-6">
           <div className="flex items-start justify-between">
             <div>
@@ -616,10 +658,9 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
           </div>
         </div>
 
-        {/* Contenido con scroll */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Sección: Datos Personales */}
+            {/* Datos Personales */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
                 <User className="w-4 h-4" />
@@ -635,25 +676,143 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
               </div>
             </div>
 
-            {/* Sección: Acceso al Sistema */}
+            {/* Acceso y Cargo */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                Acceso al Sistema
+                Acceso y Cargo
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Usuario" name="usuario" value={formData.usuario} onChange={handleChange} error={errors.usuario} required />
                 <InputField label="Contraseña" name="contrasena" type="password" value={formData.contrasena} onChange={handleChange} error={errors.contrasena} required />
-                <SelectField label="Rol" name="rol" value={formData.rol} onChange={handleChange} error={errors.rol} options={roles.map(r => r.nombre)} required />
+                
+                <SelectField 
+                  label="Rol del Sistema" 
+                  name="rol" 
+                  value={formData.rol} 
+                  onChange={handleChange} 
+                  error={errors.rol} 
+                  options={roles.map(r => r.nombre)} 
+                  required 
+                />
+                
+                {/* ✅ SELECT DE CARGO */}
+                <SelectField 
+                  label="Cargo/Puesto de Trabajo" 
+                  name="cargo_id" 
+                  value={formData.cargo_id} 
+                  onChange={handleChange} 
+                  options={cargos.filter(c => c.activo).map(c => ({ 
+                    value: c.id, 
+                    label: `${c.nombre}` 
+                  }))}
+                  isValueLabel={true}
+                />
+
+                {/* ✅ ESPECIALIDAD - Solo si es terapeuta */}
                 {esTerapeuta && (
                   <div className="md:col-span-2">
-                    <SelectField label="Especialidad" name="especialidad" value={formData.especialidad} onChange={handleChange} error={errors.especialidad} options={especialidades.map(e => e.nombre)} required />
+                    <SelectField
+                      label="Especialidad Terapéutica"
+                      name="especialidad"
+                      value={formData.especialidad}
+                      onChange={handleChange}
+                      error={errors.especialidad}
+                      options={especialidades.filter(e => e.activo).map(e => e.nombre)}
+                      required
+                    />
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Sección: Contacto y Emergencia (Opcional) */}
+            {/* ✅ SERVICIOS - Solo si es terapeuta */}
+            {esTerapeuta && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  Servicios que Brinda
+                </h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Columna Infantil y Adolescentes */}
+                    <div className="bg-white rounded-lg p-3 border border-blue-200">
+                      <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        Infantil y Adolescentes
+                      </h4>
+                      <div className="space-y-1">
+                        {servicios
+                          .filter(s => s.activo && s.area.id === 1)
+                          .map(servicio => (
+                            <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-50 rounded cursor-pointer transition-all">
+                              <input
+                                type="checkbox"
+                                checked={serviciosSeleccionados.includes(servicio.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                  } else {
+                                    setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Columna Adultos */}
+                    <div className="bg-white rounded-lg p-3 border border-purple-200">
+                      <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        Adultos
+                      </h4>
+                      <div className="space-y-1">
+                        {servicios
+                          .filter(s => s.activo && s.area.id === 2)
+                          .map(servicio => (
+                            <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-50 rounded cursor-pointer transition-all">
+                              <input
+                                type="checkbox"
+                                checked={serviciosSeleccionados.includes(servicio.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                  } else {
+                                    setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                              />
+                              <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {serviciosSeleccionados.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      No has seleccionado ningún servicio
+                    </p>
+                  )}
+                  {serviciosSeleccionados.length > 0 && (
+                    <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length > 1 ? 's' : ''} seleccionado{serviciosSeleccionados.length > 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Contacto */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
                 <Phone className="w-4 h-4" />
@@ -667,7 +826,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
               </div>
             </div>
 
-            {/* Sección: Tallas (Opcional) */}
+            {/* Tallas */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
                 <Shirt className="w-4 h-4" />
@@ -698,7 +857,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
               </div>
             </div>
 
-            {/* Sección: Datos Financieros (Opcional) */}
+            {/* Datos Financieros */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />
@@ -720,7 +879,6 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3 justify-end">
           <button
             onClick={onClose}
@@ -752,8 +910,8 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, onSuccess, onError
   );
 };
 
-// Modal Editar (combina datos personales + financieros)
-const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSuccess, onError }) => {
+// ============== MODAL EDITAR EMPLEADO ==============
+const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, servicios, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nombres: empleado.nombres || '',
     apellidos: empleado.apellidos || '',
@@ -764,7 +922,7 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
     rol: empleado.rol?.nombre || '',
     especialidad: empleado.especialidad?.nombre || '',
     contrasena: '',
-    cargo: empleado.cargo || '',
+    cargo_id: empleado.cargo?.id || '',
     telefono: empleado.telefono || '',
     telefono_emergencia: empleado.telefono_emergencia || '',
     contacto_emergencia: empleado.contacto_emergencia || '',
@@ -776,12 +934,36 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
     talla_pantalon: empleado.talla_pantalon || '',
     talla_zapatos: empleado.talla_zapatos || '',
     sueldo_base: empleado.sueldo_base || '',
-    fecha_ingreso: empleado.fecha_ingreso || '',
-    numero_cuenta: empleado.numero_cuenta || '',
-    banco: empleado.banco || ''
+    fecha_ingreso: empleado.fecha_ingreso || ''
   });
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
+  const [serviciosOriginales, setServiciosOriginales] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingServicios, setLoadingServicios] = useState(true);
+
+  // Cargar servicios del empleado al abrir el modal
+  useEffect(() => {
+    const cargarServiciosEmpleado = async () => {
+      if (empleado.rol?.nombre === 'Terapeuta') {
+        try {
+          setLoadingServicios(true);
+          const serviciosData = await getServiciosByTrabajador(empleado.id);
+          const serviciosIds = serviciosData.map(s => s.id);
+          setServiciosSeleccionados(serviciosIds);
+          setServiciosOriginales(serviciosIds);
+        } catch (error) {
+          console.error('Error al cargar servicios:', error);
+        } finally {
+          setLoadingServicios(false);
+        }
+      } else {
+        setLoadingServicios(false);
+      }
+    };
+
+    cargarServiciosEmpleado();
+  }, [empleado.id, empleado.rol]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -793,7 +975,7 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
 
   const validarFormulario = () => {
     const erroresNuevos = {};
-    const camposObligatorios = ['nombres', 'apellidos', 'dni', 'usuario', 'email', 'rol', 'cargo'];
+    const camposObligatorios = ['nombres', 'apellidos', 'dni', 'usuario', 'email', 'rol'];
 
     const rolObj = roles.find(r => r.nombre === formData.rol);
     if (rolObj?.nombre === 'Terapeuta') {
@@ -837,9 +1019,8 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
         email: formData.email,
         correo_corporativo: formData.correo_corporativo || null,
         rol_id: rolObj?.id,
-        rol: formData.rol,
         especialidad_id: especialidadObj?.id || null,
-        cargo: formData.cargo,
+        cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
         telefono: formData.telefono || null,
         telefono_emergencia: formData.telefono_emergencia || null,
         contacto_emergencia: formData.contacto_emergencia || null,
@@ -850,10 +1031,8 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
         talla_polo: formData.talla_polo || null,
         talla_pantalon: formData.talla_pantalon || null,
         talla_zapatos: formData.talla_zapatos || null,
-        sueldo_base: formData.sueldo_base || null,
-        fecha_ingreso: formData.fecha_ingreso || null,
-        numero_cuenta: formData.numero_cuenta || null,
-        banco: formData.banco || null
+        sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
+        fecha_ingreso: formData.fecha_ingreso || null
       };
 
       if (formData.contrasena?.trim()) {
@@ -861,10 +1040,34 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
       }
 
       await updateTrabajador(empleado.id, data);
+
+      // Si es terapeuta, actualizar servicios
+      if (esTerapeuta) {
+        const userId = localStorage.getItem('userId') || 1;
+
+        // Servicios a agregar (están en seleccionados pero no en originales)
+        const serviciosAgregar = serviciosSeleccionados.filter(id => !serviciosOriginales.includes(id));
+
+        // Servicios a eliminar (están en originales pero no en seleccionados)
+        const serviciosEliminar = serviciosOriginales.filter(id => !serviciosSeleccionados.includes(id));
+
+        // Agregar nuevos servicios
+        for (const servicioId of serviciosAgregar) {
+          await asignarServicio(empleado.id, servicioId, null, userId);
+        }
+
+        // Eliminar servicios
+        for (const servicioId of serviciosEliminar) {
+          await desactivarServicio(empleado.id, servicioId, userId);
+        }
+      }
+
       onSuccess();
       onClose();
     } catch (error) {
-      onError('Error al actualizar el empleado');
+      console.error('Error al actualizar empleado:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar el empleado';
+      onError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -872,6 +1075,14 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
 
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
+
+  console.log('ModalEditarEmpleado - Debug:', {
+    rolSeleccionado,
+    esTerapeuta,
+    serviciosCount: servicios?.length,
+    serviciosSeleccionadosCount: serviciosSeleccionados.length,
+    loadingServicios
+  });
 
   return (
     <>
@@ -904,19 +1115,137 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
               </div>
             </Section>
 
-            {/* Acceso */}
-            <Section title="Acceso al Sistema" icon={Shield}>
+            {/* Acceso y Cargo */}
+            <Section title="Acceso y Cargo" icon={Shield}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Usuario" name="usuario" value={formData.usuario} onChange={handleChange} error={errors.usuario} required />
                 <InputField label="Nueva Contraseña" name="contrasena" type="password" value={formData.contrasena} onChange={handleChange} placeholder="Dejar en blanco para mantener" />
-                <SelectField label="Rol" name="rol" value={formData.rol} onChange={handleChange} error={errors.rol} options={roles.map(r => r.nombre)} required />
+                
+                <SelectField 
+                  label="Rol del Sistema" 
+                  name="rol" 
+                  value={formData.rol} 
+                  onChange={handleChange} 
+                  error={errors.rol} 
+                  options={roles.map(r => r.nombre)} 
+                  required 
+                />
+                
+                <SelectField 
+                  label="Cargo/Puesto de Trabajo" 
+                  name="cargo_id" 
+                  value={formData.cargo_id} 
+                  onChange={handleChange} 
+                  options={cargos.filter(c => c.activo).map(c => ({ 
+                    value: c.id, 
+                    label: `${c.nombre}` 
+                  }))}
+                  isValueLabel={true}
+                />
+
                 {esTerapeuta && (
                   <div className="md:col-span-2">
-                    <SelectField label="Especialidad" name="especialidad" value={formData.especialidad} onChange={handleChange} error={errors.especialidad} options={especialidades.map(e => e.nombre)} required />
+                    <SelectField
+                      label="Especialidad Terapéutica"
+                      name="especialidad"
+                      value={formData.especialidad}
+                      onChange={handleChange}
+                      error={errors.especialidad}
+                      options={especialidades.filter(e => e.activo).map(e => e.nombre)}
+                      required
+                    />
                   </div>
                 )}
               </div>
             </Section>
+
+            {/* ✅ SERVICIOS - Solo si es terapeuta */}
+            {esTerapeuta && (
+              <Section title="Servicios que Brinda" icon={Briefcase}>
+                {loadingServicios ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-gray-200 border-t-purple-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Columna Infantil y Adolescentes */}
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          Infantil y Adolescentes
+                        </h4>
+                        <div className="space-y-1">
+                          {servicios
+                            .filter(s => s.activo && s.area.id === 1)
+                            .map(servicio => (
+                              <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-100 rounded cursor-pointer transition-all">
+                                <input
+                                  type="checkbox"
+                                  checked={serviciosSeleccionados.includes(servicio.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                    } else {
+                                      setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Columna Adultos */}
+                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                        <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          Adultos
+                        </h4>
+                        <div className="space-y-1">
+                          {servicios
+                            .filter(s => s.activo && s.area.id === 2)
+                            .map(servicio => (
+                              <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-100 rounded cursor-pointer transition-all">
+                                <input
+                                  type="checkbox"
+                                  checked={serviciosSeleccionados.includes(servicio.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
+                                    } else {
+                                      setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                />
+                                <span className="text-sm text-gray-700">{servicio.nombre}</span>
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {serviciosSeleccionados.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        No has seleccionado ningún servicio
+                      </p>
+                    )}
+                    {serviciosSeleccionados.length > 0 && (
+                      <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length > 1 ? 's' : ''} seleccionado{serviciosSeleccionados.length > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </>
+                )}
+              </Section>
+            )}
 
             {/* Contacto */}
             <Section title="Información de Contacto" icon={MapPin}>
@@ -963,24 +1292,20 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, onSucce
             </Section>
 
             {/* Datos Financieros */}
-          {/* Datos Financieros */}
-<Section title="Datos Financieros" icon={DollarSign}>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-    <InputField label="Sueldo Base (S/)" name="sueldo_base" type="number" step="0.01" value={formData.sueldo_base} onChange={handleChange} />
-    <InputField label="Fecha de Ingreso" name="fecha_ingreso" type="date" value={formData.fecha_ingreso} onChange={handleChange} />
-  </div>
-  
-  {/* Componente de Cuentas Bancarias */}
-  <div className="mt-4">
-    <CuentasBancarias 
-      trabajadorId={empleado.id}
-      onUpdate={() => {
-        console.log('Cuentas actualizadas');
-      }}
-      readOnly={false}
-    />
-  </div>
-</Section>
+            <Section title="Datos Financieros" icon={DollarSign}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <InputField label="Sueldo Base (S/)" name="sueldo_base" type="number" step="0.01" value={formData.sueldo_base} onChange={handleChange} />
+                <InputField label="Fecha de Ingreso" name="fecha_ingreso" type="date" value={formData.fecha_ingreso} onChange={handleChange} />
+              </div>
+              
+              <div className="mt-4">
+                <CuentasBancarias 
+                  trabajadorId={empleado.id}
+                  onUpdate={() => console.log('Cuentas actualizadas')}
+                  readOnly={false}
+                />
+              </div>
+            </Section>
           </div>
         </div>
 
@@ -1063,16 +1388,22 @@ const ModalDetalleEmpleado = ({ empleado, onClose, onEditar }) => {
             </DetalleSection>
 
             {/* Información Profesional */}
-            <DetalleSection title="Información Profesional">
+           <DetalleSection title="Información Profesional">
               <div className="grid grid-cols-2 gap-4">
                 <InfoField label="Rol" value={empleado.rol?.nombre || 'N/A'} />
+                
+                {empleado.cargo && (
+                  <InfoField 
+                    label="Cargo/Puesto" 
+                    value={`${empleado.cargo.nombre}${empleado.cargo.es_jefe ? ' 👑' : ''}`} 
+                  />
+                )}
                 
                 {empleado.especialidad && (
                   <InfoField label="Especialidad" value={empleado.especialidad.nombre} />
                 )}
               </div>
             </DetalleSection>
-
             {/* Datos Financieros */}
             {(empleado.sueldo_base || empleado.banco) && (
               <DetalleSection title="Datos Financieros">
@@ -1515,7 +1846,7 @@ const InputField = ({ label, name, value, onChange, error, type = 'text', requir
   </div>
 );
 
-const SelectField = ({ label, name, value, onChange, error, options, required }) => (
+const SelectField = ({ label, name, value, onChange, error, options, required, isValueLabel }) => (
   <div>
     <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
       {label} {required && <span className="text-red-500">*</span>}
@@ -1529,9 +1860,22 @@ const SelectField = ({ label, name, value, onChange, error, options, required })
       }`}
     >
       <option value="">Seleccionar {label.toLowerCase()}</option>
-      {options.map(option => (
-        <option key={option} value={option}>{option}</option>
-      ))}
+      {options.map(option => {
+        // Si isValueLabel es true, significa que las opciones son objetos {value, label}
+        if (isValueLabel && typeof option === 'object') {
+          return (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          );
+        }
+        // Si no, las opciones son strings simples
+        return (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        );
+      })}
     </select>
     {error && (
       <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1.5">

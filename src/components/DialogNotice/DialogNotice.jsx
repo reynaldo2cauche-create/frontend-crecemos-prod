@@ -6,8 +6,10 @@ const DialogNotice = ({ open, onClose, popupData }) => {
   // Si no hay popup data, usar datos por defecto (compatibilidad)
   const titulo = popupData?.titulo || '¡Feliz Día del Niño en Crecemos!';
   const imagenUrl = popupData?.imagenUrl || '/dia-nino-promo.jpg';
-  const mensajeWhatsapp = popupData?.mensajeWhatsapp || 'Hola 👋 Estoy interesado en la promoción de agosto. ¿Me puedes brindar más información?';
-  const mostrarBoton = !!mensajeWhatsapp; // Solo mostrar botón si hay mensaje
+
+  // Solo usar mensaje si existe y no está vacío
+  const mensajeWhatsapp = popupData?.mensajeWhatsapp?.trim() || null;
+  const mostrarBoton = !!mensajeWhatsapp; // Solo mostrar botón si hay mensaje configurado
 
   const handleWhatsAppClick = () => {
     const numeroWhatsApp = '+51957064401';
@@ -23,7 +25,10 @@ const DialogNotice = ({ open, onClose, popupData }) => {
       scroll="body"
       PaperProps={{
         sx: {
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(25px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(25px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.25)',
           borderRadius: '24px',
           overflow: 'visible',
           position: 'relative',
@@ -36,7 +41,9 @@ const DialogNotice = ({ open, onClose, popupData }) => {
       }}
       BackdropProps={{
         sx: {
-          backgroundColor: 'rgba(0, 0, 0, 0.85)' // Mucho más oscuro
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)'
         }
       }}
     >
@@ -80,7 +87,10 @@ const DialogNotice = ({ open, onClose, popupData }) => {
           position: 'relative',
           borderRadius: '24px',
           overflow: 'auto',
-          background: 'white',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
           maxHeight: 'calc(100vh - 80px)'
         }}
       >
@@ -113,7 +123,11 @@ const DialogNotice = ({ open, onClose, popupData }) => {
           <Box
             sx={{
               padding: '24px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(15px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(15px) saturate(180%)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.18)',
+              boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center'

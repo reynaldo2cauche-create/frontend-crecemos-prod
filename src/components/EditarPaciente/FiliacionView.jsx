@@ -1,6 +1,62 @@
 import React, { useState } from 'react';
-import { User, Phone, MapPin, Mail, Calendar, FileText, Heart, Pill, AlertCircle, Save, X, Edit2, Trash2, Plus, ShieldAlert } from 'lucide-react';
+import { User, Phone, MapPin, Mail, Calendar, FileText, Heart, Pill, AlertCircle, Save, X, Edit2, Trash2, Plus, ShieldAlert,Clock } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+
+const formatPeruDateTime = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    
+    
+    // Si el string ya viene en formato ISO con 'Z' (UTC)
+    if (dateString.includes('T') && dateString.endsWith('Z')) {
+      // Entonces SÍ necesitamos sumar 5 horas
+      const date = new Date(dateString);
+      date.setHours(date.getHours() + 5); // UTC -> Perú
+      return date.toLocaleDateString('es-PE', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Si viene en formato MySQL sin 'T' (2025-12-23 09:39:49)
+    // Asumimos que ya es hora Perú, pero JavaScript lo interpreta mal
+    // Necesitamos decirle explícitamente que es hora Perú
+    
+    const [datePart, timePart] = dateString.split(' ');
+    const [year, month, day] = datePart.split('-');
+    const [hours, minutes, seconds] = timePart.split(':');
+    
+    // Crear fecha especificando que es hora Perú (UTC-5)
+    // Opción 1: Crear con offset manual
+    const date = new Date(Date.UTC(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hours) + 5, // Ajustar porque Date.UTC espera UTC
+      parseInt(minutes),
+      parseInt(seconds)
+    ));
+    
+
+    
+    return date.toLocaleDateString('es-PE', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Lima' // Forzar zona horaria de Lima
+    });
+    
+  } catch (error) {
+    console.error('Error al formatear fecha:', error);
+    return 'Error en fecha';
+  }
+};
 
 // Componente de campo de formulario con iconos alineados
 const FormField = ({ icon: Icon, label, value, displayValue, name, type = 'text', editable, onChange, error, iconColor = 'text-[#7B1FA2]', options = null }) => (
@@ -118,11 +174,11 @@ const FiliacionView = ({
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    console.log('📝 Formulario enviado con datos:', localPacienteData);
+
 
     try {
       await handleSubmit(e, localPacienteData);
-      console.log('✅ Datos guardados exitosamente');
+    
       setModoEdicion(false);
     } catch (error) {
       console.error('❌ Error al guardar:', error);
@@ -137,41 +193,54 @@ const FiliacionView = ({
   if (!paciente) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm" style={{ minHeight: '700px' }}>
       {/* Header */}
-      <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-1">
-              Información del Paciente
-            </h2>
-            <p className="text-sm text-gray-500">
-              Datos personales y médicos
-            </p>
-          </div>
-          
-          {/* Botón de editar solo para ADMINISTRADOR */}
-          {puedeEditarPaciente && !modoEdicion && (
-            <button
-              onClick={() => setModoEdicion(true)}
-              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
-            >
-              <Edit2 className="w-4 h-4" />
-              Editar
-            </button>
-          )}
+     <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+  <div className="flex items-center justify-between">
+    <div>
+      <h2 className="text-xl font-bold text-gray-900 mb-1">
+        Información del Paciente
+      </h2>
+      <p className="text-sm text-gray-500">
+        Datos personales y médicos
+      </p>
+      
+      {/* AGREGAR ESTA SECCIÓN PARA LA FECHA DE ACTUALIZACIÓN */}
 
-          {/* Mensaje para roles sin permiso */}
-          {!puedeEditarPaciente && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-              <ShieldAlert className="w-4 h-4 text-amber-600" />
-              <span className="text-xs text-amber-700 font-medium">
-                {esAdmision ? 'Solo lectura - Sin permisos de edición de datos personales' : 'Modo solo lectura'}
-              </span>
-            </div>
-          )}
-        </div>
+            {paciente.updated_at && (
+              <div className="space-y-1 mt-2">
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <Calendar className="w-3 h-3" />
+                  <span className="font-medium">Última actualización:</span>
+                  <span>{formatPeruDateTime(paciente.updated_at)}</span>
+                </div>
+              
+              </div>
+            )}
+    </div>
+    
+    {/* Botón de editar solo para ADMINISTRADOR */}
+    {puedeEditarPaciente && !modoEdicion && (
+      <button
+        onClick={() => setModoEdicion(true)}
+        className="flex items-center gap-2 bg-[#7B1FA2] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+      >
+        <Edit2 className="w-4 h-4" />
+        Editar
+      </button>
+    )}
+
+    {/* Mensaje para roles sin permiso */}
+    {!puedeEditarPaciente && (
+      <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+        <ShieldAlert className="w-4 h-4 text-amber-600" />
+        <span className="text-xs text-amber-700 font-medium">
+          {esAdmision ? 'Solo lectura - Sin permisos de edición de datos personales' : 'Modo solo lectura'}
+        </span>
       </div>
+    )}
+  </div>
+</div>
 
       {/* Content */}
       <form onSubmit={handleFormSubmit} className="p-8">
@@ -392,16 +461,47 @@ const FiliacionView = ({
                           {servicio.servicio?.nombre || 'Sin nombre'}
                         </span>
                       </div>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
-                        servicio.asignaciones && servicio.asignaciones.length > 0 && servicio.asignaciones[0].terapeuta
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                        <User className="w-3 h-3" />
-                        {servicio.asignaciones && servicio.asignaciones.length > 0 && servicio.asignaciones[0].terapeuta
-                          ? `${servicio.asignaciones[0].terapeuta.nombres} ${servicio.asignaciones[0].terapeuta.apellidos}`
-                          : 'Sin asignar'}
-                      </div>
+
+                      {/* Mostrar TODOS los terapeutas asignados */}
+                      {servicio.asignaciones && servicio.asignaciones.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {servicio.asignaciones
+                            .filter(asig => asig.estado === 'ACTIVO' && asig.activo)
+                            .map((asignacion, index) => (
+                              <div
+                                key={asignacion.id || index}
+                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              >
+                                <User className="w-3 h-3" />
+                                <span>
+                                  {asignacion.terapeuta?.nombres} {asignacion.terapeuta?.apellidos}
+                                </span>
+                                {puedeGestionarServicios && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Aquí irá la función de eliminar terapeuta individual
+                                      setModalEliminarServicio({
+                                        open: true,
+                                        servicio,
+                                        asignacionId: asignacion.id,
+                                        terapeutaNombre: `${asignacion.terapeuta?.nombres} ${asignacion.terapeuta?.apellidos}`
+                                      });
+                                    }}
+                                    className="ml-1 text-emerald-600 hover:text-red-600 hover:bg-red-50 rounded-full p-0.5 transition-colors"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                          <User className="w-3 h-3" />
+                          Sin asignar
+                        </div>
+                      )}
                     </div>
 
                     {/* Botones de gestión para ADMINISTRADOR y ADMISIÓN */}
@@ -410,18 +510,25 @@ const FiliacionView = ({
                         <button
                           type="button"
                           onClick={() => {
+                            console.log('🔵 Botón editar clickeado');
+                            console.log('🔵 Servicio:', servicio);
+                            console.log('🔵 Terapeuta ID:', servicio.asignaciones?.[0]?.terapeuta?.id);
                             setServicioAEditar(servicio);
-                            setNuevoTerapeuta(
-                              servicio.asignaciones && servicio.asignaciones.length > 0 && servicio.asignaciones[0].terapeuta
-                                ? `${servicio.asignaciones[0].terapeuta.nombres} ${servicio.asignaciones[0].terapeuta.apellidos}`
-                                : ''
-                            );
+                            // ✅ IMPORTANTE: Setear el ID como STRING
+                            const terapeutaId = servicio.asignaciones && 
+                                               servicio.asignaciones.length > 0 && 
+                                               servicio.asignaciones[0].terapeuta
+                              ? String(servicio.asignaciones[0].terapeuta.id)
+                              : '';
+                            console.log('🔵 ID del terapeuta a setear:', terapeutaId);
+                            setNuevoTerapeuta(terapeutaId);
                             setOpenEditarTerapeuta(true);
                           }}
                           className="p-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
+                        
                         <button
                           type="button"
                           onClick={() => setModalEliminarServicio({ open: true, servicio })}

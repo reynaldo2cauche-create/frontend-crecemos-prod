@@ -176,21 +176,7 @@ const TerapiaAprendizajePage = () => {
               </div>
             </div>
 
-            {/* Lizbeth */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/lizbeth.png"
-                  alt="Lic. Lizbeth Olortegui"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Lizbeth Olortegui</h3>
-                  <span className="post">Terapeuta de aprendizaje</span>
-                  
-                </div>
-              </div>
-            </div>
+          
 
             {/* Jhoselyn */}
             <div className="col-lg-4 col-md-6 col-sm-12">

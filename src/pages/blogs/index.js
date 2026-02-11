@@ -11,6 +11,16 @@ import EsparragoBlog from './nutricion/EsparragoBlog';
 import NuezBlog from './nutricion/NuezBlog';
 import PaltaBlog from './nutricion/PaltaBlog';
 import PecanaBlog from './nutricion/PecanaBlog';
+import AguaCocoBlog from './nutricion/AguaCocoBlog';
+import ArandanosBlog from './nutricion/ArandanosBlog';
+import CamoteBlog from './nutricion/CamoteBlog';
+import CerezasBlog from './nutricion/CerezasBlog';
+import GaseosasBlog from './nutricion/GaseosasBlog';
+import GolosinasBlog from './nutricion/GolosinasBlog';
+import LentejasBebeBlog from './nutricion/LentejasBebeBlog';
+import NaranjaJugoBlog from './nutricion/NaranjaJugoBlog';
+import PasasBlog from './nutricion/PasasBlog';
+import PistachosBlog from './nutricion/PistachosBlog';
 // Blogs de Desarrollo Infantil
 // import EjemploBlog from './desarrollo-infantil/EjemploBlog';
 
@@ -18,6 +28,7 @@ import PecanaBlog from './nutricion/PecanaBlog';
 import ViolenciaDomesticaBlog from './psicologia/ViolenciaDomesticaBlog';
 import Dia25NoviembreBlog from './psicologia/Dia25NoviembreBlog';
 import TCABlog from './psicologia/TCABlog';
+import PatronesCrianzaBlog from './psicologia/PatronesCrianzaBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -48,7 +59,17 @@ export const blogComponents = {
   'nuez-alimento-nutritivo-ninos-neurodivergentes': NuezBlog,
   'palta-alimento-suave-nutritivo-ninos-neurodivergentes': PaltaBlog,
   'pecana-fruto-seco-nutritivo-ninos-neurodivergentes': PecanaBlog,
-
+  'agua-coco-bebida-natural-hidratante-ninos': AguaCocoBlog,
+  'arandanos-fruta-antioxidantes-ninos': ArandanosBlog,
+  'camote-alimento-energetico-nutritivo-ninos': CamoteBlog,
+  'cerezas-fruta-antioxidantes-ninos': CerezasBlog,
+  'gaseosas-por-que-evitar-consumo-ninos': GaseosasBlog,
+  'golosinas-por-que-evitar-consumo-ninos': GolosinasBlog,
+  'lentejas-bebe-fuente-vegetal-hierro-ninos': LentejasBebeBlog,
+  'naranja-jugo-fruta-vitamina-c-ninos': NaranjaJugoBlog,
+  'pasas-alimento-energetico-moderacion-ninos': PasasBlog,
+  'pistachos-fruto-seco-seguro-ninos': PistachosBlog,
+  'patrones-crianza-romper-circulo': PatronesCrianzaBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -65,4 +86,5 @@ export {
   TCABlog,
   DiaDiscapacidadBlog,
   DiaDerechosHumanosBlog,
+  PatronesCrianzaBlog,
 };

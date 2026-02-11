@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCheck, Loader2, Briefcase, User } from 'lucide-react';
+import { X, UserCheck, Loader2, Briefcase, User, AlertCircle } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
 import { getTrabajadoresByServicio } from '../../services/trabajadorServicioService';
 
@@ -7,6 +7,7 @@ const EditarTerapeutaModal = ({ open, onClose, servicio, nuevoTerapeuta, setNuev
   const [saving, setSaving] = useState(false);
   const [terapeutasFiltrados, setTerapeutasFiltrados] = useState([]);
   const [loadingTerapeutas, setLoadingTerapeutas] = useState(false);
+  const [terapeutaActual, setTerapeutaActual] = useState(null);
 
   // Cargar terapeutas filtrados cuando se abre el modal
   useEffect(() => {
@@ -15,15 +16,36 @@ const EditarTerapeutaModal = ({ open, onClose, servicio, nuevoTerapeuta, setNuev
         setLoadingTerapeutas(true);
         try {
           const trabajadoresDelServicio = await getTrabajadoresByServicio(servicio.servicio.id);
-          // Filtrar solo los que sean terapeutas activos
           const terapeutasDelServicio = trabajadoresDelServicio.filter(
             t => t.estado === true && t.rol?.id === ROLES.TERAPEUTA
           );
+          
+          // Guardar terapeuta actual
+          const actual = servicio?.asignaciones?.[0]?.terapeuta;
+          setTerapeutaActual(actual);
+          
+          // Si hay terapeuta actual y no está en la lista, agregarlo
+          if (actual && !terapeutasDelServicio.some(t => t.id === actual.id)) {
+            terapeutasDelServicio.push(actual);
+          }
+          
           setTerapeutasFiltrados(terapeutasDelServicio);
+          
+          // Si no hay nuevoTerapeuta seleccionado, establecer el actual como predeterminado
+          if (!nuevoTerapeuta && actual) {
+            setNuevoTerapeuta(String(actual.id));
+          }
         } catch (error) {
           console.error('Error al cargar terapeutas del servicio:', error);
-          // Si hay error, mostrar todos los terapeutas
-          setTerapeutasFiltrados(terapeutas.filter(t => t.estado === true && t.rol?.id === ROLES.TERAPEUTA));
+          const todosLosTerapeutas = terapeutas.filter(t => t.estado === true && t.rol?.id === ROLES.TERAPEUTA);
+          setTerapeutasFiltrados(todosLosTerapeutas);
+          
+          const actual = servicio?.asignaciones?.[0]?.terapeuta;
+          setTerapeutaActual(actual);
+          
+          if (!nuevoTerapeuta && actual) {
+            setNuevoTerapeuta(String(actual.id));
+          }
         } finally {
           setLoadingTerapeutas(false);
         }
@@ -42,118 +64,297 @@ const EditarTerapeutaModal = ({ open, onClose, servicio, nuevoTerapeuta, setNuev
     }
   };
 
-  if (!open) return null;
+  // Si no está abierto, no renderizar nada
+  if (!open) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+    <>
+      {/* OVERLAY */}
+      <div 
         onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#7B1FA2] to-purple-600 px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-white" />
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        {/* MODAL */}
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'relative',
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            width: '90%',
+            maxWidth: '32rem',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            zIndex: 100000
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1.5rem',
+            borderBottom: '1px solid #e5e7eb',
+            backgroundColor: '#7B1FA2'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                padding: '0.5rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '0.75rem'
+              }}>
+                <UserCheck style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', margin: 0 }}>
+                Editar Terapeuta
+              </h2>
             </div>
-            <h2 className="text-xl font-bold text-white">Editar Terapeuta Asignado</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
-          >
-            <X className="w-5 h-5 text-white" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-5">
-          {/* Servicio (readonly) */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-[#7B1FA2]" />
-              Servicio
-            </label>
-            <div className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-600">
-              {servicio?.servicio?.nombre || 'Sin nombre'}
-            </div>
-            <p className="text-xs text-gray-500 mt-1.5">
-              El servicio no se puede cambiar, solo el terapeuta asignado
-            </p>
-          </div>
-
-          {/* Terapeuta Select */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <User className="w-4 h-4 text-[#7B1FA2]" />
-              Terapeuta
-              <span className="text-red-500">*</span>
-              {loadingTerapeutas && (
-                <Loader2 className="w-3 h-3 animate-spin text-[#7B1FA2]" />
-              )}
-            </label>
-            <select
-              value={nuevoTerapeuta}
-              onChange={e => setNuevoTerapeuta(e.target.value)}
-              disabled={loadingTerapeutas}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] transition-colors bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
+            <button
+              onClick={onClose}
+              style={{
+                padding: '0.5rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                borderRadius: '0.75rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
-              <option value="">
-                {loadingTerapeutas
-                  ? 'Cargando terapeutas...'
-                  : terapeutasFiltrados.length === 0
-                  ? 'No hay terapeutas para este servicio'
-                  : 'Sin asignar'}
-              </option>
-              {terapeutasFiltrados.map(t => (
-                <option key={t.id} value={`${t.nombres} ${t.apellidos}`}>
-                  {t.nombres} {t.apellidos}{t.especialidad ? ` — ${t.especialidad.nombre}` : ''}
-                </option>
-              ))}
-            </select>
-            {terapeutasFiltrados.length > 0 && !loadingTerapeutas && (
-              <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                {terapeutasFiltrados.length} terapeuta
-                {terapeutasFiltrados.length !== 1 ? 's' : ''} disponible
-                {terapeutasFiltrados.length !== 1 ? 's' : ''} para este servicio
-              </p>
-            )}
+              <X style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
+            </button>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleGuardar}
-            disabled={saving || !nuevoTerapeuta}
-            className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-purple-600 rounded-xl hover:from-[#6A1B9A] hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-500/30"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              <>
-                <UserCheck className="w-4 h-4" />
-                Guardar Cambios
-              </>
+          {/* Content */}
+          <div style={{ 
+            padding: '1.5rem', 
+            maxHeight: 'calc(90vh - 140px)',
+            overflowY: 'auto'
+          }}>
+            {/* Servicio (readonly) */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#374151',
+                marginBottom: '0.5rem'
+              }}>
+                <Briefcase style={{ width: '1rem', height: '1rem' }} />
+                Servicio
+              </label>
+              <div style={{
+                padding: '0.625rem 1rem',
+                backgroundColor: '#f9fafb',
+                border: '2px solid #e5e7eb',
+                borderRadius: '0.75rem',
+                fontSize: '0.875rem',
+                color: '#374151',
+                fontWeight: 500
+              }}>
+                {servicio?.servicio?.nombre || 'Sin nombre'}
+              </div>
+              <p style={{
+                fontSize: '0.75rem',
+                color: '#6b7280',
+                marginTop: '0.375rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.375rem',
+                margin: '0.375rem 0 0 0'
+              }}>
+                <AlertCircle style={{ width: '0.875rem', height: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
+                El servicio no se puede cambiar, solo el terapeuta asignado
+              </p>
+            </div>
+
+            {/* Terapeuta actual (si existe) */}
+            {terapeutaActual && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  <User style={{ width: '1rem', height: '1rem' }} />
+                  Terapeuta Actual
+                </label>
+                <div style={{
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#f3e8ff',
+                  border: '2px solid #d8b4fe',
+                  borderRadius: '0.75rem'
+                }}>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#111827',
+                    margin: 0
+                  }}>
+                    {terapeutaActual.nombres} {terapeutaActual.apellidos}
+                  </p>
+                  {terapeutaActual.especialidad && (
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#4b5563',
+                      marginTop: '0.25rem',
+                      margin: '0.25rem 0 0 0'
+                    }}>
+                      {terapeutaActual.especialidad.nombre}
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+
+            {/* Terapeuta Select */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#374151',
+                marginBottom: '0.5rem'
+              }}>
+                <User style={{ width: '1rem', height: '1rem' }} />
+                Terapeuta *
+                {loadingTerapeutas && (
+                  <Loader2 style={{ width: '1rem', height: '1rem', color: '#7B1FA2' }} className="animate-spin" />
+                )}
+              </label>
+              <select
+                value={nuevoTerapeuta || ""}
+                onChange={(e) => setNuevoTerapeuta(e.target.value)}
+                disabled={loadingTerapeutas}
+                style={{
+                  width: '100%',
+                  padding: '0.625rem 1rem',
+                  fontSize: '0.875rem',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '0.75rem',
+                  outline: 'none',
+                  backgroundColor: loadingTerapeutas ? '#f9fafb' : 'white',
+                  cursor: loadingTerapeutas ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <option value="">
+                  {loadingTerapeutas 
+                    ? 'Cargando terapeutas...' 
+                    : terapeutasFiltrados.length === 0 
+                      ? 'No hay terapeutas para este servicio'
+                      : 'Selecciona un terapeuta'
+                  }
+                </option>
+                {/* Mostrar todos los terapeutas sin filtros adicionales */}
+                {terapeutasFiltrados.map(t => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.nombres} {t.apellidos}{t.especialidad ? ` — ${t.especialidad.nombre}` : ''}
+                    {terapeutaActual && t.id === terapeutaActual.id ? ' (Actual)' : ''}
+                  </option>
+                ))}
+              </select>
+              {terapeutasFiltrados.length > 0 && !loadingTerapeutas && (
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  marginTop: '0.375rem',
+                  margin: '0.375rem 0 0 0'
+                }}>
+                  {terapeutasFiltrados.length} terapeuta
+                  {terapeutasFiltrados.length !== 1 ? 's' : ''} disponible
+                  {terapeutasFiltrados.length !== 1 ? 's' : ''} para este servicio
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            display: 'flex',
+            gap: '0.75rem',
+            padding: '1.5rem',
+            borderTop: '1px solid #e5e7eb',
+            backgroundColor: '#f9fafb'
+          }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              style={{
+                flex: 1,
+                padding: '0.625rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#374151',
+                backgroundColor: 'white',
+                border: '2px solid #e5e7eb',
+                borderRadius: '0.75rem',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.5 : 1
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleGuardar}
+              disabled={!nuevoTerapeuta || saving}
+              style={{
+                flex: 1,
+                padding: '0.625rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'white',
+                backgroundColor: '#7B1FA2',
+                border: 'none',
+                borderRadius: '0.75rem',
+                cursor: (!nuevoTerapeuta || saving) ? 'not-allowed' : 'pointer',
+                opacity: (!nuevoTerapeuta || saving) ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {saving ? (
+                <>
+                  <Loader2 style={{ width: '1rem', height: '1rem' }} className="animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <UserCheck style={{ width: '1rem', height: '1rem' }} />
+                  {terapeutaActual && nuevoTerapeuta === String(terapeutaActual.id) ? 'Mantener' : 'Asignar'}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

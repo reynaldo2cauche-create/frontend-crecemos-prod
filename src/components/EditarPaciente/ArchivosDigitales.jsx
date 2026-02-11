@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, X, Trash2, Download, Eye, FileText, Cloud, AlertCircle } from 'lucide-react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { getTiposArchivo, subirArchivo, getArchivosPorPaciente, eliminarArchivo, descargarArchivo } from '../../services/archivosDigitalesService';
-import { API_BASE_URL } from '../../services/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../services/api';
 
 const ArchivosDigitales = ({ paciente }) => {
   const currentUser = useCurrentUser();
@@ -53,11 +53,11 @@ const ArchivosDigitales = ({ paciente }) => {
   // Cargar archivos del paciente
   useEffect(() => {
     const cargarArchivos = async () => {
-      if (!paciente?.id || !currentUser?.id) return;
+      if (!paciente?.id) return;
 
       try {
         setLoadingArchivos(true);
-        const data = await getArchivosPorPaciente(currentUser.id, paciente.id);
+        const data = await getArchivosPorPaciente(paciente.id);
         setArchivos(data || []);
       } catch (error) {
         console.error('Error al cargar archivos:', error);
@@ -68,7 +68,7 @@ const ArchivosDigitales = ({ paciente }) => {
     };
 
     cargarArchivos();
-  }, [paciente?.id, currentUser?.id]);
+  }, [paciente?.id]);
 
   const validarFormulario = () => {
     const nuevosErrores = {};
@@ -110,7 +110,7 @@ const ArchivosDigitales = ({ paciente }) => {
 
     try {
       await eliminarArchivo(archivoAEliminar.id);
-      const archivosActualizados = await getArchivosPorPaciente(currentUser.id, paciente.id);
+      const archivosActualizados = await getArchivosPorPaciente(paciente.id);
       setArchivos(archivosActualizados || []);
       mostrarNotificacion('Archivo eliminado exitosamente', 'success');
     } catch (error) {
@@ -146,6 +146,10 @@ const ArchivosDigitales = ({ paciente }) => {
   };
 
   const handleVistaPrevia = (archivo) => {
+    console.log('Vista previa de archivo:', archivo);
+    console.log('ID del archivo:', archivo.id);
+    console.log('Ruta del archivo:', archivo.rutaArchivo);
+    console.log('Tipo MIME:', archivo.tipoMime);
     setArchivoVistaPrevia(archivo);
     setOpenVistaPrevia(true);
   };
@@ -249,7 +253,7 @@ const ArchivosDigitales = ({ paciente }) => {
 
       await subirArchivo(formData);
 
-      const archivosActualizados = await getArchivosPorPaciente(currentUser.id, paciente.id);
+      const archivosActualizados = await getArchivosPorPaciente(paciente.id);
       setArchivos(archivosActualizados || []);
 
       mostrarNotificacion('Archivo subido exitosamente', 'success');
@@ -356,13 +360,48 @@ const ArchivosDigitales = ({ paciente }) => {
                   >
                     <Download className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleEliminarArchivo(archivo)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  {/* PERMISOS DE ELIMINACIÓN:
+                      - ADMIN: Puede eliminar cualquier archivo
+                      - TERAPEUTA: Solo puede eliminar archivos que él mismo subió
+                      - ADMISIÓN: NO puede eliminar ningún archivo
+                  */}
+                  {(() => {
+                    const rolUsuario = currentUser?.rol?.nombre?.toLowerCase() || currentUser?.rol?.toLowerCase() || '';
+                    const esAdmin = ['admin', 'administrador'].includes(rolUsuario);
+                    const esTerapeuta = rolUsuario === 'terapeuta';
+                    const esAdmision = ['admision', 'admisión'].includes(rolUsuario);
+
+                    // Admin puede eliminar todo
+                    if (esAdmin) {
+                      return (
+                        <button
+                          onClick={() => handleEliminarArchivo(archivo)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      );
+                    }
+
+                    // Terapeuta solo puede eliminar sus propios archivos
+                    if (esTerapeuta && archivo.terapeuta?.id === currentUser?.id) {
+                      return (
+                        <button
+                          onClick={() => handleEliminarArchivo(archivo)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar archivo propio"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      );
+                    }
+
+                    // Admisión NO puede eliminar nada
+                    // Terapeutas NO pueden eliminar archivos de otros
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -534,9 +573,16 @@ const ArchivosDigitales = ({ paciente }) => {
               {esImagen(archivoVistaPrevia.tipoMime) && (
                 <div className="flex items-center justify-center h-full">
                   <img
-                    src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}`}
+                    src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
                     alt={archivoVistaPrevia.nombreOriginal}
                     className="max-w-full max-h-full object-contain rounded-lg shadow-lg cursor-zoom-in hover:scale-105 transition-transform"
+                    onError={(e) => {
+                      console.error('Error al cargar imagen:', e);
+                      console.error('URL intentada:', e.target.src);
+                    }}
+                    onLoad={() => {
+                      console.log('Imagen cargada correctamente');
+                    }}
                     onClick={(e) => {
                       if (e.target.requestFullscreen) {
                         e.target.requestFullscreen();
@@ -547,9 +593,15 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esPDF(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}#toolbar=1&navpanes=1&scrollbar=1`}
+                  src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                   className="w-full h-full rounded-lg border-0 shadow-lg"
                   title={archivoVistaPrevia.nombreOriginal}
+                  onError={(e) => {
+                    console.error('Error al cargar PDF:', e);
+                  }}
+                  onLoad={() => {
+                    console.log('PDF cargado correctamente');
+                  }}
                 />
               )}
               {(esWord(archivoVistaPrevia.tipoMime) || esExcel(archivoVistaPrevia.tipoMime) || esPowerPoint(archivoVistaPrevia.tipoMime)) && (
@@ -592,9 +644,15 @@ const ArchivosDigitales = ({ paciente }) => {
               )}
               {esTexto(archivoVistaPrevia.tipoMime) && (
                 <iframe
-                  src={`${API_BASE_URL.replace('/backend_api', '')}/${archivoVistaPrevia.rutaArchivo}`}
+                  src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
                   className="w-full h-full rounded-lg border-0 shadow-lg bg-white p-4"
                   title={archivoVistaPrevia.nombreOriginal}
+                  onError={(e) => {
+                    console.error('Error al cargar archivo de texto:', e);
+                  }}
+                  onLoad={() => {
+                    console.log('Archivo de texto cargado correctamente');
+                  }}
                 />
               )}
               {!puedeVistaPrevia(archivoVistaPrevia) && (
