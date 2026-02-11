@@ -13,11 +13,13 @@ import {
   ChevronDownIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import { obtenerInconsistenciasAsistencia } from '../../services/api';
 import { getTrabajadores } from '../../services/trabajadorService';
 import { buscarPacientes } from '../../services/pacienteService';
+import * as XLSX from 'xlsx-js-style';
 
 const Inconsistencias = () => {
   const [inconsistencias, setInconsistencias] = useState([]);
@@ -292,6 +294,202 @@ const Inconsistencias = () => {
       hour: '2-digit',
       minute: '2-digit'
     }).replace(',', '');
+  };
+
+  const formatearFechaSimple = (fecha) => {
+    return new Date(fecha).toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const exportarAExcel = () => {
+    if (inconsistenciasFiltradas.length === 0) {
+      alert('No hay datos para exportar');
+      return;
+    }
+
+    // Preparar datos para el Excel
+    const datosExcel = inconsistenciasFiltradas.map((item, index) => ({
+      'N°': index + 1,
+      'ID Cita': item.cita_id,
+      'Paciente': item.paciente_nombre || 'N/A',
+      'Terapeuta': item.terapeuta_nombre || 'N/A',
+      'Fecha Cita': item.fecha_cita ? formatearFecha(item.fecha_cita) : 'N/A',
+      'Estado Recepción': item.recepcion_marco
+        ? `${getEstadoTexto(item.recepcion_estado_id)} - ${item.recepcion_fecha ? formatearFecha(item.recepcion_fecha) : ''}`
+        : 'Sin marcar',
+      'Estado Terapeuta': item.terapeuta_marco
+        ? `${getEstadoTexto(item.terapeuta_estado_id)} - ${item.terapeuta_fecha ? formatearFecha(item.terapeuta_fecha) : ''}`
+        : 'Sin marcar',
+      'Tipo de Inconsistencia': item.tipo_inconsistencia
+    }));
+
+    // Crear workbook
+    const wb = XLSX.utils.book_new();
+
+    // Crear hoja con encabezado
+    const ws = XLSX.utils.aoa_to_sheet([]);
+
+    // Agregar título y encabezado
+    XLSX.utils.sheet_add_aoa(ws, [
+      ['CENTRO CRECEMOS'],
+      ['REPORTE DE INCONSISTENCIAS DE ASISTENCIA'],
+      [''],
+      [`Período: ${formatearFechaSimple(fechaInicio)} - ${formatearFechaSimple(fechaFin)}`],
+      [`Fecha de generación: ${formatearFechaSimple(new Date())}`],
+      [`Total de inconsistencias: ${inconsistenciasFiltradas.length}`],
+      [''],
+    ], { origin: 'A1' });
+
+    // Agregar datos
+    XLSX.utils.sheet_add_json(ws, datosExcel, { origin: 'A8' });
+
+    // Ajustar anchos de columna
+    const colWidths = [
+      { wch: 8 },  // N°
+      { wch: 12 }, // ID Cita
+      { wch: 35 }, // Paciente
+      { wch: 35 }, // Terapeuta
+      { wch: 22 }, // Fecha Cita
+      { wch: 40 }, // Estado Recepción
+      { wch: 40 }, // Estado Terapeuta
+      { wch: 45 }, // Tipo de Inconsistencia
+    ];
+    ws['!cols'] = colWidths;
+
+    // Merge cells para el título
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // CENTRO CRECEMOS
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // REPORTE DE...
+    ];
+
+    // Definir bordes completos
+    const borderFull = {
+      top: { style: "thin", color: { rgb: "000000" } },
+      bottom: { style: "thin", color: { rgb: "000000" } },
+      left: { style: "thin", color: { rgb: "000000" } },
+      right: { style: "thin", color: { rgb: "000000" } }
+    };
+
+    const borderThick = {
+      top: { style: "medium", color: { rgb: "000000" } },
+      bottom: { style: "medium", color: { rgb: "000000" } },
+      left: { style: "medium", color: { rgb: "000000" } },
+      right: { style: "medium", color: { rgb: "000000" } }
+    };
+
+    // Estilos modernos
+    const estiloTitulo = {
+      font: { bold: true, sz: 18, color: { rgb: "1F2937" }, name: "Calibri" },
+      fill: { fgColor: { rgb: "F3F4F6" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: borderThick
+    };
+
+    const estiloSubtitulo = {
+      font: { bold: true, sz: 14, color: { rgb: "374151" }, name: "Calibri" },
+      fill: { fgColor: { rgb: "E5E7EB" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: borderFull
+    };
+
+    const estiloInfo = {
+      font: { bold: false, sz: 11, color: { rgb: "4B5563" }, name: "Calibri" },
+      alignment: { horizontal: "left", vertical: "center" },
+      fill: { fgColor: { rgb: "FFFFFF" } }
+    };
+
+    const estiloEncabezado = {
+      font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: "Calibri" },
+      fill: { fgColor: { rgb: "059669" } }, // Verde moderno
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: borderFull
+    };
+
+    const estiloCeldaNumero = {
+      font: { sz: 10, bold: true, color: { rgb: "1F2937" }, name: "Calibri" },
+      alignment: { horizontal: "center", vertical: "center" },
+      fill: { fgColor: { rgb: "DBEAFE" } }, // Azul claro
+      border: borderFull
+    };
+
+    const estiloCeldaPar = {
+      font: { sz: 10, color: { rgb: "1F2937" }, name: "Calibri" },
+      alignment: { horizontal: "left", vertical: "center", wrapText: true },
+      fill: { fgColor: { rgb: "FFFFFF" } },
+      border: borderFull
+    };
+
+    const estiloCeldaImpar = {
+      font: { sz: 10, color: { rgb: "1F2937" }, name: "Calibri" },
+      alignment: { horizontal: "left", vertical: "center", wrapText: true },
+      fill: { fgColor: { rgb: "F9FAFB" } },
+      border: borderFull
+    };
+
+    // Aplicar estilos al título
+    ws['A1'].s = estiloTitulo;
+    ws['A2'].s = estiloSubtitulo;
+
+    // Aplicar estilos a la información del reporte
+    ws['A4'].s = estiloInfo;
+    ws['A5'].s = estiloInfo;
+    ws['A6'].s = estiloInfo;
+
+    // Aplicar estilos a los encabezados de columna (fila 8)
+    const encabezados = ['A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8', 'H8'];
+    encabezados.forEach(celda => {
+      if (ws[celda]) ws[celda].s = estiloEncabezado;
+    });
+
+    // Aplicar estilos a las celdas de datos
+    const totalFilas = inconsistenciasFiltradas.length;
+    for (let i = 0; i < totalFilas; i++) {
+      const fila = 9 + i;
+      const esFilaPar = i % 2 === 0;
+
+      // Columna N° con estilo especial
+      if (ws[`A${fila}`]) {
+        ws[`A${fila}`].s = estiloCeldaNumero;
+      }
+
+      // Resto de columnas con alternancia de colores
+      ['B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
+        if (ws[`${col}${fila}`]) {
+          ws[`${col}${fila}`].s = esFilaPar ? estiloCeldaPar : estiloCeldaImpar;
+        }
+      });
+    }
+
+    // Ajustar altura de filas
+    const rowHeights = [
+      { hpt: 30 }, // Fila 1: Título
+      { hpt: 25 }, // Fila 2: Subtítulo
+      { hpt: 12 }, // Fila 3: Espacio
+      { hpt: 18 }, // Fila 4: Período
+      { hpt: 18 }, // Fila 5: Fecha generación
+      { hpt: 18 }, // Fila 6: Total
+      { hpt: 12 }, // Fila 7: Espacio
+      { hpt: 40 }, // Fila 8: Encabezados
+    ];
+
+    // Agregar altura para las filas de datos
+    for (let i = 0; i < totalFilas; i++) {
+      rowHeights.push({ hpt: 25 }); // Filas de datos
+    }
+
+    ws['!rows'] = rowHeights;
+
+    // Agregar hoja al workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Inconsistencias');
+
+    // Generar nombre de archivo
+    const nombreArchivo = `Reporte_Inconsistencias_${fechaInicio}_${fechaFin}.xlsx`;
+
+    // Descargar archivo
+    XLSX.writeFile(wb, nombreArchivo);
   };
 
   const getEstadoTexto = (estadoId) => {
@@ -676,6 +874,19 @@ const Inconsistencias = () => {
         </div>
       )}
 
+      {/* Botón de exportar */}
+      {!cargando && inconsistenciasFiltradas.length > 0 && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={exportarAExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-sm"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            Exportar a Excel
+          </button>
+        </div>
+      )}
+
       {/* Tabla de Inconsistencias */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -689,13 +900,12 @@ const Inconsistencias = () => {
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recepción Marcó</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Terapeuta Marcó</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tipo de Inconsistencia</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Horas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {cargando ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center">
+                  <td colSpan="7" className="px-6 py-8 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
                       <span className="text-gray-600">Cargando inconsistencias...</span>
@@ -704,7 +914,7 @@ const Inconsistencias = () => {
                 </tr>
               ) : datosMostrados.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center">
+                  <td colSpan="7" className="px-6 py-12 text-center">
                     <ShieldCheckIcon className="w-16 h-16 text-green-400 mx-auto mb-3" />
                     <p className="text-green-700 text-lg font-semibold">¡Excelente!</p>
                     <p className="text-gray-500">No se encontraron inconsistencias con los filtros aplicados</p>
@@ -772,20 +982,6 @@ const Inconsistencias = () => {
                           {item.tipo_inconsistencia}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.horas_transcurridas ? (
-                        <div className={`text-center ${
-                          item.horas_transcurridas > 24 ? 'text-red-600' : 
-                          item.horas_transcurridas > 12 ? 'text-orange-600' : 
-                          'text-green-600'
-                        }`}>
-                          <div className="text-sm font-bold">{item.horas_transcurridas}</div>
-                          <div className="text-xs">horas</div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
                     </td>
                   </tr>
                 ))

@@ -53,6 +53,7 @@ const HistorialAuditoria = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [showFilters, setShowFilters] = useState(true);
+  const [descripcionesExpandidas, setDescripcionesExpandidas] = useState({});
 
   // Ref para evitar llamadas duplicadas
   const isLoadingRef = useRef(false);
@@ -125,6 +126,13 @@ const HistorialAuditoria = () => {
       busqueda: '',
     });
     setPage(0);
+  };
+
+  const toggleDescripcion = (id) => {
+    setDescripcionesExpandidas(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   };
 
   const formatearFecha = (fecha) => {
@@ -426,9 +434,35 @@ const HistorialAuditoria = () => {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed" title={registro.descripcion}>
-                              {registro.descripcion}
-                            </p>
+                            <div className="relative">
+                              <p
+                                className={`text-sm text-gray-700 leading-relaxed cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors ${
+                                  descripcionesExpandidas[registro.id] ? '' : 'line-clamp-3'
+                                }`}
+                                onClick={() => toggleDescripcion(registro.id)}
+                                title={descripcionesExpandidas[registro.id] ? "Click para contraer" : "Click para ver completo"}
+                              >
+                                {registro.descripcion}
+                              </p>
+                              {registro.descripcion && registro.descripcion.length > 100 && (
+                                <button
+                                  onClick={() => toggleDescripcion(registro.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 flex items-center gap-1"
+                                >
+                                  {descripcionesExpandidas[registro.id] ? (
+                                    <>
+                                      <ChevronLeft className="w-3 h-3" />
+                                      Ver menos
+                                    </>
+                                  ) : (
+                                    <>
+                                      Ver más
+                                      <ChevronRight className="w-3 h-3" />
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             {registro.latitud && registro.longitud ? (

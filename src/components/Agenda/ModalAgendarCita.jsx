@@ -721,6 +721,9 @@ Le hacemos recordar su cita para el día de mañana
                 <div>
                   <h2 className="text-lg font-bold text-white tracking-tight">
                     {esTerapeuta || modoSoloLectura ? 'Ver Cita' : (modoEdicion ? 'Editar Cita' : 'Nueva Cita')}
+                    {modoEdicion && citaEditando?.id && (
+                      <span className="ml-2 text-white/90 font-normal">#{citaEditando.id}</span>
+                    )}
                   </h2>
                   {slotSeleccionado && (
                     <p className="text-white/90 text-sm font-medium mt-0.5">
