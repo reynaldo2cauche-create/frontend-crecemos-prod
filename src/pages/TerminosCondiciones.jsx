@@ -122,352 +122,207 @@ export const TerminosCondiciones = () => {
   return (
     <>
       <style>{`
-        .page-title-custom {
-          background: linear-gradient(135deg, #2d465e, #0d83fd);
-          padding: 140px 20px 80px;
-          color: #fff;
+        .page-header-custom {
           position: relative;
+          background: linear-gradient(135deg, rgba(45, 70, 94, 0.5), rgba(13, 131, 253, 0.9)),
+                      url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=2070') center/cover no-repeat;
+          padding: 150px 20px 80px;
+          color: #fff;
           overflow: hidden;
         }
 
-        .page-title-custom h1 {
-          font-size: 2.8rem;
+        .page-header-custom::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.2);
+          z-index: 1;
+        }
+
+        .page-header-custom .container {
+          position: relative;
+          z-index: 2;
+          max-width: 1100px;
+        }
+
+        .page-header-custom h1 {
+          font-size: 2.5rem;
           font-weight: 700;
-          margin-bottom: 15px;
-          color: var(--contrast-color);
+          margin-bottom: 10px;
+          color: #fff;
+          line-height: 1.2;
         }
 
-        .page-title-custom .subtitle {
-          font-size: 1.1rem;
+        .page-header-custom .subtitle {
+          font-size: 1rem;
+          margin-bottom: 5px;
+          color: #fff;
           opacity: 0.95;
-          max-width: 800px;
-          margin: 0 auto 15px;
         }
 
-        .page-title-custom .update-date {
-          font-size: 0.95rem;
+        .page-header-custom .update-date {
+          font-size: 0.9rem;
           opacity: 0.85;
-          font-style: italic;
+          color: #fff;
         }
 
         .terminos-section {
-          padding: 80px 0;
-          background-color: var(--background-color);
+          padding: 40px 0;
+          background-color: #ffffff;
         }
 
-        .intro-box {
-          background: color-mix(in srgb, var(--accent-color), transparent 95%);
-          border-left: 5px solid var(--accent-color);
-          border-radius: 10px;
-          padding: 30px;
-          margin-bottom: 50px;
-          box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+        .content-wrapper {
+          max-width: 1100px;
+          margin: 0 auto;
         }
 
-        .intro-box p {
-          font-size: 1.05rem;
-          line-height: 1.8;
+        .intro-text {
+          font-size: 0.95rem;
+          line-height: 1.6;
+          color: #333;
+          margin-bottom: 25px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .intro-text p {
           margin: 0;
-          color: var(--default-color);
         }
 
-        .intro-box strong {
-          color: var(--heading-color);
-          font-weight: 700;
+        .intro-text strong {
+          font-weight: 600;
+          color: #000;
         }
 
         .terminos-item {
-          background: var(--surface-color);
-          border-radius: 15px;
-          padding: 40px;
-          margin-bottom: 30px;
-          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-          transition: all 0.3s ease;
-          border-left: 5px solid var(--accent-color);
-        }
-
-        .terminos-item:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-        }
-
-        .terminos-number {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 50px;
-          height: 50px;
-          background: var(--accent-color);
-          color: var(--contrast-color);
-          border-radius: 50%;
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin-bottom: 20px;
+          margin-bottom: 25px;
         }
 
         .terminos-item h3 {
-          color: var(--heading-color);
-          font-size: 1.8rem;
+          color: #000;
+          font-size: 1.15rem;
           font-weight: 700;
-          margin-bottom: 25px;
-          font-family: var(--heading-font);
+          margin-bottom: 8px;
+          line-height: 1.3;
+        }
+
+        .terminos-item h3::before {
+          content: attr(data-numero) ". ";
+          color: #000;
         }
 
         .terminos-item p {
-          color: var(--default-color);
-          font-size: 1.05rem;
-          line-height: 1.8;
-          margin-bottom: 20px;
+          color: #333;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          margin-bottom: 8px;
         }
 
         .terminos-list {
           list-style: none;
           padding: 0;
-          margin: 0;
+          margin: 10px 0 10px 20px;
         }
 
         .terminos-list li {
-          padding: 12px 0 12px 40px;
+          padding: 3px 0;
           position: relative;
-          color: var(--default-color);
-          font-size: 1.05rem;
-          line-height: 1.7;
+          color: #333;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          padding-left: 15px;
         }
 
-        .terminos-list li:before {
+        .terminos-list li::before {
           content: "•";
           position: absolute;
-          left: 15px;
-          color: var(--accent-color);
-          font-size: 1.5rem;
-          font-weight: bold;
+          left: 0;
+          color: #000;
+          font-size: 1rem;
         }
 
-        .info-box {
-          background: color-mix(in srgb, var(--accent-color), transparent 92%);
-          border-radius: 10px;
-          padding: 25px;
-          margin: 20px 0;
-        }
-
-        .info-box p {
-          margin: 0;
-          color: var(--heading-color);
-          font-weight: 500;
-          font-size: 1.05rem;
-        }
-
-        .empresa-info {
-          background: var(--heading-color);
-          color: var(--contrast-color);
-          border-radius: 15px;
-          padding: 35px;
-          margin-bottom: 40px;
-          text-align: center;
-        }
-
-        .empresa-info h4 {
-          color: var(--contrast-color);
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin-bottom: 20px;
-        }
-
-        .empresa-info p {
-          color: var(--contrast-color);
-          font-size: 1.05rem;
-          margin: 8px 0;
-          line-height: 1.8;
-        }
-
-        .empresa-info strong {
-          font-weight: 600;
-        }
-
-        .alert-section {
-          background: color-mix(in srgb, var(--accent-color), transparent 90%);
-          border-radius: 15px;
-          padding: 30px;
-          margin: 40px 0;
-          text-align: center;
-          border: 2px dashed var(--accent-color);
-        }
-
-        .alert-section i {
-          font-size: 3rem;
-          color: var(--accent-color);
-          margin-bottom: 15px;
-        }
-
-        .alert-section h4 {
-          color: var(--heading-color);
-          font-size: 1.6rem;
-          margin-bottom: 15px;
-          font-weight: 700;
-        }
-
-        .alert-section p {
-          color: var(--default-color);
-          font-size: 1.1rem;
-          margin: 0;
-          line-height: 1.7;
-        }
-
-        .cta-section {
-          background: color-mix(in srgb, var(--accent-color), transparent 95%);
-          padding: 60px 20px;
-          text-align: center;
-          margin-top: 40px;
-          border-radius: 15px;
-        }
-
-        .cta-section h3 {
-          color: var(--heading-color);
-          font-size: 2rem;
-          margin-bottom: 20px;
-          font-family: var(--heading-font);
-        }
-
-        .cta-section p {
-          font-size: 1.1rem;
-          color: var(--default-color);
-          margin-bottom: 30px;
-        }
-
-        .btn-custom {
-          background: var(--accent-color);
-          border: none;
-          color: var(--contrast-color);
-          padding: 15px 40px;
-          border-radius: 50px;
-          font-weight: 600;
-          text-decoration: none;
-          display: inline-block;
-          transition: all 0.3s ease;
-          font-size: 1.1rem;
-        }
-
-        .btn-custom:hover {
-          background: color-mix(in srgb, var(--accent-color), black 15%);
-          color: var(--contrast-color);
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(194, 99, 249, 0.4);
+        .nota-text {
+          margin-top: 8px;
+          padding-left: 15px;
+          border-left: 2px solid #ccc;
+          font-style: italic;
+          color: #666;
+          font-size: 0.9rem;
         }
 
         @media (max-width: 768px) {
-          .page-title-custom h1 {
-            font-size: 2rem;
+          .page-header-custom {
+            padding: 120px 20px 60px;
           }
 
-          .terminos-item {
-            padding: 25px;
+          .page-header-custom h1 {
+            font-size: 1.8rem;
           }
 
           .terminos-item h3 {
-            font-size: 1.5rem;
-          }
-
-          .terminos-list li {
-            font-size: 1rem;
-          }
-
-          .empresa-info {
-            padding: 25px;
+            font-size: 1.1rem;
           }
         }
       `}</style>
 
       <main className="main">
-        <div className="page-title-custom">
+        <div className="page-header-custom">
           <div className="container text-center">
-            <h1 data-aos="fade-down">Términos y Condiciones</h1>
+            <h1 data-aos="fade-down">
+              Términos y Condiciones
+            </h1>
             <p className="subtitle" data-aos="fade-up" data-aos-delay="100">
               Crecemos – Centro Integral de Terapias
             </p>
             <p className="update-date" data-aos="fade-up" data-aos-delay="150">
-              Fecha de actualización: 29/09/2025
+              Última actualización: 29 de septiembre de 2025
             </p>
           </div>
         </div>
 
         <section className="terminos-section">
           <div className="container">
-            <div className="empresa-info" data-aos="fade-up">
-              <h4>
-                <i className="bi bi-building me-2"></i>
-                Responsable del Servicio
-              </h4>
-              <p><strong>CONTIGO CRECEMOS E.I.R.L.</strong></p>
-              <p>Nombre Comercial: <strong>Crecemos – Centro Integral de Terapias</strong></p>
-              <p><strong>RUC:</strong> 20601074380</p>
-              <p><strong>Web:</strong> www.crecemos.com.pe</p>
-            </div>
-
-            <div className="intro-box" data-aos="fade-up" data-aos-delay="100">
-              <p>
-                <strong>CONTIGO CRECEMOS E.I.R.L.</strong>, que opera bajo el nombre comercial 
-                <strong> Crecemos – Centro Integral de Terapias</strong>, es una institución privada 
-                dedicada a la atención terapéutica integral. El acceso y uso de sus servicios implica 
-                la aceptación expresa de los presentes Términos y Condiciones.
-              </p>
-            </div>
-
-            <div className="alert-section" data-aos="fade-up" data-aos-delay="150">
-              <i className="bi bi-exclamation-triangle"></i>
-              <h4>Importante</h4>
-              <p>
-                La contratación de cualquier servicio supone la lectura, comprensión y aceptación 
-                total de estos términos por parte del paciente o su representante legal.
-              </p>
-            </div>
-
-            {terminos.map((termino, index) => (
-              <div 
-                key={termino.numero} 
-                className="terminos-item" 
-                data-aos="fade-up" 
-                data-aos-delay={200 + (index * 50)}
-              >
-                <span className="terminos-number">{termino.numero}</span>
-                <h3>{termino.titulo}</h3>
-                
-                {termino.contenido && <p>{termino.contenido}</p>}
-                
-                {termino.lista && (
-                  <ul className="terminos-list">
-                    {termino.lista.map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
-                  </ul>
-                )}
-                
-                {termino.nota && (
-                  <div className="info-box">
-                    <p>
-                      <i className="bi bi-info-circle-fill me-2"></i>
-                      <strong>Nota:</strong> {termino.nota}
-                    </p>
-                  </div>
-                )}
+            <div className="content-wrapper">
+              
+              <div className="intro-text" data-aos="fade-up">
+                <p>
+                  <strong>CONTIGO CRECEMOS E.I.R.L.</strong>, que opera bajo el nombre comercial 
+                  <strong> Crecemos – Centro Integral de Terapias</strong>, es una institución privada 
+                  dedicada a la atención terapéutica integral. El acceso y uso de sus servicios implica 
+                  la aceptación expresa de los presentes Términos y Condiciones.
+                </p>
               </div>
-            ))}
 
-            <div className="alert-section" data-aos="fade-up" data-aos-delay="900">
-              <i className="bi bi-shield-check"></i>
-              <h4>Compromiso con la Excelencia</h4>
-              <p>
-                Nuestros términos están diseñados para garantizar la mejor atención terapéutica 
-                y proteger los derechos de todos nuestros pacientes.
-              </p>
-            </div>
+              {terminos.map((termino, index) => (
+                <div 
+                  key={termino.numero} 
+                  className="terminos-item" 
+                  data-aos="fade-up" 
+                  data-aos-delay={100 + (index * 20)}
+                >
+                  <h3 data-numero={termino.numero}>{termino.titulo}</h3>
+                  
+                  {termino.contenido && <p>{termino.contenido}</p>}
+                  
+                  {termino.lista && (
+                    <ul className="terminos-list">
+                      {termino.lista.map((item, idx) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
 
-            <div className="cta-section" data-aos="fade-up" data-aos-delay="950">
-              <h3>¿Necesitas ayuda?</h3>
-              <p>Estamos aquí para resolver tus dudas sobre nuestros términos y condiciones.</p>
-              <a href="contactanos" className="btn-custom">
-                <i className="bi bi-envelope me-2"></i>
-                Contactar
-              </a>
+                  {termino.nota && (
+                    <div className="nota-text">
+                      <strong>Nota:</strong> {termino.nota}
+                    </div>
+                  )}
+                </div>
+              ))}
+
             </div>
           </div>
         </section>

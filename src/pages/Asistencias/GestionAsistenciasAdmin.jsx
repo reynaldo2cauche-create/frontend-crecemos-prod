@@ -400,60 +400,72 @@ const GestionAsistenciasAdmin = () => {
 
               {/* Estado de Recepción */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Estado de Recepción/Admisión
                 </label>
+                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setEstadoRecepcion(7)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoRecepcion(estadoRecepcion === 7 ? null : 7)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoRecepcion === 7
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-green-600 text-white ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
                     }`}
                   >
                     ✓ Asistió
                   </button>
                   <button
-                    onClick={() => setEstadoRecepcion(6)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoRecepcion(estadoRecepcion === 6 ? null : 6)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoRecepcion === 6
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
                     }`}
                   >
                     ◆ Sesión Dictada
                   </button>
                 </div>
+                {estadoRecepcion === null && (
+                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                    Sin marcar — se guardará como pendiente
+                  </p>
+                )}
               </div>
 
               {/* Estado de Terapeuta */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Estado de Terapeuta
                 </label>
+                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setEstadoTerapeuta(7)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoTerapeuta(estadoTerapeuta === 7 ? null : 7)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoTerapeuta === 7
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-green-600 text-white ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
                     }`}
                   >
                     ✓ Asistió
                   </button>
                   <button
-                    onClick={() => setEstadoTerapeuta(6)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoTerapeuta(estadoTerapeuta === 6 ? null : 6)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoTerapeuta === 6
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
                     }`}
                   >
                     ◆ Sesión Dictada
                   </button>
                 </div>
+                {estadoTerapeuta === null && (
+                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                    Sin marcar — se guardará como pendiente
+                  </p>
+                )}
               </div>
 
               {/* Advertencia */}
@@ -474,7 +486,7 @@ const GestionAsistenciasAdmin = () => {
                 </button>
                 <button
                   onClick={handleGuardarCambios}
-                  disabled={guardando || (estadoRecepcion === null && estadoTerapeuta === null)}
+                  disabled={guardando}
                   className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-all disabled:opacity-50"
                 >
                   {guardando ? 'Guardando...' : 'Guardar Cambios'}

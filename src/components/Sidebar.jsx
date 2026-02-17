@@ -23,7 +23,8 @@ import {
   CalendarIcon,
   ShieldCheckIcon,
   AcademicCapIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  GiftIcon
 } from '@heroicons/react/24/outline';
 
 // Contexto para compartir el estado del sidebar
@@ -63,6 +64,7 @@ const menuItems = [
   },
   { text: 'Agenda', path: '/intranet/agenda', icon: CalendarDaysIcon },
   { text: 'Pacientes', path: '/intranet/lista-pacientes', icon: UserGroupIcon },
+  { text: 'Sorteo', path: '/intranet/sorteo', icon: GiftIcon },
   { text: 'Reportes', path: '/intranet/reportes-evaluaciones', icon: DocumentChartBarIcon },
   { text: 'Staff Web', path: '/intranet/gestion-staff', icon: AcademicCapIcon, adminOnly: true },
   { text: 'Popup Inicio', path: '/intranet/popup-promocional', icon: BellAlertIcon },
@@ -135,7 +137,7 @@ const Sidebar = () => {
 
     if (userRole === ROLES.ADMISION) {
       return menuItems.filter(item =>
-        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Certificaciones' || item.text === 'Webmail'
+        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Sorteo' || item.text === 'Certificaciones' || item.text === 'Webmail'
       );
     }
 
@@ -623,7 +625,7 @@ export const SidebarContentWrapper = ({ children }) => {
               
               {/* Desarrollado por */}
               <a 
-                href="https://vaxa.com.pe" 
+                href="https://vaxasys.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 hover:bg-white border border-gray-200 transition-all hover:shadow-md"

@@ -491,7 +491,8 @@ const guardarCita = async (datosFormulario = null) => {
       duracion_minutos: parseInt(datos.duracion || 40),
       nota: datos.nota || '',
       user_id_crea: currentUser.id,
-      motivo_accion: datos.motivo_accion || '' // ✅ INCLUIR MOTIVO DE ACCIÓN
+      motivo_accion: datos.motivo_accion || '',
+      compra_id: datos.compra_id || null // ✅ INCLUIR MOTIVO DE ACCIÓN
       
     };
 

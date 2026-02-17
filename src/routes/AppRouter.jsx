@@ -57,6 +57,7 @@ import DashboardRRHH from '../pages/rrhh/DashboardRRHH';
 import VacacionesPage from '../pages/rrhh/VacacionesPage';
 import ConveniosPage from '../pages/ConveniosPage';
 import GestionStaff from '../pages/GestionStaff';
+import SorteoPacientes from '../pages/SorteoPacientes';
 
 // Páginas de Auditoría
 import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
@@ -290,6 +291,16 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <GestionStaff />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/sorteo" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <SorteoPacientes />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
