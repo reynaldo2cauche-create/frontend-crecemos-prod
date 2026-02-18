@@ -452,6 +452,7 @@ export default function EmpleadosPage() {
           parentescos={parentescos}
           provincias={provincias}
           nivelesEducacion={nivelesEducacion}
+          trabajadores={empleados}
           onSuccess={() => {
             cargarDatos();
             showNotification('Empleado actualizado correctamente', 'success');
@@ -1647,7 +1648,7 @@ const handleGuardar = async () => {
 };
 
 // Modal Editar Empleado
-const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, servicios, generos, estadosCiviles, parentescos, provincias, nivelesEducacion, onSuccess, onError, onOpenDeleteArchivo }) => {
+const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos, servicios, generos, estadosCiviles, parentescos, provincias, nivelesEducacion, trabajadores = [], onSuccess, onError, onOpenDeleteArchivo }) => {
   const [formData, setFormData] = useState({
     nombres: empleado.nombres || '',
     apellidos: empleado.apellidos || '',
@@ -1659,6 +1660,7 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
     especialidad: empleado.especialidad?.nombre || '',
     contrasena: '',
     cargo_id: empleado.cargo?.id || '',
+    jefe_id: empleado.jefe?.id || '',
     telefono: empleado.telefono || '',
     telefono_emergencia: empleado.telefono_emergencia || '',
     contacto_emergencia: empleado.contacto_emergencia || '',
@@ -1985,6 +1987,7 @@ const refrescarEmpleado = async () => {
         rol_id: rolObj.id,
         especialidad_id: especialidadObj?.id || null,
         cargo_id: formData.cargo_id ? parseInt(formData.cargo_id) : null,
+        jefe_id: formData.jefe_id ? parseInt(formData.jefe_id) : null,
         telefono: formData.telefono || null,
         telefono_emergencia: formData.telefono_emergencia || null,
         contacto_emergencia: formData.contacto_emergencia || null,
@@ -2199,6 +2202,27 @@ const refrescarEmpleado = async () => {
                     {cargos.map(c => (
                       <option key={c.id} value={c.id}>{c.nombre}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                    Jefe Directo
+                  </label>
+                  <select
+                    name="jefe_id"
+                    value={formData.jefe_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                  >
+                    <option value="">Sin jefe directo</option>
+                    {trabajadores
+                      .filter(t => t.cargo?.es_jefe && t.estado && t.id !== empleado.id)
+                      .map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombres} {t.apellidos} — {t.cargo?.nombre}
+                        </option>
+                      ))
+                    }
                   </select>
                 </div>
                 {esTerapeuta && (

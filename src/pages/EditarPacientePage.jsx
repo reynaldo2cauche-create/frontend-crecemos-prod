@@ -15,7 +15,7 @@ import { useServicios } from '../hooks/useServicios';
 import { useTerapeutas } from '../hooks/useTerapeutas';
 import { calcularEdad, calcularEdadDetallada, formatearFechaParaInput, formatearFechaParaBackend } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
-import { ROLES, canManagePatientStatus } from '../constants/roles';
+import { ROLES, canManagePatientStatus, canManageConvenios } from '../constants/roles';
 import {
   getConvenios,
   getConveniosPorPaciente,
@@ -898,20 +898,22 @@ const handleEliminarConvenio = async () => {
 
                         <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-green-500" />
 
-                        <div
-                          className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalEliminarConvenio({ open: true, convenio: pc });
-                            }}
-                            className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
-                            title="Eliminar asignación"
+                        {canManageConvenios(user) && (
+                          <div
+                            className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
                           >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalEliminarConvenio({ open: true, convenio: pc });
+                              }}
+                              className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
+                              title="Eliminar asignación"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Nombre completo en múltiples líneas */}
@@ -924,13 +926,15 @@ const handleEliminarConvenio = async () => {
               </div>
             )}
 
-            <button
-              onClick={() => setModalConvenio(true)}
-              className="w-10 h-10 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-110 shadow-sm flex-shrink-0"
-              title="Agregar convenio"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+            {canManageConvenios(user) && (
+              <button
+                onClick={() => setModalConvenio(true)}
+                className="w-10 h-10 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-110 shadow-sm flex-shrink-0"
+                title="Agregar convenio"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
       </div>
     </div>

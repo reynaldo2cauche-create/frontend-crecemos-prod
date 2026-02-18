@@ -333,3 +333,8 @@ export const abrirArchivo = async (archivoNombre) => {
     }
   }
 };
+
+
+export const getSubordinados = (jefeId) =>
+  api.get(`/trabajadores/${jefeId}/subordinados`).then(r => r.data);
+

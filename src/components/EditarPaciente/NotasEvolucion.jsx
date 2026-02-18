@@ -28,7 +28,10 @@ const NotasEvolucion = ({
       try {
         setLoading(true);
         let url = `/nota-evolucion/paciente/${paciente_id}`;
-        if (user?.rol?.id === ROLES.TERAPEUTA) {
+        // Si es terapeuta pero NO es jefe, filtrar solo sus propias notas
+        // Si es jefe (cargo.es_jefe), ver todas las notas (propias + subordinadas)
+        const esJefe = user?.cargo?.es_jefe === true;
+        if (user?.rol?.id === ROLES.TERAPEUTA && !esJefe) {
           url += `?trabajador_id=${user.id}`;
         }
         
@@ -164,7 +167,10 @@ const NotasEvolucion = ({
         console.log('✅ Respuesta del guardado:', respuestaGuardado);
 
         let url = `/nota-evolucion/paciente/${paciente_id}`;
-        if (user?.rol?.id === ROLES.TERAPEUTA) {
+        // Si es terapeuta pero NO es jefe, filtrar solo sus propias notas
+        // Si es jefe (cargo.es_jefe), ver todas las notas (propias + subordinadas)
+        const esJefe = user?.cargo?.es_jefe === true;
+        if (user?.rol?.id === ROLES.TERAPEUTA && !esJefe) {
           url += `?trabajador_id=${user.id}`;
         }
         

@@ -14,6 +14,7 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ROLES, isTerapeuta, canViewServiceInfo } from '../constants/roles';
 import { useNavigate } from 'react-router-dom';
 import { useTerapeutas } from '../hooks/useTerapeutas';
+import { getSubordinados } from '../services/trabajadorService';
 import '../styles/intranet.css';
 
 export const ListaPacientes = () => {
@@ -48,23 +49,41 @@ export const ListaPacientes = () => {
   const [searching, setSearching] = useState(false);
   const [estadisticas, setEstadisticas] = useState(null);
 
+  // Estado para jefe: lista de subordinadas y el filtro seleccionado
+  const esJefe = user?.rol?.id === ROLES.TERAPEUTA && user?.cargo?.es_jefe === true;
+  const [subordinadosJefe, setSubordinadosJefe] = useState([]);
+  // filtroJefe: '' = todos (jefe + subordinadas), 'propio' = solo el jefe, ID = solo esa subordinada
+  // Cambiar el estado inicial
+const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
   useEffect(() => {
-    const tieneFiltrosActivos = searchParams.distritoId || searchParams.estadoId || 
-                                searchParams.numeroDocumento || searchParams.nombreCompleto || 
+    const tieneFiltrosActivos = searchParams.distritoId || searchParams.estadoId ||
+                                searchParams.numeroDocumento || searchParams.nombreCompleto ||
                                 searchParams.servicioId || searchParams.terapeutaId; // ✅ AGREGADO
-    
+
     if (!tieneFiltrosActivos) {
       return;
     }
-    
+
     const cargarPacientes = async () => {
       try {
         setLoading(true);
         let url = '/pacientes';
         const params = new URLSearchParams();
-        
+
         if (user?.rol?.id === ROLES.TERAPEUTA) {
-          params.append('terapeutaId', user.id);
+          if (esJefe) {
+            if (filtroJefe === '') {
+              params.append('terapeutaId', user.id);
+            } else if (filtroJefe === 'propio') {
+              params.append('terapeutaId', user.id);
+              params.append('soloPropio', 'true');
+            } else {
+              params.append('terapeutaId', filtroJefe);
+              params.append('soloPropio', 'true');
+            }
+          } else {
+            params.append('terapeutaId', user.id);
+          }
           params.append('estadoIds', '1,2,3,4');
         }
         
@@ -111,7 +130,7 @@ export const ListaPacientes = () => {
     };
 
     cargarPacientes();
-  }, [user, searchParams]);
+  }, [user, searchParams, filtroJefe, esJefe]);
 
   useEffect(() => {
     const cargarPacientesIniciales = async () => {
@@ -119,28 +138,41 @@ export const ListaPacientes = () => {
         setLoading(true);
         let url = '/pacientes';
         const params = new URLSearchParams();
-        
+
         if (user?.rol?.id === ROLES.TERAPEUTA) {
-          params.append('terapeutaId', user.id);
+          if (esJefe) {
+            if (filtroJefe === '') {
+              // Todos: jefe + subordinadas (backend auto-expande)
+              params.append('terapeutaId', user.id);
+            } else if (filtroJefe === 'propio') {
+              params.append('terapeutaId', user.id);
+              params.append('soloPropio', 'true');
+            } else {
+              // ID de una subordinada específica
+              params.append('terapeutaId', filtroJefe);
+              params.append('soloPropio', 'true');
+            }
+          } else {
+            params.append('terapeutaId', user.id);
+          }
           params.append('estadoIds', '1,2,3,4');
         }
-        
+
         if (params.toString()) {
           url += `?${params.toString()}`;
         }
-        
+
         const data = await getPacientes(url);
-   if (data && Array.isArray(data)) {
-        // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
-        let pacientesFiltrados = data;
-        if (user?.rol?.id === ROLES.TERAPEUTA) {
-          pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-        }
-        
-        setPacientes(pacientesFiltrados);
-        setFilteredPacientes(pacientesFiltrados);
-        setError(null);
-      }else {
+        if (data && Array.isArray(data)) {
+          // Filtrar inactivos si es terapeuta
+          let pacientesFiltrados = data;
+          if (user?.rol?.id === ROLES.TERAPEUTA) {
+            pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+          }
+          setPacientes(pacientesFiltrados);
+          setFilteredPacientes(pacientesFiltrados);
+          setError(null);
+        } else {
           setPacientes([]);
           setFilteredPacientes([]);
           setError(null);
@@ -158,7 +190,16 @@ export const ListaPacientes = () => {
     if (user) {
       cargarPacientesIniciales();
     }
-  }, [user]);
+  }, [user, filtroJefe, esJefe]);
+
+  // Cargar subordinados si el usuario es jefe
+  useEffect(() => {
+    if (esJefe && user?.id) {
+      getSubordinados(user.id)
+        .then(data => setSubordinadosJefe(Array.isArray(data) ? data : []))
+        .catch(() => setSubordinadosJefe([]));
+    }
+  }, [esJefe, user?.id]);
 
   useEffect(() => {
     const cargarDatosAdicionales = async () => {
@@ -246,26 +287,44 @@ export const ListaPacientes = () => {
   };
 
   const clearFilters = async () => {
+    // Resetear todos los filtros de UI
+    setFilters({
+      distritoId: '',
+      estadoId: '',
+      numeroDocumento: '',
+      nombreCompleto: '',
+      terapeutaId: '',
+      ...(canViewServiceInfo(user) && { servicioId: '' })
+    });
+    setNumeroDocumentoInput('');
+    setNombreCompletoInput('');
+    setSearchParams({});
+    setPage(0);
+    // Si es jefe, también resetear el filtro de área (el useEffect se encargará de recargar)
+    if (esJefe) {
+      setFiltroJefe('propio');
+      return; // El efecto se encargará de la recarga
+    }
+
     try {
       setLoading(true);
       let url = '/pacientes';
       const params = new URLSearchParams();
-      
+
       if (user?.rol?.id === ROLES.TERAPEUTA) {
         params.append('terapeutaId', user.id);
         params.append('estadoIds', '1,2,3,4');
       }
-      
+
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
-      
+
       const data = await getPacientes(url);
       let pacientesFiltrados = data;
-    if (user?.rol?.id === ROLES.TERAPEUTA) {
-      pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-    }
-    
+      if (user?.rol?.id === ROLES.TERAPEUTA) {
+        pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+      }
       setPacientes(pacientesFiltrados);
       setFilteredPacientes(pacientesFiltrados);
     } catch (error) {
@@ -274,19 +333,6 @@ export const ListaPacientes = () => {
     } finally {
       setLoading(false);
     }
-    
-    setFilters({
-      distritoId: '',
-      estadoId: '',
-      numeroDocumento: '',
-      nombreCompleto: '',
-      terapeutaId: '', // ✅ AGREGADO
-      ...(canViewServiceInfo(user) && { servicioId: '' })
-    });
-    setNumeroDocumentoInput('');
-    setNombreCompletoInput('');
-    setSearchParams({});
-    setPage(0);
   };
 
   const handleSelectPaciente = async (paciente) => {
@@ -296,33 +342,40 @@ export const ListaPacientes = () => {
   const handleEditarPaciente = (id) => {
     navigate(`/editar-paciente/${id}`);
   };
-
   const recargarPacientes = async () => {
     try {
       setLoading(true);
       let url = '/pacientes';
       const params = new URLSearchParams();
-      
+
       if (user?.rol?.id === ROLES.TERAPEUTA) {
-        params.append('terapeutaId', user.id);
-     
+        if (esJefe) {
+          if (filtroJefe === 'propio' || filtroJefe === '') {
+            params.append('terapeutaId', user.id);
+            params.append('soloPropio', 'true');
+          } else {
+            params.append('terapeutaId', filtroJefe);
+            params.append('soloPropio', 'true');
+          }
+        } else {
+          params.append('terapeutaId', user.id);
+          params.append('soloPropio', 'true');
+        }
+        params.append('estadoIds', '1,2,3,4');
       }
-      
+
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
-      
+
       const data = await getPacientes(url);
-    // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
-    let pacientesFiltrados = data;
-    if (user?.rol?.id === ROLES.TERAPEUTA) {
-      pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-    }
-    
-    setPacientes(pacientesFiltrados);
-    setFilteredPacientes(pacientesFiltrados);
+      let pacientesFiltrados = data;
+      if (user?.rol?.id === ROLES.TERAPEUTA) {
+        pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
+      }
+      setPacientes(pacientesFiltrados);
+      setFilteredPacientes(pacientesFiltrados);
       
-      // ✅ RECARGAR ESTADÍSTICAS AUTOMÁTICAMENTE
       const estadisticasData = await getEstadisticasPacientes();
       setEstadisticas(estadisticasData || null);
     } catch (err) {
@@ -331,7 +384,6 @@ export const ListaPacientes = () => {
       setLoading(false);
     }
   };
-
   const paginatedPacientes = filteredPacientes.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -373,7 +425,16 @@ export const ListaPacientes = () => {
     );
   }
 
-  const filtrosActivos = searchParams.distritoId || searchParams.estadoId || searchParams.servicioId || searchParams.numeroDocumento || searchParams.nombreCompleto || searchParams.terapeutaId; // ✅ MODIFICADO
+  const filtrosActivos = searchParams.distritoId || searchParams.estadoId || searchParams.servicioId || searchParams.numeroDocumento || searchParams.nombreCompleto || (searchParams.terapeutaId && !esJefe);
+
+ const etiquetaVistaJefe = esJefe
+  ? filtroJefe === 'propio' || filtroJefe === ''
+    ? 'Mis pacientes'
+    : (() => {
+        const sub = subordinadosJefe.find(s => String(s.id) === filtroJefe);
+        return sub ? `${sub.nombres} ${sub.apellidos}` : 'Subordinada';
+      })()
+  : null;
 
   return (
     <div className="tailwind-scope">
@@ -529,8 +590,8 @@ export const ListaPacientes = () => {
                   </div>
                 )}
 
-                {/* ✅ AGREGADO - Chip para Terapeuta */}
-                {searchParams.terapeutaId && (
+                {/* Chip para Terapeuta (admin) */}
+                {searchParams.terapeutaId && !esJefe && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-[#7B1FA2]/30 text-sm">
                     <span className="font-medium text-[#7B1FA2]">Terapeuta:</span>
                     <span className="text-gray-700">
@@ -653,7 +714,23 @@ export const ListaPacientes = () => {
                 </select>
               )}
 
-              {/* ✅ AGREGADO - Selector de Terapeuta */}
+              {esJefe && (
+                <select
+                  value={filtroJefe}
+                  onChange={(e) => setFiltroJefe(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-purple-50 border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer font-medium text-purple-800"
+                >
+                  <option value="propio">Mis pacientes</option>  {/* ← default ahora */}
+                  {subordinadosJefe.map((sub) => (
+                    <option key={sub.id} value={String(sub.id)}>
+                      {sub.nombres} {sub.apellidos}
+                    </option>
+                  ))}
+                  
+                </select>
+              )}
+
+              {/* Selector de Terapeuta - solo para no terapeutas (admins, recepción, etc.) */}
               {!isTerapeuta(user) && (
                 <select
                   value={filters.terapeutaId || ''}
@@ -704,11 +781,18 @@ export const ListaPacientes = () => {
 
       {/* Contador de resultados */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <h2 className="text-xl font-bold text-gray-900">Resultados</h2>
           <div className="px-4 py-1.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-full text-sm font-semibold">
             {filteredPacientes.length} {filteredPacientes.length === 1 ? 'paciente' : 'pacientes'}
           </div>
+          {/* Badge indicando la vista actual para jefes */}
+          {esJefe && etiquetaVistaJefe && (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-100 border border-purple-200 text-purple-800 rounded-full text-xs font-semibold">
+              <User className="w-3 h-3" />
+              {etiquetaVistaJefe}
+            </div>
+          )}
         </div>
       </div>
 

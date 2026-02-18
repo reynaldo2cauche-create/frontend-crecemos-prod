@@ -566,6 +566,7 @@ const guardarCita = async (datosFormulario = null) => {
 
       await actualizarCita(citaEditando.id, citaDto);
       setSnackbarMessage('✅ Cita actualizada correctamente');
+      setSnackbarSeverity('success');
 
     } else {
       // ➕ MODO CREACIÓN - Detectar si hay múltiples fechas
@@ -603,11 +604,19 @@ const guardarCita = async (datosFormulario = null) => {
         // Mostrar mensaje según el resultado
         if (resultado.exitosas === resultado.total) {
           setSnackbarMessage(`✅ ${resultado.exitosas} citas creadas exitosamente`);
+          setSnackbarSeverity('success');
         } else if (resultado.exitosas > 0) {
-          setSnackbarMessage(`⚠️ ${resultado.exitosas} de ${resultado.total} citas creadas. ${resultado.fallidas} fallaron.`);
+          // Algunas fallaron — mostrar razón
+          const razones = (resultado.errores || []).map(e => e.error).filter(Boolean).join(' | ');
+          setSnackbarMessage(
+            `⚠️ ${resultado.exitosas} de ${resultado.total} citas creadas. ${razones || `${resultado.fallidas} fallaron.`}`
+          );
+          setSnackbarSeverity('error');
           console.error('❌ Errores:', resultado.errores);
         } else {
-          throw new Error('No se pudo crear ninguna cita');
+          // Ninguna se pudo crear — lanzar el error real del backend
+          const primerError = resultado.errores?.[0]?.error || 'No se pudo crear ninguna cita';
+          throw new Error(primerError);
         }
 
       } else {
@@ -628,10 +637,10 @@ const guardarCita = async (datosFormulario = null) => {
 
         await crearCita(citaDto);
         setSnackbarMessage('✅ Cita creada correctamente');
+        setSnackbarSeverity('success');
       }
     }
-    
-    setSnackbarSeverity('success');
+
     setShowSnackbar(true);
 
     // Recargar citas del mes actual visualizado
@@ -656,8 +665,10 @@ const guardarCita = async (datosFormulario = null) => {
     });
     
     let mensajeError = 'Error al guardar la cita';
-    if (error.response?.data?.message) {
-      mensajeError = error.response.data.message;
+    const responseMsg = error.response?.data?.message;
+    if (responseMsg) {
+      // NestJS puede devolver message como string o string[]
+      mensajeError = Array.isArray(responseMsg) ? responseMsg.join(', ') : responseMsg;
     } else if (error.message) {
       mensajeError = error.message;
     }
@@ -665,6 +676,7 @@ const guardarCita = async (datosFormulario = null) => {
     setSnackbarMessage(mensajeError);
     setSnackbarSeverity('error');
     setShowSnackbar(true);
+    throw error; // re-lanzar para que el modal también pueda mostrar el error
   } finally {
     setGuardando(false);
   }
@@ -792,7 +804,7 @@ const guardarCita = async (datosFormulario = null) => {
 
       {/* Snackbar de notificaciones */}
       {showSnackbar && (
-        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
           snackbarSeverity === 'success'
             ? 'bg-white border-gray-100'
             : 'bg-white border-red-100'
