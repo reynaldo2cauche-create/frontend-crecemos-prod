@@ -4,7 +4,7 @@ import { getResponsablesPorPaciente, getProcesosLegalesInfantiles } from '../../
 import { getRelacionesResponsable, getTiposDocumento } from '../../services/catalogoService';
 import api from '../../services/api';
 
-const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
+const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSuccess, onError }) => {
   const [responsables, setResponsables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -211,16 +211,18 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
                     <h4 className="font-semibold text-gray-900 text-sm">
                       {`${responsable.nombres} ${responsable.apellido_paterno} ${responsable.apellido_materno || ''}`}
                     </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      {index === 0 && (
-                        <span className="px-2 py-0.5 bg-[#7B1FA2]/10 text-[#7B1FA2] text-xs font-semibold rounded-md">
-                          Principal
+                    {!soloNombreYDni && (
+                      <div className="flex items-center gap-2 mt-1">
+                        {index === 0 && (
+                          <span className="px-2 py-0.5 bg-[#7B1FA2]/10 text-[#7B1FA2] text-xs font-semibold rounded-md">
+                            Principal
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">
+                          {responsable.responsable_relacion?.nombre || 'N/A'}
                         </span>
-                      )}
-                      <span className="text-xs text-gray-500">
-                        {responsable.responsable_relacion?.nombre || 'N/A'}
-                      </span>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -255,23 +257,29 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 text-xs">
-                  <FileText className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-gray-500">{responsable.tipo_documento?.nombre || 'N/A'}:</span>
-                  <span className="font-medium text-gray-700">{responsable.numero_documento}</span>
-                </div>
+                {!soloNombreYDni && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <FileText className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-gray-500">{responsable.tipo_documento?.nombre || 'N/A'}:</span>
+                    <span className="font-medium text-gray-700">{responsable.numero_documento}</span>
+                  </div>
+                )}
 
-                <div className="flex items-center gap-2 text-xs">
-                  <Phone className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="font-medium text-gray-700">{responsable.telefono || 'N/A'}</span>
-                </div>
+                {!soloNombreYDni && (
+                  <>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-medium text-gray-700">{responsable.telefono || 'N/A'}</span>
+                    </div>
 
-                <div className="flex items-center gap-2 text-xs col-span-2">
-                  <Mail className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="font-medium text-gray-700 truncate">{responsable.email || 'N/A'}</span>
-                </div>
+                    <div className="flex items-center gap-2 text-xs col-span-2">
+                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-medium text-gray-700 truncate">{responsable.email || 'N/A'}</span>
+                    </div>
+                  </>
+                )}
 
-                <div className="flex items-center gap-2 col-span-2 pt-2 border-t border-gray-100">
+                <div className={`flex items-center gap-2 pt-2 border-t border-gray-100 ${soloNombreYDni ? 'col-span-2' : 'col-span-2'}`}>
                   <Shield className={`w-4 h-4 ${responsable.tiene_proceso_legal ? 'text-orange-500' : 'text-green-500'}`} />
                   <span className="text-xs font-medium text-gray-600">Proceso Legal:</span>
                   <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${
@@ -282,22 +290,22 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
                     {responsable.tiene_proceso_legal ? 'Sí' : 'No'}
                   </span>
                   {responsable.tiene_proceso_legal && responsable.procesoLegalInfantil && (
-                    <>
-                      <span className="text-xs text-gray-600">
-                        {responsable.procesoLegalInfantil.nombre}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleShowInfo(responsable.procesoLegalInfantil);
-                        }}
-                        className="p-1 hover:bg-orange-100 rounded-lg transition-colors ml-auto"
-                        title="Ver detalles"
-                      >
-                        <Info className="w-4 h-4 text-orange-600" />
-                      </button>
-                    </>
+                    <span className="text-xs text-gray-600">
+                      {responsable.procesoLegalInfantil.nombre}
+                    </span>
+                  )}
+                  {!soloNombreYDni && responsable.tiene_proceso_legal && responsable.procesoLegalInfantil && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleShowInfo(responsable.procesoLegalInfantil);
+                      }}
+                      className="p-1 hover:bg-orange-100 rounded-lg transition-colors ml-auto"
+                      title="Ver detalles"
+                    >
+                      <Info className="w-4 h-4 text-orange-600" />
+                    </button>
                   )}
                 </div>
               </div>

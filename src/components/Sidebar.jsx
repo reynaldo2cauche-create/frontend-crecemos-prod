@@ -24,7 +24,14 @@ import {
   ShieldCheckIcon,
   AcademicCapIcon,
   ClipboardDocumentCheckIcon,
-  GiftIcon
+  GiftIcon,
+  CubeIcon,
+  TagIcon,
+  TruckIcon,
+  ArrowPathIcon,
+  BanknotesIcon,
+  ShoppingCartIcon,
+  IdentificationIcon,
 } from '@heroicons/react/24/outline';
 
 // Contexto para compartir el estado del sidebar
@@ -84,6 +91,30 @@ const menuItems = [
     ]
   },
   { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon, adminOnly: true },
+  {
+    text: 'Inventario',
+    icon: CubeIcon,
+    isDropdown: true,
+    adminOnly: true,
+    subItems: [
+      { text: 'Productos', path: '/intranet/inventario/productos', icon: CubeIcon },
+      { text: 'Categorías', path: '/intranet/inventario/categorias', icon: TagIcon },
+      { text: 'Proveedores', path: '/intranet/inventario/proveedores', icon: TruckIcon },
+      { text: 'Reposición de Stock', path: '/intranet/inventario/reposicion', icon: ArrowPathIcon },
+      { text: 'Servicios', path: '/intranet/inventario/servicios', icon: BanknotesIcon },
+    ]
+  },
+  {
+    text: 'Ventas',
+    icon: ShoppingCartIcon,
+    isDropdown: true,
+    adminOnly: true,
+    subItems: [
+      { text: 'Vender Servicios', path: '/intranet/ventas/servicios', icon: ShoppingCartIcon },
+      { text: 'Vender Productos', path: '/intranet/ventas/productos', icon: CubeIcon },
+      { text: 'Historial de Ventas', path: '/intranet/ventas/historial', icon: ClipboardDocumentCheckIcon },
+    ]
+  },
   { text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi', isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.webp' },
 ];
 

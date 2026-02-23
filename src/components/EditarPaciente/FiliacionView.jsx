@@ -320,67 +320,71 @@ const FiliacionView = ({
             </div>
           </Section>
 
-          {/* Contacto */}
-          <Section icon={Phone} title="Información de Contacto" iconColor="text-emerald-600" bgColor="bg-emerald-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                icon={Phone}
-                label="Celular Principal"
-                value={localPacienteData.celular}
-                name="celular"
-                editable={modoEdicion && puedeEditarPaciente}
-                onChange={handleLocalChange}
-                iconColor="text-emerald-600"
-              />
-              <FormField
-                icon={Phone}
-                label="Celular Secundario"
-                value={localPacienteData.celular2}
-                name="celular2"
-                editable={modoEdicion && puedeEditarPaciente}
-                onChange={handleLocalChange}
-                iconColor="text-emerald-600"
-              />
-              <div className="md:col-span-2">
+          {/* Contacto - Solo visible para Administrador, Admisión y Recursos Humanos */}
+          {!esTerapeuta && (
+            <Section icon={Phone} title="Información de Contacto" iconColor="text-emerald-600" bgColor="bg-emerald-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
-                  icon={Mail}
-                  label="Correo Electrónico"
-                  value={localPacienteData.correo}
-                  name="correo"
-                  type="email"
+                  icon={Phone}
+                  label="Celular Principal"
+                  value={localPacienteData.celular}
+                  name="celular"
                   editable={modoEdicion && puedeEditarPaciente}
                   onChange={handleLocalChange}
                   iconColor="text-emerald-600"
                 />
+                <FormField
+                  icon={Phone}
+                  label="Celular Secundario"
+                  value={localPacienteData.celular2}
+                  name="celular2"
+                  editable={modoEdicion && puedeEditarPaciente}
+                  onChange={handleLocalChange}
+                  iconColor="text-emerald-600"
+                />
+                <div className="md:col-span-2">
+                  <FormField
+                    icon={Mail}
+                    label="Correo Electrónico"
+                    value={localPacienteData.correo}
+                    name="correo"
+                    type="email"
+                    editable={modoEdicion && puedeEditarPaciente}
+                    onChange={handleLocalChange}
+                    iconColor="text-emerald-600"
+                  />
+                </div>
               </div>
-            </div>
-          </Section>
+            </Section>
+          )}
 
-          {/* Dirección */}
-          <Section icon={MapPin} title="Dirección" iconColor="text-blue-600" bgColor="bg-blue-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                icon={MapPin}
-                label="Distrito"
-                value={localPacienteData.distrito?.id}
-                displayValue={localPacienteData.distrito?.nombre}
-                name="distrito"
-                editable={modoEdicion && puedeEditarPaciente}
-                onChange={(e) => handleSelectChange('distrito', e.target.value)}
-                options={distritos}
-                iconColor="text-blue-600"
-              />
-              <FormField
-                icon={MapPin}
-                label="Dirección Completa"
-                value={localPacienteData.direccion}
-                name="direccion"
-                editable={modoEdicion && puedeEditarPaciente}
-                onChange={handleLocalChange}
-                iconColor="text-blue-600"
-              />
-            </div>
-          </Section>
+          {/* Dirección - Solo visible para Administrador, Admisión y Recursos Humanos */}
+          {!esTerapeuta && (
+            <Section icon={MapPin} title="Dirección" iconColor="text-blue-600" bgColor="bg-blue-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  icon={MapPin}
+                  label="Distrito"
+                  value={localPacienteData.distrito?.id}
+                  displayValue={localPacienteData.distrito?.nombre}
+                  name="distrito"
+                  editable={modoEdicion && puedeEditarPaciente}
+                  onChange={(e) => handleSelectChange('distrito', e.target.value)}
+                  options={distritos}
+                  iconColor="text-blue-600"
+                />
+                <FormField
+                  icon={MapPin}
+                  label="Dirección Completa"
+                  value={localPacienteData.direccion}
+                  name="direccion"
+                  editable={modoEdicion && puedeEditarPaciente}
+                  onChange={handleLocalChange}
+                  iconColor="text-blue-600"
+                />
+              </div>
+            </Section>
+          )}
 
           {/* Información Médica */}
           <Section icon={Heart} title="Información Médica" iconColor="text-rose-600" bgColor="bg-rose-50">
@@ -440,6 +444,7 @@ const FiliacionView = ({
             <ResponsablesSection
               pacienteId={paciente.id}
               canEdit={user?.rol?.id === ROLES.ADMINISTRADOR}
+              soloNombreYDni={esTerapeuta}
               onSuccess={(mensaje) => {
                 setSuccessMessage(mensaje);
                 setShowSuccessModal(true);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheckIcon, PencilSquareIcon, CalendarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, PencilSquareIcon, CalendarIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { obtenerTodasAsistenciasAdmin, modificarAsistenciaAdmin } from '../../services/api';
 
 const GestionAsistenciasAdmin = () => {
@@ -14,6 +14,11 @@ const GestionAsistenciasAdmin = () => {
   const [guardando, setGuardando] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Estados para notificaciones - MISMO ESTILO QUE EN AGENDA
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   useEffect(() => {
     // Establecer fechas por defecto (semana actual: lunes a sábado)
@@ -48,7 +53,9 @@ const GestionAsistenciasAdmin = () => {
 
   const cargarAsistencias = async (inicio, fin) => {
     if (!inicio || !fin) {
-      alert('Seleccione un rango de fechas');
+      setSnackbarMessage('Seleccione un rango de fechas');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
       return;
     }
 
@@ -58,7 +65,9 @@ const GestionAsistenciasAdmin = () => {
       setAsistencias(data.asistencias || []);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
-      alert('Error al cargar asistencias');
+      setSnackbarMessage('Error al cargar asistencias');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     } finally {
       setCargando(false);
     }
@@ -87,7 +96,9 @@ const GestionAsistenciasAdmin = () => {
 
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) {
-      alert('No se pudo obtener información del usuario');
+      setSnackbarMessage('No se pudo obtener información del usuario');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
       return;
     }
 
@@ -100,12 +111,18 @@ const GestionAsistenciasAdmin = () => {
         user.id
       );
 
-      alert('Asistencia modificada correctamente');
+      // ✅ SNACKBAR DE ÉXITO - IGUAL QUE EN AGENDA
+      setSnackbarMessage(`✅ Asistencia #${asistenciaSeleccionada.cita_id} actualizada correctamente`);
+      setSnackbarSeverity('success');
+      setShowSnackbar(true);
+      
       cerrarModal();
       cargarAsistencias(fechaInicio, fechaFin);
     } catch (error) {
       console.error('Error al modificar asistencia:', error);
-      alert(error.response?.data?.message || 'Error al modificar asistencia');
+      setSnackbarMessage(error.response?.data?.message || 'Error al modificar asistencia');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     } finally {
       setGuardando(false);
     }
@@ -134,6 +151,21 @@ const GestionAsistenciasAdmin = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Snackbar de notificaciones - IDÉNTICO AL DE AGENDA */}
+      {showSnackbar && (
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
+          snackbarSeverity === 'success'
+            ? 'bg-white border-gray-100'
+            : 'bg-white border-red-100'
+        } flex items-center gap-2.5`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${snackbarSeverity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
+          <span className="text-xs font-medium text-gray-700">{snackbarMessage}</span>
+          <button onClick={() => setShowSnackbar(false)} className="ml-2">
+            <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">

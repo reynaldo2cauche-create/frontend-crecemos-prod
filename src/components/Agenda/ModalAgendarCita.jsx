@@ -121,6 +121,7 @@ const ModalAgendarCita = ({
   }, [citaEditando?.id]);
 
   const handleRecepcionMarcar = async (estadoId) => {
+     if (seguimientoAsistencia?.recepcion_marco && currentUser?.rol?.id !== ROLES.ADMINISTRADOR) return;
     setGuardandoAsistencia(true);
     const backupSeguimiento = seguimientoAsistencia;
     // Optimistic update: si estadoId es null = desmarcar, si no = marcar/cambiar
@@ -147,6 +148,7 @@ const ModalAgendarCita = ({
   };
 
   const handleTerapeutaMarcar = async (estadoId) => {
+    if (seguimientoAsistencia?.terapeuta_marco && currentUser?.rol?.id !== ROLES.ADMINISTRADOR) return;
     setGuardandoAsistencia(true);
     const backupSeguimiento = seguimientoAsistencia;
     // Optimistic update: si estadoId es null = desmarcar, si no = marcar/cambiar
@@ -1966,7 +1968,6 @@ const handleGuardar = useCallback(async () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-gray-900">Recepción</h4>
-                        <p className="text-xs text-gray-600">Selecciona o cambia el estado. Haz clic en el activo para desmarcar.</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -2027,7 +2028,6 @@ const handleGuardar = useCallback(async () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-gray-900">Terapeuta</h4>
-                        <p className="text-xs text-gray-600">Selecciona o cambia el estado. Haz clic en el activo para desmarcar.</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">

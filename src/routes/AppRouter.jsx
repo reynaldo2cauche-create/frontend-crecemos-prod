@@ -67,7 +67,14 @@ import AsistenciasPorTerapeuta from '../pages/Asistencias/AsistenciasPorTerapeut
 import AsistenciasPorPaciente from '../pages/Asistencias/AsistenciasPorPaciente';
 import Inconsistencias from '../pages/Asistencias/Inconsistencias';
 import GestionAsistenciasAdmin from '../pages/Asistencias/GestionAsistenciasAdmin';
-
+import ProductosTab from '../pages/Inventario/Productostab';
+import CategoriasTab from '../pages/Inventario/Categoriastab';
+import ProveedoresTab from '../pages/Inventario/Proveedorestab';
+import ReposicionTab from '../pages/Inventario/Reposiciontab';
+import VenderServiciosTab from '../pages/Ventas/VenderServiciosTab';
+import VenderProductosTab from '../pages/Ventas/VenderProductosTab';
+import HistorialVentasTab from '../pages/Ventas/HistorialVentasTab';
+import TarifasTab from '../pages/Inventario/Tarifastab';
 export const AppRouter = () => {
   return (
     <>
@@ -305,6 +312,93 @@ export const AppRouter = () => {
             </SidebarProvider>
           </PrivateRoute>
         } />
+
+
+        
+        {/* ── INVENTARIO ────────────────────────────────────────── */}
+        <Route path="/intranet/inventario/productos" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ProductosTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/inventario/categorias" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <CategoriasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/inventario/proveedores" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ProveedoresTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/inventario/reposicion" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ReposicionTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+          <Route path="/intranet/inventario/servicios" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <TarifasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* ── VENTAS ────────────────────────────────────────── */}
+        <Route path="/intranet/ventas/servicios" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <VenderServiciosTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/ventas/productos" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <VenderProductosTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/ventas/historial" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <HistorialVentasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
         <Route path="/preguntas" element={<Preguntas />} />
         <Route path="/" element={<BasicLayout />}>
           <Route index element={<HomePage />} />
