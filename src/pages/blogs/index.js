@@ -30,6 +30,7 @@ import Dia25NoviembreBlog from './psicologia/Dia25NoviembreBlog';
 import TCABlog from './psicologia/TCABlog';
 import PatronesCrianzaBlog from './psicologia/PatronesCrianzaBlog';
 import DiaDepresionBlog from './psicologia/DiaDepresionBlog';
+import SemanaTCABlog from './psicologia/SemanaTCABlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -75,6 +76,7 @@ export const blogComponents = {
   'pistachos-fruto-seco-seguro-ninos': PistachosBlog,
   'patrones-crianza-romper-circulo': PatronesCrianzaBlog,
   '13-enero-dia-mundial-lucha-depresion': DiaDepresionBlog,
+  'semana-concienciacion-tca-2026': SemanaTCABlog,
   'mi-hijo-necesita-terapia-lenguaje-senales-tempranas': TerapiaLenguajeBlog,
   'estimulacion-lenguaje-embarazo-desarrollo-infantil': EstimulacionPrenatalLenguajeBlog,
   'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
@@ -97,6 +99,7 @@ export {
   DiaDerechosHumanosBlog,
   PatronesCrianzaBlog,
   DiaDepresionBlog,
+  SemanaTCABlog,
   TerapiaLenguajeBlog,
   EstimulacionPrenatalLenguajeBlog,
   TartamudezInfantilBlog,

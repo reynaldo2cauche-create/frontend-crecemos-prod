@@ -24,6 +24,8 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   const [formData, setFormData] = useState(null);
   const [openSuccessDialog, setOpenSuccessDialog] = useState(false);
   const [captchaValue, setCaptchaValue] = useState(null);
+  // 🆕 Estado para guardar datos procesados de cada paso
+  const [datosProceadosPorPaso, setDatosProcesadosPorPaso] = useState({});
 
   // Notificar cambio de paso a la página principal
   React.useEffect(() => {
@@ -73,8 +75,14 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   };
 
   const handleNext = (data) => {
-    // Simplemente avanzar al siguiente paso
-    // La validación ya se hizo en el formulario hijo
+    // 🆕 Guardar datos procesados del paso actual (ej: responsables con IDs existentes)
+    if (data) {
+      setDatosProcesadosPorPaso(prev => ({
+        ...prev,
+        [`step${activeStep}`]: data
+      }));
+    }
+    // Avanzar al siguiente paso
     setActiveStep((prevStep) => prevStep + 1);
   };
 
@@ -105,33 +113,36 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
       // Verificar si es terapia de pareja
       const esTerapiaPareja = data.serviciosRequeridos === 8; // ID de Terapia de Pareja
 
-      // 🆕 Construir array de responsables desde los campos dinámicos
+      // 🆕 Usar responsables procesados del paso 1 (AdditionalInfo)
+      // Estos ya vienen con responsable_id si existen, evitando duplicados
+      const responsablesProcesados = datosProceadosPorPaso.step1?.responsables || [];
+
+      // Transformar al formato que espera el backend
       let responsables = [];
-      if (esMenor) {
-        // Buscar todos los campos de responsables en el formulario
-        Object.keys(data).forEach(key => {
-          if (key.startsWith('responsableNombre_')) {
-            const id = key.split('_')[1];
-            const responsable = {
-              nombre: data[`responsableNombre_${id}`],
-              apellido_paterno: data[`responsableApellidoPaterno_${id}`],
-              apellido_materno: data[`responsableApellidoMaterno_${id}`],
-              tipo_documento_id: parseInt(data[`responsableTipoDocumento_${id}`]),
-              numero_documento: data[`responsableNumeroDocumento_${id}`],
-              relacion_id: parseInt(data[`responsableRelacion_${id}`]),
-              telefono: data[`responsableTelefono_${id}`],
-              email: data[`responsableEmail_${id}`],
-              proceso_legal: data[`responsableProcesoLegal_${id}`] || 'NO',
-              tiene_proceso_legal: data[`responsableProcesoLegal_${id}`] === 'SI',
-              proceso_legal_infantil_id: data[`responsableProcesoLegal_${id}`] === 'SI'
-                ? (parseInt(data[`responsableProcesoLegalTipo_${id}`]) || null)
-                : null
+      if (esMenor && responsablesProcesados.length > 0) {
+        responsables = responsablesProcesados.map(r => {
+          // Si tiene responsable_id válido, es un responsable existente → NO DUPLICAR
+          if (r.responsable_id && r.responsable_id !== null) {
+            return {
+              responsable_id: r.responsable_id,
+              relacion_id: parseInt(r.relacion),
+              tiene_proceso_legal: r.proceso_legal === 'SI',
+              proceso_legal_infantil_id: r.proceso_legal === 'SI' ? parseInt(r.proceso_legal_tipo) : null
             };
-            // Solo agregar si tiene datos completos
-            if (responsable.nombre && responsable.apellido_paterno) {
-              responsables.push(responsable);
-            }
           }
+          // Si no, es un responsable nuevo → crear registro
+          return {
+            nombre: r.nombres,
+            apellido_paterno: r.apellido_paterno,
+            apellido_materno: r.apellido_materno,
+            tipo_documento_id: parseInt(r.tipo_documento),
+            numero_documento: r.numero_documento,
+            relacion_id: parseInt(r.relacion),
+            telefono: r.telefono,
+            email: r.email,
+            tiene_proceso_legal: r.proceso_legal === 'SI',
+            proceso_legal_infantil_id: r.proceso_legal === 'SI' ? parseInt(r.proceso_legal_tipo) : null
+          };
         });
       }
 

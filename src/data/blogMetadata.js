@@ -391,6 +391,19 @@ export const blogMetadata = [
   readTime: '10 min lectura',
   author: 'Lic. Merlin Fernández Guadalupe',
   heroImage: '/assets/img/blog/vacaciones-terapia-portada.webp'
+},
+{
+  id: 31,
+  slug: 'semana-concienciacion-tca-2026',
+  title: 'Semana de Concientización sobre los Trastornos de la Conducta Alimentaria 2026',
+  excerpt: 'Durante la última semana de febrero se conmemora la Semana de Concientización sobre los TCA, un momento crucial para visibilizar estas condiciones de salud mental que afectan a millones de personas en todo el mundo.',
+  image: '/assets/img/blog/tca-semana1.webp',
+  date: '23 Febrero 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '15 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/tca-semana1.webp'
 }
   // Aquí agregas más blogs...
 ];

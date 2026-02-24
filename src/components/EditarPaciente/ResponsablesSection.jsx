@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, Shield, Phone, Mail, FileText, AlertCircle, Save, X, Info, Loader2, User } from 'lucide-react';
-import { getResponsablesPorPaciente, getProcesosLegalesInfantiles } from '../../services/pacienteService';
+import { getResponsablesPorPaciente, getProcesosLegalesInfantiles, buscarResponsablePorDni } from '../../services/pacienteService';
 import { getRelacionesResponsable, getTiposDocumento } from '../../services/catalogoService';
 import api from '../../services/api';
 
@@ -319,7 +319,7 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
         <ResponsableModal
           title="Agregar Nuevo Responsable"
           formData={formData}
-          
+          pacienteId={pacienteId}
           setFormData={setFormData}
           onSave={handleAddNew}
           onClose={() => {
@@ -338,6 +338,7 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
         <ResponsableModal
           title="Editar Responsable"
           formData={formData}
+          pacienteId={pacienteId}
           setFormData={setFormData}
           onSave={handleSaveEdit}
           onClose={() => {
@@ -398,10 +399,12 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
 };
 
 // Modal unificado para agregar/editar responsable
-const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, saving, relaciones, tiposDocumento, procesosLegales }) => {
+const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, saving, relaciones, tiposDocumento, procesosLegales, pacienteId }) => {
+  const [buscandoDni, setBuscandoDni] = useState(false);
+  const [mensajeBusqueda, setMensajeBusqueda] = useState('');
 
-  // Función para manejar cambio de documento con límites
-  const handleNumeroDocumentoChange = (e) => {
+  // Función para manejar cambio de documento con límites y búsqueda automática
+  const handleNumeroDocumentoChange = async (e) => {
     let value = e.target.value.replace(/[^0-9]/g, '');
 
     // Limitar según tipo de documento
@@ -413,6 +416,34 @@ const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, savin
     }
 
     setFormData({...formData, numero_documento: value});
+
+    // ✅ AUTOCOMPLETAR estilo SUNAT: Si es DNI y tiene 8 dígitos, buscar
+    if (tipoDocumento === 1 && value.length === 8) {
+      setBuscandoDni(true);
+      setMensajeBusqueda('Buscando responsable...');
+
+      const resultado = await buscarResponsablePorDni(pacienteId, value);
+
+      if (resultado.success && resultado.data) {
+        // ✅ Autocompletar SOLO nombre y apellidos
+        setFormData({
+          ...formData,
+          numero_documento: value,
+          nombres: resultado.data.nombres,
+          apellido_paterno: resultado.data.apellido_paterno,
+          apellido_materno: resultado.data.apellido_materno || '',
+          // ⚠️ telefono, email, relacion quedan vacíos - deben llenarse manualmente
+        });
+        setMensajeBusqueda('✓ Datos básicos encontrados. Complete teléfono, email y relación.');
+        setTimeout(() => setMensajeBusqueda(''), 3000);
+      } else {
+        setMensajeBusqueda('');
+      }
+
+      setBuscandoDni(false);
+    } else {
+      setMensajeBusqueda('');
+    }
   };
 
   // Función para manejar cambio de teléfono (solo 9 dígitos, empieza con 9)
@@ -539,11 +570,24 @@ const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, savin
                   placeholder={formData.tipo_documento_id === 1 ? '8 dígitos' : formData.tipo_documento_id === 3 ? '9-12 dígitos' : 'Número'}
                   inputMode="numeric"
                 />
-                {formData.tipo_documento_id === 1 && (
+                {formData.tipo_documento_id === 1 && !mensajeBusqueda && (
                   <p className="text-xs text-gray-500 mt-1">DNI debe tener 8 dígitos</p>
                 )}
                 {formData.tipo_documento_id === 3 && (
                   <p className="text-xs text-gray-500 mt-1">Carnet de Extranjería: 9-12 dígitos</p>
+                )}
+                {/* Mensaje de búsqueda/resultado */}
+                {buscandoDni && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-blue-600">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>{mensajeBusqueda}</span>
+                  </div>
+                )}
+                {!buscandoDni && mensajeBusqueda && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-green-600 font-semibold">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{mensajeBusqueda}</span>
+                  </div>
                 )}
               </div>
             </div>

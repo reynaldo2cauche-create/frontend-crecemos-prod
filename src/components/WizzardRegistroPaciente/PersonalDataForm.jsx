@@ -84,10 +84,8 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
       value = value.slice(0, 12);
     }
 
-    // Solo actualizar si el valor cambió después del filtrado
-    if (value !== rawValue) {
-      e.target.value = value;
-    }
+    // ✅ Actualizar react-hook-form con setValue
+    setValue('numeroDocumento', value);
 
     // Limpiar timeout anterior si existe
     if (validationTimeoutRef.current) {
@@ -158,7 +156,31 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
   }
 
   const onSubmit = (data) => {
-    // Validar que todos los campos estén completos antes de avanzar
+    // ❌ Bloquear si el documento ya está registrado
+    if (documentoExistente) {
+      if (setSnackbar) {
+        setSnackbar({
+          open: true,
+          message: 'No se puede continuar. El número de documento ya está registrado en el sistema.',
+          severity: 'error'
+        });
+      }
+      return; // NO permite avanzar
+    }
+
+    // ❌ Bloquear si aún está verificando el documento
+    if (checkingDocumento) {
+      if (setSnackbar) {
+        setSnackbar({
+          open: true,
+          message: 'Espere mientras verificamos el número de documento...',
+          severity: 'warning'
+        });
+      }
+      return;
+    }
+
+    // ✅ Todo OK, permitir avanzar
     onNext(data);
   };
 
@@ -292,9 +314,10 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
                         }
                         return true;
                       }
-                    },
-                    onChange: handleNumeroDocumentoChange
+                    }
                   })}
+                  value={watch('numeroDocumento') || ''}
+                  onChange={handleNumeroDocumentoChange}
                   isInvalid={!!errors.numeroDocumento || documentoExistente}
                   disabled={!tipoDocumento || checkingDocumento}
                   inputMode="numeric"
@@ -474,9 +497,29 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
 
       {/* Botón Siguiente */}
       <div className="d-grid mt-4">
-        <Button variant="primary" type="submit" size="lg" className="btn-next">
-          Siguiente
-          <i className="bi bi-arrow-right ms-2"></i>
+        <Button
+          variant="primary"
+          type="submit"
+          size="lg"
+          className="btn-next"
+          disabled={documentoExistente || checkingDocumento}
+        >
+          {checkingDocumento ? (
+            <>
+              <Spinner animation="border" size="sm" className="me-2" />
+              Verificando documento...
+            </>
+          ) : documentoExistente ? (
+            <>
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              Documento duplicado
+            </>
+          ) : (
+            <>
+              Siguiente
+              <i className="bi bi-arrow-right ms-2"></i>
+            </>
+          )}
         </Button>
       </div>
     </Form>
