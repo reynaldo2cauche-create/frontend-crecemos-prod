@@ -21,7 +21,12 @@ import {
   getTiposComprobante,
 } from '../../services/ventasService';
 import { getTarifasServicios, getPaquetes } from '../../services/serviciosService';
-import { getPacientesAll, getResponsablesPorPaciente } from '../../services/pacienteService';
+import {
+  getPacientesAll,
+  getResponsablesPorPaciente,
+  getTodosLosResponsables,
+  getPacientesPorResponsable
+} from '../../services/pacienteService';
 
 // ─── Componente Autocomplete ──────────────────────────────────────────────────
 const SearchableCombobox = ({
@@ -170,27 +175,28 @@ const VenderServiciosTab = () => {
   // ── Carga inicial ──────────────────────────────────────────────────────────
   useEffect(() => { cargarDatos(); }, []);
 
-useEffect(() => {
-  if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && responsableSeleccionado) {
-    // El responsable ya tiene sus pacientes cargados en el objeto
-    const resp = responsables.find(r => r.id === parseInt(responsableSeleccionado));
-    // Si el objeto responsable trae sus pacientes relacionados:
-    setPacientesDelResponsable(resp?.pacientes || []);
-    // Si no los trae, hacer un fetch aparte con el responsable_id
-  }
-}, [responsableSeleccionado]);
+  // 🆕 Cuando selecciona responsable → cargar sus pacientes
+  useEffect(() => {
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && responsableSeleccionado) {
+      cargarPacientesDelResponsable();
+    }
+  }, [responsableSeleccionado]);
 
   const cargarDatos = async () => {
     try {
-      const [tarifasData, pacData, compData, tiposComp] = await Promise.all([
+      const [tarifasData, pacData, respData, compData, tiposComp] = await Promise.all([
         getTarifasServicios(),
         getPacientesAll(),
+        getTodosLosResponsables(), // 🆕 Cargar todos los responsables
         getCompradoresExternos(),
         getTiposComprobante(),
       ]);
 
       setTarifas(Array.isArray(tarifasData) ? tarifasData.filter(t => t.flg_activo || t.activo) : []);
       setPacientes(Array.isArray(pacData) ? pacData : []);
+      // 🆕 Guardar responsables desde el inicio
+      const responsablesArray = respData?.data && Array.isArray(respData.data) ? respData.data : [];
+      setResponsables(responsablesArray);
       setCompradoresExternos(Array.isArray(compData) ? compData : []);
       setTiposComprobante(Array.isArray(tiposComp) ? tiposComp : []);
 
@@ -205,14 +211,21 @@ useEffect(() => {
     }
   };
 
-  const cargarResponsables = async () => {
+  // 🆕 Cargar pacientes del responsable seleccionado
+  const cargarPacientesDelResponsable = async () => {
     try {
-      const resp = await getResponsablesPorPaciente(pacienteSeleccionado);
-      const arr = resp?.data && Array.isArray(resp.data) ? resp.data
-        : Array.isArray(resp) ? resp : [];
-      setResponsables(arr);
-    } catch {
-      setResponsables([]);
+      const resp = await getPacientesPorResponsable(responsableSeleccionado);
+      const pacientesResp = resp?.data && Array.isArray(resp.data) ? resp.data : [];
+      setPacientesDelResponsable(pacientesResp);
+
+      // ✅ Si tiene 1 solo paciente → autoseleccionarlo en las líneas
+      if (pacientesResp.length === 1) {
+        const pacienteUnico = pacientesResp[0].id;
+        setLineas(lineas.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: pacienteUnico } : l));
+      }
+    } catch (error) {
+      console.error('Error cargando pacientes del responsable:', error);
+      setPacientesDelResponsable([]);
     }
   };
 
@@ -255,6 +268,13 @@ useEffect(() => {
       sesiones = 1;
     }
 
+    // 🆕 Determinar paciente para la línea
+    let pacienteLineaId = pacienteSeleccionado; // Para PACIENTE o EXTERNO
+    // Si es RESPONSABLE y tiene 1 solo paciente → autoasignar
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length === 1) {
+      pacienteLineaId = pacientesDelResponsable[0].id;
+    }
+
     setLineas([...lineas, {
       id: Date.now(),
       tipo_venta_servicio_id: tipoVentaId,
@@ -270,7 +290,7 @@ useEffect(() => {
       precio_unitario:        parseFloat(tarifaSeleccionada.precio || 0),
       descuento_tipo:         '',
       descuento_valor:        '',
-      paciente_linea_id:      pacienteSeleccionado,
+      paciente_linea_id:      pacienteLineaId,
     }]);
 
     setBusqueda('');
@@ -343,6 +363,7 @@ useEffect(() => {
     setLineas([]);
     setPacienteSeleccionado('');
     setResponsableSeleccionado('');
+    setPacientesDelResponsable([]); // 🆕 Limpiar pacientes del responsable
     setCompradorExternoSeleccionado('');
     setDescuentoGlobal({ tipo: '%', valor: '' });
     setNota('');
@@ -368,7 +389,7 @@ useEffect(() => {
 
     if (lineas.length === 0) return setError('Agrega al menos un servicio');
     if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteSeleccionado) return setError('Selecciona un paciente');
-    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && (!pacienteSeleccionado || !responsableSeleccionado)) return setError('Selecciona un paciente y su responsable');
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
     if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
 
@@ -537,37 +558,27 @@ useEffect(() => {
                 )}
 
                 {tipoPagador === TIPOS_PAGADOR.RESPONSABLE && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-2">Paciente *</label>
-                      <SearchableCombobox
-                        items={pacientes}
-                        value={pacienteSeleccionado}
-                        onChange={(value) => {
-                          setPacienteSeleccionado(value);
-                          setResponsableSeleccionado('');
-                          setLineas(lineas.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: value } : l));
-                        }}
-                        placeholder="Buscar por DNI o nombre..."
-                        getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
-                        getItemValue={(p) => p.id}
-                        getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase()}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-2">Responsable (Pagador) *</label>
-                      <SearchableCombobox
-                        items={responsables}
-                        value={responsableSeleccionado}
-                        onChange={(value) => setResponsableSeleccionado(value)}
-                        disabled={!pacienteSeleccionado}
-                        placeholder="Buscar por DNI o nombre..."
-                        getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} (${r.responsable_relacion?.nombre || 'Sin relación'}) - DNI: ${r.numero_documento || 'S/N'}`.trim()}
-                        getItemValue={(r) => r.id}
-                        getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
-                      />
-                    </div>
-                  </>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2">Responsable (Pagador) *</label>
+                    <SearchableCombobox
+                      items={responsables}
+                      value={responsableSeleccionado}
+                      onChange={(value) => {
+                        setResponsableSeleccionado(value);
+                        setPacienteSeleccionado('');
+                        setPacientesDelResponsable([]);
+                      }}
+                      placeholder="Buscar responsable por DNI o nombre..."
+                      getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} - DNI: ${r.numero_documento || 'S/N'}`.trim()}
+                      getItemValue={(r) => r.id}
+                      getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
+                    />
+                    {responsableSeleccionado && pacientesDelResponsable.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        ℹ️ Selecciona el paciente en cada línea de servicio ({pacientesDelResponsable.length} paciente{pacientesDelResponsable.length > 1 ? 's' : ''} a cargo)
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {tipoPagador === TIPOS_PAGADOR.EXTERNO && (
@@ -670,22 +681,20 @@ useEffect(() => {
                             <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
                           )}
                         </td>
-                        <td className="px-4 py-4">
                         <td className="px-4 py-4 min-w-[200px]">
-  <SearchableCombobox
-    items={
-      tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0
-        ? pacientesDelResponsable  // solo pacientes del responsable
-        : pacientes                // todos (para pagador Paciente o Externo)
-    }
-    value={linea.paciente_linea_id}
-    onChange={(val) => setPacienteLinea(linea.id, val)}
-    placeholder="Buscar paciente..."
-    getItemLabel={(p) => `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno || ''}`.trim()}
-    getItemValue={(p) => p.id}
-    getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres} ${p.apellido_paterno}`.toLowerCase()}
-  />
-</td>
+                          <SearchableCombobox
+                            items={
+                              tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0
+                                ? pacientesDelResponsable  // solo pacientes del responsable
+                                : pacientes                // todos (para pagador Paciente o Externo)
+                            }
+                            value={linea.paciente_linea_id}
+                            onChange={(val) => setPacienteLinea(linea.id, val)}
+                            placeholder="Buscar paciente..."
+                            getItemLabel={(p) => `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno || ''}`.trim()}
+                            getItemValue={(p) => p.id}
+                            getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres} ${p.apellido_paterno}`.toLowerCase()}
+                          />
                         </td>
                         <td className="px-4 py-4">
                           {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (

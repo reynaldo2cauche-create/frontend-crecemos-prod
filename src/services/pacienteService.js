@@ -114,6 +114,28 @@ export const buscarResponsablePorDni = async (pacienteId, dni) => {
   }
 }
 
+// 🆕 Obtener TODOS los responsables (para venta de servicios)
+export const getTodosLosResponsables = async () => {
+  try {
+    const response = await api.get('/responsables');
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener responsables:', error);
+    throw error;
+  }
+};
+
+// 🆕 Obtener pacientes a cargo de un responsable
+export const getPacientesPorResponsable = async (responsableId) => {
+  try {
+    const response = await api.get(`/responsables/${responsableId}/pacientes`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener pacientes del responsable:', error);
+    throw error;
+  }
+};
+
 export const getProcesosLegalesInfantiles = async () => {
   const response = await api.get('/procesos-legales-infantiles');
   return response.data;
