@@ -10,6 +10,7 @@ import {
   XMarkIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   getProductos,
   crearProducto,
@@ -358,6 +359,8 @@ const ProductosTab = () => {
   const [modal, setModal] = useState(null);
   const [confirmToggle, setConfirmToggle] = useState(null);
   const [accionLoading, setAccionLoading] = useState(false);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -391,6 +394,17 @@ const ProductosTab = () => {
     p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
     p.codigo?.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  // Paginación
+  const totalPaginas = Math.ceil(productosFiltrados.length / registrosPorPagina);
+  const indexUltimo = paginaActual * registrosPorPagina;
+  const indexPrimero = indexUltimo - registrosPorPagina;
+  const productosPaginados = productosFiltrados.slice(indexPrimero, indexUltimo);
+
+  // Resetear a página 1 cuando cambia el filtro
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, mostrarTodos, soloStockBajo]);
 
   const handleToggleEstado = async () => {
     if (!confirmToggle) return;
@@ -557,7 +571,7 @@ const ProductosTab = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {productosFiltrados.map(p => (
+                {productosPaginados.map(p => (
                   <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${!p.activo ? 'opacity-50' : ''}`}>
                     <td className="px-6 py-4">
                       <div>
@@ -611,11 +625,76 @@ const ProductosTab = () => {
         )}
       </div>
 
-      {/* Contador */}
-      {!loading && (
-        <p className="text-xs text-gray-400 text-right">
-          {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''}
-        </p>
+      {/* Paginación */}
+      {!loading && productosFiltrados.length > 0 && (
+        <div className="flex items-center justify-between px-4">
+          <p className="text-xs text-gray-400">
+            Mostrando {indexPrimero + 1}-{Math.min(indexUltimo, productosFiltrados.length)} de {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={registrosPorPagina}
+              onChange={(e) => {
+                setRegistrosPorPagina(Number(e.target.value));
+                setPaginaActual(1);
+              }}
+              className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+            >
+              <option value="10">10 por página</option>
+              <option value="25">25 por página</option>
+              <option value="50">50 por página</option>
+              <option value="100">100 por página</option>
+            </select>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                disabled={paginaActual === 1}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPaginas <= 5) {
+                    pageNum = i + 1;
+                  } else if (paginaActual <= 3) {
+                    pageNum = i + 1;
+                  } else if (paginaActual >= totalPaginas - 2) {
+                    pageNum = totalPaginas - 4 + i;
+                  } else {
+                    pageNum = paginaActual - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPaginaActual(pageNum)}
+                      className={`min-w-[32px] px-2 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                        paginaActual === pageNum
+                          ? 'bg-[#7B1FA2] text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaActual === totalPaginas}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal crear/editar */}

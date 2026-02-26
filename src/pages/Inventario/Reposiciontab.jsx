@@ -14,6 +14,7 @@ import {
   CheckIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   getComprasReposicion,
   crearCompraReposicion,
@@ -828,6 +829,8 @@ const ReposicionTab = () => {
   const [loading, setLoading] = useState(true);
   const [modalCrear, setModalCrear] = useState(false);
   const [compraDetalle, setCompraDetalle] = useState(null);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
 
   const cargar = async () => {
     setLoading(true);
@@ -867,6 +870,12 @@ const ReposicionTab = () => {
     const now = new Date();
     return f.getMonth() === now.getMonth() && f.getFullYear() === now.getFullYear();
   }).length;
+
+  // Paginación
+  const totalPaginas = Math.ceil(compras.length / registrosPorPagina);
+  const indexUltimo = paginaActual * registrosPorPagina;
+  const indexPrimero = indexUltimo - registrosPorPagina;
+  const comprasPaginadas = compras.slice(indexPrimero, indexUltimo);
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -955,7 +964,7 @@ const ReposicionTab = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {compras.map(c => {
+                {comprasPaginadas.map(c => {
                   const totalCompra = (c.detalles || []).reduce(
                     (acc, d) => acc + d.cantidad * d.precio_unitario, 0
                   );
@@ -986,6 +995,77 @@ const ReposicionTab = () => {
           </div>
         )}
       </div>
+
+      {/* Paginación */}
+      {!loading && compras.length > 0 && (
+        <div className="flex items-center justify-between px-4">
+          <p className="text-xs text-gray-400">
+            Mostrando {indexPrimero + 1}-{Math.min(indexUltimo, compras.length)} de {compras.length} compra{compras.length !== 1 ? 's' : ''}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={registrosPorPagina}
+              onChange={(e) => {
+                setRegistrosPorPagina(Number(e.target.value));
+                setPaginaActual(1);
+              }}
+              className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+            >
+              <option value="10">10 por página</option>
+              <option value="25">25 por página</option>
+              <option value="50">50 por página</option>
+            </select>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                disabled={paginaActual === 1}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPaginas <= 5) {
+                    pageNum = i + 1;
+                  } else if (paginaActual <= 3) {
+                    pageNum = i + 1;
+                  } else if (paginaActual >= totalPaginas - 2) {
+                    pageNum = totalPaginas - 4 + i;
+                  } else {
+                    pageNum = paginaActual - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPaginaActual(pageNum)}
+                      className={`min-w-[32px] px-2 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                        paginaActual === pageNum
+                          ? 'bg-[#7B1FA2] text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaActual === totalPaginas}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalCrear && (
         <NuevaCompraModal

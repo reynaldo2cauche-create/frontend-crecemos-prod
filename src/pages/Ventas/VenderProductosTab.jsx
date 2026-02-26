@@ -10,6 +10,7 @@ import {
   UserPlusIcon,
   XMarkIcon,
   DocumentTextIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 import {
   crearVentaProducto,
@@ -141,7 +142,6 @@ const VenderProductosTab = () => {
   const [busqueda, setBusqueda] = useState('');
   const [mostrarResultados, setMostrarResultados] = useState(false);
   const [descuentoGlobal, setDescuentoGlobal] = useState({ tipo: '%', valor: '' });
-  const [observaciones, setObservaciones] = useState('');
   const [nota, setNota] = useState('');
 
   // 🆕 Estados para tipo de pagador
@@ -328,7 +328,7 @@ const VenderProductosTab = () => {
     }
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     setError('');
     setExito('');
 
@@ -340,7 +340,8 @@ const VenderProductosTab = () => {
     setLoading(true);
     try {
       const payload = {
-        tipo_pagador_id: tipoPagador,
+        // FIX: el DTO del backend espera tipo_comprador_id, no tipo_pagador_id
+        tipo_comprador_id: tipoPagador,
         tipo_comprobante_id: tipoComprobante,
         fecha_venta: new Date().toISOString().slice(0, 10),
         user_crea_id: user?.id,
@@ -358,11 +359,9 @@ const VenderProductosTab = () => {
         }),
       };
 
-      // 🆕 Agregar ID según tipo de pagador
       if (tipoPagador === TIPOS_PAGADOR.PACIENTE) payload.paciente_id = parseInt(pacienteId);
       if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) {
         payload.responsable_id = parseInt(responsableId);
-        // Si tiene paciente seleccionado, también enviarlo
         if (pacienteId) payload.paciente_id = parseInt(pacienteId);
       }
       if (tipoPagador === TIPOS_PAGADOR.EXTERNO) payload.comprador_externo_id = parseInt(compradorExternoId);
@@ -384,13 +383,14 @@ const VenderProductosTab = () => {
       setCompradorExternoId('');
       setPacientesDelResponsable([]);
       setDescuentoGlobal({ tipo: '%', valor: '' });
-      setObservaciones('');
       setNota('');
 
       setTimeout(() => setExito(''), 5000);
     } catch (err) {
       console.error('Error al registrar venta:', err);
-      setError(err?.response?.data?.message || 'Error al registrar la venta');
+      // FIX: NestJS devuelve message como array en errores de validación
+      const msg = err?.response?.data?.message;
+      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Error al registrar la venta');
     } finally {
       setLoading(false);
     }
@@ -399,24 +399,16 @@ const VenderProductosTab = () => {
   const totales = calcularTotales();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Nueva Venta - Productos</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Registra ventas de productos del inventario
-              </p>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1.5">
+            <ShoppingCartIcon className="w-8 h-8 text-[#7B1FA2]" />
+            <h1 className="text-3xl font-bold text-gray-900">Venta de Productos</h1>
           </div>
+          <p className="text-sm text-gray-500">Registra ventas de productos del inventario</p>
         </div>
-      </div>
-
-      {/* Contenido */}
-      <div className="px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Alertas */}
           {error && (
@@ -699,32 +691,18 @@ const VenderProductosTab = () => {
           {/* Resumen y totales */}
           <div className="p-6 border-t border-gray-100">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Observaciones */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">
-                    Observaciones (visible en comprobante)
-                  </label>
-                  <textarea
-                    value={observaciones}
-                    onChange={(e) => setObservaciones(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
-                    placeholder="Ej: Producto con garantía de 30 días"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">
-                    Nota interna (no visible en comprobante)
-                  </label>
-                  <textarea
-                    value={nota}
-                    onChange={(e) => setNota(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
-                    placeholder="Notas internas..."
-                  />
-                </div>
+              {/* Nota interna */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Nota interna (no visible en comprobante)
+                </label>
+                <textarea
+                  value={nota}
+                  onChange={(e) => setNota(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                  placeholder="Notas internas..."
+                />
               </div>
 
               {/* Totales */}
@@ -780,7 +758,6 @@ const VenderProductosTab = () => {
                 setLineas([]);
                 setPacienteId('');
                 setDescuentoGlobal({ tipo: '%', valor: '' });
-                setObservaciones('');
                 setNota('');
               }}
               className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
@@ -795,7 +772,6 @@ const VenderProductosTab = () => {
               {loading ? 'Guardando...' : 'Guardar Venta'}
             </button>
           </div>
-        </div>
         </div>
       </div>
 
@@ -892,6 +868,7 @@ const VenderProductosTab = () => {
         document.body
       )}
     </div>
+    
   );
 };
 

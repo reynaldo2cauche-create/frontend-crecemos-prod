@@ -10,6 +10,7 @@ import {
   UserPlusIcon,
   XMarkIcon,
   DocumentTextIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import {
   crearVentaServicio,
@@ -40,7 +41,7 @@ const SearchableCombobox = ({
   disabled = false,
   className = '',
 }) => {
-  const [isOpen, setIsOpen]     = useState(false);
+  const [isOpen, setIsOpen]         = useState(false);
   const [inputValue, setInputValue] = useState('');
   const wrapperRef = useRef(null);
 
@@ -104,7 +105,7 @@ const SearchableCombobox = ({
       {isOpen && !disabled && filteredItems.length > 0 && (
         <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
           {filteredItems.map((item, i) => {
-            const itemValue = getItemValue(item);
+            const itemValue  = getItemValue(item);
             const isSelected = itemValue === value;
             return (
               <button
@@ -140,31 +141,31 @@ const VenderServiciosTab = () => {
   const [compradoresExternos, setCompradoresExternos] = useState([]);
   const [tiposComprobante, setTiposComprobante]       = useState([]);
 
-  const [lineas, setLineas]               = useState([]);
-  const [busqueda, setBusqueda]           = useState('');
-  const [mostrarResultados, setMostrarResultados] = useState(false);
-  const [descuentoGlobal, setDescuentoGlobal]     = useState({ tipo: '%', valor: '' });
-  const [nota, setNota]                   = useState('');
+  const [lineas, setLineas]                         = useState([]);
+  const [busqueda, setBusqueda]                     = useState('');
+  const [mostrarResultados, setMostrarResultados]   = useState(false);
+  const [descuentoGlobal, setDescuentoGlobal]       = useState({ tipo: '%', valor: '' });
+  const [nota, setNota]                             = useState('');
 
   // Pagador
-  const [tipoPagador, setTipoPagador]                         = useState(TIPOS_PAGADOR.PACIENTE);
-  const [pacienteSeleccionado, setPacienteSeleccionado]       = useState('');
-  const [responsableSeleccionado, setResponsableSeleccionado] = useState('');
+  const [tipoPagador, setTipoPagador]                                   = useState(TIPOS_PAGADOR.PACIENTE);
+  const [pacienteSeleccionado, setPacienteSeleccionado]                 = useState('');
+  const [responsableSeleccionado, setResponsableSeleccionado]           = useState('');
   const [compradorExternoSeleccionado, setCompradorExternoSeleccionado] = useState('');
 
   // Comprobante
-  const [tipoComprobante, setTipoComprobante] = useState(1); // 1=Nota de Venta por defecto
+  const [tipoComprobante, setTipoComprobante] = useState(1);
 
   // Modal tipo de venta
   const [mostrarModalTipoVenta, setMostrarModalTipoVenta] = useState(false);
   const [tarifaSeleccionada, setTarifaSeleccionada]       = useState(null);
   const [paqueteSeleccionado, setPaqueteSeleccionado]     = useState('');
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-  const [exito, setExito]     = useState('');
-  const [mostrarModalExterno, setMostrarModalExterno] = useState(false);
-  const [formExterno, setFormExterno] = useState({ dni: '', nombre: '', telefono: '', email: '' });
+  const [loading, setLoading]                           = useState(false);
+  const [error, setError]                               = useState('');
+  const [exito, setExito]                               = useState('');
+  const [mostrarModalExterno, setMostrarModalExterno]   = useState(false);
+  const [formExterno, setFormExterno]                   = useState({ dni: '', nombre: '', telefono: '', email: '' });
   const [pacientesDelResponsable, setPacientesDelResponsable] = useState([]);
 
   const searchRef = useRef(null);
@@ -175,7 +176,6 @@ const VenderServiciosTab = () => {
   // ── Carga inicial ──────────────────────────────────────────────────────────
   useEffect(() => { cargarDatos(); }, []);
 
-  // 🆕 Cuando selecciona responsable → cargar sus pacientes
   useEffect(() => {
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && responsableSeleccionado) {
       cargarPacientesDelResponsable();
@@ -187,16 +187,14 @@ const VenderServiciosTab = () => {
       const [tarifasData, pacData, respData, compData, tiposComp] = await Promise.all([
         getTarifasServicios(),
         getPacientesAll(),
-        getTodosLosResponsables(), // 🆕 Cargar todos los responsables
+        getTodosLosResponsables(),
         getCompradoresExternos(),
         getTiposComprobante(),
       ]);
 
       setTarifas(Array.isArray(tarifasData) ? tarifasData.filter(t => t.flg_activo || t.activo) : []);
       setPacientes(Array.isArray(pacData) ? pacData : []);
-      // 🆕 Guardar responsables desde el inicio
-      const responsablesArray = respData?.data && Array.isArray(respData.data) ? respData.data : [];
-      setResponsables(responsablesArray);
+      setResponsables(respData?.data && Array.isArray(respData.data) ? respData.data : []);
       setCompradoresExternos(Array.isArray(compData) ? compData : []);
       setTiposComprobante(Array.isArray(tiposComp) ? tiposComp : []);
 
@@ -211,20 +209,18 @@ const VenderServiciosTab = () => {
     }
   };
 
-  // 🆕 Cargar pacientes del responsable seleccionado
   const cargarPacientesDelResponsable = async () => {
     try {
       const resp = await getPacientesPorResponsable(responsableSeleccionado);
       const pacientesResp = resp?.data && Array.isArray(resp.data) ? resp.data : [];
       setPacientesDelResponsable(pacientesResp);
 
-      // ✅ Si tiene 1 solo paciente → autoseleccionarlo en las líneas
       if (pacientesResp.length === 1) {
         const pacienteUnico = pacientesResp[0].id;
-        setLineas(lineas.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: pacienteUnico } : l));
+        setLineas(prev => prev.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: pacienteUnico } : l));
       }
-    } catch (error) {
-      console.error('Error cargando pacientes del responsable:', error);
+    } catch (err) {
+      console.error('Error cargando pacientes del responsable:', err);
       setPacientesDelResponsable([]);
     }
   };
@@ -232,10 +228,11 @@ const VenderServiciosTab = () => {
   // ── Búsqueda de tarifas ────────────────────────────────────────────────────
   const itemsFiltrados = busqueda
     ? tarifas.filter(t => {
-        const servicio = t.servicio?.nombre || '';
-        const motivo   = t.motivo_cita?.nombre || '';
         const q = busqueda.toLowerCase();
-        return servicio.toLowerCase().includes(q) || motivo.toLowerCase().includes(q);
+        return (
+          (t.servicio?.nombre || '').toLowerCase().includes(q) ||
+          (t.motivo_cita?.nombre || '').toLowerCase().includes(q)
+        );
       })
     : [];
 
@@ -268,15 +265,13 @@ const VenderServiciosTab = () => {
       sesiones = 1;
     }
 
-    // 🆕 Determinar paciente para la línea
-    let pacienteLineaId = pacienteSeleccionado; // Para PACIENTE o EXTERNO
-    // Si es RESPONSABLE y tiene 1 solo paciente → autoasignar
+    let pacienteLineaId = pacienteSeleccionado;
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length === 1) {
       pacienteLineaId = pacientesDelResponsable[0].id;
     }
 
-    setLineas([...lineas, {
-      id: Date.now(),
+    setLineas(prev => [...prev, {
+      id:                     Date.now(),
       tipo_venta_servicio_id: tipoVentaId,
       servicio_tarifa_id:     tarifaSeleccionada.id,
       servicio_id:            tarifaSeleccionada.servicio_id,
@@ -299,19 +294,17 @@ const VenderServiciosTab = () => {
     setPaqueteSeleccionado('');
   };
 
-  const setSesiones = (id, val) => {
-    setLineas(lineas.map(l => {
-      if (l.id !== id) return l;
-      return l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
-        ? { ...l, cantidad_paquetes: Math.max(1, val) }
-        : { ...l, sesiones: Math.max(1, val) };
-    }));
-  };
-
-  const setPrecioUnitario  = (id, precio) => setLineas(lineas.map(l => l.id === id ? { ...l, precio_unitario: parseFloat(precio) || 0 } : l));
-  const setDescuentoLinea  = (id, tipo, valor) => setLineas(lineas.map(l => l.id === id ? { ...l, descuento_tipo: tipo, descuento_valor: valor } : l));
-  const setPacienteLinea   = (id, pacId) => setLineas(lineas.map(l => l.id === id ? { ...l, paciente_linea_id: pacId } : l));
-  const eliminarLinea      = (id) => setLineas(lineas.filter(l => l.id !== id));
+  const setSesiones       = (id, val) => setLineas(prev => prev.map(l => {
+    if (l.id !== id) return l;
+    return l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
+      ? { ...l, cantidad_paquetes: Math.max(1, val) }
+      : { ...l, sesiones: Math.max(1, val) };
+  }));
+  // Precio unitario es fijo (viene de la tarifa/paquete) y no es editable manualmente
+  // const setPrecioUnitario = (id, precio) => setLineas(prev => prev.map(l => l.id === id ? { ...l, precio_unitario: parseFloat(precio) || 0 } : l));
+  const setDescuentoLinea = (id, tipo, valor) => setLineas(prev => prev.map(l => l.id === id ? { ...l, descuento_tipo: tipo, descuento_valor: valor } : l));
+  const setPacienteLinea  = (id, pacId) => setLineas(prev => prev.map(l => l.id === id ? { ...l, paciente_linea_id: pacId } : l));
+  const eliminarLinea     = (id) => setLineas(prev => prev.filter(l => l.id !== id));
 
   // ── Cálculos ───────────────────────────────────────────────────────────────
   const calcularLinea = (linea) => {
@@ -327,8 +320,6 @@ const VenderServiciosTab = () => {
         : parseFloat(linea.descuento_valor);
     }
     const totalLinea = subtotalBruto - descuento;
-
-    // IGV extraído del precio (ya incluido) solo en Boleta/Factura
     const igv  = conIgv ? totalLinea - totalLinea / 1.18 : 0;
     const base = conIgv ? totalLinea / 1.18 : totalLinea;
 
@@ -363,7 +354,7 @@ const VenderServiciosTab = () => {
     setLineas([]);
     setPacienteSeleccionado('');
     setResponsableSeleccionado('');
-    setPacientesDelResponsable([]); // 🆕 Limpiar pacientes del responsable
+    setPacientesDelResponsable([]);
     setCompradorExternoSeleccionado('');
     setDescuentoGlobal({ tipo: '%', valor: '' });
     setNota('');
@@ -374,7 +365,7 @@ const VenderServiciosTab = () => {
     e.preventDefault();
     try {
       const nuevoExterno = await crearCompradorExterno({ ...formExterno, user_crea_id: user?.id });
-      setCompradoresExternos([...compradoresExternos, nuevoExterno]);
+      setCompradoresExternos(prev => [...prev, nuevoExterno]);
       setCompradorExternoSeleccionado(nuevoExterno.id);
       setMostrarModalExterno(false);
       setFormExterno({ dni: '', nombre: '', telefono: '', email: '' });
@@ -387,18 +378,21 @@ const VenderServiciosTab = () => {
     setError('');
     setExito('');
 
-    if (lineas.length === 0) return setError('Agrega al menos un servicio');
-    if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteSeleccionado) return setError('Selecciona un paciente');
+    if (lineas.length === 0)                                              return setError('Agrega al menos un servicio');
+    if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteSeleccionado)  return setError('Selecciona un paciente');
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
-    if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
+    if (lineas.find(l => !l.paciente_linea_id))                          return setError('Todas las líneas deben tener un paciente asignado');
 
     setLoading(true);
     try {
+      const hoy = new Date();
+      const fecha_venta = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
       const payload = {
-        tipo_pagador_id:      tipoPagador,
-        tipo_comprobante_id:  tipoComprobante,
-        fecha_venta:          new Date().toISOString().slice(0, 10),
+        tipo_pagador_id:     tipoPagador,
+        tipo_comprobante_id: tipoComprobante,
+        fecha_venta,
         detalles: lineas.map(l => {
           const sesionesTotales = l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
             ? (l.cantidad_paquetes || 1) * (l.sesiones_por_paquete || 1)
@@ -423,11 +417,10 @@ const VenderServiciosTab = () => {
         }),
       };
 
-      if (user?.id) payload.user_crea_id = parseInt(user.id);
-
-      if (tipoPagador === TIPOS_PAGADOR.PACIENTE)    payload.paciente_id           = parseInt(pacienteSeleccionado);
-      if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) payload.responsable_id        = parseInt(responsableSeleccionado);
-      if (tipoPagador === TIPOS_PAGADOR.EXTERNO)     payload.comprador_externo_id  = parseInt(compradorExternoSeleccionado);
+      if (user?.id)                              payload.user_crea_id         = parseInt(user.id);
+      if (tipoPagador === TIPOS_PAGADOR.PACIENTE)    payload.paciente_id          = parseInt(pacienteSeleccionado);
+      if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) payload.responsable_id       = parseInt(responsableSeleccionado);
+      if (tipoPagador === TIPOS_PAGADOR.EXTERNO)     payload.comprador_externo_id = parseInt(compradorExternoSeleccionado);
 
       if (descuentoGlobal.tipo && descuentoGlobal.valor) {
         payload.descuento_tipo_id = descuentoGlobal.tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
@@ -451,21 +444,25 @@ const VenderServiciosTab = () => {
 
   const totales = calcularTotales();
 
+  // ── Tipos pagador disponibles (excluye id=3) ───────────────────────────────
+  const OPCIONES_PAGADOR = [
+    { id: TIPOS_PAGADOR.PACIENTE,    nombre: 'Paciente',          icon: UserIcon      },
+    { id: TIPOS_PAGADOR.RESPONSABLE, nombre: 'Responsable',       icon: UserGroupIcon },
+    { id: TIPOS_PAGADOR.EXTERNO,     nombre: 'Comprador Externo', icon: UserPlusIcon  },
+  ].filter(tipo => tipo.id !== 3);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">Nueva Venta - Servicios</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Registra ventas de sesiones individuales o paquetes
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1.5">
+            <ClipboardDocumentListIcon className="w-8 h-8 text-[#7B1FA2]" />
+            <h1 className="text-3xl font-bold text-gray-900">Venta de Servicios</h1>
+          </div>
+          <p className="text-sm text-gray-500">Registra ventas de sesiones individuales o paquetes</p>
         </div>
-      </div>
-
-      <div className="px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
             {/* Alertas */}
@@ -508,12 +505,10 @@ const VenderServiciosTab = () => {
             {/* ── Pagador ───────────────────────────────────────────────────── */}
             <div className="p-6 border-b border-gray-100">
               <label className="block text-xs font-semibold text-gray-600 mb-3">¿Quién paga?</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                {[
-                  { id: TIPOS_PAGADOR.PACIENTE,    nombre: 'Paciente',           icon: UserIcon },
-                  { id: TIPOS_PAGADOR.RESPONSABLE, nombre: 'Responsable',        icon: UserGroupIcon },
-                  { id: TIPOS_PAGADOR.EXTERNO,     nombre: 'Comprador Externo',  icon: UserPlusIcon },
-                ].map(tipo => {
+
+              {/* ✅ Solo muestra tipos pagador con id !== 3 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {OPCIONES_PAGADOR.map(tipo => {
                   const Icon   = tipo.icon;
                   const activo = tipoPagador === tipo.id;
                   return (
@@ -547,7 +542,7 @@ const VenderServiciosTab = () => {
                       value={pacienteSeleccionado}
                       onChange={(value) => {
                         setPacienteSeleccionado(value);
-                        setLineas(lineas.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: value } : l));
+                        setLineas(prev => prev.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: value } : l));
                       }}
                       placeholder="Buscar por DNI o nombre..."
                       getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
@@ -650,12 +645,8 @@ const VenderServiciosTab = () => {
                     <th className="text-center px-4 py-3 text-xs font-bold text-gray-600 uppercase">Cantidad</th>
                     <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">Precio U.</th>
                     <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">Descuento</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">
-                      {conIgv ? 'Base' : 'Subtotal'}
-                    </th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">
-                      {conIgv ? 'IGV (incl.)' : '—'}
-                    </th>
+                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">{conIgv ? 'Base' : 'Subtotal'}</th>
+                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">{conIgv ? 'IGV (incl.)' : '—'}</th>
                     <th className="text-right px-6 py-3 text-xs font-bold text-gray-600 uppercase">Total</th>
                     <th className="px-4 py-3"></th>
                   </tr>
@@ -685,8 +676,8 @@ const VenderServiciosTab = () => {
                           <SearchableCombobox
                             items={
                               tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0
-                                ? pacientesDelResponsable  // solo pacientes del responsable
-                                : pacientes                // todos (para pagador Paciente o Externo)
+                                ? pacientesDelResponsable
+                                : pacientes
                             }
                             value={linea.paciente_linea_id}
                             onChange={(val) => setPacienteLinea(linea.id, val)}
@@ -726,8 +717,9 @@ const VenderServiciosTab = () => {
                           <input
                             type="number" step="0.01" min="0"
                             value={linea.precio_unitario}
-                            onChange={(e) => setPrecioUnitario(linea.id, e.target.value)}
-                            className="w-20 px-2 py-1 text-xs text-right border border-gray-200 rounded"
+                            readOnly
+                            className="w-20 px-2 py-1 text-xs text-right border border-gray-200 rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+                            title="Precio fijo del servicio (no editable)"
                           />
                         </td>
                         <td className="px-4 py-4">
@@ -750,18 +742,11 @@ const VenderServiciosTab = () => {
                             />
                           </div>
                         </td>
-                        {/* Base / Subtotal */}
-                        <td className="px-4 py-4 text-right text-sm text-gray-600">
-                          S/ {calc.base.toFixed(2)}
-                        </td>
-                        {/* IGV o guión */}
+                        <td className="px-4 py-4 text-right text-sm text-gray-600">S/ {calc.base.toFixed(2)}</td>
                         <td className="px-4 py-4 text-right text-sm text-gray-500">
                           {conIgv ? `S/ ${calc.igv.toFixed(2)}` : <span className="text-gray-300">—</span>}
                         </td>
-                        {/* Total línea */}
-                        <td className="px-6 py-4 text-right font-bold text-gray-900">
-                          S/ {calc.totalLinea.toFixed(2)}
-                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-gray-900">S/ {calc.totalLinea.toFixed(2)}</td>
                         <td className="px-4 py-4">
                           <button onClick={() => eliminarLinea(linea.id)} className="p-1 hover:bg-red-50 rounded text-red-600">
                             <TrashIcon className="w-4 h-4" />
@@ -784,7 +769,6 @@ const VenderServiciosTab = () => {
             {/* ── Resumen y totales ─────────────────────────────────────────── */}
             <div className="p-6 border-t border-gray-100">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Nota */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-2">
                     Nota interna (no visible en comprobante)
@@ -798,9 +782,7 @@ const VenderServiciosTab = () => {
                   />
                 </div>
 
-                {/* Totales */}
                 <div className="space-y-3">
-                  {/* Descuento Global */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Descuento Global</span>
                     <div className="flex items-center gap-2">
@@ -827,14 +809,12 @@ const VenderServiciosTab = () => {
                       <span className="text-gray-600">{conIgv ? 'Base imponible' : 'Subtotal'}</span>
                       <span className="font-semibold">S/ {totales.base.toFixed(2)}</span>
                     </div>
-
                     {conIgv && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">IGV (18% incluido)</span>
                         <span className="font-semibold text-gray-500">S/ {totales.igv.toFixed(2)}</span>
                       </div>
                     )}
-
                     <div className="flex items-center justify-between text-lg font-bold border-t border-gray-200 pt-2">
                       <span>Total</span>
                       <span className="text-[#7B1FA2]">S/ {totales.total.toFixed(2)}</span>
@@ -861,7 +841,6 @@ const VenderServiciosTab = () => {
               </button>
             </div>
           </div>
-        </div>
       </div>
 
       {/* ── Modal Tipo de Venta ──────────────────────────────────────────────── */}
@@ -878,7 +857,6 @@ const VenderServiciosTab = () => {
               </p>
             </div>
             <div className="p-6 space-y-4">
-              {/* Sesión individual */}
               <div className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 transition-all">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
@@ -897,7 +875,6 @@ const VenderServiciosTab = () => {
                 </button>
               </div>
 
-              {/* Paquete */}
               <div className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 transition-all">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
@@ -926,7 +903,7 @@ const VenderServiciosTab = () => {
                       ))}
                     </select>
                     {paqueteSeleccionado && (() => {
-                      const paq = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
+                      const paq     = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
                       const precioU = parseFloat(tarifaSeleccionada.precio || 0);
                       const sesiones = paq?.cantidadSesiones || 0;
                       return (
@@ -976,9 +953,9 @@ const VenderServiciosTab = () => {
             </div>
             <form onSubmit={handleCrearExterno} className="p-6 space-y-4">
               {[
-                { key: 'dni',      label: 'DNI *',    required: true,  placeholder: '12345678',        type: 'text' },
-                { key: 'nombre',   label: 'Nombre *', required: true,  placeholder: 'Juan Pérez',      type: 'text' },
-                { key: 'telefono', label: 'Teléfono', required: false, placeholder: '999888777',       type: 'text' },
+                { key: 'dni',      label: 'DNI *',    required: true,  placeholder: '12345678',          type: 'text'  },
+                { key: 'nombre',   label: 'Nombre *', required: true,  placeholder: 'Juan Pérez',        type: 'text'  },
+                { key: 'telefono', label: 'Teléfono', required: false, placeholder: '999888777',         type: 'text'  },
                 { key: 'email',    label: 'Email',    required: false, placeholder: 'email@ejemplo.com', type: 'email' },
               ].map(f => (
                 <div key={f.key}>
