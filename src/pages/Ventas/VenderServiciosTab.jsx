@@ -11,6 +11,7 @@ import {
   XMarkIcon,
   DocumentTextIcon,
   ClipboardDocumentListIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import {
   crearVentaServicio,
@@ -21,41 +22,37 @@ import {
   crearCompradorExterno,
   getTiposComprobante,
 } from '../../services/ventasService';
+import { calcularPromociones, registrarPromocionAplicada } from '../../services/promocionesService';
 import { getTarifasServicios, getPaquetes } from '../../services/serviciosService';
 import {
   getPacientesAll,
-  getResponsablesPorPaciente,
   getTodosLosResponsables,
-  getPacientesPorResponsable
+  getPacientesPorResponsable,
 } from '../../services/pacienteService';
 
-// ─── Componente Autocomplete ──────────────────────────────────────────────────
+// Tipo de venta para servicios (según tipo_venta_promo)
+const TIPO_VENTA_SERVICIO_ID = 2;
+
+// ─── Autocomplete ────────────────────────────────────────────────────────────
 const SearchableCombobox = ({
-  items = [],
-  value,
-  onChange,
-  placeholder = 'Buscar...',
-  getItemLabel,
-  getItemValue,
-  getItemSearchText,
-  disabled = false,
-  className = '',
+  items = [], value, onChange, placeholder = 'Buscar...',
+  getItemLabel, getItemValue, getItemSearchText,
+  disabled = false, className = '',
 }) => {
-  const [isOpen, setIsOpen]         = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const wrapperRef = useRef(null);
-
   const safeItems = Array.isArray(items) ? items : [];
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handle = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setIsOpen(false);
         if (!value) setInputValue('');
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
   }, [value]);
 
   useEffect(() => {
@@ -68,61 +65,34 @@ const SearchableCombobox = ({
   }, [value, safeItems]);
 
   const filteredItems = inputValue.trim()
-    ? safeItems.filter(item =>
-        getItemSearchText(item).toLowerCase().includes(inputValue.toLowerCase())
-      )
+    ? safeItems.filter(item => getItemSearchText(item).toLowerCase().includes(inputValue.toLowerCase()))
     : safeItems;
-
-  const handleInputChange = (e) => {
-    setInputValue(e.target.value);
-    setIsOpen(true);
-    if (!e.target.value) onChange('');
-  };
-
-  const handleSelect = (item) => {
-    onChange(getItemValue(item));
-    setInputValue(getItemLabel(item));
-    setIsOpen(false);
-  };
 
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       <div className="relative">
         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
-          placeholder={placeholder}
-          disabled={disabled}
-          className={`w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] ${
-            disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
-          }`}
+        <input type="text" value={inputValue}
+          onChange={(e) => { setInputValue(e.target.value); setIsOpen(true); if (!e.target.value) onChange(''); }}
+          onFocus={() => setIsOpen(true)} placeholder={placeholder} disabled={disabled}
+          className={`w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
         />
       </div>
-
       {isOpen && !disabled && filteredItems.length > 0 && (
         <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
           {filteredItems.map((item, i) => {
-            const itemValue  = getItemValue(item);
+            const itemValue = getItemValue(item);
             const isSelected = itemValue === value;
             return (
-              <button
-                key={itemValue ?? i}
-                type="button"
-                onClick={() => handleSelect(item)}
-                className={`w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 ${isSelected ? 'bg-purple-50' : ''}`}
-              >
-                <span className={`text-sm block ${isSelected ? 'text-[#7B1FA2] font-semibold' : 'text-gray-900'}`}>
-                  {getItemLabel(item)}
-                </span>
+              <button key={itemValue ?? i} type="button"
+                onClick={() => { onChange(getItemValue(item)); setInputValue(getItemLabel(item)); setIsOpen(false); }}
+                className={`w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 ${isSelected ? 'bg-purple-50' : ''}`}>
+                <span className={`text-sm block ${isSelected ? 'text-[#7B1FA2] font-semibold' : 'text-gray-900'}`}>{getItemLabel(item)}</span>
               </button>
             );
           })}
         </div>
       )}
-
       {isOpen && !disabled && inputValue && filteredItems.length === 0 && (
         <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-8 text-center">
           <p className="text-sm text-gray-400">No se encontraron resultados</p>
@@ -132,48 +102,83 @@ const SearchableCombobox = ({
   );
 };
 
+// ─── Panel de Promociones ────────────────────────────────────────────────────
+const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) => {
+  if (calculando) {
+    return (
+      <div className="p-3 bg-pink-50 border border-pink-200 rounded-lg">
+        <div className="flex items-center gap-2 text-sm text-pink-600">
+          <SparklesIcon className="w-4 h-4 animate-pulse" />
+          <span>Buscando promociones...</span>
+        </div>
+      </div>
+    );
+  }
+  if (!promocionesAplicadas || promocionesAplicadas.length === 0) return null;
+  return (
+    <div className="p-3 bg-green-50 border border-green-200 rounded-lg space-y-2">
+      <div className="flex items-center gap-2">
+        <SparklesIcon className="w-4 h-4 text-green-600" />
+        <span className="text-sm font-semibold text-green-700">
+          {promocionesAplicadas.length} promoción{promocionesAplicadas.length > 1 ? 'es' : ''} aplicada{promocionesAplicadas.length > 1 ? 's' : ''}
+        </span>
+      </div>
+      {promocionesAplicadas.map((p, i) => (
+        <div key={i} className="flex items-center justify-between text-xs text-green-700">
+          <span>✓ {p.mensaje || p.promocion?.nombre}</span>
+          <span className="font-semibold">-S/ {p.descuento.toFixed(2)}</span>
+        </div>
+      ))}
+      <div className="flex items-center justify-between text-sm font-bold text-green-800 border-t border-green-300 pt-2">
+        <span>Ahorro total por promociones</span>
+        <span>-S/ {totalDescuento.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+};
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 const VenderServiciosTab = () => {
-  const [tarifas, setTarifas]                         = useState([]);
-  const [paquetes, setPaquetes]                       = useState([]);
-  const [pacientes, setPacientes]                     = useState([]);
-  const [responsables, setResponsables]               = useState([]);
+  const [tarifas, setTarifas] = useState([]);
+  const [paquetes, setPaquetes] = useState([]);
+  const [pacientes, setPacientes] = useState([]);
+  const [responsables, setResponsables] = useState([]);
   const [compradoresExternos, setCompradoresExternos] = useState([]);
-  const [tiposComprobante, setTiposComprobante]       = useState([]);
+  const [tiposComprobante, setTiposComprobante] = useState([]);
 
-  const [lineas, setLineas]                         = useState([]);
-  const [busqueda, setBusqueda]                     = useState('');
-  const [mostrarResultados, setMostrarResultados]   = useState(false);
-  const [descuentoGlobal, setDescuentoGlobal]       = useState({ tipo: '%', valor: '' });
-  const [nota, setNota]                             = useState('');
+  const [lineas, setLineas] = useState([]);
+  const [busqueda, setBusqueda] = useState('');
+  const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [descuentoGlobal, setDescuentoGlobal] = useState({ tipo: '%', valor: '' });
+  const [nota, setNota] = useState('');
 
-  // Pagador
-  const [tipoPagador, setTipoPagador]                                   = useState(TIPOS_PAGADOR.PACIENTE);
-  const [pacienteSeleccionado, setPacienteSeleccionado]                 = useState('');
-  const [responsableSeleccionado, setResponsableSeleccionado]           = useState('');
+  const [tipoPagador, setTipoPagador] = useState(TIPOS_PAGADOR.PACIENTE);
+  const [pacienteSeleccionado, setPacienteSeleccionado] = useState('');
+  const [responsableSeleccionado, setResponsableSeleccionado] = useState('');
   const [compradorExternoSeleccionado, setCompradorExternoSeleccionado] = useState('');
-
-  // Comprobante
   const [tipoComprobante, setTipoComprobante] = useState(1);
 
-  // Modal tipo de venta
   const [mostrarModalTipoVenta, setMostrarModalTipoVenta] = useState(false);
-  const [tarifaSeleccionada, setTarifaSeleccionada]       = useState(null);
-  const [paqueteSeleccionado, setPaqueteSeleccionado]     = useState('');
+  const [tarifaSeleccionada, setTarifaSeleccionada] = useState(null);
+  const [paqueteSeleccionado, setPaqueteSeleccionado] = useState('');
 
-  const [loading, setLoading]                           = useState(false);
-  const [error, setError]                               = useState('');
-  const [exito, setExito]                               = useState('');
-  const [mostrarModalExterno, setMostrarModalExterno]   = useState(false);
-  const [formExterno, setFormExterno]                   = useState({ dni: '', nombre: '', telefono: '', email: '' });
+  // 🆕 Promociones
+  const [promocionesAplicadas, setPromocionesAplicadas] = useState([]);
+  const [totalDescuentoPromo, setTotalDescuentoPromo] = useState(0);
+  const [calculandoPromos, setCalculandoPromos] = useState(false);
+  const timerPromo = useRef(null);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [exito, setExito] = useState('');
+  const [mostrarModalExterno, setMostrarModalExterno] = useState(false);
+  const [formExterno, setFormExterno] = useState({ dni: '', nombre: '', telefono: '', email: '' });
   const [pacientesDelResponsable, setPacientesDelResponsable] = useState([]);
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   const conIgv = tipoComprobante === 2 || tipoComprobante === 3;
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
   useEffect(() => { cargarDatos(); }, []);
 
   useEffect(() => {
@@ -181,6 +186,18 @@ const VenderServiciosTab = () => {
       cargarPacientesDelResponsable();
     }
   }, [responsableSeleccionado]);
+
+  // 🆕 Recalcular promociones con debounce cuando cambian las líneas
+  useEffect(() => {
+    if (lineas.length === 0) {
+      setPromocionesAplicadas([]);
+      setTotalDescuentoPromo(0);
+      return;
+    }
+    clearTimeout(timerPromo.current);
+    timerPromo.current = setTimeout(() => recalcularPromociones(), 600);
+    return () => clearTimeout(timerPromo.current);
+  }, [lineas]);
 
   const cargarDatos = async () => {
     try {
@@ -191,22 +208,16 @@ const VenderServiciosTab = () => {
         getCompradoresExternos(),
         getTiposComprobante(),
       ]);
-
       setTarifas(Array.isArray(tarifasData) ? tarifasData.filter(t => t.flg_activo || t.activo) : []);
       setPacientes(Array.isArray(pacData) ? pacData : []);
       setResponsables(respData?.data && Array.isArray(respData.data) ? respData.data : []);
       setCompradoresExternos(Array.isArray(compData) ? compData : []);
       setTiposComprobante(Array.isArray(tiposComp) ? tiposComp : []);
-
       try {
         const paquetesData = await getPaquetes();
         setPaquetes(Array.isArray(paquetesData) ? paquetesData.filter(p => p.flgActivo) : []);
-      } catch {
-        setPaquetes([]);
-      }
-    } catch (err) {
-      console.error('Error cargando datos:', err);
-    }
+      } catch { setPaquetes([]); }
+    } catch (err) { console.error('Error cargando datos:', err); }
   };
 
   const cargarPacientesDelResponsable = async () => {
@@ -214,29 +225,57 @@ const VenderServiciosTab = () => {
       const resp = await getPacientesPorResponsable(responsableSeleccionado);
       const pacientesResp = resp?.data && Array.isArray(resp.data) ? resp.data : [];
       setPacientesDelResponsable(pacientesResp);
-
       if (pacientesResp.length === 1) {
-        const pacienteUnico = pacientesResp[0].id;
-        setLineas(prev => prev.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: pacienteUnico } : l));
+        setLineas(prev => prev.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: pacientesResp[0].id } : l));
       }
+    } catch { setPacientesDelResponsable([]); }
+  };
+
+  // 🆕 Llamar al backend para calcular promociones
+  const recalcularPromociones = async () => {
+    if (lineas.length === 0) return;
+    setCalculandoPromos(true);
+    try {
+      const items = lineas.map(l => {
+        const sesionesTotales = l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
+          ? (l.cantidad_paquetes || 1) * (l.sesiones_por_paquete || 1)
+          : (l.sesiones || 1);
+        const subtotalBruto = sesionesTotales * l.precio_unitario;
+        let descuento = 0;
+        if (l.descuento_tipo && l.descuento_valor) {
+          descuento = l.descuento_tipo === '%'
+            ? subtotalBruto * (parseFloat(l.descuento_valor) / 100)
+            : parseFloat(l.descuento_valor);
+        }
+        return {
+          servicio_id: l.servicio_id,
+          paquete_id: l.paquete_id || undefined,
+          motivo_cita_id: l.motivo_cita_id || undefined,
+          cantidad: sesionesTotales,
+          precio_unitario: l.precio_unitario,
+          subtotal: subtotalBruto - descuento,
+        };
+      });
+
+      const resultado = await calcularPromociones({ items });
+      setPromocionesAplicadas(resultado.promociones_aplicadas || []);
+      setTotalDescuentoPromo(resultado.total_descuento || 0);
     } catch (err) {
-      console.error('Error cargando pacientes del responsable:', err);
-      setPacientesDelResponsable([]);
+      console.warn('No se pudieron calcular promociones:', err);
+      setPromocionesAplicadas([]);
+      setTotalDescuentoPromo(0);
+    } finally {
+      setCalculandoPromos(false);
     }
   };
 
-  // ── Búsqueda de tarifas ────────────────────────────────────────────────────
   const itemsFiltrados = busqueda
     ? tarifas.filter(t => {
         const q = busqueda.toLowerCase();
-        return (
-          (t.servicio?.nombre || '').toLowerCase().includes(q) ||
-          (t.motivo_cita?.nombre || '').toLowerCase().includes(q)
-        );
+        return (t.servicio?.nombre || '').toLowerCase().includes(q) || (t.motivo_cita?.nombre || '').toLowerCase().includes(q);
       })
     : [];
 
-  // ── Manejo de líneas ───────────────────────────────────────────────────────
   const seleccionarTarifa = (tarifa) => {
     setTarifaSeleccionada(tarifa);
     setPaqueteSeleccionado('');
@@ -246,21 +285,12 @@ const VenderServiciosTab = () => {
 
   const agregarItemConTipo = (tipoVentaId) => {
     if (!tarifaSeleccionada) return;
-    if (tipoVentaId === TIPOS_VENTA_SERVICIO.PAQUETE && !paqueteSeleccionado) {
-      alert('Debes seleccionar un paquete');
-      return;
-    }
+    if (tipoVentaId === TIPOS_VENTA_SERVICIO.PAQUETE && !paqueteSeleccionado) { alert('Debes seleccionar un paquete'); return; }
 
     let paqueteId = null, paqueteNombre = '', sesionesPorPaquete = null, cantidadPaquetes = null, sesiones = null;
-
     if (tipoVentaId === TIPOS_VENTA_SERVICIO.PAQUETE) {
       const paq = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
-      if (paq) {
-        sesionesPorPaquete = paq.cantidadSesiones;
-        cantidadPaquetes   = 1;
-        paqueteId          = paq.id;
-        paqueteNombre      = paq.nombre;
-      }
+      if (paq) { sesionesPorPaquete = paq.cantidadSesiones; cantidadPaquetes = 1; paqueteId = paq.id; paqueteNombre = paq.nombre; }
     } else {
       sesiones = 1;
     }
@@ -271,21 +301,22 @@ const VenderServiciosTab = () => {
     }
 
     setLineas(prev => [...prev, {
-      id:                     Date.now(),
+      id: Date.now(),
       tipo_venta_servicio_id: tipoVentaId,
-      servicio_tarifa_id:     tarifaSeleccionada.id,
-      servicio_id:            tarifaSeleccionada.servicio_id,
-      paquete_id:             paqueteId,
-      servicio_nombre:        tarifaSeleccionada.servicio?.nombre || `Servicio #${tarifaSeleccionada.servicio_id}`,
-      motivo_nombre:          tarifaSeleccionada.motivo_cita?.nombre || `Motivo #${tarifaSeleccionada.motivo_cita_id}`,
-      paquete_nombre:         paqueteNombre,
-      sesiones_por_paquete:   sesionesPorPaquete,
-      cantidad_paquetes:      cantidadPaquetes,
+      servicio_tarifa_id: tarifaSeleccionada.id,
+      servicio_id: tarifaSeleccionada.servicio_id,
+      motivo_cita_id: tarifaSeleccionada.motivo_cita_id || null,
+      paquete_id: paqueteId,
+      servicio_nombre: tarifaSeleccionada.servicio?.nombre || `Servicio #${tarifaSeleccionada.servicio_id}`,
+      motivo_nombre: tarifaSeleccionada.motivo_cita?.nombre || `Motivo #${tarifaSeleccionada.motivo_cita_id}`,
+      paquete_nombre: paqueteNombre,
+      sesiones_por_paquete: sesionesPorPaquete,
+      cantidad_paquetes: cantidadPaquetes,
       sesiones,
-      precio_unitario:        parseFloat(tarifaSeleccionada.precio || 0),
-      descuento_tipo:         '',
-      descuento_valor:        '',
-      paciente_linea_id:      pacienteLineaId,
+      precio_unitario: parseFloat(tarifaSeleccionada.precio || 0),
+      descuento_tipo: '',
+      descuento_valor: '',
+      paciente_linea_id: pacienteLineaId,
     }]);
 
     setBusqueda('');
@@ -294,24 +325,20 @@ const VenderServiciosTab = () => {
     setPaqueteSeleccionado('');
   };
 
-  const setSesiones       = (id, val) => setLineas(prev => prev.map(l => {
+  const setSesiones = (id, val) => setLineas(prev => prev.map(l => {
     if (l.id !== id) return l;
     return l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
       ? { ...l, cantidad_paquetes: Math.max(1, val) }
       : { ...l, sesiones: Math.max(1, val) };
   }));
-  // Precio unitario es fijo (viene de la tarifa/paquete) y no es editable manualmente
-  // const setPrecioUnitario = (id, precio) => setLineas(prev => prev.map(l => l.id === id ? { ...l, precio_unitario: parseFloat(precio) || 0 } : l));
   const setDescuentoLinea = (id, tipo, valor) => setLineas(prev => prev.map(l => l.id === id ? { ...l, descuento_tipo: tipo, descuento_valor: valor } : l));
-  const setPacienteLinea  = (id, pacId) => setLineas(prev => prev.map(l => l.id === id ? { ...l, paciente_linea_id: pacId } : l));
-  const eliminarLinea     = (id) => setLineas(prev => prev.filter(l => l.id !== id));
+  const setPacienteLinea = (id, pacId) => setLineas(prev => prev.map(l => l.id === id ? { ...l, paciente_linea_id: pacId } : l));
+  const eliminarLinea = (id) => setLineas(prev => prev.filter(l => l.id !== id));
 
-  // ── Cálculos ───────────────────────────────────────────────────────────────
   const calcularLinea = (linea) => {
     const sesionesTotales = linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
       ? linea.cantidad_paquetes * linea.sesiones_por_paquete
       : linea.sesiones;
-
     const subtotalBruto = sesionesTotales * linea.precio_unitario;
     let descuento = 0;
     if (linea.descuento_tipo && linea.descuento_valor) {
@@ -320,9 +347,8 @@ const VenderServiciosTab = () => {
         : parseFloat(linea.descuento_valor);
     }
     const totalLinea = subtotalBruto - descuento;
-    const igv  = conIgv ? totalLinea - totalLinea / 1.18 : 0;
+    const igv = conIgv ? totalLinea - totalLinea / 1.18 : 0;
     const base = conIgv ? totalLinea / 1.18 : totalLinea;
-
     return { subtotalBruto, descuento, totalLinea, igv, base, sesionesTotales };
   };
 
@@ -330,10 +356,9 @@ const VenderServiciosTab = () => {
     let subtotalBruto = 0, descuentosLineas = 0;
     lineas.forEach(l => {
       const c = calcularLinea(l);
-      subtotalBruto    += c.subtotalBruto;
+      subtotalBruto += c.subtotalBruto;
       descuentosLineas += c.descuento;
     });
-
     const subtotalDespuesDesc = subtotalBruto - descuentosLineas;
     let descuentoGlobalMonto = 0;
     if (descuentoGlobal.tipo && descuentoGlobal.valor) {
@@ -341,15 +366,13 @@ const VenderServiciosTab = () => {
         ? subtotalDespuesDesc * (parseFloat(descuentoGlobal.valor) / 100)
         : parseFloat(descuentoGlobal.valor);
     }
-
-    const totalConDesc = subtotalDespuesDesc - descuentoGlobalMonto;
-    const igvTotal  = conIgv ? totalConDesc - totalConDesc / 1.18 : 0;
+    // 🆕 Restar también el descuento por promociones
+    const totalConDesc = subtotalDespuesDesc - descuentoGlobalMonto - totalDescuentoPromo;
+    const igvTotal = conIgv ? totalConDesc - totalConDesc / 1.18 : 0;
     const baseTotal = conIgv ? totalConDesc / 1.18 : totalConDesc;
-
-    return { subtotalBruto, descuentosLineas, descuentoGlobalMonto, base: baseTotal, igv: igvTotal, total: totalConDesc };
+    return { subtotalBruto, descuentosLineas, descuentoGlobalMonto, base: baseTotal, igv: igvTotal, total: Math.max(0, totalConDesc) };
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const resetForm = () => {
     setLineas([]);
     setPacienteSeleccionado('');
@@ -359,6 +382,8 @@ const VenderServiciosTab = () => {
     setDescuentoGlobal({ tipo: '%', valor: '' });
     setNota('');
     setTipoComprobante(1);
+    setPromocionesAplicadas([]);
+    setTotalDescuentoPromo(0);
   };
 
   const handleCrearExterno = async (e) => {
@@ -369,20 +394,17 @@ const VenderServiciosTab = () => {
       setCompradorExternoSeleccionado(nuevoExterno.id);
       setMostrarModalExterno(false);
       setFormExterno({ dni: '', nombre: '', telefono: '', email: '' });
-    } catch (err) {
-      alert(err?.response?.data?.message || 'Error al crear comprador externo');
-    }
+    } catch (err) { alert(err?.response?.data?.message || 'Error al crear comprador externo'); }
   };
 
   const handleSubmit = async () => {
     setError('');
     setExito('');
-
-    if (lineas.length === 0)                                              return setError('Agrega al menos un servicio');
-    if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteSeleccionado)  return setError('Selecciona un paciente');
+    if (lineas.length === 0) return setError('Agrega al menos un servicio');
+    if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteSeleccionado) return setError('Selecciona un paciente');
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
-    if (lineas.find(l => !l.paciente_linea_id))                          return setError('Todas las líneas deben tener un paciente asignado');
+    if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
 
     setLoading(true);
     try {
@@ -390,46 +412,58 @@ const VenderServiciosTab = () => {
       const fecha_venta = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
       const payload = {
-        tipo_pagador_id:     tipoPagador,
+        tipo_pagador_id: tipoPagador,
         tipo_comprobante_id: tipoComprobante,
         fecha_venta,
         detalles: lineas.map(l => {
           const sesionesTotales = l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
             ? (l.cantidad_paquetes || 1) * (l.sesiones_por_paquete || 1)
             : l.sesiones || 1;
-
           const det = {
-            tipo_venta_id:    l.tipo_venta_servicio_id,
-            servicio_id:      parseInt(l.servicio_id),
-            paciente_id:      parseInt(l.paciente_linea_id),
+            tipo_venta_id: l.tipo_venta_servicio_id,
+            servicio_id: parseInt(l.servicio_id),
+            paciente_id: parseInt(l.paciente_linea_id),
             sesiones_totales: sesionesTotales,
-            precio_unitario:  parseFloat(l.precio_unitario),
+            precio_unitario: parseFloat(l.precio_unitario),
           };
-
-          if (l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && l.paquete_id) {
-            det.paquete_id = parseInt(l.paquete_id);
-          }
+          if (l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && l.paquete_id) det.paquete_id = parseInt(l.paquete_id);
           if (l.descuento_tipo && l.descuento_valor) {
             det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
-            det.descuento_valor   = parseFloat(l.descuento_valor);
+            det.descuento_valor = parseFloat(l.descuento_valor);
           }
           return det;
         }),
       };
 
-      if (user?.id)                              payload.user_crea_id         = parseInt(user.id);
-      if (tipoPagador === TIPOS_PAGADOR.PACIENTE)    payload.paciente_id          = parseInt(pacienteSeleccionado);
-      if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) payload.responsable_id       = parseInt(responsableSeleccionado);
-      if (tipoPagador === TIPOS_PAGADOR.EXTERNO)     payload.comprador_externo_id = parseInt(compradorExternoSeleccionado);
+      if (user?.id) payload.user_crea_id = parseInt(user.id);
+      if (tipoPagador === TIPOS_PAGADOR.PACIENTE) payload.paciente_id = parseInt(pacienteSeleccionado);
+      if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) payload.responsable_id = parseInt(responsableSeleccionado);
+      if (tipoPagador === TIPOS_PAGADOR.EXTERNO) payload.comprador_externo_id = parseInt(compradorExternoSeleccionado);
 
       if (descuentoGlobal.tipo && descuentoGlobal.valor) {
         payload.descuento_tipo_id = descuentoGlobal.tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
-        payload.descuento_valor   = parseFloat(descuentoGlobal.valor);
+        payload.descuento_valor = parseFloat(descuentoGlobal.valor);
       }
+    if (nota) payload.nota = nota;
+    if (totalDescuentoPromo > 0) {
+      payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
+    }
 
-      if (nota) payload.nota = nota;
+    const ventaCreada = await crearVentaServicio(payload);
 
-      await crearVentaServicio(payload);
+      // 🆕 Registrar promociones aplicadas en el historial
+      if (ventaCreada?.id && promocionesAplicadas.length > 0) {
+        await Promise.allSettled(
+          promocionesAplicadas.map(p =>
+            registrarPromocionAplicada({
+              promocion_id: p.promocion.id,
+              tipo_venta_id: TIPO_VENTA_SERVICIO_ID,
+              venta_id: ventaCreada.id,
+              monto_ahorrado: p.descuento,
+            })
+          )
+        );
+      }
 
       setExito('¡Venta de servicios registrada exitosamente!');
       resetForm();
@@ -444,18 +478,15 @@ const VenderServiciosTab = () => {
 
   const totales = calcularTotales();
 
-  // ── Tipos pagador disponibles (excluye id=3) ───────────────────────────────
   const OPCIONES_PAGADOR = [
-    { id: TIPOS_PAGADOR.PACIENTE,    nombre: 'Paciente',          icon: UserIcon      },
-    { id: TIPOS_PAGADOR.RESPONSABLE, nombre: 'Responsable',       icon: UserGroupIcon },
-    { id: TIPOS_PAGADOR.EXTERNO,     nombre: 'Comprador Externo', icon: UserPlusIcon  },
+    { id: TIPOS_PAGADOR.PACIENTE, nombre: 'Paciente', icon: UserIcon },
+    { id: TIPOS_PAGADOR.RESPONSABLE, nombre: 'Responsable', icon: UserGroupIcon },
+    { id: TIPOS_PAGADOR.EXTERNO, nombre: 'Comprador Externo', icon: UserPlusIcon },
   ].filter(tipo => tipo.id !== 3);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1.5">
             <ClipboardDocumentListIcon className="w-8 h-8 text-[#7B1FA2]" />
@@ -463,398 +494,288 @@ const VenderServiciosTab = () => {
           </div>
           <p className="text-sm text-gray-500">Registra ventas de sesiones individuales o paquetes</p>
         </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
-            {/* Alertas */}
-            {error && (
-              <div className="mx-6 mt-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
-            )}
-            {exito && (
-              <div className="mx-6 mt-6 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{exito}</div>
-            )}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          {error && <div className="mx-6 mt-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+          {exito && <div className="mx-6 mt-6 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">{exito}</div>}
 
-            {/* ── Tipo de Comprobante ────────────────────────────────────────── */}
-            <div className="p-6 border-b border-gray-100">
-              <label className="block text-xs font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                <DocumentTextIcon className="w-4 h-4" />
-                Tipo de Comprobante
-              </label>
-              <div className="flex flex-wrap gap-3">
-                {tiposComprobante.map(tc => (
-                  <button
-                    key={tc.id}
-                    type="button"
-                    onClick={() => setTipoComprobante(tc.id)}
-                    className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
-                      tipoComprobante === tc.id
-                        ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {tc.nombre}
+          {/* Comprobante */}
+          <div className="p-6 border-b border-gray-100">
+            <label className="block text-xs font-semibold text-gray-600 mb-3 flex items-center gap-2">
+              <DocumentTextIcon className="w-4 h-4" />Tipo de Comprobante
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {tiposComprobante.map(tc => (
+                <button key={tc.id} type="button" onClick={() => setTipoComprobante(tc.id)}
+                  className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  {tc.nombre}
+                </button>
+              ))}
+            </div>
+            {conIgv && <p className="mt-2 text-xs text-amber-600 font-medium">⚠ Los precios ya incluyen IGV (18%). Se mostrará desglosado en el resumen.</p>}
+          </div>
+
+          {/* Pagador */}
+          <div className="p-6 border-b border-gray-100">
+            <label className="block text-xs font-semibold text-gray-600 mb-3">¿Quién paga?</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {OPCIONES_PAGADOR.map(tipo => {
+                const Icon = tipo.icon;
+                const activo = tipoPagador === tipo.id;
+                return (
+                  <button key={tipo.id} type="button" onClick={() => setTipoPagador(tipo.id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activo ? 'bg-[#7B1FA2] text-white' : 'bg-gray-100 text-gray-600'}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className={`font-semibold text-sm ${activo ? 'text-[#7B1FA2]' : 'text-gray-700'}`}>{tipo.nombre}</span>
                   </button>
-                ))}
-              </div>
-              {conIgv && (
-                <p className="mt-2 text-xs text-amber-600 font-medium">
-                  ⚠ Los precios ya incluyen IGV (18%). Se mostrará desglosado en el resumen.
-                </p>
-              )}
+                );
+              })}
             </div>
 
-            {/* ── Pagador ───────────────────────────────────────────────────── */}
-            <div className="p-6 border-b border-gray-100">
-              <label className="block text-xs font-semibold text-gray-600 mb-3">¿Quién paga?</label>
-
-              {/* ✅ Solo muestra tipos pagador con id !== 3 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                {OPCIONES_PAGADOR.map(tipo => {
-                  const Icon   = tipo.icon;
-                  const activo = tipoPagador === tipo.id;
-                  return (
-                    <button
-                      key={tipo.id}
-                      type="button"
-                      onClick={() => setTipoPagador(tipo.id)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
-                        activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        activo ? 'bg-[#7B1FA2] text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <span className={`font-semibold text-sm ${activo ? 'text-[#7B1FA2]' : 'text-gray-700'}`}>
-                        {tipo.nombre}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {tipoPagador === TIPOS_PAGADOR.PACIENTE && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2">Paciente (Pagador) *</label>
-                    <SearchableCombobox
-                      items={pacientes}
-                      value={pacienteSeleccionado}
-                      onChange={(value) => {
-                        setPacienteSeleccionado(value);
-                        setLineas(prev => prev.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: value } : l));
-                      }}
-                      placeholder="Buscar por DNI o nombre..."
-                      getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
-                      getItemValue={(p) => p.id}
-                      getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase()}
-                    />
-                  </div>
-                )}
-
-                {tipoPagador === TIPOS_PAGADOR.RESPONSABLE && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2">Responsable (Pagador) *</label>
-                    <SearchableCombobox
-                      items={responsables}
-                      value={responsableSeleccionado}
-                      onChange={(value) => {
-                        setResponsableSeleccionado(value);
-                        setPacienteSeleccionado('');
-                        setPacientesDelResponsable([]);
-                      }}
-                      placeholder="Buscar responsable por DNI o nombre..."
-                      getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} - DNI: ${r.numero_documento || 'S/N'}`.trim()}
-                      getItemValue={(r) => r.id}
-                      getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
-                    />
-                    {responsableSeleccionado && pacientesDelResponsable.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        ℹ️ Selecciona el paciente en cada línea de servicio ({pacientesDelResponsable.length} paciente{pacientesDelResponsable.length > 1 ? 's' : ''} a cargo)
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {tipoPagador === TIPOS_PAGADOR.EXTERNO && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2">Comprador Externo (Pagador) *</label>
-                    <div className="flex gap-2">
-                      <SearchableCombobox
-                        items={compradoresExternos}
-                        value={compradorExternoSeleccionado}
-                        onChange={(value) => setCompradorExternoSeleccionado(value)}
-                        placeholder="Buscar por DNI o nombre..."
-                        getItemLabel={(c) => `${c.nombre} - DNI: ${c.dni}`}
-                        getItemValue={(c) => c.id}
-                        getItemSearchText={(c) => `${c.dni} ${c.nombre}`}
-                        className="flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMostrarModalExterno(true)}
-                        className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap"
-                      >
-                        + Nuevo
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Búsqueda tarifa */}
-                <div className="relative" ref={searchRef}>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">Buscar Tarifa</label>
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={busqueda}
-                      onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
-                      onFocus={() => setMostrarResultados(true)}
-                      placeholder="Buscar por servicio o motivo..."
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
-                    />
-                  </div>
-                  {mostrarResultados && busqueda && itemsFiltrados.length > 0 && (
-                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                      {itemsFiltrados.slice(0, 10).map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => seleccionarTarifa(item)}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                        >
-                          <div className="font-semibold text-gray-900">{item.servicio?.nombre || `Servicio #${item.servicio_id}`}</div>
-                          <div className="text-xs text-gray-500">
-                            Motivo: {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`} | S/ {parseFloat(item.precio || 0).toFixed(2)}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Tabla de líneas ───────────────────────────────────────────── */}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-6 py-3 text-xs font-bold text-gray-600 uppercase">Servicio</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-600 uppercase">Paciente</th>
-                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-600 uppercase">Cantidad</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">Precio U.</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">Descuento</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">{conIgv ? 'Base' : 'Subtotal'}</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">{conIgv ? 'IGV (incl.)' : '—'}</th>
-                    <th className="text-right px-6 py-3 text-xs font-bold text-gray-600 uppercase">Total</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {lineas.map(linea => {
-                    const calc = calcularLinea(linea);
-                    return (
-                      <tr key={linea.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 text-xs font-semibold rounded ${
-                              linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
-                                ? 'bg-purple-100 text-purple-700'
-                                : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'Paquete' : 'Sesión'}
-                            </span>
-                          </div>
-                          <div className="font-semibold text-gray-900 mt-1">{linea.servicio_nombre}</div>
-                          <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>
-                          {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
-                            <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 min-w-[200px]">
-                          <SearchableCombobox
-                            items={
-                              tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0
-                                ? pacientesDelResponsable
-                                : pacientes
-                            }
-                            value={linea.paciente_linea_id}
-                            onChange={(val) => setPacienteLinea(linea.id, val)}
-                            placeholder="Buscar paciente..."
-                            getItemLabel={(p) => `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno || ''}`.trim()}
-                            getItemValue={(p) => p.id}
-                            getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres} ${p.apellido_paterno}`.toLowerCase()}
-                          />
-                        </td>
-                        <td className="px-4 py-4">
-                          {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
-                            <div className="text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                <button onClick={() => setSesiones(linea.id, linea.cantidad_paquetes - 1)} className="p-1 hover:bg-gray-200 rounded">
-                                  <MinusIcon className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <span className="w-12 text-center font-semibold">{linea.cantidad_paquetes}</span>
-                                <button onClick={() => setSesiones(linea.id, linea.cantidad_paquetes + 1)} className="p-1 hover:bg-gray-200 rounded">
-                                  <PlusIcon className="w-4 h-4 text-gray-600" />
-                                </button>
-                              </div>
-                              <div className="text-xs text-purple-600 mt-1">= {calc.sesionesTotales} sesiones</div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} className="p-1 hover:bg-gray-200 rounded">
-                                <MinusIcon className="w-4 h-4 text-gray-600" />
-                              </button>
-                              <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
-                              <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} className="p-1 hover:bg-gray-200 rounded">
-                                <PlusIcon className="w-4 h-4 text-gray-600" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <input
-                            type="number" step="0.01" min="0"
-                            value={linea.precio_unitario}
-                            readOnly
-                            className="w-20 px-2 py-1 text-xs text-right border border-gray-200 rounded bg-gray-100 text-gray-600 cursor-not-allowed"
-                            title="Precio fijo del servicio (no editable)"
-                          />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-1">
-                            <select
-                              value={linea.descuento_tipo}
-                              onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)}
-                              className="px-2 py-1 text-xs border border-gray-200 rounded"
-                            >
-                              <option value="">-</option>
-                              <option value="%">%</option>
-                              <option value="S/">S/</option>
-                            </select>
-                            <input
-                              type="number" step="0.01" min="0"
-                              value={linea.descuento_valor}
-                              onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
-                              className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded"
-                              placeholder="0"
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-right text-sm text-gray-600">S/ {calc.base.toFixed(2)}</td>
-                        <td className="px-4 py-4 text-right text-sm text-gray-500">
-                          {conIgv ? `S/ ${calc.igv.toFixed(2)}` : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-gray-900">S/ {calc.totalLinea.toFixed(2)}</td>
-                        <td className="px-4 py-4">
-                          <button onClick={() => eliminarLinea(linea.id)} className="p-1 hover:bg-red-50 rounded text-red-600">
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {lineas.length === 0 && (
-                    <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center text-gray-400">
-                        Busca y agrega tarifas para comenzar
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* ── Resumen y totales ─────────────────────────────────────────── */}
-            <div className="p-6 border-t border-gray-100">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tipoPagador === TIPOS_PAGADOR.PACIENTE && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">
-                    Nota interna (no visible en comprobante)
-                  </label>
-                  <textarea
-                    value={nota}
-                    onChange={(e) => setNota(e.target.value)}
-                    rows={5}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
-                    placeholder="Notas internas..."
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Paciente (Pagador) *</label>
+                  <SearchableCombobox items={pacientes} value={pacienteSeleccionado}
+                    onChange={(value) => { setPacienteSeleccionado(value); setLineas(prev => prev.map(l => !l.paciente_linea_id ? { ...l, paciente_linea_id: value } : l)); }}
+                    placeholder="Buscar por DNI o nombre..."
+                    getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
+                    getItemValue={(p) => p.id}
+                    getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase()}
                   />
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Descuento Global</span>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={descuentoGlobal.tipo}
-                        onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })}
-                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg"
-                      >
-                        <option value="%">%</option>
-                        <option value="S/">S/</option>
-                      </select>
-                      <input
-                        type="number" step="0.01" min="0"
-                        value={descuentoGlobal.valor}
-                        onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, valor: e.target.value })}
-                        className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg"
-                        placeholder="0"
-                      />
-                    </div>
+              )}
+              {tipoPagador === TIPOS_PAGADOR.RESPONSABLE && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Responsable (Pagador) *</label>
+                  <SearchableCombobox items={responsables} value={responsableSeleccionado}
+                    onChange={(value) => { setResponsableSeleccionado(value); setPacienteSeleccionado(''); setPacientesDelResponsable([]); }}
+                    placeholder="Buscar responsable..."
+                    getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} - DNI: ${r.numero_documento || 'S/N'}`.trim()}
+                    getItemValue={(r) => r.id}
+                    getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
+                  />
+                  {responsableSeleccionado && pacientesDelResponsable.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-2">ℹ️ Selecciona el paciente en cada línea de servicio ({pacientesDelResponsable.length} paciente(s) a cargo)</p>
+                  )}
+                </div>
+              )}
+              {tipoPagador === TIPOS_PAGADOR.EXTERNO && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Comprador Externo (Pagador) *</label>
+                  <div className="flex gap-2">
+                    <SearchableCombobox items={compradoresExternos} value={compradorExternoSeleccionado} onChange={setCompradorExternoSeleccionado}
+                      placeholder="Buscar por DNI o nombre..."
+                      getItemLabel={(c) => `${c.nombre} - DNI: ${c.dni}`}
+                      getItemValue={(c) => c.id}
+                      getItemSearchText={(c) => `${c.dni} ${c.nombre}`}
+                      className="flex-1"
+                    />
+                    <button type="button" onClick={() => setMostrarModalExterno(true)}
+                      className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap">+ Nuevo</button>
                   </div>
+                </div>
+              )}
 
-                  <div className="border-t border-gray-200 pt-3 space-y-2">
+              {/* Búsqueda tarifa */}
+              <div className="relative" ref={searchRef}>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Buscar Tarifa</label>
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input type="text" value={busqueda}
+                    onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
+                    onFocus={() => setMostrarResultados(true)}
+                    placeholder="Buscar por servicio o motivo..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                  />
+                </div>
+                {mostrarResultados && busqueda && itemsFiltrados.length > 0 && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                    {itemsFiltrados.slice(0, 10).map(item => (
+                      <button key={item.id} onClick={() => seleccionarTarifa(item)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                        <div className="font-semibold text-gray-900">{item.servicio?.nombre || `Servicio #${item.servicio_id}`}</div>
+                        <div className="text-xs text-gray-500">Motivo: {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`} | S/ {parseFloat(item.precio || 0).toFixed(2)}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-6 py-3 text-xs font-bold text-gray-600 uppercase">Servicio</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-600 uppercase">Paciente</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-600 uppercase">Cantidad</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">Precio U.</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">Descuento</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">{conIgv ? 'Base' : 'Subtotal'}</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-gray-600 uppercase">{conIgv ? 'IGV (incl.)' : '—'}</th>
+                  <th className="text-right px-6 py-3 text-xs font-bold text-gray-600 uppercase">Total</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {lineas.map(linea => {
+                  const calc = calcularLinea(linea);
+                  return (
+                    <tr key={linea.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-xs font-semibold rounded ${linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'Paquete' : 'Sesión'}
+                          </span>
+                        </div>
+                        <div className="font-semibold text-gray-900 mt-1">{linea.servicio_nombre}</div>
+                        <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>
+                        {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
+                          <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 min-w-[200px]">
+                        <SearchableCombobox
+                          items={tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0 ? pacientesDelResponsable : pacientes}
+                          value={linea.paciente_linea_id}
+                          onChange={(val) => setPacienteLinea(linea.id, val)}
+                          placeholder="Buscar paciente..."
+                          getItemLabel={(p) => `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno || ''}`.trim()}
+                          getItemValue={(p) => p.id}
+                          getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres} ${p.apellido_paterno}`.toLowerCase()}
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
+                          <div className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => setSesiones(linea.id, linea.cantidad_paquetes - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <span className="w-12 text-center font-semibold">{linea.cantidad_paquetes}</span>
+                              <button onClick={() => setSesiones(linea.id, linea.cantidad_paquetes + 1)} className="p-1 hover:bg-gray-200 rounded"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                            </div>
+                            <div className="text-xs text-purple-600 mt-1">= {calc.sesionesTotales} sesiones</div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                            <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
+                            <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} className="p-1 hover:bg-gray-200 rounded"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <input type="number" step="0.01" min="0" value={linea.precio_unitario} readOnly
+                          className="w-20 px-2 py-1 text-xs text-right border border-gray-200 rounded bg-gray-100 text-gray-600 cursor-not-allowed" />
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <select value={linea.descuento_tipo} onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)} className="px-2 py-1 text-xs border border-gray-200 rounded">
+                            <option value="">-</option>
+                            <option value="%">%</option>
+                            <option value="S/">S/</option>
+                          </select>
+                          <input type="number" step="0.01" min="0" value={linea.descuento_valor}
+                            onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
+                            className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded" placeholder="0" />
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm text-gray-600">S/ {calc.base.toFixed(2)}</td>
+                      <td className="px-4 py-4 text-right text-sm text-gray-500">{conIgv ? `S/ ${calc.igv.toFixed(2)}` : <span className="text-gray-300">—</span>}</td>
+                      <td className="px-6 py-4 text-right font-bold text-gray-900">S/ {calc.totalLinea.toFixed(2)}</td>
+                      <td className="px-4 py-4">
+                        <button onClick={() => eliminarLinea(linea.id)} className="p-1 hover:bg-red-50 rounded text-red-600"><TrashIcon className="w-4 h-4" /></button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {lineas.length === 0 && (
+                  <tr><td colSpan="9" className="px-6 py-12 text-center text-gray-400">Busca y agrega tarifas para comenzar</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Resumen */}
+          <div className="p-6 border-t border-gray-100">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Nota interna (no visible en comprobante)</label>
+                <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={5}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" placeholder="Notas internas..." />
+              </div>
+
+              <div className="space-y-3">
+                {/* 🆕 Panel de promociones */}
+                <PanelPromociones
+                  promocionesAplicadas={promocionesAplicadas}
+                  totalDescuento={totalDescuentoPromo}
+                  calculando={calculandoPromos}
+                />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Descuento Global</span>
+                  <div className="flex items-center gap-2">
+                    <select value={descuentoGlobal.tipo} onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })} className="px-3 py-2 text-sm border border-gray-200 rounded-lg">
+                      <option value="%">%</option>
+                      <option value="S/">S/</option>
+                    </select>
+                    <input type="number" step="0.01" min="0" value={descuentoGlobal.valor}
+                      onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, valor: e.target.value })}
+                      className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg" placeholder="0" />
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-3 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">{conIgv ? 'Base imponible' : 'Subtotal'}</span>
+                    <span className="font-semibold">S/ {totales.base.toFixed(2)}</span>
+                  </div>
+                  {conIgv && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{conIgv ? 'Base imponible' : 'Subtotal'}</span>
-                      <span className="font-semibold">S/ {totales.base.toFixed(2)}</span>
+                      <span className="text-gray-500">IGV (18% incluido)</span>
+                      <span className="font-semibold text-gray-500">S/ {totales.igv.toFixed(2)}</span>
                     </div>
-                    {conIgv && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500">IGV (18% incluido)</span>
-                        <span className="font-semibold text-gray-500">S/ {totales.igv.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between text-lg font-bold border-t border-gray-200 pt-2">
-                      <span>Total</span>
-                      <span className="text-[#7B1FA2]">S/ {totales.total.toFixed(2)}</span>
+                  )}
+                  {/* 🆕 Línea de descuento por promociones */}
+                  {totalDescuentoPromo > 0 && (
+                    <div className="flex items-center justify-between text-sm text-green-700">
+                      <span className="flex items-center gap-1"><SparklesIcon className="w-3.5 h-3.5" />Descuento promociones</span>
+                      <span className="font-semibold">-S/ {totalDescuentoPromo.toFixed(2)}</span>
                     </div>
+                  )}
+                  <div className="flex items-center justify-between text-lg font-bold border-t border-gray-200 pt-2">
+                    <span>Total</span>
+                    <span className="text-[#7B1FA2]">S/ {totales.total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* ── Acciones ──────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <button
-                onClick={resetForm}
-                className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading || lineas.length === 0}
-                className="px-6 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Guardando...' : 'Guardar Venta'}
-              </button>
-            </div>
           </div>
+
+          {/* Acciones */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <button onClick={resetForm} className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">Cancelar</button>
+            <button onClick={handleSubmit} disabled={loading || lineas.length === 0}
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? 'Guardando...' : 'Guardar Venta'}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* ── Modal Tipo de Venta ──────────────────────────────────────────────── */}
+      {/* Modal Tipo de Venta */}
       {mostrarModalTipoVenta && tarifaSeleccionada && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="px-6 py-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">¿Cómo deseas agregar este servicio?</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {tarifaSeleccionada.servicio?.nombre} - {tarifaSeleccionada.motivo_cita?.nombre}
-              </p>
-              <p className="text-sm font-semibold text-[#7B1FA2] mt-2">
-                S/ {parseFloat(tarifaSeleccionada.precio || 0).toFixed(2)} por sesión
-              </p>
+              <p className="text-sm text-gray-500 mt-1">{tarifaSeleccionada.servicio?.nombre} - {tarifaSeleccionada.motivo_cita?.nombre}</p>
+              <p className="text-sm font-semibold text-[#7B1FA2] mt-2">S/ {parseFloat(tarifaSeleccionada.precio || 0).toFixed(2)} por sesión</p>
             </div>
             <div className="p-6 space-y-4">
               <div className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 transition-all">
@@ -867,10 +788,8 @@ const VenderServiciosTab = () => {
                     <div className="text-xs text-gray-500">Venta de 1 sesión</div>
                   </div>
                 </div>
-                <button
-                  onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.SESION)}
-                  className="w-full px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
+                <button onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.SESION)}
+                  className="w-full px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                   Agregar Sesión Individual
                 </button>
               </div>
@@ -892,91 +811,66 @@ const VenderServiciosTab = () => {
                 ) : (
                   <div className="mb-3">
                     <label className="block text-xs font-semibold text-gray-600 mb-2">Selecciona el paquete *</label>
-                    <select
-                      value={paqueteSeleccionado}
-                      onChange={(e) => setPaqueteSeleccionado(e.target.value)}
-                      className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
-                    >
+                    <select value={paqueteSeleccionado} onChange={(e) => setPaqueteSeleccionado(e.target.value)}
+                      className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]">
                       <option value="">Seleccionar paquete...</option>
-                      {paquetes.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre} ({p.cantidadSesiones} sesiones)</option>
-                      ))}
+                      {paquetes.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.cantidadSesiones} sesiones)</option>)}
                     </select>
                     {paqueteSeleccionado && (() => {
-                      const paq     = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
+                      const paq = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
                       const precioU = parseFloat(tarifaSeleccionada.precio || 0);
                       const sesiones = paq?.cantidadSesiones || 0;
                       return (
                         <div className="mt-2 p-2 bg-purple-50 rounded-lg">
-                          <p className="text-xs text-purple-700">
-                            <span className="font-semibold">{sesiones} sesiones</span> × S/ {precioU.toFixed(2)}
-                          </p>
-                          <p className="text-sm text-purple-900 font-bold mt-1">
-                            Total: S/ {(precioU * sesiones).toFixed(2)}
-                          </p>
+                          <p className="text-xs text-purple-700"><span className="font-semibold">{sesiones} sesiones</span> × S/ {precioU.toFixed(2)}</p>
+                          <p className="text-sm text-purple-900 font-bold mt-1">Total: S/ {(precioU * sesiones).toFixed(2)}</p>
                         </div>
                       );
                     })()}
                   </div>
                 )}
-                <button
-                  onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.PAQUETE)}
+                <button onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.PAQUETE)}
                   disabled={!paqueteSeleccionado || paquetes.length === 0}
-                  className="w-full px-4 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="w-full px-4 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed">
                   {paquetes.length === 0 ? 'No hay paquetes disponibles' : 'Agregar Paquete'}
                 </button>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
-              <button
-                onClick={() => { setMostrarModalTipoVenta(false); setTarifaSeleccionada(null); setPaqueteSeleccionado(''); }}
-                className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200"
-              >
-                Cancelar
-              </button>
+              <button onClick={() => { setMostrarModalTipoVenta(false); setTarifaSeleccionada(null); setPaqueteSeleccionado(''); }}
+                className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Cancelar</button>
             </div>
           </div>
         </div>,
         document.body
       )}
 
-      {/* ── Modal Crear Comprador Externo ────────────────────────────────────── */}
+      {/* Modal Crear Comprador Externo */}
       {mostrarModalExterno && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">Nuevo Comprador Externo</h2>
-              <button onClick={() => setMostrarModalExterno(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
-                <XMarkIcon className="w-5 h-5 text-gray-500" />
-              </button>
+              <button onClick={() => setMostrarModalExterno(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><XMarkIcon className="w-5 h-5 text-gray-500" /></button>
             </div>
             <form onSubmit={handleCrearExterno} className="p-6 space-y-4">
               {[
-                { key: 'dni',      label: 'DNI *',    required: true,  placeholder: '12345678',          type: 'text'  },
-                { key: 'nombre',   label: 'Nombre *', required: true,  placeholder: 'Juan Pérez',        type: 'text'  },
-                { key: 'telefono', label: 'Teléfono', required: false, placeholder: '999888777',         type: 'text'  },
-                { key: 'email',    label: 'Email',    required: false, placeholder: 'email@ejemplo.com', type: 'email' },
+                { key: 'dni', label: 'DNI *', required: true, placeholder: '12345678', type: 'text' },
+                { key: 'nombre', label: 'Nombre *', required: true, placeholder: 'Juan Pérez', type: 'text' },
+                { key: 'telefono', label: 'Teléfono', required: false, placeholder: '999888777', type: 'text' },
+                { key: 'email', label: 'Email', required: false, placeholder: 'email@ejemplo.com', type: 'email' },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">{f.label}</label>
-                  <input
-                    type={f.type}
-                    value={formExterno[f.key]}
+                  <input type={f.type} value={formExterno[f.key]}
                     onChange={(e) => setFormExterno(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    required={f.required}
-                    placeholder={f.placeholder}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg"
-                  />
+                    required={f.required} placeholder={f.placeholder}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" />
                 </div>
               ))}
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setMostrarModalExterno(false)} className="flex-1 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">
-                  Cancelar
-                </button>
-                <button type="submit" className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A]">
-                  Crear
-                </button>
+                <button type="button" onClick={() => setMostrarModalExterno(false)} className="flex-1 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Cancelar</button>
+                <button type="submit" className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A]">Crear</button>
               </div>
             </form>
           </div>

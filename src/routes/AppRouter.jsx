@@ -75,6 +75,8 @@ import VenderServiciosTab from '../pages/Ventas/VenderServiciosTab';
 import VenderProductosTab from '../pages/Ventas/VenderProductosTab';
 import HistorialVentasTab from '../pages/Ventas/HistorialVentasTab';
 import TarifasTab from '../pages/Inventario/Tarifastab';
+import PromocionesPage from '../pages/Promociones/PromocionesPage';
+
 export const AppRouter = () => {
   return (
     <>
@@ -362,6 +364,18 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <TarifasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* ── PROMOCIONES ────────────────────────────────────────── */}
+        <Route path="/intranet/promociones" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <PromocionesPage />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

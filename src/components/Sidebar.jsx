@@ -32,6 +32,7 @@ import {
   BanknotesIcon,
   ShoppingCartIcon,
   IdentificationIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 // Contexto para compartir el estado del sidebar
@@ -104,6 +105,7 @@ const menuItems = [
       { text: 'Servicios', path: '/intranet/inventario/servicios', icon: BanknotesIcon },
     ]
   },
+  { text: 'Promociones', path: '/intranet/promociones', icon: SparklesIcon, adminOnly: true },
   {
     text: 'Ventas',
     icon: ShoppingCartIcon,
