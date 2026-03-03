@@ -66,6 +66,7 @@ import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
 import AsistenciasPorTerapeuta from '../pages/Asistencias/AsistenciasPorTerapeuta';
 import AsistenciasPorPaciente from '../pages/Asistencias/AsistenciasPorPaciente';
 import Inconsistencias from '../pages/Asistencias/Inconsistencias';
+import SesionesPage from '../pages/Asistencias/SesionesPage';
 import GestionAsistenciasAdmin from '../pages/Asistencias/GestionAsistenciasAdmin';
 import ProductosTab from '../pages/Inventario/Productostab';
 import CategoriasTab from '../pages/Inventario/Categoriastab';
@@ -247,6 +248,17 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <Inconsistencias />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/asistencias/sesiones" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <SesionesPage />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

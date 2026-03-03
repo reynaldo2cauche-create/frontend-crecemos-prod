@@ -143,7 +143,6 @@ const buildTableRows = (venta, tipo) =>
       let cantidad;
 
       if (esPaquete && d.paquete) {
-        // Para paquetes: calcular cantidad de paquetes comprados
         const sesionesPorPaquete = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
         const sesionesTotales = d.sesiones_totales || 0;
         cantidad = Math.round(sesionesTotales / sesionesPorPaquete);
@@ -153,7 +152,6 @@ const buildTableRows = (venta, tipo) =>
           ? `${d.paquete.nombre} (${sesionesPorPaquete} SES.) - ${nombreServicio}`
           : `${d.paquete.nombre} (${sesionesPorPaquete} SES.)`;
       } else {
-        // Para sesiones individuales: cantidad = número de sesiones
         cantidad = d.sesiones_totales || 0;
         descripcion = d.servicio?.nombre || '-';
       }
@@ -178,7 +176,7 @@ const buildTableRows = (venta, tipo) =>
       cantidad:       toFloat(d.cantidad),
       precioUnitario: toFloat(d.precio_unitario),
       subtotal:       toFloat(d.subtotal),
-      paciente:       null  // No aplica para productos
+      paciente:       null
     };
   });
 
@@ -213,17 +211,27 @@ const cargarLogo = () => {
 export const generarPDFA4 = async (venta, tipo) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  const COLOR_PRIMARY = [123, 31, 162];
-  const COLOR_TEXTO   = [51, 51, 51];
-  const COLOR_GRIS    = [128, 128, 128];
-  const COLOR_LINEA   = [200, 200, 200];
+  const COLOR_PRIMARY  = [123, 31, 162];
+  const COLOR_TEXTO    = [51, 51, 51];
+  const COLOR_GRIS     = [128, 128, 128];
+  const COLOR_LINEA    = [200, 200, 200];
+  // ✅ Colores para el bloque de promociones
+  const COLOR_PROMO_BG = [240, 253, 244];   // verde muy claro
+  const COLOR_PROMO_TX = [21, 128, 61];     // verde oscuro
+  const COLOR_PROMO_BD = [187, 247, 208];   // borde verde
+
   const pageW = doc.internal.pageSize.getWidth();
   const M     = 15;
   const rows  = buildTableRows(venta, tipo);
 
+  // ✅ Leer promociones embebidas en la venta (ya vienen del backend)
+  const promociones = Array.isArray(venta.promociones_aplicadas) ? venta.promociones_aplicadas : [];
+  const totalPromos = promociones.reduce((s, p) => s + toFloat(p.monto_ahorrado), 0);
+
   const logoBase64 = await cargarLogo();
   if (logoBase64) doc.addImage(logoBase64, 'PNG', M, M, 50, 12);
 
+  // Recuadro tipo comprobante
   const bx = pageW - M - 65, by = M, bw = 65, bh = 30;
   doc.setDrawColor(...COLOR_PRIMARY); doc.setLineWidth(0.5);
   doc.rect(bx, by, bw, bh);
@@ -234,6 +242,7 @@ export const generarPDFA4 = async (venta, tipo) => {
   doc.setFontSize(14); doc.setTextColor(...COLOR_PRIMARY);
   doc.text(venta.codigo_comprobante || '#00000', bx + bw / 2, by + 23, { align: 'center' });
 
+  // Datos empresa
   let y = M + 25;
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...COLOR_TEXTO);
   doc.text('CONTIGO CRECEMOS E.I.R.L.', M, y); y += 5;
@@ -242,7 +251,7 @@ export const generarPDFA4 = async (venta, tipo) => {
    'COMAS', 'Telf.: 957 064 401', 'Correo: info@crecemos.com.pe']
     .forEach((line) => { doc.text(line, M, y); y += 4; });
 
-  // Recuadro de datos del cliente/comprador
+  // Recuadro datos del cliente
   const cx = bx, cy = M + 35, cw = 65, ch = 28;
   doc.setDrawColor(...COLOR_LINEA); doc.setLineWidth(0.3);
   doc.rect(cx, cy, cw, ch);
@@ -257,14 +266,11 @@ export const generarPDFA4 = async (venta, tipo) => {
   };
 
   clientField('Fecha emisión', getFechaEmision(venta));
-
   if (tipo === 'servicio') {
-    // Para servicios: solo mostrar comprador (los pacientes van en cada línea de la tabla)
     clientField('Comprador', getNombreComprador(venta));
     clientField('DNI', getDniComprador(venta));
     clientField('Dirección', '-');
   } else {
-    // Para productos: mostrar como antes
     clientField('Señor(es)', getNombreCliente(venta));
     clientField('DNI', getDni(venta));
     clientField('Dirección', '-');
@@ -272,9 +278,8 @@ export const generarPDFA4 = async (venta, tipo) => {
 
   y = cy + ch + 10;
 
-  // Tabla dinámica según tipo de venta
+  // Tabla de ítems
   if (tipo === 'servicio') {
-    // Para servicios: agregar columna "Paciente"
     doc.autoTable({
       startY: y,
       head: [['Cant.', 'Código', 'Descripción', 'Paciente', 'P.U.', 'Total']],
@@ -292,15 +297,14 @@ export const generarPDFA4 = async (venta, tipo) => {
       columnStyles: {
         0: { halign: 'center', cellWidth: 12 },
         1: { halign: 'center', cellWidth: 15 },
-        2: { halign: 'left', cellWidth: 'auto' },
-        3: { halign: 'left', cellWidth: 40 },
-        4: { halign: 'right', cellWidth: 22 },
-        5: { halign: 'right', cellWidth: 22 },
+        2: { halign: 'left',   cellWidth: 'auto' },
+        3: { halign: 'left',   cellWidth: 40 },
+        4: { halign: 'right',  cellWidth: 22 },
+        5: { halign: 'right',  cellWidth: 22 },
       },
       margin: { left: M, right: M },
     });
   } else {
-    // Para productos: tabla sin columna paciente
     doc.autoTable({
       startY: y,
       head: [['Cant.', 'Unidad', 'Código', 'Descripción', 'P.U.', 'Total']],
@@ -319,9 +323,9 @@ export const generarPDFA4 = async (venta, tipo) => {
         0: { halign: 'center', cellWidth: 15 },
         1: { halign: 'center', cellWidth: 20 },
         2: { halign: 'center', cellWidth: 18 },
-        3: { halign: 'left', cellWidth: 'auto' },
-        4: { halign: 'right', cellWidth: 25 },
-        5: { halign: 'right', cellWidth: 25 },
+        3: { halign: 'left',   cellWidth: 'auto' },
+        4: { halign: 'right',  cellWidth: 25 },
+        5: { halign: 'right',  cellWidth: 25 },
       },
       margin: { left: M, right: M },
     });
@@ -331,28 +335,58 @@ export const generarPDFA4 = async (venta, tipo) => {
   const descuento = toFloat(venta.descuento_monto);
   const total     = toFloat(venta.total);
 
-  // Determinar si es boleta o factura (requiere IGV)
   const tipoComprobante = (venta.tipo_comprobante?.nombre || '').toUpperCase();
-  const esBoleta = tipoComprobante.includes('BOLETA');
-  const esFactura = tipoComprobante.includes('FACTURA');
-  const requiereIGV = esBoleta || esFactura;
+  const requiereIGV = tipoComprobante.includes('BOLETA') || tipoComprobante.includes('FACTURA');
 
+  // ─── Bloque totales ────────────────────────────────────────────────────────
   const totalesData = [];
 
+  if (descuento > 0) totalesData.push(['DESCUENTOS(-)', 'S/', formatMoney(descuento)]);
+
+  // ✅ FIX: bloque de promociones en A4 — antes del IGV y del TOTAL
+  if (promociones.length > 0) {
+    // Primero: tabla de promociones con fondo verde
+    doc.autoTable({
+      startY: y,
+      body: [
+        // Título del bloque
+        [{ content: '✦ PROMOCIONES APLICADAS', colSpan: 3, styles: { fontStyle: 'bold', fontSize: 9, textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, halign: 'left' } }],
+        // Una fila por cada promoción
+        ...promociones.map((p) => [
+          { content: `• ${p.promocion?.nombre || `Promoción #${p.promocion_id}`}`, styles: { textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, fontSize: 8 } },
+          { content: 'S/', styles: { textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, halign: 'right', fontSize: 8 } },
+          { content: `-${formatMoney(toFloat(p.monto_ahorrado))}`, styles: { textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, halign: 'right', fontSize: 8, fontStyle: 'bold' } },
+        ]),
+        // Fila resumen "Total ahorrado"
+        [
+          { content: 'AHORRO TOTAL POR PROMOCIONES', styles: { fontStyle: 'bold', fontSize: 9, textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, halign: 'right' } },
+          { content: 'S/', styles: { fontStyle: 'bold', textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, halign: 'right', fontSize: 9 } },
+          { content: `-${formatMoney(totalPromos)}`, styles: { fontStyle: 'bold', textColor: COLOR_PROMO_TX, fillColor: COLOR_PROMO_BG, halign: 'right', fontSize: 9 } },
+        ],
+      ],
+      theme: 'plain',
+      styles: { cellPadding: 2 },
+      columnStyles: {
+        0: { halign: 'left',  cellWidth: pageW - M * 2 - 50 },
+        1: { halign: 'right', cellWidth: 15 },
+        2: { halign: 'right', cellWidth: 35 },
+      },
+      margin: { left: M, right: M },
+      tableLineColor: COLOR_PROMO_BD,
+      tableLineWidth: 0.3,
+    });
+
+    y = doc.lastAutoTable.finalY + 3;
+  }
+
+  // ─── Tabla IGV / Total ─────────────────────────────────────────────────────
   if (requiereIGV) {
-    // Para boleta/factura: calcular IGV sobre el total final
     const baseImponible = total / 1.18;
     const igv = total - baseImponible;
-
-    if (descuento > 0) totalesData.push(['DESCUENTOS(-)', 'S/', formatMoney(descuento)]);
     totalesData.push(['BASE IMPONIBLE', 'S/', formatMoney(baseImponible)]);
-    totalesData.push(['IGV (18%)', 'S/', formatMoney(igv)]);
-    totalesData.push(['TOTAL', 'S/', formatMoney(total)]);
-  } else {
-    // Para ticket de venta: solo descuento y total
-    if (descuento > 0) totalesData.push(['DESCUENTOS(-)', 'S/', formatMoney(descuento)]);
-    totalesData.push(['TOTAL', 'S/', formatMoney(total)]);
+    totalesData.push(['IGV (18%)',       'S/', formatMoney(igv)]);
   }
+  totalesData.push(['TOTAL', 'S/', formatMoney(total)]);
 
   doc.autoTable({
     startY: y, body: totalesData, theme: 'plain',
@@ -366,6 +400,8 @@ export const generarPDFA4 = async (venta, tipo) => {
   });
 
   y = doc.lastAutoTable.finalY + 8;
+
+  // Importe en letras
   doc.setDrawColor(...COLOR_LINEA); doc.setLineWidth(0.3);
   doc.rect(M, y, pageW - M * 2, 10);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...COLOR_TEXTO);
@@ -373,6 +409,7 @@ export const generarPDFA4 = async (venta, tipo) => {
   doc.setFont('helvetica', 'normal');
   doc.text(getImporteLetras(total), M + 42, y + 6);
 
+  // Observaciones
   if (venta.nota?.trim()) {
     y += 15;
     const obsLines = doc.splitTextToSize(venta.nota, pageW - M * 2 - 4);
@@ -395,142 +432,112 @@ export const generarPDFA4 = async (venta, tipo) => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FORMATO TICKET TÉRMICO — genera PDF desde el HTML de la vista previa
-// Así el PDF es 100% idéntico a lo que se ve en pantalla
+// El HTML ya incluye las promociones porque TicketPreviewHTML las lee de
+// venta.promociones_aplicadas — no hay nada extra que hacer aquí.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Recibe el elemento DOM del ticket (el div con id="ticket-preview-node")
+ * Recibe el elemento DOM del ticket (div con id="ticket-preview-node")
  * y lo convierte a PDF usando html2canvas.
+ * Las promociones ya están renderizadas en el HTML del ticket,
+ * por lo que este función captura todo tal como se ve en pantalla.
  */
 export const generarPDFDesdeHTML = async (elemento) => {
-  // Asegurar que el elemento tenga altura completa antes de capturar
-  const alturaOriginal = elemento.style.height;
+  const alturaOriginal   = elemento.style.height;
   const maxHeightOriginal = elemento.style.maxHeight;
   const overflowOriginal = elemento.style.overflow;
 
-  elemento.style.height = 'auto';
+  elemento.style.height    = 'auto';
   elemento.style.maxHeight = 'none';
-  elemento.style.overflow = 'visible';
+  elemento.style.overflow  = 'visible';
 
-  // Delay mayor para asegurar que el DOM esté completamente renderizado
   await new Promise(resolve => setTimeout(resolve, 300));
 
-  // Forzar reflow
   const alturaReal = elemento.scrollHeight;
-  elemento.offsetHeight;
-
-  console.log('Altura real del elemento:', alturaReal, 'px');
+  elemento.offsetHeight; // forzar reflow
 
   const canvas = await html2canvas(elemento, {
-    scale: 3,                    // alta resolución para impresión
+    scale: 3,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
-    scrollY: -window.scrollY,    // compensar scroll
+    scrollY: -window.scrollY,
     scrollX: -window.scrollX,
-    windowHeight: alturaReal,    // capturar altura completa
-    height: alturaReal,          // altura total del contenido
+    windowHeight: alturaReal,
+    height: alturaReal,
     onclone: (clonedDoc) => {
-      // Asegurar que el elemento clonado también tenga altura completa
-      const clonedElement = clonedDoc.getElementById(elemento.id) || clonedDoc.querySelector('[data-ticket-preview]');
+      const clonedElement =
+        clonedDoc.getElementById(elemento.id) ||
+        clonedDoc.querySelector('[data-ticket-preview]');
       if (clonedElement) {
-        clonedElement.style.height = 'auto';
+        clonedElement.style.height    = 'auto';
         clonedElement.style.maxHeight = 'none';
-        clonedElement.style.overflow = 'visible';
-        // Asegurar que todos los hijos también sean visibles
-        const allChildren = clonedElement.querySelectorAll('*');
-        allChildren.forEach(child => {
+        clonedElement.style.overflow  = 'visible';
+        clonedElement.querySelectorAll('*').forEach(child => {
           child.style.maxHeight = 'none';
-          child.style.overflow = 'visible';
+          child.style.overflow  = 'visible';
         });
       }
     }
   });
 
-  // Restaurar estilos originales
-  elemento.style.height = alturaOriginal;
+  elemento.style.height    = alturaOriginal;
   elemento.style.maxHeight = maxHeightOriginal;
-  elemento.style.overflow = overflowOriginal;
-
-  console.log('Canvas capturado - height:', canvas.height, 'px, width:', canvas.width, 'px');
+  elemento.style.overflow  = overflowOriginal;
 
   const imgData = canvas.toDataURL('image/png');
-  const imgW = 72;  // ancho del ticket en mm (papel térmico de 72mm)
+  const imgW = 72;
   const imgH = (canvas.height * imgW) / canvas.width;
-
-  // Altura máxima por página compatible con navegadores (297mm = tamaño A4)
   const maxAlturaPagina = 297;
 
-  console.log('PDF - Ancho:', imgW, 'mm, Alto total:', imgH, 'mm');
-
   if (imgH <= maxAlturaPagina) {
-    // Si cabe en una sola página, generar PDF simple
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: [imgW, imgH],
     });
     doc.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
-    console.log('PDF generado en 1 página');
-    return doc;
-  } else {
-    // Si es muy largo, dividir en múltiples páginas
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [imgW, maxAlturaPagina],
-    });
-
-    // Crear imagen desde el canvas original una vez
-    const img = new Image();
-    img.src = imgData;
-
-    await new Promise((resolve) => {
-      img.onload = resolve;
-    });
-
-    const pixelsPorMM = canvas.width / imgW;
-    let offsetY = 0;
-    let paginaActual = 0;
-
-    while (offsetY < imgH) {
-      if (paginaActual > 0) {
-        doc.addPage([imgW, maxAlturaPagina]);
-      }
-
-      // Calcular la porción de la imagen para esta página
-      const alturaRestante = imgH - offsetY;
-      const alturaPagina = Math.min(maxAlturaPagina, alturaRestante);
-
-      // Usar canvas temporal para recortar la porción correcta
-      const canvasTemp = document.createElement('canvas');
-      const ctx = canvasTemp.getContext('2d');
-
-      const offsetYPixels = offsetY * pixelsPorMM;
-      const alturaPaginaPixels = alturaPagina * pixelsPorMM;
-
-      canvasTemp.width = canvas.width;
-      canvasTemp.height = alturaPaginaPixels;
-
-      // Dibujar la porción correspondiente
-      ctx.drawImage(
-        img,
-        0, offsetYPixels,           // source x, y
-        canvas.width, alturaPaginaPixels,  // source width, height
-        0, 0,                       // dest x, y
-        canvas.width, alturaPaginaPixels   // dest width, height
-      );
-
-      const imgDataPagina = canvasTemp.toDataURL('image/png');
-      doc.addImage(imgDataPagina, 'PNG', 0, 0, imgW, alturaPagina);
-
-      offsetY += maxAlturaPagina;
-      paginaActual++;
-    }
-
-    console.log(`PDF generado en ${paginaActual} páginas`);
     return doc;
   }
+
+  // Ticket muy largo: dividir en páginas
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [imgW, maxAlturaPagina],
+  });
+
+  const img = new Image();
+  img.src = imgData;
+  await new Promise((resolve) => { img.onload = resolve; });
+
+  const pixelsPorMM = canvas.width / imgW;
+  let offsetY = 0;
+  let paginaActual = 0;
+
+  while (offsetY < imgH) {
+    if (paginaActual > 0) doc.addPage([imgW, maxAlturaPagina]);
+
+    const alturaRestante  = imgH - offsetY;
+    const alturaPagina    = Math.min(maxAlturaPagina, alturaRestante);
+    const offsetYPixels   = offsetY * pixelsPorMM;
+    const alturaPaginaPixels = alturaPagina * pixelsPorMM;
+
+    const canvasTemp = document.createElement('canvas');
+    canvasTemp.width  = canvas.width;
+    canvasTemp.height = alturaPaginaPixels;
+    canvasTemp.getContext('2d').drawImage(
+      img,
+      0, offsetYPixels, canvas.width, alturaPaginaPixels,
+      0, 0,             canvas.width, alturaPaginaPixels
+    );
+
+    doc.addImage(canvasTemp.toDataURL('image/png'), 'PNG', 0, 0, imgW, alturaPagina);
+    offsetY += maxAlturaPagina;
+    paginaActual++;
+  }
+
+  return doc;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -538,12 +545,14 @@ export const generarPDFDesdeHTML = async (elemento) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const generarTicketPDF = async (venta, tipo) => {
+  // ✅ generarPDFA4 ya incluye las promociones internamente
   const doc    = await generarPDFA4(venta, tipo);
   const nombre = getNombreCliente(venta).replace(/\s+/g, '_');
   doc.save(`${venta.codigo_comprobante || 'ticket'}_${nombre}.pdf`);
 };
 
-// generarTicketTermico ahora recibe el elemento DOM del preview
+// generarTicketTermico recibe el elemento DOM del preview
+// El preview HTML ya incluye las promociones desde TicketPreviewHTML
 export const generarTicketTermico = async (elemento, venta, tipo) => {
   const doc    = await generarPDFDesdeHTML(elemento);
   const nombre = getNombreCliente(venta).replace(/\s+/g, '_');
@@ -555,11 +564,12 @@ export const obtenerPreviewURL = async (venta, tipo, formato = 'a4', elemento = 
     const doc = await generarPDFDesdeHTML(elemento);
     return doc.output('bloburl');
   }
+  // ✅ generarPDFA4 ya incluye las promociones embebidas en venta
   const doc = await generarPDFA4(venta, tipo);
   return doc.output('bloburl');
 };
 
-// Helpers exportados para uso en TicketPreviewHTML
+// ─── Helpers exportados para uso en TicketPreviewHTML ────────────────────────
 export {
   getNombreCliente,
   getNombreComprador,
@@ -570,5 +580,5 @@ export {
   getImporteLetras,
   buildTableRows,
   toFloat,
-  formatMoney
+  formatMoney,
 };

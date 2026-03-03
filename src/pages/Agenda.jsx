@@ -492,7 +492,7 @@ const guardarCita = async (datosFormulario = null) => {
       nota: datos.nota || '',
       user_id_crea: currentUser.id,
       motivo_accion: datos.motivo_accion || '',
-      compra_id: datos.compra_id || null // ✅ INCLUIR MOTIVO DE ACCIÓN
+ // ✅ INCLUIR MOTIVO DE ACCIÓN
       
     };
 

@@ -67,6 +67,7 @@ const menuItems = [
       { text: 'Por Terapeuta', path: '/intranet/asistencias/terapeuta', icon: UserIcon },
       { text: 'Por Paciente', path: '/intranet/asistencias/paciente', icon: UserGroupIcon },
       { text: 'Inconsistencias', path: '/intranet/asistencias/inconsistencias', icon: ShieldCheckIcon },
+      { text: 'Sesiones', path: '/intranet/asistencias/sesiones', icon: ChartBarIcon },
       { text: 'Gestión Admin', path: '/intranet/asistencias/admin', icon: ShieldCheckIcon }
     ]
   },

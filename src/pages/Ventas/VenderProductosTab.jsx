@@ -12,6 +12,7 @@ import {
   DocumentTextIcon,
   ShoppingCartIcon,
   SparklesIcon,
+  GiftIcon,
 } from '@heroicons/react/24/outline';
 import {
   crearVentaProducto,
@@ -29,7 +30,6 @@ import {
   getPacientesPorResponsable,
 } from '../../services/pacienteService';
 
-// Tipo de venta para productos (según tipo_venta_promo)
 const TIPO_VENTA_PRODUCTO = 1;
 
 // ─── Componente Autocomplete ──────────────────────────────────────────────────
@@ -129,15 +129,26 @@ const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) 
         </span>
       </div>
       {promocionesAplicadas.map((p, i) => (
-        <div key={i} className="flex items-center justify-between text-xs text-green-700">
-          <span>✓ {p.mensaje || p.promocion?.nombre}</span>
-          <span className="font-semibold">-S/ {p.descuento.toFixed(2)}</span>
+        <div key={i} className="flex items-start justify-between text-xs text-green-700 gap-2">
+          <span className="flex items-center gap-1">
+            {p.producto_regalo
+              ? <GiftIcon className="w-3.5 h-3.5 shrink-0 text-green-600" />
+              : '✓'
+            }
+            {p.mensaje || p.promocion?.nombre}
+          </span>
+          {p.producto_regalo
+            ? <span className="font-semibold shrink-0 text-green-600">¡GRATIS!</span>
+            : <span className="font-semibold shrink-0">-S/ {p.descuento.toFixed(2)}</span>
+          }
         </div>
       ))}
-      <div className="flex items-center justify-between text-sm font-bold text-green-800 border-t border-green-300 pt-2">
-        <span>Ahorro total por promociones</span>
-        <span>-S/ {totalDescuento.toFixed(2)}</span>
-      </div>
+      {totalDescuento > 0 && (
+        <div className="flex items-center justify-between text-sm font-bold text-green-800 border-t border-green-300 pt-2">
+          <span>Ahorro total por promociones</span>
+          <span>-S/ {totalDescuento.toFixed(2)}</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -161,12 +172,11 @@ const VenderProductosTab = () => {
   const [pacienteId, setPacienteId] = useState('');
   const [responsableId, setResponsableId] = useState('');
   const [compradorExternoId, setCompradorExternoId] = useState('');
-
   const [tipoComprobante, setTipoComprobante] = useState(1);
 
-  // 🆕 Estado de promociones
   const [promocionesAplicadas, setPromocionesAplicadas] = useState([]);
   const [totalDescuentoPromo, setTotalDescuentoPromo] = useState(0);
+  const [productosRegalo, setProductosRegalo] = useState([]);
   const [calculandoPromos, setCalculandoPromos] = useState(false);
   const timerPromo = useRef(null);
 
@@ -188,11 +198,11 @@ const VenderProductosTab = () => {
     }
   }, [responsableId]);
 
-  // 🆕 Recalcular promociones con debounce cuando cambian las líneas
   useEffect(() => {
     if (lineas.length === 0) {
       setPromocionesAplicadas([]);
       setTotalDescuentoPromo(0);
+      setProductosRegalo([]);
       return;
     }
     clearTimeout(timerPromo.current);
@@ -225,12 +235,11 @@ const VenderProductosTab = () => {
       const pacientesResp = resp?.data && Array.isArray(resp.data) ? resp.data : [];
       setPacientesDelResponsable(pacientesResp);
       if (pacientesResp.length === 1) setPacienteId(pacientesResp[0].id);
-    } catch (error) {
+    } catch {
       setPacientesDelResponsable([]);
     }
   };
 
-  // 🆕 Llamar al backend para calcular promociones
   const recalcularPromociones = async () => {
     if (lineas.length === 0) return;
     setCalculandoPromos(true);
@@ -253,13 +262,21 @@ const VenderProductosTab = () => {
       });
 
       const resultado = await calcularPromociones({ items });
-      setPromocionesAplicadas(resultado.promociones_aplicadas || []);
+      const promos = resultado.promociones_aplicadas || [];
+
+      setPromocionesAplicadas(promos);
       setTotalDescuentoPromo(resultado.total_descuento || 0);
+
+      const regalos = promos
+        .filter(p => p.producto_regalo != null)
+        .map(p => p.producto_regalo);
+      setProductosRegalo(regalos);
+
     } catch (err) {
-      // Si falla el cálculo de promos, no bloquear la venta
       console.warn('No se pudieron calcular promociones:', err);
       setPromocionesAplicadas([]);
       setTotalDescuentoPromo(0);
+      setProductosRegalo([]);
     } finally {
       setCalculandoPromos(false);
     }
@@ -337,7 +354,7 @@ const VenderProductosTab = () => {
         : parseFloat(descuentoGlobal.valor);
     }
 
-    // 🆕 Restar también el descuento por promociones
+    // ✅ totalDescuentoPromo se resta correctamente aquí
     const totalConDesc = subtotalDespuesDescuentosLineas - descuentoGlobalMonto - totalDescuentoPromo;
     const igv = conIgv ? totalConDesc - totalConDesc / 1.18 : 0;
     const base = conIgv ? totalConDesc / 1.18 : totalConDesc;
@@ -369,20 +386,37 @@ const VenderProductosTab = () => {
 
     setLoading(true);
     try {
+      const detallesNormales = lineas.map(l => {
+        const det = { producto_id: l.producto_id, cantidad: l.cantidad, precio_unitario: l.precio_unitario };
+        if (l.descuento_tipo && l.descuento_valor) {
+          det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
+          det.descuento_valor = parseFloat(l.descuento_valor);
+        }
+        return det;
+      });
+
+      const detallesRegalo = productosRegalo.map(regalo => ({
+        producto_id: regalo.producto_id,
+        cantidad: 1,
+        precio_unitario: regalo.precio_unitario,
+        descuento_tipo_id: TIPOS_DESCUENTO.MONTO_FIJO,
+        descuento_valor: regalo.precio_unitario,
+      }));
+
       const payload = {
         tipo_comprador_id: tipoPagador,
         tipo_comprobante_id: tipoComprobante,
         fecha_venta: new Date().toISOString().slice(0, 10),
         user_crea_id: user?.id,
-        detalles: lineas.map(l => {
-          const det = { producto_id: l.producto_id, cantidad: l.cantidad, precio_unitario: l.precio_unitario };
-          if (l.descuento_tipo && l.descuento_valor) {
-            det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
-            det.descuento_valor = parseFloat(l.descuento_valor);
-          }
-          return det;
-        }),
+        detalles: [...detallesNormales, ...detallesRegalo],
       };
+
+      // ✅ FIX PRINCIPAL: enviar el descuento de promociones al backend
+      // Sin esto, el backend siempre calculaba total sin descontar las promos,
+      // aunque el frontend las mostrara correctamente.
+      if (totalDescuentoPromo > 0) {
+        payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
+      }
 
       if (tipoPagador === TIPOS_PAGADOR.PACIENTE) payload.paciente_id = parseInt(pacienteId);
       if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) {
@@ -400,7 +434,7 @@ const VenderProductosTab = () => {
 
       const ventaCreada = await crearVentaProducto(payload);
 
-      // 🆕 Registrar promociones aplicadas en el historial
+      // Registrar cada promoción aplicada en el historial
       if (ventaCreada?.id && promocionesAplicadas.length > 0) {
         await Promise.allSettled(
           promocionesAplicadas.map(p =>
@@ -426,6 +460,7 @@ const VenderProductosTab = () => {
       setNota('');
       setPromocionesAplicadas([]);
       setTotalDescuentoPromo(0);
+      setProductosRegalo([]);
       setTimeout(() => setExito(''), 5000);
     } catch (err) {
       const msg = err?.response?.data?.message;
@@ -565,7 +600,7 @@ const VenderProductosTab = () => {
             </div>
           </div>
 
-          {/* Tabla */}
+          {/* Tabla de productos */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -618,6 +653,31 @@ const VenderProductosTab = () => {
                     </tr>
                   );
                 })}
+
+                {/* Filas de productos regalo */}
+                {productosRegalo.map((regalo, i) => (
+                  <tr key={`regalo-${i}`} className="bg-green-50 border-l-4 border-green-400">
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-2">
+                        <GiftIcon className="w-4 h-4 text-green-600 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-green-800">{regalo.nombre}</div>
+                          <div className="text-xs text-green-600">🎁 Producto de regalo por promoción</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center text-green-800 font-semibold">1</td>
+                    <td className="px-4 py-3 text-right text-green-700">
+                      <span className="line-through text-gray-400 text-xs mr-1">S/ {regalo.precio_unitario.toFixed(2)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-green-700">-100%</td>
+                    <td className="px-4 py-3 text-right text-green-700">S/ 0.00</td>
+                    <td className="px-4 py-3 text-right text-gray-300">—</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">S/ 0.00</td>
+                    <td className="px-4 py-3 text-xs text-green-500">auto</td>
+                  </tr>
+                ))}
+
                 {lineas.length === 0 && (
                   <tr><td colSpan="8" className="px-6 py-12 text-center text-gray-400">Busca y agrega productos para comenzar</td></tr>
                 )}
@@ -636,14 +696,12 @@ const VenderProductosTab = () => {
               </div>
 
               <div className="space-y-3">
-                {/* 🆕 Panel de promociones */}
                 <PanelPromociones
                   promocionesAplicadas={promocionesAplicadas}
                   totalDescuento={totalDescuentoPromo}
                   calculando={calculandoPromos}
                 />
 
-                {/* Descuento Global */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Descuento Global</span>
                   <div className="flex items-center gap-2">
@@ -668,7 +726,6 @@ const VenderProductosTab = () => {
                       <span className="font-semibold">S/ {totales.igv.toFixed(2)}</span>
                     </div>
                   )}
-                  {/* 🆕 Línea de descuento por promociones */}
                   {totalDescuentoPromo > 0 && (
                     <div className="flex items-center justify-between text-sm text-green-700">
                       <span className="flex items-center gap-1"><SparklesIcon className="w-3.5 h-3.5" />Descuento promociones</span>
@@ -686,7 +743,7 @@ const VenderProductosTab = () => {
 
           {/* Acciones */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button onClick={() => { setLineas([]); setPacienteId(''); setDescuentoGlobal({ tipo: '%', valor: '' }); setNota(''); }}
+            <button onClick={() => { setLineas([]); setPacienteId(''); setDescuentoGlobal({ tipo: '%', valor: '' }); setNota(''); setProductosRegalo([]); setPromocionesAplicadas([]); setTotalDescuentoPromo(0); }}
               className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
               Cancelar
             </button>

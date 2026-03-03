@@ -1,3 +1,4 @@
+// Fixed: setGuardando state added - v2
 import React, { useState, useEffect } from 'react';
 import {
   UserPlus, Edit2, Power, Check, X, Search, Eye,
@@ -43,6 +44,7 @@ export default function EmpleadosPage() {
   const [distritos, setDistritos] = useState([]);
   const [nivelesEducacion, setNivelesEducacion] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('activo');
@@ -1082,117 +1084,115 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     return Object.keys(erroresNuevos).length === 0;
   };
 
-const handleGuardar = async () => {
-  if (!validarFormulario()) {
-    showNotification('Por favor corrige los errores en el formulario', 'error');
-    return;
-  }
+  const handleGuardar = async () => {
+    if (!validarFormulario()) {
+      onError('Por favor corrige los errores en el formulario');
+      return;
+    }
 
-  try {
-    setGuardando(true);
+    try {
+      setLoading(true);
 
-    // ✅ OBTENER EL USUARIO LOGUEADO (Administrador)
-    const usuarioLogueado = JSON.parse(localStorage.getItem('user'));
+      // ✅ OBTENER EL USUARIO LOGUEADO (Administrador)
+      const usuarioLogueado = JSON.parse(localStorage.getItem('user'));
 
-    console.log('🔐 Usuario que edita:', {
-      id: usuarioLogueado.id,
-      nombre: usuarioLogueado.nombres,
-      rol: usuarioLogueado.rol?.nombre
-    });
+      console.log('🔐 Usuario que crea:', {
+        id: usuarioLogueado.id,
+        nombre: usuarioLogueado.nombres,
+        rol: usuarioLogueado.rol?.nombre
+      });
 
-    const rolObj = roles.find(r => r.nombre === formData.rol);
-    const especialidadObj = formData.especialidad 
-      ? especialidades.find(e => e.nombre === formData.especialidad)
-      : null;
-    const cargoObj = formData.cargo 
-      ? cargos.find(c => c.nombre === formData.cargo)
-      : null;
-    const jefeObj = formData.jefe_id 
-      ? { id: formData.jefe_id }
-      : null;
+      const rolObj = roles.find(r => r.nombre === formData.rol);
+      const especialidadObj = formData.especialidad
+        ? especialidades.find(e => e.nombre === formData.especialidad)
+        : null;
+      const cargoObj = formData.cargo
+        ? cargos.find(c => c.nombre === formData.cargo)
+        : null;
+      const jefeObj = formData.jefe_id
+        ? { id: formData.jefe_id }
+        : null;
 
-    console.log('🔍 FRONTEND EDITAR - Preparando datos:', {
-      'formData.rol': formData.rol,
-      'formData.especialidad': formData.especialidad,
-      rolObj,
-      especialidadObj,
-      'especialidad_id a enviar': especialidadObj?.id || null
-    });
+      console.log('🔍 FRONTEND CREAR - Preparando datos:', {
+        'formData.rol': formData.rol,
+        'formData.especialidad': formData.especialidad,
+        rolObj,
+        especialidadObj,
+        'especialidad_id a enviar': especialidadObj?.id || null
+      });
 
-    const dataToUpdate = {
-      nombres: formData.nombres,
-      apellidos: formData.apellidos,
-      dni: formData.dni,
-      username: formData.username,
-      email: formData.email,
-      correo_corporativo: formData.correo_corporativo || null,
-      telefono: formData.telefono || null,
-      telefono_emergencia: formData.telefono_emergencia || null,
-      contacto_emergencia: formData.contacto_emergencia || null,
-      direccion: formData.direccion || null,
-      distrito: formData.distrito || null,
-      provincia: formData.provincia || null,
-      departamento: formData.departamento || null,
-      talla_polo: formData.talla_polo || null,
-      talla_pantalon: formData.talla_pantalon || null,
-      talla_zapatos: formData.talla_zapatos || null,
-      numero_colegiatura: formData.numero_colegiatura || null,
-      
-      rol_id: rolObj?.id || null,
-      especialidad_id: especialidadObj?.id || null,
-      cargo_id: cargoObj?.id || null,
-      jefe_id: jefeObj?.id || null,
-      institucion_id: formData.institucion_id || null,
+      const dataToCreate = {
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
+        dni: formData.dni,
+        username: formData.usuario,
+        password: formData.contrasena,
+        email: formData.email,
+        correo_corporativo: formData.correo_corporativo || null,
+        telefono: formData.telefono || null,
+        telefono_emergencia: formData.telefono_emergencia || null,
+        contacto_emergencia: formData.contacto_emergencia || null,
+        direccion: formData.direccion || null,
+        distrito: formData.distrito || null,
+        provincia: formData.provincia || null,
+        departamento: formData.departamento || null,
+        talla_polo: formData.talla_polo || null,
+        talla_pantalon: formData.talla_pantalon || null,
+        talla_zapatos: formData.talla_zapatos || null,
+        numero_colegiatura: formData.numero_colegiatura || null,
 
-      fecha_nacimiento: formData.fecha_nacimiento || null,
-      sexo_id: formData.sexo_id || null,
-      estado_civil_id: formData.estado_civil_id || null,
-      hijos: formData.hijos || null,
-      pais: formData.pais || null,
-      referencia_direccion: formData.referencia_direccion || null,
-      parentesco_emergencia_id: formData.parentesco_emergencia_id || null,
-      distrito_id: formData.distrito_id || null,
-      
-      procedencia_laboral: formData.procedencia_laboral || null,
-      area_laboral: formData.area_laboral || null,
-      empresa_anterior: formData.empresa_anterior || null,
-      motivo_renuncia: formData.motivo_renuncia || null,
-      
-      nivel_educacion_id: formData.nivel_educacion_id || null,
-      centro_estudios_principal: formData.centro_estudios_principal || null,
-      carrera_estudiada_principal: formData.carrera_estudiada_principal || null,
-      fecha_inicio_estudio: formData.fecha_inicio_estudio || null,
-      fecha_termino_estudio: formData.fecha_termino_estudio || null,
-      
-      hobbies: formData.hobbies || null,
+        rol_id: rolObj?.id || null,
+        especialidad_id: especialidadObj?.id || null,
+        cargo_id: cargoObj?.id || null,
+        jefe_id: jefeObj?.id || null,
+        institucion_id: formData.institucion_id || null,
 
-      // ✅ AGREGAR EL ID DEL USUARIO LOGUEADO (ADMINISTRADOR)
-      user_id_actua: usuarioLogueado.id
-    };
+        fecha_nacimiento: formData.fecha_nacimiento || null,
+        sexo_id: formData.sexo_id || null,
+        estado_civil_id: formData.estado_civil_id || null,
+        hijos: formData.hijos || null,
+        pais: formData.pais || null,
+        referencia_direccion: formData.referencia_direccion || null,
+        parentesco_emergencia_id: formData.parentesco_emergencia_id || null,
+        distrito_id: formData.distrito_id || null,
 
-    console.log('🚀 FRONTEND - Enviando al backend:', {
-      empleadoId: empleadoEditando.id,
-      dataCompleta: dataToUpdate,
-      'data.rol_id': dataToUpdate.rol_id,
-      'data.especialidad_id': dataToUpdate.especialidad_id,
-      'data.cargo_id': dataToUpdate.cargo_id,
-      'data.user_id_actua': dataToUpdate.user_id_actua // ✅ Verificar que se envía
-    });
+        procedencia_laboral: formData.procedencia_laboral || null,
+        area_laboral: formData.area_laboral || null,
+        empresa_anterior: formData.empresa_anterior || null,
+        motivo_renuncia: formData.motivo_renuncia || null,
 
-    await updateTrabajador(empleadoEditando.id, dataToUpdate);
+        nivel_educacion_id: formData.nivel_educacion_id || null,
+        centro_estudios_principal: formData.centro_estudios_principal || null,
+        carrera_estudiada_principal: formData.carrera_estudiada_principal || null,
+        fecha_inicio_estudio: formData.fecha_inicio_estudio || null,
+        fecha_termino_estudio: formData.fecha_termino_estudio || null,
 
-    showNotification('Empleado actualizado correctamente', 'success');
-    setMostrarModal(false);
-    setEmpleadoEditando(null);
-    cargarEmpleados();
-  } catch (error) {
-    console.error('Error al actualizar empleado:', error);
-    const mensajeError = error.response?.data?.message || 'Error al actualizar el empleado';
-    showNotification(mensajeError, 'error');
-  } finally {
-    setGuardando(false);
-  }
-};
+        hobbies: formData.hobbies || null,
+
+        // ✅ AGREGAR EL ID DEL USUARIO LOGUEADO (ADMINISTRADOR)
+        user_id_actua: usuarioLogueado.id
+      };
+
+      console.log('🚀 FRONTEND - Enviando al backend:', {
+        dataCompleta: dataToCreate,
+        'data.rol_id': dataToCreate.rol_id,
+        'data.especialidad_id': dataToCreate.especialidad_id,
+        'data.cargo_id': dataToCreate.cargo_id,
+        'data.user_id_actua': dataToCreate.user_id_actua // ✅ Verificar que se envía
+      });
+
+      await crearTrabajador(dataToCreate);
+
+      onSuccess('Empleado creado correctamente');
+      onClose();
+    } catch (error) {
+      console.error('Error al crear empleado:', error);
+      const mensajeError = error.response?.data?.message || 'Error al crear el empleado';
+      onError(mensajeError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';

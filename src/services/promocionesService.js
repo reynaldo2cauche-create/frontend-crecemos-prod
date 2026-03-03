@@ -64,3 +64,21 @@ export const getEstadisticasPromociones = (promocionId = null) =>
   api.get('/promociones/estadisticas/general', {
     params: promocionId ? { promocionId } : {}
   }).then(r => r.data);
+
+// ============================================================
+// PROMOCIONES — CATÁLOGOS Y TIPOS
+// ============================================================
+
+/**
+ * Obtener el catálogo completo de alcances disponibles
+ * Retorna: { productos, categorias, servicios, paquetes }
+ */
+export const getCatalogoAlcances = () =>
+  api.get('/promociones/catalogo').then(r => r.data);
+
+/**
+ * Obtener tipos de promociones (alcance, condición, beneficio)
+ * Retorna: { tiposAlcance, tiposCondicion, tiposBeneficio }
+ */
+export const getTiposPromociones = () =>
+  api.get('/promociones/tipos').then(r => r.data);
