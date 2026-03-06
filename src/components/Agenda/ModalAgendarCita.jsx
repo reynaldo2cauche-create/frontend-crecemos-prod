@@ -248,23 +248,23 @@ const ModalAgendarCita = ({
           let mensajeCitas = '';
           citasMismoDia.forEach((cita, index) => {
             mensajeCitas += `\n${index + 1}️⃣ *Cita ${index + 1}*
-🕓 ${formatearHora(cita.hora_inicio)}
+🕓 *${formatearHora(cita.hora_inicio)}*
 💜 ${getServicioNombre(cita)}
 ✨ ${getTerapeutaNombre(cita)}`;
             if (index < citasMismoDia.length - 1) mensajeCitas += '\n';
           });
           mensaje = `Buenas tardes, Sr(a).
-Le hacemos recordar sus citas para el día de mañana
-🗓️ ${diaSemana}, ${dia} de ${mes}
+Le hacemos recordar sus citas para el día
+🗓️ *${diaSemana}, ${dia} de ${mes}*
 ${mensajeCitas}
 
 🥳 ¡Los esperamos! ✨`;
         } else {
           // Una sola cita (usa la cita que se está editando para tener los datos completos)
           mensaje = `Buenas tardes, Sr(a).
-Le hacemos recordar su cita para el día de mañana
-🗓️ ${diaSemana}, ${dia} de ${mes}
-🕓 ${formatearHora(citaEditando.hora_inicio)}
+Le hacemos recordar su cita para el día
+🗓️ *${diaSemana}, ${dia} de ${mes}*
+🕓 *${formatearHora(citaEditando.hora_inicio)}*
 💜 ${getServicioNombre(citaEditando)}
 ✨ ${getTerapeutaNombre(citaEditando)}
 
@@ -318,9 +318,9 @@ Le hacemos recordar su cita para el día de mañana
         terapeutaNombre = 'Equipo de Terapeutas';
       }
       const mensaje = `Buenas tardes, Sr(a).
-Le hacemos recordar su cita para el día de mañana
-🗓️ ${diaSemana}, ${dia} de ${mes}
-🕓 ${horaFormateada}
+Le hacemos recordar su cita para el día
+🗓️ *${diaSemana}, ${dia} de ${mes}*
+🕓 *${horaFormateada}*
 💜 ${servicioNombre}
 ✨ ${terapeutaNombre}
 

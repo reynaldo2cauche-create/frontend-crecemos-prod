@@ -143,6 +143,7 @@ const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) 
           }
         </div>
       ))}
+      {/* ✅ Solo mostrar ahorro total si hay descuentos monetarios reales */}
       {totalDescuento > 0 && (
         <div className="flex items-center justify-between text-sm font-bold text-green-800 border-t border-green-300 pt-2">
           <span>Ahorro total por promociones</span>
@@ -265,6 +266,8 @@ const VenderProductosTab = () => {
       const promos = resultado.promociones_aplicadas || [];
 
       setPromocionesAplicadas(promos);
+
+      // ✅ FIX: usar total_descuento del backend que ya excluye regalos
       setTotalDescuentoPromo(resultado.total_descuento || 0);
 
       const regalos = promos

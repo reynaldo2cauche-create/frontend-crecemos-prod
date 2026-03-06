@@ -35,6 +35,7 @@ import SemanaTCABlog from './psicologia/SemanaTCABlog';
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
 import DiaDerechosHumanosBlog from './efemerides/DiaDerechosHumanosBlog';
+import DiaMujerBlog from './efemerides/DiaMujerBlog';
 
 // Blogs de Terapias
 import TerapiaLenguajeBlog from './terapias/TerapiaLenguajeBlog';
@@ -81,6 +82,7 @@ export const blogComponents = {
   'estimulacion-lenguaje-embarazo-desarrollo-infantil': EstimulacionPrenatalLenguajeBlog,
   'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
   'vacaciones-mejor-momento-evaluar-terapia-lenguaje': VacacionesTerapiaBlog,
+  '8-marzo-dia-internacional-mujer-salud-mental': DiaMujerBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -97,6 +99,7 @@ export {
   TCABlog,
   DiaDiscapacidadBlog,
   DiaDerechosHumanosBlog,
+  DiaMujerBlog,
   PatronesCrianzaBlog,
   DiaDepresionBlog,
   SemanaTCABlog,

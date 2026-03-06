@@ -121,3 +121,5 @@ export const getTiposCita = async () => {
   return response.data;
 };
 
+// Alias para compatibilidad
+export const getMotivoCita = getMotivosCita;

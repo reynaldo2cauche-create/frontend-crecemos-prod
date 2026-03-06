@@ -1,20 +1,20 @@
 import React from 'react';
-import { Dialog, Box, Typography, Button } from '@mui/material';
-import { X, MessageCircle } from 'lucide-react';
+import { Dialog, Box } from '@mui/material';
+import { X, MessageCircle, ArrowRight } from 'lucide-react';
 
 const DialogNotice = ({ open, onClose, popupData }) => {
-  // Si no hay popup data, usar datos por defecto (compatibilidad)
   const titulo = popupData?.titulo || '¡Feliz Día del Niño en Crecemos!';
   const imagenUrl = popupData?.imagenUrl || '/dia-nino-promo.jpg';
-
-  // Solo usar mensaje si existe y no está vacío
   const mensajeWhatsapp = popupData?.mensajeWhatsapp?.trim() || null;
-  const mostrarBoton = !!mensajeWhatsapp; // Solo mostrar botón si hay mensaje configurado
+  const mostrarBoton = !!mensajeWhatsapp;
 
   const handleWhatsAppClick = () => {
     const numeroWhatsApp = '+51957064401';
     const mensajeCodificado = encodeURIComponent(mensajeWhatsapp);
-    window.open(`https://api.whatsapp.com/send?phone=${numeroWhatsApp}&text=${mensajeCodificado}`, '_blank');
+    window.open(
+      `https://api.whatsapp.com/send?phone=${numeroWhatsApp}&text=${mensajeCodificado}`,
+      '_blank'
+    );
   };
 
   return (
@@ -25,84 +25,63 @@ const DialogNotice = ({ open, onClose, popupData }) => {
       scroll="body"
       PaperProps={{
         sx: {
-          background: 'rgba(255, 255, 255, 0.08)',
-          backdropFilter: 'blur(25px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(25px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
-          borderRadius: '24px',
+          background: 'transparent',
+          boxShadow: 'none',
           overflow: 'visible',
-          position: 'relative',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
           margin: '20px',
-          maxWidth: '500px',
+          maxWidth: '460px',
           width: '90%',
-          maxHeight: 'calc(100vh - 40px)'
         }
       }}
       BackdropProps={{
         sx: {
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)'
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
         }
       }}
     >
-      {/* Botón cerrar moderno - Esquina superior derecha FUERA del modal */}
-      <button
-        onClick={onClose}
-        style={{
-          position: 'absolute',
-          top: '-12px',
-          right: '-12px',
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: 'none',
-          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(255, 107, 107, 0.4)',
-          transition: 'all 0.3s ease',
-          zIndex: 10,
-          outline: 'none'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'rotate(90deg) scale(1.1)';
-          e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 107, 107, 0.6)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'rotate(0deg) scale(1)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.4)';
-        }}
-      >
-        <X size={20} strokeWidth={3} />
-      </button>
+      <Box sx={{ position: 'relative' }}>
 
-      {/* Contenedor principal */}
-      <Box
-        sx={{
-          position: 'relative',
-          borderRadius: '24px',
-          overflow: 'auto',
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          maxHeight: 'calc(100vh - 80px)'
-        }}
-      >
-        {/* Imagen del popup - COMPLETA sin nada encima */}
+        {/* Botón cerrar */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '-14px',
+            right: '-14px',
+            width: '34px',
+            height: '34px',
+            borderRadius: '50%',
+            border: 'none',
+            background: 'linear-gradient(135deg, #FF6B6B, #FF8E53)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(255,107,107,0.45)',
+            transition: 'transform 0.25s ease',
+            zIndex: 20,
+            outline: 'none',
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'rotate(90deg) scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'rotate(0deg) scale(1)'}
+        >
+          <X size={16} strokeWidth={3} />
+        </button>
+
+        {/* Card imagen + overlay */}
         <Box
           sx={{
-            width: '100%',
-            height: 'auto',
+            borderRadius: '20px',
             overflow: 'hidden',
-            position: 'relative'
+            boxShadow: '0 28px 64px rgba(0,0,0,0.45)',
+            position: 'relative',
+            lineHeight: 0,
           }}
         >
+          {/* Imagen */}
           <img
             src={imagenUrl}
             alt={titulo}
@@ -110,77 +89,77 @@ const DialogNotice = ({ open, onClose, popupData }) => {
               width: '100%',
               height: 'auto',
               objectFit: 'contain',
-              display: 'block'
+              display: 'block',
             }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }}
+            onError={e => { e.target.style.display = 'none'; }}
           />
-        </Box>
 
-        {/* Botón CTA DEBAJO de la imagen */}
-        {mostrarBoton && (
-          <Box
-            sx={{
-              padding: '24px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(15px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(15px) saturate(180%)',
-              borderTop: '1px solid rgba(255, 255, 255, 0.18)',
-              boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          >
-            <Button
+          {/* Overlay gradiente + botón encima de la imagen, parte inferior */}
+          {mostrarBoton && (
+            <Box
               onClick={handleWhatsAppClick}
               sx={{
-                background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-                color: 'white',
-                borderRadius: '50px',
-                padding: '16px 40px',
-                fontSize: { xs: '1rem', sm: '1.1rem' },
-                fontWeight: 700,
-                textTransform: 'none',
-                boxShadow: '0 8px 24px rgba(37, 211, 102, 0.4)',
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '90px',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%)',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                transition: 'all 0.3s ease',
-                border: '2px solid rgba(255, 255, 255, 0.3)',
-                backdropFilter: 'blur(10px)',
-                animation: 'pulse 2s infinite',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #128C7E 0%, #075E54 100%)',
-                  transform: 'translateY(-3px) scale(1.05)',
-                  boxShadow: '0 12px 32px rgba(37, 211, 102, 0.6)'
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                paddingBottom: '18px',
+                cursor: 'pointer',
+                '&:hover .wsp-row': {
+                  letterSpacing: '0.06em',
+                  opacity: 0.85,
                 },
-                '&:active': {
-                  transform: 'translateY(-1px) scale(1.02)'
-                }
               }}
             >
-              <MessageCircle size={24} />
-              <span>Contáctanos por WhatsApp</span>
-            </Button>
-          </Box>
-        )}
-      </Box>
+              <Box
+                className="wsp-row"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {/* Ícono WhatsApp */}
+                <Box
+                  sx={{
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    background: '#25D366',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: '0 2px 8px rgba(37,211,102,0.5)',
+                  }}
+                >
+                  <MessageCircle size={14} color="white" strokeWidth={2.5} />
+                </Box>
 
-      {/* Animación de pulso para el botón */}
-      <style>
-        {`
-          @keyframes pulse {
-            0%, 100% {
-              transform: scale(1);
-            }
-            50% {
-              transform: scale(1.05);
-            }
-          }
-        `}
-      </style>
+                {/* Texto */}
+                <span style={{
+                  color: 'rgba(255,255,255,0.92)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.03em',
+                  fontFamily: 'inherit',
+                  transition: 'letter-spacing 0.2s ease',
+                }}>
+                  Escríbenos por WhatsApp
+                </span>
+
+                <ArrowRight size={13} color="rgba(255,255,255,0.55)" strokeWidth={2.5} />
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Box>
     </Dialog>
   );
 };

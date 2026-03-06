@@ -103,4 +103,24 @@ export const getParentescos = async () => {
 export const getNivelesEducacion = async () => {
   const response = await api.get('/catalogos/nivel-educacion');
   return response.data;
-}; 
+};
+
+export const getModalidades = async () => {
+  const cacheKey = 'catalogos:modalidades';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
+
+  const response = await api.get('/catalogos/modalidades');
+  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
+  return response.data;
+};
+
+export const getFrecuencias = async () => {
+  const cacheKey = 'catalogos:frecuencias';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
+
+  const response = await api.get('/catalogos/frecuencias');
+  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
+  return response.data;
+};

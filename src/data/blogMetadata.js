@@ -404,6 +404,19 @@ export const blogMetadata = [
   readTime: '15 min lectura',
   author: 'Centro Crecemos',
   heroImage: '/assets/img/blog/tca-semana1.webp'
+},
+{
+  id: 32,
+  slug: '8-marzo-dia-internacional-mujer-salud-mental',
+  title: '8 de marzo – Día de la Mujer: Conmemorar también es cuidar, salud mental y mujeres',
+  excerpt: '¿Cuántas veces se ha aplaudido la fortaleza de una mujer sin preguntar cómo se siente realmente? Hoy se conmemora la historia, la fuerza y la lucha de millones de mujeres, pero también es necesario recordar que la salud mental de las mujeres importa.',
+  image: '/assets/img/blog/dia-mujer-portada.webp',
+  date: '8 Marzo 2026',
+  category: 'efemerides',
+  categoryName: 'Eventos Conmemorativos',
+  readTime: '12 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/dia-mujer-hero.webp'
 }
   // Aquí agregas más blogs...
 ];

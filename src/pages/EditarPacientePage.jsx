@@ -327,7 +327,7 @@ useEffect(() => {
 
 const handleAsignarServicio = async () => {
   try {
-    const servicioSeleccionado = serviciosDisponibles.find(s => s.nombre === nuevoServicio.servicio);
+    const servicioSeleccionado = serviciosDisponibles.find(s => s.id === parseInt(nuevoServicio.servicio));
     if (!servicioSeleccionado) {
       throw new Error('Servicio no encontrado');
     }

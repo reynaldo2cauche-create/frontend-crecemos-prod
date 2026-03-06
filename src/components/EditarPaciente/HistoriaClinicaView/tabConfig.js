@@ -6,7 +6,8 @@ import {
   Timeline,
   Description,
   School,
-  Healing
+  Healing,
+  Assignment
 } from '@mui/icons-material';
 
 // Configuración de tabs dinámica
@@ -42,6 +43,24 @@ export const TAB_CONFIG = [
     },
     required: false,
     description: 'Evaluación completa de terapia ocupacional'
+  },
+  {
+    id: 'indicacion-terapeutica',
+    label: 'Indicación Terapéutica',
+    icon: Assignment,
+    component: 'IndicacionTerapeutica',
+    visible: (paciente, serviciosPaciente = []) => {
+      // Verificar si el paciente tiene Terapia de Lenguaje asignado
+      // Buscar por nombre del servicio que contenga "lenguaje"
+      const tieneTerapiaLenguaje = serviciosPaciente.some(s => {
+        const nombreServicio = s?.servicio?.nombre?.toLowerCase() || '';
+        return nombreServicio.includes('lenguaje');
+      });
+      console.log('🗣️ TERAPIA DE LENGUAJE:', tieneTerapiaLenguaje ? 'SÍ' : 'NO', serviciosPaciente);
+      return tieneTerapiaLenguaje;
+    },
+    required: false,
+    description: 'Indicaciones terapéuticas del paciente'
   },
 ];
 

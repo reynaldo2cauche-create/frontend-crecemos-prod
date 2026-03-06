@@ -15,9 +15,9 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
     console.log('Servicios área 2:', servicios.filter(s => s.area?.id === 2));
   }, [servicios]);
 
-  // Encontrar el ID del servicio seleccionado
+  // Encontrar el servicio seleccionado por ID
   const servicioSeleccionado = useMemo(() => {
-    return servicios.find(s => s.nombre === nuevoServicio.servicio);
+    return servicios.find(s => s.id === parseInt(nuevoServicio.servicio));
   }, [servicios, nuevoServicio.servicio]);
 
   // Cargar terapeutas filtrados cuando se selecciona un servicio
@@ -107,7 +107,7 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
                   {servicios
                     .filter(s => s.area?.id === 1)
                     .map(s => (
-                      <option key={s.id} value={s.nombre}>
+                      <option key={s.id} value={s.id}>
                         {s.nombre}
                       </option>
                     ))}
@@ -120,7 +120,7 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
                   {servicios
                     .filter(s => s.area?.id === 2)
                     .map(s => (
-                      <option key={s.id} value={s.nombre}>
+                      <option key={s.id} value={s.id}>
                         {s.nombre}
                       </option>
                     ))}
@@ -133,7 +133,7 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
                   {servicios
                     .filter(s => !s.area?.id || (s.area?.id !== 1 && s.area?.id !== 2))
                     .map(s => (
-                      <option key={s.id} value={s.nombre}>
+                      <option key={s.id} value={s.id}>
                         {s.nombre}
                       </option>
                     ))}

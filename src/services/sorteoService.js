@@ -107,36 +107,20 @@ export const eliminarSorteo = async (id) => {
 };
 
 /**
- * 📄 Descargar PDF de resultados del sorteo
+ * 📄 Descargar PDF de resultados del sorteo (generado en el frontend)
  */
-export const descargarPDF = async (id) => {
+export const descargarArchivoPDF = async (id) => {
   try {
-    const response = await api.get(`/sorteos/${id}/pdf`, {
-      responseType: 'blob',
-    });
-    return response.data;
+    // Importar la función de generación de PDF
+    const { generarSorteoPDF } = await import('../utils/generarSorteoPDF');
+
+    // Obtener los datos del sorteo
+    const sorteo = await obtenerDetalle(id);
+
+    // Generar y descargar el PDF
+    await generarSorteoPDF(sorteo);
   } catch (error) {
     console.error('❌ Error al descargar PDF:', error);
-    throw error;
-  }
-};
-
-/**
- * 💾 Descargar archivo PDF (helper)
- */
-export const descargarArchivoPDF = async (id, nombreArchivo) => {
-  try {
-    const blob = await descargarPDF(id);
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = nombreArchivo || `sorteo_${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('❌ Error al descargar archivo:', error);
     throw error;
   }
 };
