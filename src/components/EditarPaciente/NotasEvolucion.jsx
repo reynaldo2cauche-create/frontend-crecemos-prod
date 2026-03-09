@@ -5,6 +5,7 @@ import { ROLES } from '../../constants/roles';
 
 // Un terapeuta que NO es jefe solo puede ver notas de su misma especialidad.
 // El backend filtra por especialidad usando las asignaciones del terapeuta con el paciente.
+// Los jefes de área ven las notas de sus subordinados (filtrado en backend).
 // Admin y Admisión ven todas las notas (el backend lo gestiona con req.user).
 
 const construirUrl = (paciente_id, user) => {

@@ -124,3 +124,13 @@ export const getFrecuencias = async () => {
   cacheManager.set(cacheKey, response.data, CATALOG_TTL);
   return response.data;
 };
+
+export const getTipoBloqueo = async () => {
+  const cacheKey = 'catalogos:tipo-bloqueo';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
+
+  const response = await api.get('/catalogos/tipo-bloqueo');
+  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
+  return response.data;
+};

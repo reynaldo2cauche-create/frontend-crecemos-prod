@@ -210,7 +210,9 @@ useEffect(() => {
       if (id) {
         try {
           let url = `/nota-evolucion/paciente/${id}`;
-          if (user?.rol?.id === ROLES.TERAPEUTA) {
+          // Solo filtrar por trabajador_id si es terapeuta NO jefe
+          const esTerapeutaNoJefe = user?.rol?.id === ROLES.TERAPEUTA && !user?.cargo?.es_jefe;
+          if (esTerapeutaNoJefe) {
             url += `?trabajador_id=${user.id}`;
           }
           const notas = await obtenerNotasEvolucionPorPaciente(id, url);

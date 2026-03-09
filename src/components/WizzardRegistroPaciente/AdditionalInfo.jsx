@@ -66,13 +66,17 @@ const AdditionalInfo = ({ onNext, onBack }) => {
   };
 
   const handleNumeroDocumentoChange = async (e, responsableId) => {
+    // 🔧 Prevenir cualquier acción por defecto (importante para iOS)
+    e.preventDefault();
+    e.stopPropagation();
+
     let value = e.target.value.replace(/[^0-9]/g, '');
     const tipoDocumento = watch(`responsableTipoDocumento_${responsableId}`);
 
     if (tipoDocumento === '1') value = value.slice(0, 8);
     else if (tipoDocumento === '3') value = value.slice(0, 12);
 
-    setValue(`responsableNumeroDocumento_${responsableId}`, value);
+    setValue(`responsableNumeroDocumento_${responsableId}`, value, { shouldValidate: false });
 
     // Limpiar estado previo al cambiar el número
     setResponsableExistente(prev => ({ ...prev, [responsableId]: undefined }));
@@ -171,6 +175,27 @@ const AdditionalInfo = ({ onNext, onBack }) => {
     onNext({ ...data, responsables: responsablesPayload });
   };
 
+  // 🔧 Prevenir submit automático del formulario (fix para iOS)
+  const handleFormKeyDown = (e) => {
+    // Prevenir submit al presionar Enter en cualquier input
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  };
+
+  // 🔧 Prevenir submit no intencional (fix para iOS)
+  const handleFormSubmit = (e) => {
+    // Solo permitir submit si viene del botón "Siguiente"
+    if (e.nativeEvent.submitter?.type !== 'submit' && e.nativeEvent.submitter?.className?.includes('btn-next')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+    return handleSubmit(onSubmit)(e);
+  };
+
   if (error) return (
     <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
       <Alert variant="danger">{error}</Alert>
@@ -191,7 +216,10 @@ const AdditionalInfo = ({ onNext, onBack }) => {
   const esExistente = (responsableId) => responsableExistente[responsableId]?.existe === true;
 
   return (
-    <Form onSubmit={handleSubmit(onSubmit)} className="additional-info-form">
+    <Form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="additional-info-form">
+      {/* Botón hidden para prevenir auto-submit en iOS */}
+      <button type="submit" disabled style={{ display: 'none' }} aria-hidden="true" />
+
       <div className="form-section">
         <h5 className="form-section-title">
           <i className="bi bi-clipboard-heart me-2"></i>
@@ -326,9 +354,17 @@ const AdditionalInfo = ({ onNext, onBack }) => {
                           isInvalid={!!errors[`responsableNumeroDocumento_${rid}`]}
                           value={watch(`responsableNumeroDocumento_${rid}`) || ''}
                           onChange={e => handleNumeroDocumentoChange(e, rid)}
+                          onBlur={(e) => e.preventDefault()}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }
+                          }}
                           disabled={!watch(`responsableTipoDocumento_${rid}`)}
                           inputMode="numeric"
                           placeholder="Número de documento"
+                          autoComplete="off"
                         />
                         <Form.Control.Feedback type="invalid">{errors[`responsableNumeroDocumento_${rid}`]?.message}</Form.Control.Feedback>
                         {buscandoDni[rid] && (
