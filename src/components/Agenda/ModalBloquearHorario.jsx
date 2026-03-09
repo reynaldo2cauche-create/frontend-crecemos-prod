@@ -38,10 +38,13 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
 
   const cargarTiposBloqueo = async () => {
     try {
+      console.log('🔍 Cargando tipos de bloqueo...');
       const tipos = await getTipoBloqueo();
+      console.log('✅ Tipos de bloqueo recibidos:', tipos);
       setTiposBloqueo(tipos);
     } catch (error) {
-      console.error('Error al cargar tipos de bloqueo:', error);
+      console.error('❌ Error al cargar tipos de bloqueo:', error);
+      console.error('❌ Detalles del error:', error.response?.data);
     }
   };
 
@@ -220,21 +223,27 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
               <span className="text-red-500 ml-1">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
-              {tiposBloqueo.map(tipo => (
-                <button
-                  key={tipo.id}
-                  type="button"
-                  onClick={() => handleChange('tipoBloqueoId', tipo.id)}
-                  className={`p-4 border-2 rounded-xl text-left transition-all ${
-                    formData.tipoBloqueoId === tipo.id
-                      ? 'border-red-600 bg-red-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="font-semibold text-sm text-gray-900">{tipo.nombre}</div>
-                  <div className="text-xs text-gray-500 mt-1">{tipo.descripcion}</div>
-                </button>
-              ))}
+              {tiposBloqueo.length === 0 ? (
+                <div className="col-span-2 text-center text-sm text-gray-500 py-4">
+                  Cargando tipos de bloqueo...
+                </div>
+              ) : (
+                tiposBloqueo.map(tipo => (
+                  <button
+                    key={tipo.id}
+                    type="button"
+                    onClick={() => handleChange('tipoBloqueoId', tipo.id)}
+                    className={`p-4 border-2 rounded-xl text-left transition-all ${
+                      formData.tipoBloqueoId === tipo.id
+                        ? 'border-red-600 bg-red-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm text-gray-900">{tipo.nombre}</div>
+                    <div className="text-xs text-gray-500 mt-1">{tipo.descripcion}</div>
+                  </button>
+                ))
+              )}
             </div>
             {errors.tipoBloqueoId && <p className="text-xs text-red-500 mt-1">{errors.tipoBloqueoId}</p>}
           </div>

@@ -1,11 +1,9 @@
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+import api from './api';
 
 // Crear un bloqueo de horario
 export const crearBloqueo = async (bloqueoData) => {
   try {
-    const response = await axios.post(`${API_URL}/bloqueos`, bloqueoData);
+    const response = await api.post('/bloqueos', bloqueoData);
     return response.data;
   } catch (error) {
     console.error('Error al crear bloqueo:', error);
@@ -16,7 +14,7 @@ export const crearBloqueo = async (bloqueoData) => {
 // Obtener todos los bloqueos
 export const obtenerBloqueos = async () => {
   try {
-    const response = await axios.get(`${API_URL}/bloqueos`);
+    const response = await api.get('/bloqueos');
     return response.data;
   } catch (error) {
     console.error('Error al obtener bloqueos:', error);
@@ -27,7 +25,7 @@ export const obtenerBloqueos = async () => {
 // Obtener bloqueos activos (vigentes)
 export const obtenerBloqueosActivos = async () => {
   try {
-    const response = await axios.get(`${API_URL}/bloqueos/activos`);
+    const response = await api.get('/bloqueos/activos');
     return response.data;
   } catch (error) {
     console.error('Error al obtener bloqueos activos:', error);
@@ -38,7 +36,7 @@ export const obtenerBloqueosActivos = async () => {
 // Obtener bloqueos de un terapeuta específico
 export const obtenerBloqueosPorTerapeuta = async (trabajadorId) => {
   try {
-    const response = await axios.get(`${API_URL}/bloqueos/trabajador/${trabajadorId}`);
+    const response = await api.get(`/bloqueos/trabajador/${trabajadorId}`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener bloqueos del terapeuta:', error);
@@ -49,7 +47,7 @@ export const obtenerBloqueosPorTerapeuta = async (trabajadorId) => {
 // Obtener un bloqueo por ID
 export const obtenerBloqueoPorId = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/bloqueos/${id}`);
+    const response = await api.get(`/bloqueos/${id}`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener bloqueo:', error);
@@ -60,7 +58,7 @@ export const obtenerBloqueoPorId = async (id) => {
 // Actualizar un bloqueo
 export const actualizarBloqueo = async (id, bloqueoData) => {
   try {
-    const response = await axios.put(`${API_URL}/bloqueos/${id}`, bloqueoData);
+    const response = await api.put(`/bloqueos/${id}`, bloqueoData);
     return response.data;
   } catch (error) {
     console.error('Error al actualizar bloqueo:', error);
@@ -71,7 +69,7 @@ export const actualizarBloqueo = async (id, bloqueoData) => {
 // Eliminar un bloqueo (soft delete)
 export const eliminarBloqueo = async (id, userId) => {
   try {
-    const response = await axios.delete(`${API_URL}/bloqueos/${id}`, {
+    const response = await api.delete(`/bloqueos/${id}`, {
       params: { userId }
     });
     return response.data;
@@ -84,7 +82,7 @@ export const eliminarBloqueo = async (id, userId) => {
 // Verificar si un horario está bloqueado
 export const verificarHorarioBloqueado = async (trabajadorId, fecha, hora) => {
   try {
-    const response = await axios.post(`${API_URL}/bloqueos/verificar`, {
+    const response = await api.post('/bloqueos/verificar', {
       trabajadorId,
       fecha,
       hora
@@ -99,7 +97,7 @@ export const verificarHorarioBloqueado = async (trabajadorId, fecha, hora) => {
 // Obtener horarios disponibles de un terapeuta en una fecha
 export const obtenerHorariosDisponibles = async (trabajadorId, fecha, horaInicio, horaFin, intervalo) => {
   try {
-    const response = await axios.get(`${API_URL}/bloqueos/disponibles/${trabajadorId}`, {
+    const response = await api.get(`/bloqueos/disponibles/${trabajadorId}`, {
       params: { fecha, horaInicio, horaFin, intervalo }
     });
     return response.data.horarios;

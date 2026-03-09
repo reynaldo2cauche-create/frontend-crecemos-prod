@@ -4,7 +4,11 @@ import {
   ChevronRight,
   Calendar,
   Users,
-  School
+  School,
+  Ban,
+  X,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
 
@@ -109,6 +113,7 @@ CitaCard.displayName = 'CitaCard';
 
 const CalendarioSemanal = ({
   citas = [],
+  bloqueos = [],
   onSlotClick,
   onCitaClick,
   getEstadoColor,
@@ -118,6 +123,8 @@ const CalendarioSemanal = ({
   cargando = false
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
+  const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
+  const [bloqueoSeleccionado, setBloqueoSeleccionado] = useState(null);
 
 
  // Generar horas según el día de la semana
@@ -260,6 +267,49 @@ const CalendarioSemanal = ({
     });
   };
 
+  // Verificar si un slot está bloqueado
+  const getBloqueoEnSlot = (dia, hora) => {
+    if (!bloqueos || bloqueos.length === 0) return null;
+
+    const slotStart = toMinutes(hora.padStart(5, '0'));
+    const slotEnd = slotStart + slotDurationMin;
+
+    // Buscar bloqueo que coincida con este slot
+    const bloqueo = bloqueos.find(b => {
+      // Verificar si el bloqueo está activo
+      if (!b.activo) return false;
+
+      // Verificar si la fecha del slot está dentro del rango del bloqueo
+      const fechaSlot = dia.fechaString; // YYYY-MM-DD
+      const fechaInicio = b.fechaInicio; // YYYY-MM-DD
+      const fechaFin = b.fechaFin; // YYYY-MM-DD
+
+      if (fechaSlot < fechaInicio || fechaSlot > fechaFin) return false;
+
+      // Si es bloqueo recurrente (tiene diaSemana), verificar el día
+      if (b.diaSemana !== null && b.diaSemana !== undefined) {
+        const diaSlot = dia.fecha.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+        if (b.diaSemana !== diaSlot) return false;
+      }
+
+      // Si es todo el día, está bloqueado
+      if (b.todoElDia) return true;
+
+      // Verificar horario
+      const bloqStart = b.horaInicio ? toMinutes(b.horaInicio.substring(0, 5)) : 0;
+      const bloqEnd = b.horaFin ? toMinutes(b.horaFin.substring(0, 5)) : bloqStart + slotDurationMin;
+
+      // Verificar si el slot está dentro del rango de bloqueo
+      return slotStart < bloqEnd && slotEnd > bloqStart;
+    });
+
+    if (bloqueo) {
+      console.log(`🚫 Bloqueo encontrado para ${dia.fechaString} ${hora}:`, bloqueo);
+    }
+
+    return bloqueo || null;
+  };
+
   const navegarSemana = (direccion) => {
     const nuevaFecha = new Date(fechaActual);
     nuevaFecha.setDate(fechaActual.getDate() + (direccion * 7));
@@ -380,11 +430,17 @@ const CalendarioSemanal = ({
                   )}
                   {horasDelDia.map((hora) => {
                     const citasInfo = getCitasEnSlot(dia, hora);
+                    const bloqueo = getBloqueoEnSlot(dia, hora);
                     const hayCitas = citasInfo && citasInfo.length > 0;
-                    const puedeHacerClic = !hayCitas && !esTerapeuta;
+                    const estaBloqueado = !!bloqueo;
+                    const puedeHacerClic = !hayCitas && !esTerapeuta && !estaBloqueado;
 
                     const handleSlotClick = () => {
-                      if (puedeHacerClic && onSlotClick) {
+                      // Si está bloqueado, mostrar modal con información del bloqueo
+                      if (estaBloqueado && bloqueo) {
+                        setBloqueoSeleccionado(bloqueo);
+                        setModalBloqueoAbierto(true);
+                      } else if (puedeHacerClic && onSlotClick) {
                         onSlotClick(dia, hora);
                       }
                     };
@@ -394,15 +450,34 @@ const CalendarioSemanal = ({
                         key={`${dia.fechaString}-${hora}`}
                         onClick={handleSlotClick}
                         className={`relative h-[80px] border-b border-gray-200 ${
-                          puedeHacerClic
+                          estaBloqueado
+                            ? 'bg-red-50 cursor-pointer hover:bg-red-100'
+                            : puedeHacerClic
                             ? 'cursor-pointer hover:bg-purple-50/50'
                             : 'cursor-default'
-                        } ${esHoy ? 'bg-purple-50/20' : ''}`}
+                        } ${esHoy && !estaBloqueado ? 'bg-purple-50/20' : ''}`}
                       >
                         {/* Etiqueta de hora */}
-                        <div className="absolute left-2 top-1 text-xs font-semibold text-gray-500 z-20 bg-white/90 px-1.5 py-0.5 rounded shadow-sm">
+                        <div className={`absolute left-2 top-1 text-xs font-semibold z-20 px-1.5 py-0.5 rounded shadow-sm ${
+                          estaBloqueado ? 'bg-red-100 text-red-700' : 'bg-white/90 text-gray-500'
+                        }`}>
                           {hora}
                         </div>
+
+                        {/* Indicador de bloqueo */}
+                        {estaBloqueado && !hayCitas && (
+                          <div className="absolute inset-0 flex items-center justify-center z-5 pointer-events-none">
+                            <div className="text-center">
+                              <div className="text-red-600 font-bold text-xs mb-1">🚫 BLOQUEADO</div>
+                              <div className="text-red-500 text-[10px]">
+                                {bloqueo.tipoBloqueo?.nombre || 'Horario no disponible'}
+                              </div>
+                              <div className="text-red-400 text-[9px] mt-1 italic">
+                                Click para ver motivo
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Citas */}
                         {citasInfo && citasInfo.map((slotInfo, index) => {
@@ -555,6 +630,116 @@ const CalendarioSemanal = ({
         </div>
       </div>
         </>
+      )}
+
+      {/* Modal de Información de Bloqueo */}
+      {modalBloqueoAbierto && bloqueoSeleccionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                    <Ban className="w-5 h-5 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Horario Bloqueado</h2>
+                </div>
+                <button
+                  onClick={() => setModalBloqueoAbierto(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Tipo de Bloqueo */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase">Tipo de Bloqueo</label>
+                <p className="text-sm font-semibold text-gray-900 mt-1">
+                  {bloqueoSeleccionado.tipoBloqueo?.nombre || 'No especificado'}
+                </p>
+              </div>
+
+              {/* Período */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase">Período</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-900">
+                    {new Date(bloqueoSeleccionado.fechaInicio + 'T00:00:00').toLocaleDateString('es-PE', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                    {bloqueoSeleccionado.fechaInicio !== bloqueoSeleccionado.fechaFin && (
+                      <> - {new Date(bloqueoSeleccionado.fechaFin + 'T00:00:00').toLocaleDateString('es-PE', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })}</>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Horario */}
+              {!bloqueoSeleccionado.todoElDia && bloqueoSeleccionado.horaInicio && bloqueoSeleccionado.horaFin && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Horario</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <p className="text-sm text-gray-900">
+                      {bloqueoSeleccionado.horaInicio.substring(0, 5)} - {bloqueoSeleccionado.horaFin.substring(0, 5)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {bloqueoSeleccionado.todoElDia && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Horario</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <p className="text-sm font-semibold text-red-600">Todo el día bloqueado</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Día recurrente */}
+              {bloqueoSeleccionado.diaSemana !== null && bloqueoSeleccionado.diaSemana !== undefined && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Recurrencia</label>
+                  <p className="text-sm text-gray-900 mt-1">
+                    Todos los {['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'][bloqueoSeleccionado.diaSemana]}
+                  </p>
+                </div>
+              )}
+
+              {/* Motivo */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase">Motivo</label>
+                <div className="flex items-start gap-2 mt-1">
+                  <AlertCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-900 flex-1">{bloqueoSeleccionado.motivo || 'No especificado'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl border-t border-gray-100">
+              <button
+                onClick={() => setModalBloqueoAbierto(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

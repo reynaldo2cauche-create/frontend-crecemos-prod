@@ -12,27 +12,30 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Ban
 } from 'lucide-react';
 
 // Componentes
 import ModalAgendarCita from '../components/Agenda/ModalAgendarCita';
 import CalendarioSemanal from '../components/Agenda/CalendarioSemanal';
 import EstadisticasCitas from '../components/Agenda/EstadisticasCitas';
+import ListaBloqueos from '../components/Agenda/ListaBloqueos';
 
 // Servicios
-import { 
-  listarCitas, 
-  crearCita, 
-  eliminarCita, 
+import {
+  listarCitas,
+  crearCita,
+  eliminarCita,
   getCitaById,
   crearMultiplesCitas,
   getMotivosCita,
-  getEstadosCita 
+  getEstadosCita
 } from '../services/citaService';
 import { getServicios } from '../services/catalogoService';
 import { getTrabajadores } from '../services/trabajadorService';
 import { actualizarCita } from '../services/citaService';
+import { obtenerBloqueosPorTerapeuta, obtenerBloqueosActivos } from '../services/bloqueoService';
 
 // Hooks y utilidades
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -78,6 +81,7 @@ const Agenda = () => {
   // Estados para datos
   const [citas, setCitas] = useState([]);
   const [todasLasCitas, setTodasLasCitas] = useState([]); // Para validación de disponibilidad
+  const [bloqueos, setBloqueos] = useState([]); // Para bloqueos de horarios
   const [servicios, setServicios] = useState([]);
   const [motivos, setMotivos] = useState([]);
   const [estados, setEstados] = useState([]);
@@ -92,6 +96,9 @@ const Agenda = () => {
 
   // Estado para forzar recarga de estadísticas
   const [recargarEstadisticas, setRecargarEstadisticas] = useState(0);
+
+  // Estado para tabs
+  const [tabActivo, setTabActivo] = useState('calendario'); // 'calendario' | 'bloqueos'
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -218,6 +225,37 @@ const Agenda = () => {
       cargarCitas();
     }
   }, [currentUser, terapeutaFiltro, fechaActual]);
+
+  // Cargar bloqueos del terapeuta
+  useEffect(() => {
+    const cargarBloqueos = async () => {
+      try {
+        let bloqueosRes = [];
+
+        // Si es terapeuta, cargar solo sus bloqueos
+        if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+          console.log('🔒 Cargando bloqueos para terapeuta:', currentUser.id);
+          bloqueosRes = await obtenerBloqueosPorTerapeuta(currentUser.id);
+        }
+        // Si es admin/admisión y tiene terapeuta seleccionado
+        else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+          console.log('🔒 Cargando bloqueos para terapeuta seleccionado:', terapeutaFiltro);
+          bloqueosRes = await obtenerBloqueosPorTerapeuta(terapeutaFiltro);
+        }
+
+        console.log('🔒 Bloqueos cargados:', bloqueosRes);
+        console.log('🔒 Cantidad de bloqueos activos:', bloqueosRes?.filter(b => b.activo)?.length || 0);
+        setBloqueos(bloqueosRes || []);
+      } catch (error) {
+        console.error('❌ Error cargando bloqueos:', error);
+        setBloqueos([]);
+      }
+    };
+
+    if (currentUser) {
+      cargarBloqueos();
+    }
+  }, [currentUser, terapeutaFiltro]);
 
   // Determinar tipo de cita basado en motivo_id
   const determinarTipoCita = (motivoId) => {
@@ -825,8 +863,8 @@ const guardarCita = async (datosFormulario = null) => {
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda de Citas</h1>
-              <p className="text-gray-600">Gestiona y organiza las citas de tus pacientes</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda</h1>
+              <p className="text-gray-600">Gestiona citas y bloqueos de horarios</p>
             </div>
             {/* ✅ Indicador de modo optimizado para tablets */}
             {performanceConfig.device.shouldOptimize && (
@@ -838,6 +876,36 @@ const guardarCita = async (datosFormulario = null) => {
               </div>
             )}
           </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setTabActivo('calendario')}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                tabActivo === 'calendario'
+                  ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Calendario de Citas</span>
+            </button>
+
+            <button
+              onClick={() => setTabActivo('bloqueos')}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                tabActivo === 'bloqueos'
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              <Ban className="w-5 h-5" />
+              <span>Horarios Bloqueados</span>
+            </button>
+          </div>
+
+          {/* Estadísticas - solo en tab calendario */}
+          {tabActivo === 'calendario' && (
              <EstadisticasCitas
                 key={recargarEstadisticas}
                 fechaDesde={(() => {
@@ -866,10 +934,14 @@ const guardarCita = async (datosFormulario = null) => {
                   return `${year}-${month}-${day}`;
                 })()}
               />
+          )}
         </div>
 
-        {/* Filtros */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+        {/* Contenido del tab Calendario */}
+        {tabActivo === 'calendario' && (
+          <>
+            {/* Filtros */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5 text-[#7B1FA2]" />
@@ -917,6 +989,7 @@ const guardarCita = async (datosFormulario = null) => {
         ) : (
           <CalendarioSemanal
             citas={citas}
+            bloqueos={bloqueos}
             onSlotClick={abrirModalDesdeSlot}
             onCitaClick={handleCitaClick}
             getEstadoColor={getEstadoColorCustom}
@@ -930,14 +1003,39 @@ const guardarCita = async (datosFormulario = null) => {
           />
         )}
 
-        {/* Botón flotante */}
-        {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
-          <button
-            onClick={abrirModalNuevaCita}
-            className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-2xl shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-110 transition-all z-40"
-          >
-            <Plus className="w-7 h-7" />
-          </button>
+            {/* Botón flotante - Agendar Cita */}
+            {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
+              <button
+                onClick={abrirModalNuevaCita}
+                className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-2xl shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-110 transition-all z-40"
+              >
+                <Plus className="w-7 h-7" />
+              </button>
+            )}
+          </>
+        )}
+
+        {/* Contenido del tab Bloqueos */}
+        {tabActivo === 'bloqueos' && (
+          <ListaBloqueos
+            terapeutas={terapeutasDisponibles}
+            userId={currentUser?.id}
+            onBloqueoChange={async () => {
+              // Recargar bloqueos cuando se crea o elimina uno
+              try {
+                let bloqueosRes = [];
+                if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+                  bloqueosRes = await obtenerBloqueosPorTerapeuta(currentUser.id);
+                } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+                  bloqueosRes = await obtenerBloqueosPorTerapeuta(terapeutaFiltro);
+                }
+                console.log('🔄 Bloqueos recargados después de cambio:', bloqueosRes);
+                setBloqueos(bloqueosRes || []);
+              } catch (error) {
+                console.error('❌ Error recargando bloqueos:', error);
+              }
+            }}
+          />
         )}
 
         {/* Modal */}
@@ -959,6 +1057,7 @@ const guardarCita = async (datosFormulario = null) => {
           motivos={motivos}
           trabajadores={trabajadores}
           citas={todasLasCitas}
+          bloqueos={bloqueos}
         />
       </div>
     </div>

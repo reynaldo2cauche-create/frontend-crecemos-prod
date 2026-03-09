@@ -44,7 +44,8 @@ const ModalAgendarCita = ({
   citaEditando = null,
   currentUser = null,
   guardando = false,
-  citas = []
+  citas = [],
+  bloqueos = []
 }) => {
   const [queryPaciente, setQueryPaciente] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -429,6 +430,73 @@ Le hacemos recordar su cita para el día
     return null;
   };
 
+  // Verificar si una fecha/hora está bloqueada
+  const verificarHoraBloqueada = (fechaString, hora) => {
+    if (!fechaString || !hora || !bloqueos || bloqueos.length === 0) return false;
+
+    const toMin = (h) => {
+      const [hh, mm] = h.split(':').map(Number);
+      return hh * 60 + mm;
+    };
+
+    const slotStart = toMin(hora);
+    const slotEnd = slotStart + 40; // duración del slot
+
+    const bloqueado = bloqueos.some(b => {
+      // Verificar si el bloqueo está activo
+      if (!b.activo) return false;
+
+      // Verificar si la fecha está dentro del rango del bloqueo
+      if (fechaString < b.fechaInicio || fechaString > b.fechaFin) return false;
+
+      // Si es bloqueo recurrente, verificar el día de la semana
+      if (b.diaSemana !== null && b.diaSemana !== undefined) {
+        const fecha = new Date(fechaString + 'T00:00:00');
+        const diaSlot = fecha.getDay();
+        if (b.diaSemana !== diaSlot) return false;
+      }
+
+      // Si es todo el día, está bloqueado
+      if (b.todoElDia) return true;
+
+      // Verificar horario
+      const bloqStart = b.horaInicio ? toMin(b.horaInicio.substring(0, 5)) : 0;
+      const bloqEnd = b.horaFin ? toMin(b.horaFin.substring(0, 5)) : bloqStart + 40;
+
+      // Verificar si hay superposición
+      return slotStart < bloqEnd && slotEnd > bloqStart;
+    });
+
+    if (bloqueado) {
+      console.log(`🚫 Hora bloqueada filtrada en modal: ${fechaString} ${hora}`);
+    }
+
+    return bloqueado;
+  };
+
+  // Verificar si una fecha está bloqueada todo el día
+  const verificarFechaBloqueadaTodoElDia = (fechaString) => {
+    if (!fechaString || !bloqueos || bloqueos.length === 0) return false;
+
+    return bloqueos.some(b => {
+      // Verificar si el bloqueo está activo
+      if (!b.activo) return false;
+
+      // Verificar si la fecha está dentro del rango del bloqueo
+      if (fechaString < b.fechaInicio || fechaString > b.fechaFin) return false;
+
+      // Si es bloqueo recurrente, verificar el día de la semana
+      if (b.diaSemana !== null && b.diaSemana !== undefined) {
+        const fecha = new Date(fechaString + 'T00:00:00');
+        const diaSlot = fecha.getDay();
+        if (b.diaSemana !== diaSlot) return false;
+      }
+
+      // Retornar true si es todo el día
+      return b.todoElDia === true;
+    });
+  };
+
   const generarHorasPorFecha = (fechaString, duracion) => {
     if (!fechaString) return [];
     const fecha = new Date(fechaString + 'T00:00:00');
@@ -456,10 +524,11 @@ Le hacemos recordar su cita para el día
     } else {
       return [];
     }
-    // Filtra horas ocupadas tanto por terapeuta como por el mismo paciente
+    // Filtra horas ocupadas tanto por terapeuta como por el mismo paciente, y también las bloqueadas
     return horas.filter(hora =>
       verificarDisponibilidad(fechaString, hora, duracion) &&
-      !verificarConflictoPacienteLocal(fechaString, hora, duracion)
+      !verificarConflictoPacienteLocal(fechaString, hora, duracion) &&
+      !verificarHoraBloqueada(fechaString, hora)
     );
   };
 
@@ -650,6 +719,21 @@ const handleGuardar = useCallback(async () => {
       } catch (checkErr) {
         console.warn('No se pudo verificar conflictos de paciente:', checkErr.message);
       }
+    }
+  }
+
+  // Verificar si alguna fecha/hora está bloqueada
+  for (const fh of fechasHorasARevisar) {
+    if (!fh.fecha || !fh.horaInicio) continue;
+
+    if (verificarHoraBloqueada(fh.fecha, fh.horaInicio)) {
+      setTituloAlerta('Horario Bloqueado');
+      setMensajeAlerta(
+        `El horario ${fh.fecha} a las ${fh.horaInicio} está bloqueado y no está disponible para agendar citas.`
+      );
+      setAlertaAbierta(true);
+      setGuardandoLocal(false);
+      return;
     }
   }
 
@@ -1044,41 +1128,61 @@ const handleGuardar = useCallback(async () => {
                       </div>
 
                       {modoEdicion ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              const fecha = new Date(e.target.value + 'T00:00:00');
-                              const diaSemana = fecha.getDay();
-                              if (diaSemana >= 1 && diaSemana <= 6) {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
-                              } else {
-                                alert('Solo se pueden agendar citas de lunes a sábado');
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                const fecha = new Date(e.target.value + 'T00:00:00');
+                                const diaSemana = fecha.getDay();
+                                if (diaSemana >= 1 && diaSemana <= 6) {
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                                } else {
+                                  alert('Solo se pueden agendar citas de lunes a sábado');
+                                }
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                            />
+                            <select
+                              value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                            >
+                              <option value="">
+                                {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                              </option>
+                              {formularioCita.fechasHoras?.[0]?.fecha &&
+                                generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                  <option key={hora} value={hora}>{hora}</option>
+                                ))
                               }
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                          />
-                          <select
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">
-                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                            </option>
-                            {formularioCita.fechasHoras?.[0]?.fecha &&
-                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                <option key={hora} value={hora}>{hora}</option>
-                              ))
-                            }
-                          </select>
+                            </select>
+                          </div>
+                          {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1130,6 +1234,24 @@ const handleGuardar = useCallback(async () => {
                                     }
                                   </select>
                                 </div>
+                                {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                      <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                      <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
@@ -1331,41 +1453,61 @@ const handleGuardar = useCallback(async () => {
                       </div>
 
                       {modoEdicion ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              const fecha = new Date(e.target.value + 'T00:00:00');
-                              const diaSemana = fecha.getDay();
-                              if (diaSemana >= 1 && diaSemana <= 6) {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
-                              } else {
-                                alert('Solo se pueden agendar citas de lunes a sábado');
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                const fecha = new Date(e.target.value + 'T00:00:00');
+                                const diaSemana = fecha.getDay();
+                                if (diaSemana >= 1 && diaSemana <= 6) {
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                                } else {
+                                  alert('Solo se pueden agendar citas de lunes a sábado');
+                                }
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                            />
+                            <select
+                              value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                            >
+                              <option value="">
+                                {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                              </option>
+                              {formularioCita.fechasHoras?.[0]?.fecha &&
+                                generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                  <option key={hora} value={hora}>{hora}</option>
+                                ))
                               }
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                          />
-                          <select
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">
-                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                            </option>
-                            {formularioCita.fechasHoras?.[0]?.fecha &&
-                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                <option key={hora} value={hora}>{hora}</option>
-                              ))
-                            }
-                          </select>
+                            </select>
+                          </div>
+                          {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1416,6 +1558,24 @@ const handleGuardar = useCallback(async () => {
                                     }
                                   </select>
                                 </div>
+                                {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                      <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                      <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
@@ -1609,41 +1769,61 @@ const handleGuardar = useCallback(async () => {
                       </div>
 
                       {modoEdicion ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              const fecha = new Date(e.target.value + 'T00:00:00');
-                              const diaSemana = fecha.getDay();
-                              if (diaSemana >= 1 && diaSemana <= 6) {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
-                              } else {
-                                alert('Solo se pueden agendar citas de lunes a sábado');
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                const fecha = new Date(e.target.value + 'T00:00:00');
+                                const diaSemana = fecha.getDay();
+                                if (diaSemana >= 1 && diaSemana <= 6) {
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                                } else {
+                                  alert('Solo se pueden agendar citas de lunes a sábado');
+                                }
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                            />
+                            <select
+                              value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                            >
+                              <option value="">
+                                {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                              </option>
+                              {formularioCita.fechasHoras?.[0]?.fecha &&
+                                generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                  <option key={hora} value={hora}>{hora}</option>
+                                ))
                               }
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                          />
-                          <select
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">
-                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                            </option>
-                            {formularioCita.fechasHoras?.[0]?.fecha &&
-                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                <option key={hora} value={hora}>{hora}</option>
-                              ))
-                            }
-                          </select>
+                            </select>
+                          </div>
+                          {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1694,6 +1874,24 @@ const handleGuardar = useCallback(async () => {
                                     }
                                   </select>
                                 </div>
+                                {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                      <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                      <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
