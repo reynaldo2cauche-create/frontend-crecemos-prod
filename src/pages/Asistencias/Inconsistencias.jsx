@@ -14,9 +14,10 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
-import { obtenerInconsistenciasAsistencia } from '../../services/api';
+import { obtenerInconsistenciasAsistencia, modificarAsistenciaAdmin } from '../../services/api';
 import { getTrabajadores } from '../../services/trabajadorService';
 import { buscarPacientes } from '../../services/pacienteService';
 import * as XLSX from 'xlsx-js-style';
@@ -46,21 +47,27 @@ const Inconsistencias = () => {
   const [busquedaPaciente, setBusquedaPaciente] = useState('');
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
-  useEffect(() => {
-    // Establecer fechas por defecto (semana actual: lunes a sábado)
-    const hoy = new Date();
-    const diaSemana = hoy.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  // Estados para modal de edición
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [asistenciaSeleccionada, setAsistenciaSeleccionada] = useState(null);
+  const [estadoRecepcion, setEstadoRecepcion] = useState(null);
+  const [estadoTerapeuta, setEstadoTerapeuta] = useState(null);
+  const [guardando, setGuardando] = useState(false);
 
-    // Calcular el lunes de esta semana
+  // Estados para notificaciones
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  useEffect(() => {
+    const hoy = new Date();
+    const diaSemana = hoy.getDay();
     const lunes = new Date(hoy);
     const diasDesdeElLunes = diaSemana === 0 ? 6 : diaSemana - 1;
     lunes.setDate(hoy.getDate() - diasDesdeElLunes);
-
-    // Calcular el sábado de esta semana
     const sabado = new Date(lunes);
     sabado.setDate(lunes.getDate() + 5);
 
-    // Formatear fechas
     const formatearFecha = (fecha) => {
       const year = fecha.getFullYear();
       const month = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -78,75 +85,41 @@ const Inconsistencias = () => {
     cargarTerapeutas();
   }, []);
 
-  // Cargar lista de terapeutas
   const cargarTerapeutas = async () => {
     try {
       const response = await getTrabajadores();
-      console.log('📋 Respuesta de getTrabajadores:', response);
+      if (!response || response.length === 0) return;
 
-      if (!response || response.length === 0) {
-        console.warn('⚠️ No se encontraron trabajadores');
-        return;
-      }
-
-      // Verificar qué campos tienen los trabajadores
-      console.log('📊 Ejemplo completo de UN trabajador:', response[0]);
-      console.log('🔍 Rol del trabajador:', response[0].rol);
-
-      // Filtrar trabajadores activos (estado es booleano true)
-      // Y filtrar solo terapeutas (rol.id === 4)
       const trabajadoresActivos = response
         .filter(t => {
           const esActivo = t.estado === true || t.estado === 1;
           const esTerapeuta = t.rol && t.rol.id === 4;
           return esActivo && esTerapeuta;
         })
-        .sort((a, b) => {
-          const nombreA = a.nombres || '';
-          const nombreB = b.nombres || '';
-          return nombreA.localeCompare(nombreB);
-        });
+        .sort((a, b) => (a.nombres || '').localeCompare(b.nombres || ''));
 
-      console.log('✅ Terapeutas activos cargados:', trabajadoresActivos.length);
-
-      // Si no hay terapeutas, mostrar todos los activos
       if (trabajadoresActivos.length === 0) {
-        console.warn('⚠️ No hay terapeutas con rol.id=4, mostrando todos los trabajadores activos');
         const todosActivos = response
           .filter(t => t.estado === true || t.estado === 1)
-          .sort((a, b) => {
-            const nombreA = a.nombres || '';
-            const nombreB = b.nombres || '';
-            return nombreA.localeCompare(nombreB);
-          });
+          .sort((a, b) => (a.nombres || '').localeCompare(b.nombres || ''));
         setTerapeutas(todosActivos);
       } else {
         setTerapeutas(trabajadoresActivos);
       }
     } catch (error) {
-      console.error('❌ Error al cargar terapeutas:', error);
+      console.error('Error al cargar terapeutas:', error);
     }
   };
 
-  // Buscar pacientes con autocomplete
   const handleBuscarPaciente = async (query) => {
     setBusquedaPaciente(query);
-    console.log('🔎 Buscando paciente:', query);
-
     if (query.length >= 2) {
       try {
         const resultados = await buscarPacientes(query);
-        console.log('✅ Pacientes encontrados:', resultados);
-        console.log('📝 Total de pacientes:', resultados.length);
-        if (resultados.length > 0) {
-          console.log('🔍 Estructura del primer paciente:', resultados[0]);
-          console.log('🔍 Claves del paciente:', Object.keys(resultados[0]));
-        }
         setPacientesSugerencias(resultados);
         setMostrarSugerencias(true);
-        console.log('👁️ Mostrando sugerencias: true');
       } catch (error) {
-        console.error('❌ Error al buscar pacientes:', error);
+        console.error('Error al buscar pacientes:', error);
         setPacientesSugerencias([]);
       }
     } else {
@@ -155,7 +128,6 @@ const Inconsistencias = () => {
     }
   };
 
-  // Seleccionar un paciente de las sugerencias
   const seleccionarPaciente = (paciente) => {
     const nombreCompleto = paciente.nombre_completo || '';
     setBusquedaPaciente(nombreCompleto);
@@ -163,28 +135,32 @@ const Inconsistencias = () => {
     setMostrarSugerencias(false);
   };
 
-  // Monitorear cambios en sugerencias de pacientes
-  useEffect(() => {
-    console.log('🔄 Estado actualizado - mostrarSugerencias:', mostrarSugerencias);
-    console.log('🔄 Estado actualizado - pacientesSugerencias:', pacientesSugerencias.length);
-  }, [mostrarSugerencias, pacientesSugerencias]);
-
-  // Aplicar filtros cuando cambien los filtros o las inconsistencias
+  // ✅ FIX: limpiar filtradas cuando no hay inconsistencias
   useEffect(() => {
     if (inconsistencias.length > 0) {
       aplicarFiltros();
+    } else {
+      setInconsistenciasFiltradas([]);
     }
   }, [filtros, inconsistencias]);
 
+  // ✅ FIX: limpiar datos viejos antes de cada búsqueda
   const cargarInconsistencias = async (inicio, fin) => {
-    if (!inicio || !fin) {
+    const fechaInicioFinal = inicio || fechaInicio;
+    const fechaFinFinal    = fin    || fechaFin;
+
+    if (!fechaInicioFinal || !fechaFinFinal) {
       alert('Seleccione un rango de fechas');
       return;
     }
 
+    setInconsistencias([]);
+    setInconsistenciasFiltradas([]);
+    setPage(0);
     setCargando(true);
+
     try {
-      const data = await obtenerInconsistenciasAsistencia(inicio || fechaInicio, fin || fechaFin);
+      const data = await obtenerInconsistenciasAsistencia(fechaInicioFinal, fechaFinFinal);
       setInconsistencias(data.inconsistencias || []);
     } catch (error) {
       console.error('Error al cargar inconsistencias:', error);
@@ -197,7 +173,6 @@ const Inconsistencias = () => {
   const aplicarFiltros = () => {
     let resultados = [...inconsistencias];
 
-    // Filtro por terapeuta (ahora es un ID)
     if (filtros.terapeuta) {
       const terapeutaSeleccionado = terapeutas.find(t => t.id === parseInt(filtros.terapeuta));
       if (terapeutaSeleccionado) {
@@ -208,44 +183,39 @@ const Inconsistencias = () => {
       }
     }
 
-    // Filtro por paciente
     if (filtros.paciente) {
-      resultados = resultados.filter(item => 
+      resultados = resultados.filter(item =>
         item.paciente_nombre?.toLowerCase().includes(filtros.paciente.toLowerCase())
       );
     }
 
-    // Filtro por tipo de inconsistencia
     if (filtros.tipoInconsistencia) {
-      resultados = resultados.filter(item => 
+      resultados = resultados.filter(item =>
         item.tipo_inconsistencia === filtros.tipoInconsistencia
       );
     }
 
-    // Filtro por estado recepción
     if (filtros.estadoRecepcion !== '') {
       if (filtros.estadoRecepcion === '0') {
-        resultados = resultados.filter(item => item.recepcion_marco === 0);
+        resultados = resultados.filter(item => item.recepcion_marco == 0);
       } else if (filtros.estadoRecepcion === '7') {
-        resultados = resultados.filter(item => item.recepcion_estado_id === 7);
+        resultados = resultados.filter(item => item.recepcion_marco == 1 && item.recepcion_estado_id == 7);
       } else if (filtros.estadoRecepcion === '6') {
-        resultados = resultados.filter(item => item.recepcion_estado_id === 6);
+        resultados = resultados.filter(item => item.recepcion_marco == 1 && item.recepcion_estado_id == 6);
       }
     }
 
-    // Filtro por estado terapeuta
     if (filtros.estadoTerapeuta !== '') {
       if (filtros.estadoTerapeuta === '0') {
-        resultados = resultados.filter(item => item.terapeuta_marco === 0);
+        resultados = resultados.filter(item => item.terapeuta_marco == 0);
       } else if (filtros.estadoTerapeuta === '7') {
-        resultados = resultados.filter(item => item.terapeuta_estado_id === 7);
+        resultados = resultados.filter(item => item.terapeuta_marco == 1 && item.terapeuta_estado_id == 7);
       } else if (filtros.estadoTerapeuta === '6') {
-        resultados = resultados.filter(item => item.terapeuta_estado_id === 6);
+        resultados = resultados.filter(item => item.terapeuta_marco == 1 && item.terapeuta_estado_id == 6);
       }
     }
-
     setInconsistenciasFiltradas(resultados);
-    setPage(0); // Resetear a la primera página
+    setPage(0);
   };
 
   const handleBuscar = () => {
@@ -269,38 +239,32 @@ const Inconsistencias = () => {
     const hoy = new Date();
     const fechaInicioRapido = new Date(hoy);
     fechaInicioRapido.setDate(hoy.getDate() - dias);
-    
+
     const formatearFecha = (fecha) => {
       const year = fecha.getFullYear();
       const month = String(fecha.getMonth() + 1).padStart(2, '0');
       const day = String(fecha.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
-    
+
     setFechaInicio(formatearFecha(fechaInicioRapido));
     setFechaFin(formatearFecha(hoy));
   };
 
-  // Extraer tipos de inconsistencia únicos para el select
   const tiposInconsistencia = useMemo(() => {
     return [...new Set(inconsistencias.map(item => item.tipo_inconsistencia).filter(Boolean))].sort();
   }, [inconsistencias]);
 
   const formatearFecha = (fecha) => {
     return new Date(fecha).toLocaleString('es-PE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     }).replace(',', '');
   };
 
   const formatearFechaSimple = (fecha) => {
     return new Date(fecha).toLocaleDateString('es-PE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+      day: '2-digit', month: '2-digit', year: 'numeric'
     });
   };
 
@@ -310,7 +274,6 @@ const Inconsistencias = () => {
       return;
     }
 
-    // Preparar datos para el Excel
     const datosExcel = inconsistenciasFiltradas.map((item, index) => ({
       'N°': index + 1,
       'ID Cita': item.cita_id,
@@ -319,20 +282,16 @@ const Inconsistencias = () => {
       'Fecha Cita': item.fecha_cita ? formatearFecha(item.fecha_cita) : 'N/A',
       'Estado Recepción': item.recepcion_marco
         ? `${getEstadoTexto(item.recepcion_estado_id)} - ${item.recepcion_fecha ? formatearFecha(item.recepcion_fecha) : ''}`
-        : 'Sin marcar',
+        : 'No marcó',
       'Estado Terapeuta': item.terapeuta_marco
         ? `${getEstadoTexto(item.terapeuta_estado_id)} - ${item.terapeuta_fecha ? formatearFecha(item.terapeuta_fecha) : ''}`
-        : 'Sin marcar',
+        : 'No marcó',
       'Tipo de Inconsistencia': item.tipo_inconsistencia
     }));
 
-    // Crear workbook
     const wb = XLSX.utils.book_new();
-
-    // Crear hoja con encabezado
     const ws = XLSX.utils.aoa_to_sheet([]);
 
-    // Agregar título y encabezado
     XLSX.utils.sheet_add_aoa(ws, [
       ['CENTRO CRECEMOS'],
       ['REPORTE DE INCONSISTENCIAS DE ASISTENCIA'],
@@ -343,36 +302,24 @@ const Inconsistencias = () => {
       [''],
     ], { origin: 'A1' });
 
-    // Agregar datos
     XLSX.utils.sheet_add_json(ws, datosExcel, { origin: 'A8' });
 
-    // Ajustar anchos de columna
-    const colWidths = [
-      { wch: 8 },  // N°
-      { wch: 12 }, // ID Cita
-      { wch: 35 }, // Paciente
-      { wch: 35 }, // Terapeuta
-      { wch: 22 }, // Fecha Cita
-      { wch: 40 }, // Estado Recepción
-      { wch: 40 }, // Estado Terapeuta
-      { wch: 45 }, // Tipo de Inconsistencia
+    ws['!cols'] = [
+      { wch: 8 }, { wch: 12 }, { wch: 35 }, { wch: 35 },
+      { wch: 22 }, { wch: 40 }, { wch: 40 }, { wch: 45 },
     ];
-    ws['!cols'] = colWidths;
 
-    // Merge cells para el título
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // CENTRO CRECEMOS
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // REPORTE DE...
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
     ];
 
-    // Definir bordes completos
     const borderFull = {
       top: { style: "thin", color: { rgb: "000000" } },
       bottom: { style: "thin", color: { rgb: "000000" } },
       left: { style: "thin", color: { rgb: "000000" } },
       right: { style: "thin", color: { rgb: "000000" } }
     };
-
     const borderThick = {
       top: { style: "medium", color: { rgb: "000000" } },
       bottom: { style: "medium", color: { rgb: "000000" } },
@@ -380,146 +327,123 @@ const Inconsistencias = () => {
       right: { style: "medium", color: { rgb: "000000" } }
     };
 
-    // Estilos modernos
-    const estiloTitulo = {
-      font: { bold: true, sz: 18, color: { rgb: "1F2937" }, name: "Calibri" },
-      fill: { fgColor: { rgb: "F3F4F6" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: borderThick
-    };
+    if (ws['A1']) ws['A1'].s = { font: { bold: true, sz: 18, color: { rgb: "1F2937" }, name: "Calibri" }, fill: { fgColor: { rgb: "F3F4F6" } }, alignment: { horizontal: "center", vertical: "center" }, border: borderThick };
+    if (ws['A2']) ws['A2'].s = { font: { bold: true, sz: 14, color: { rgb: "374151" }, name: "Calibri" }, fill: { fgColor: { rgb: "E5E7EB" } }, alignment: { horizontal: "center", vertical: "center" }, border: borderFull };
+    if (ws['A4']) ws['A4'].s = { font: { sz: 11, color: { rgb: "4B5563" }, name: "Calibri" }, alignment: { horizontal: "left", vertical: "center" } };
+    if (ws['A5']) ws['A5'].s = { font: { sz: 11, color: { rgb: "4B5563" }, name: "Calibri" }, alignment: { horizontal: "left", vertical: "center" } };
+    if (ws['A6']) ws['A6'].s = { font: { sz: 11, color: { rgb: "4B5563" }, name: "Calibri" }, alignment: { horizontal: "left", vertical: "center" } };
 
-    const estiloSubtitulo = {
-      font: { bold: true, sz: 14, color: { rgb: "374151" }, name: "Calibri" },
-      fill: { fgColor: { rgb: "E5E7EB" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: borderFull
-    };
-
-    const estiloInfo = {
-      font: { bold: false, sz: 11, color: { rgb: "4B5563" }, name: "Calibri" },
-      alignment: { horizontal: "left", vertical: "center" },
-      fill: { fgColor: { rgb: "FFFFFF" } }
-    };
-
-    const estiloEncabezado = {
-      font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: "Calibri" },
-      fill: { fgColor: { rgb: "059669" } }, // Verde moderno
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: borderFull
-    };
-
-    const estiloCeldaNumero = {
-      font: { sz: 10, bold: true, color: { rgb: "1F2937" }, name: "Calibri" },
-      alignment: { horizontal: "center", vertical: "center" },
-      fill: { fgColor: { rgb: "DBEAFE" } }, // Azul claro
-      border: borderFull
-    };
-
-    const estiloCeldaPar = {
-      font: { sz: 10, color: { rgb: "1F2937" }, name: "Calibri" },
-      alignment: { horizontal: "left", vertical: "center", wrapText: true },
-      fill: { fgColor: { rgb: "FFFFFF" } },
-      border: borderFull
-    };
-
-    const estiloCeldaImpar = {
-      font: { sz: 10, color: { rgb: "1F2937" }, name: "Calibri" },
-      alignment: { horizontal: "left", vertical: "center", wrapText: true },
-      fill: { fgColor: { rgb: "F9FAFB" } },
-      border: borderFull
-    };
-
-    // Aplicar estilos al título
-    ws['A1'].s = estiloTitulo;
-    ws['A2'].s = estiloSubtitulo;
-
-    // Aplicar estilos a la información del reporte
-    ws['A4'].s = estiloInfo;
-    ws['A5'].s = estiloInfo;
-    ws['A6'].s = estiloInfo;
-
-    // Aplicar estilos a los encabezados de columna (fila 8)
-    const encabezados = ['A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8', 'H8'];
-    encabezados.forEach(celda => {
-      if (ws[celda]) ws[celda].s = estiloEncabezado;
+    ['A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8', 'H8'].forEach(celda => {
+      if (ws[celda]) ws[celda].s = { font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: "Calibri" }, fill: { fgColor: { rgb: "059669" } }, alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: borderFull };
     });
 
-    // Aplicar estilos a las celdas de datos
     const totalFilas = inconsistenciasFiltradas.length;
     for (let i = 0; i < totalFilas; i++) {
       const fila = 9 + i;
       const esFilaPar = i % 2 === 0;
-
-      // Columna N° con estilo especial
-      if (ws[`A${fila}`]) {
-        ws[`A${fila}`].s = estiloCeldaNumero;
-      }
-
-      // Resto de columnas con alternancia de colores
+      const estilo = { font: { sz: 10, color: { rgb: "1F2937" }, name: "Calibri" }, alignment: { horizontal: "left", vertical: "center", wrapText: true }, fill: { fgColor: { rgb: esFilaPar ? "FFFFFF" : "F9FAFB" } }, border: borderFull };
+      if (ws[`A${fila}`]) ws[`A${fila}`].s = { ...estilo, font: { ...estilo.font, bold: true }, fill: { fgColor: { rgb: "DBEAFE" } }, alignment: { horizontal: "center", vertical: "center" } };
       ['B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
-        if (ws[`${col}${fila}`]) {
-          ws[`${col}${fila}`].s = esFilaPar ? estiloCeldaPar : estiloCeldaImpar;
-        }
+        if (ws[`${col}${fila}`]) ws[`${col}${fila}`].s = estilo;
       });
     }
 
-    // Ajustar altura de filas
     const rowHeights = [
-      { hpt: 30 }, // Fila 1: Título
-      { hpt: 25 }, // Fila 2: Subtítulo
-      { hpt: 12 }, // Fila 3: Espacio
-      { hpt: 18 }, // Fila 4: Período
-      { hpt: 18 }, // Fila 5: Fecha generación
-      { hpt: 18 }, // Fila 6: Total
-      { hpt: 12 }, // Fila 7: Espacio
-      { hpt: 40 }, // Fila 8: Encabezados
+      { hpt: 30 }, { hpt: 25 }, { hpt: 12 }, { hpt: 18 },
+      { hpt: 18 }, { hpt: 18 }, { hpt: 12 }, { hpt: 40 },
     ];
-
-    // Agregar altura para las filas de datos
-    for (let i = 0; i < totalFilas; i++) {
-      rowHeights.push({ hpt: 25 }); // Filas de datos
-    }
-
+    for (let i = 0; i < totalFilas; i++) rowHeights.push({ hpt: 25 });
     ws['!rows'] = rowHeights;
 
-    // Agregar hoja al workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Inconsistencias');
-
-    // Generar nombre de archivo
-    const nombreArchivo = `Reporte_Inconsistencias_${fechaInicio}_${fechaFin}.xlsx`;
-
-    // Descargar archivo
-    XLSX.writeFile(wb, nombreArchivo);
+    XLSX.writeFile(wb, `Reporte_Inconsistencias_${fechaInicio}_${fechaFin}.xlsx`);
   };
 
   const getEstadoTexto = (estadoId) => {
     switch (estadoId) {
-      case 7:
-        return 'Asistió';
-      case 6:
-        return 'Sesión Dictada';
-      default:
-        return 'Desconocido';
+      case 7: return 'Asistió';
+      case 6: return 'Sesión Dictada';
+      default: return 'No marcó';
     }
   };
 
   const getColorByTipo = (tipo) => {
-    if (tipo === 'Ninguno marcó asistencia') {
-      return 'bg-red-100 text-red-800 border-red-200';
-    } else if (tipo === 'Falta registro de admisión' || tipo === 'Falta registro del terapeuta') {
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    } else if (tipo && tipo.startsWith('Estados no coinciden')) {
-      return 'bg-orange-100 text-orange-800 border-orange-200';
-    }
+    if (tipo === 'Ninguno marcó asistencia') return 'bg-red-100 text-red-800 border-red-200';
+    if (tipo === 'Falta registro de admisión' || tipo === 'Falta registro del terapeuta') return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    if (tipo && tipo.startsWith('Estados no coinciden')) return 'bg-orange-100 text-orange-800 border-orange-200';
     return 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  // Datos para mostrar (con paginación)
+  const abrirModal = (asistencia) => {
+    setAsistenciaSeleccionada(asistencia);
+    setEstadoRecepcion(asistencia.recepcion_estado_id || null);
+    setEstadoTerapeuta(asistencia.terapeuta_estado_id || null);
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    setAsistenciaSeleccionada(null);
+    setEstadoRecepcion(null);
+    setEstadoTerapeuta(null);
+  };
+
+  const handleGuardarCambios = async () => {
+    if (!asistenciaSeleccionada) return;
+
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) {
+      setSnackbarMessage('No se pudo obtener información del usuario');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
+      return;
+    }
+
+    setGuardando(true);
+    try {
+      await modificarAsistenciaAdmin(
+        asistenciaSeleccionada.cita_id,
+        estadoRecepcion,
+        estadoTerapeuta,
+        user.id
+      );
+
+      setSnackbarMessage(`✅ Asistencia #${asistenciaSeleccionada.cita_id} actualizada correctamente`);
+      setSnackbarSeverity('success');
+      setShowSnackbar(true);
+
+      cerrarModal();
+      cargarInconsistencias(fechaInicio, fechaFin);
+    } catch (error) {
+      console.error('Error al modificar asistencia:', error);
+      setSnackbarMessage(error.response?.data?.message || 'Error al modificar asistencia');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const datosMostrados = inconsistenciasFiltradas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const totalPages = Math.ceil(inconsistenciasFiltradas.length / rowsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Snackbar de notificaciones */}
+      {showSnackbar && (
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
+          snackbarSeverity === 'success'
+            ? 'bg-white border-gray-100'
+            : 'bg-white border-red-100'
+        } flex items-center gap-2.5`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${snackbarSeverity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
+          <span className="text-xs font-medium text-gray-700">{snackbarMessage}</span>
+          <button onClick={() => setShowSnackbar(false)} className="ml-2">
+            <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
@@ -536,25 +460,10 @@ const Inconsistencias = () => {
       {/* Filtros Rápidos */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => aplicarFiltroRapido(1)}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            Hoy
-          </button>
-          <button
-            onClick={() => aplicarFiltroRapido(7)}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            Última semana
-          </button>
-          <button
-            onClick={() => aplicarFiltroRapido(30)}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            Último mes
-          </button>
-          <div className="flex-1"></div>
+          <button onClick={() => aplicarFiltroRapido(1)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">Hoy</button>
+          <button onClick={() => aplicarFiltroRapido(7)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">Última semana</button>
+          <button onClick={() => aplicarFiltroRapido(30)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">Último mes</button>
+          <div className="flex-1" />
           <button
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
             className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm font-medium transition-colors"
@@ -569,11 +478,8 @@ const Inconsistencias = () => {
       {/* Filtros Básicos */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Fecha Inicio */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Fecha Inicio
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha Inicio</label>
             <input
               type="date"
               value={fechaInicio}
@@ -581,12 +487,8 @@ const Inconsistencias = () => {
               className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
-
-          {/* Fecha Fin */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Fecha Fin
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha Fin</label>
             <input
               type="date"
               value={fechaFin}
@@ -594,8 +496,6 @@ const Inconsistencias = () => {
               className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
-
-          {/* Botón Buscar */}
           <div className="flex items-end">
             <button
               onClick={handleBuscar}
@@ -614,8 +514,7 @@ const Inconsistencias = () => {
               {/* Terapeuta */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <UserIcon className="w-4 h-4 inline mr-1" />
-                  Terapeuta
+                  <UserIcon className="w-4 h-4 inline mr-1" />Terapeuta
                 </label>
                 <select
                   value={filtros.terapeuta}
@@ -623,10 +522,8 @@ const Inconsistencias = () => {
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Todos los terapeutas</option>
-                  {terapeutas.map((terapeuta) => (
-                    <option key={terapeuta.id} value={terapeuta.id}>
-                      {terapeuta.nombres} {terapeuta.apellidos}
-                    </option>
+                  {terapeutas.map((t) => (
+                    <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
                   ))}
                 </select>
               </div>
@@ -634,69 +531,33 @@ const Inconsistencias = () => {
               {/* Paciente */}
               <div style={{ position: 'relative', zIndex: mostrarSugerencias ? 100 : 1 }}>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <UsersIcon className="w-4 h-4 inline mr-1" />
-                  Paciente
+                  <UsersIcon className="w-4 h-4 inline mr-1" />Paciente
                 </label>
                 <input
                   type="text"
                   placeholder="Buscar paciente (min. 2 caracteres)..."
                   value={busquedaPaciente}
                   onChange={(e) => handleBuscarPaciente(e.target.value)}
-                  onFocus={() => {
-                    if (pacientesSugerencias.length > 0) setMostrarSugerencias(true);
-                  }}
+                  onFocus={() => { if (pacientesSugerencias.length > 0) setMostrarSugerencias(true); }}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
                 {mostrarSugerencias && pacientesSugerencias.length > 0 && (
                   <>
                     <div
-                      style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 999,
-                        background: 'transparent'
-                      }}
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, background: 'transparent' }}
                       onClick={() => setMostrarSugerencias(false)}
                     />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        marginTop: '4px',
-                        backgroundColor: 'white',
-                        border: '2px solid #ef4444',
-                        borderRadius: '8px',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-                        maxHeight: '240px',
-                        overflowY: 'auto',
-                        zIndex: 1000
-                      }}
-                    >
+                    <div style={{ position: 'absolute', left: 0, right: 0, marginTop: '4px', backgroundColor: 'white', border: '2px solid #ef4444', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)', maxHeight: '240px', overflowY: 'auto', zIndex: 1000 }}>
                       {pacientesSugerencias.map((paciente) => (
                         <button
                           key={paciente.id}
                           type="button"
                           onClick={() => seleccionarPaciente(paciente)}
-                          style={{
-                            width: '100%',
-                            padding: '12px 16px',
-                            textAlign: 'left',
-                            border: 'none',
-                            borderBottom: '1px solid #e5e7eb',
-                            backgroundColor: 'white',
-                            cursor: 'pointer',
-                            display: 'block'
-                          }}
+                          style={{ width: '100%', padding: '12px 16px', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer', display: 'block' }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                         >
-                          <div style={{ fontWeight: 500, color: '#111827' }}>
-                            {paciente.nombre_completo}
-                          </div>
+                          <div style={{ fontWeight: 500, color: '#111827' }}>{paciente.nombre_completo}</div>
                         </button>
                       ))}
                     </div>
@@ -706,33 +567,29 @@ const Inconsistencias = () => {
 
               {/* Tipo de Inconsistencia */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tipo de Inconsistencia
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Inconsistencia</label>
                 <select
                   value={filtros.tipoInconsistencia}
                   onChange={(e) => setFiltros(prev => ({ ...prev, tipoInconsistencia: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Todos los tipos</option>
-                  {tiposInconsistencia.map((tipo, index) => (
-                    <option key={index} value={tipo}>{tipo}</option>
+                  {tiposInconsistencia.map((tipo, i) => (
+                    <option key={i} value={tipo}>{tipo}</option>
                   ))}
                 </select>
               </div>
 
               {/* Estado Recepción */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Estado Recepción
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Estado Recepción</label>
                 <select
                   value={filtros.estadoRecepcion}
                   onChange={(e) => setFiltros(prev => ({ ...prev, estadoRecepcion: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Todos los estados</option>
-                  <option value="0">No marcado</option>
+                  <option value="0">No marcó</option>
                   <option value="7">Asistió</option>
                   <option value="6">Sesión Dictada</option>
                 </select>
@@ -740,43 +597,38 @@ const Inconsistencias = () => {
 
               {/* Estado Terapeuta */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Estado Terapeuta
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Estado Terapeuta</label>
                 <select
                   value={filtros.estadoTerapeuta}
                   onChange={(e) => setFiltros(prev => ({ ...prev, estadoTerapeuta: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Todos los estados</option>
-                  <option value="0">No marcado</option>
+                  <option value="0">No marcó</option>
                   <option value="7">Asistió</option>
                   <option value="6">Sesión Dictada</option>
                 </select>
               </div>
             </div>
 
-            {/* Botones de acción filtros */}
             <div className="flex justify-end gap-2 mt-4">
-                <button
-                  onClick={limpiarFiltros}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <XMarkIcon className="w-4 h-4" />
-                  Limpiar Filtros
-                </button>
-                <button
-                  onClick={() => aplicarFiltros()}
-                  className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
-                >
-                  <MagnifyingGlassIcon className="w-4 h-4" />
-                  Aplicar
-                </button>
-              </div>
+              <button
+                onClick={limpiarFiltros}
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+              >
+                <XMarkIcon className="w-4 h-4" />Limpiar Filtros
+              </button>
+              <button
+                onClick={() => aplicarFiltros()}
+                className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+              >
+                <MagnifyingGlassIcon className="w-4 h-4" />Aplicar
+              </button>
+            </div>
 
-            {/* Resumen de filtros activos */}
+            {/* Resumen filtros activos */}
             {(filtros.terapeuta || filtros.paciente || filtros.tipoInconsistencia || filtros.estadoRecepcion || filtros.estadoTerapeuta) && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
                 <div className="flex items-center gap-2 mb-2">
                   <FunnelIcon className="w-4 h-4 text-red-600" />
                   <span className="text-sm font-semibold text-red-700">Filtros aplicados:</span>
@@ -784,48 +636,32 @@ const Inconsistencias = () => {
                 <div className="flex flex-wrap gap-2">
                   {filtros.terapeuta && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                      Terapeuta: {(() => {
-                        const t = terapeutas.find(ter => ter.id === parseInt(filtros.terapeuta));
-                        return t ? `${t.nombres} ${t.apellidos}` : filtros.terapeuta;
-                      })()}
-                      <button onClick={() => setFiltros(prev => ({ ...prev, terapeuta: '' }))}>
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
+                      Terapeuta: {(() => { const t = terapeutas.find(ter => ter.id === parseInt(filtros.terapeuta)); return t ? `${t.nombres} ${t.apellidos}` : filtros.terapeuta; })()}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, terapeuta: '' }))}><XMarkIcon className="w-3 h-3" /></button>
                     </span>
                   )}
                   {filtros.paciente && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
                       Paciente: {filtros.paciente}
-                      <button onClick={() => {
-                        setFiltros(prev => ({ ...prev, paciente: '' }));
-                        setBusquedaPaciente('');
-                      }}>
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
+                      <button onClick={() => { setFiltros(prev => ({ ...prev, paciente: '' })); setBusquedaPaciente(''); }}><XMarkIcon className="w-3 h-3" /></button>
                     </span>
                   )}
                   {filtros.tipoInconsistencia && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
                       Tipo: {filtros.tipoInconsistencia}
-                      <button onClick={() => setFiltros(prev => ({ ...prev, tipoInconsistencia: '' }))}>
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
+                      <button onClick={() => setFiltros(prev => ({ ...prev, tipoInconsistencia: '' }))}><XMarkIcon className="w-3 h-3" /></button>
                     </span>
                   )}
                   {filtros.estadoRecepcion && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                      Recepción: {filtros.estadoRecepcion === '0' ? 'No marcado' : filtros.estadoRecepcion === '7' ? 'Asistió' : 'Sesión Dictada'}
-                      <button onClick={() => setFiltros(prev => ({ ...prev, estadoRecepcion: '' }))}>
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
+                      Recepción: {filtros.estadoRecepcion === '0' ? 'No marcó' : filtros.estadoRecepcion === '7' ? 'Asistió' : 'Sesión Dictada'}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, estadoRecepcion: '' }))}><XMarkIcon className="w-3 h-3" /></button>
                     </span>
                   )}
                   {filtros.estadoTerapeuta && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                      Terapeuta: {filtros.estadoTerapeuta === '0' ? 'No marcado' : filtros.estadoTerapeuta === '7' ? 'Asistió' : 'Sesión Dictada'}
-                      <button onClick={() => setFiltros(prev => ({ ...prev, estadoTerapeuta: '' }))}>
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
+                      Terapeuta: {filtros.estadoTerapeuta === '0' ? 'No marcó' : filtros.estadoTerapeuta === '7' ? 'Asistió' : 'Sesión Dictada'}
+                      <button onClick={() => setFiltros(prev => ({ ...prev, estadoTerapeuta: '' }))}><XMarkIcon className="w-3 h-3" /></button>
                     </span>
                   )}
                 </div>
@@ -838,83 +674,57 @@ const Inconsistencias = () => {
       {/* Estadísticas */}
       {!cargando && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900 mb-1">{inconsistenciasFiltradas.length}</div>
-            <div className="text-sm text-gray-600">Total Filtrado</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {inconsistencias.length} totales
+          {[
+            { valor: inconsistenciasFiltradas.length, label: 'Total Filtrado', sub: `${inconsistencias.length} totales`, color: 'text-gray-900' },
+            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Ninguno marcó asistencia').length, label: 'Ninguno marcó', sub: '', color: 'text-red-900' },
+            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Falta registro de admisión' || i.tipo_inconsistencia === 'Falta registro del terapeuta').length, label: 'Faltan registros', sub: '', color: 'text-yellow-900' },
+            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia?.startsWith('Estados no coinciden')).length, label: 'Estados diferentes', sub: '', color: 'text-orange-900' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className={`text-2xl font-bold mb-1 ${stat.color}`}>{stat.valor}</div>
+              <div className="text-sm text-gray-600">{stat.label}</div>
+              {stat.sub && <div className="text-xs text-gray-500 mt-1">{stat.sub}</div>}
             </div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-red-900 mb-1">
-              {inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Ninguno marcó asistencia').length}
-            </div>
-            <div className="text-sm text-gray-600">Ninguno marcó</div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-yellow-900 mb-1">
-              {inconsistenciasFiltradas.filter(i => 
-                i.tipo_inconsistencia === 'Falta registro de admisión' || 
-                i.tipo_inconsistencia === 'Falta registro del terapeuta'
-              ).length}
-            </div>
-            <div className="text-sm text-gray-600">Faltan registros</div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-orange-900 mb-1">
-              {inconsistenciasFiltradas.filter(i => 
-                i.tipo_inconsistencia && i.tipo_inconsistencia.startsWith('Estados no coinciden')
-              ).length}
-            </div>
-            <div className="text-sm text-gray-600">Estados diferentes</div>
-          </div>
+          ))}
         </div>
       )}
 
-      {/* Botón de exportar */}
+      {/* Botón exportar */}
       {!cargando && inconsistenciasFiltradas.length > 0 && (
         <div className="mb-4 flex justify-end">
           <button
             onClick={exportarAExcel}
             className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-sm"
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            Exportar a Excel
+            <ArrowDownTrayIcon className="w-5 h-5" />Exportar a Excel
           </button>
         </div>
       )}
 
-      {/* Tabla de Inconsistencias */}
+      {/* Tabla */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Cita ID</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Paciente</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Terapeuta</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Fecha Cita</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recepción Marcó</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Terapeuta Marcó</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tipo de Inconsistencia</th>
+                {['Cita ID', 'Paciente', 'Terapeuta', 'Fecha Cita', 'Recepción Marcó', 'Terapeuta Marcó', 'Tipo de Inconsistencia', 'Acciones'].map(h => (
+                  <th key={h} className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {cargando ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center">
+                  <td colSpan="8" className="px-6 py-8 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin" />
                       <span className="text-gray-600">Cargando inconsistencias...</span>
                     </div>
                   </td>
                 </tr>
               ) : datosMostrados.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center">
+                  <td colSpan="8" className="px-6 py-12 text-center">
                     <ShieldCheckIcon className="w-16 h-16 text-green-400 mx-auto mb-3" />
                     <p className="text-green-700 text-lg font-semibold">¡Excelente!</p>
                     <p className="text-gray-500">No se encontraron inconsistencias con los filtros aplicados</p>
@@ -923,65 +733,48 @@ const Inconsistencias = () => {
               ) : (
                 datosMostrados.map((item) => (
                   <tr key={item.id} className="hover:bg-red-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                      #{item.cita_id}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.paciente_nombre || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.terapeuta_nombre || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {item.fecha_cita ? formatearFecha(item.fecha_cita) : 'N/A'}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">#{item.cita_id}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{item.paciente_nombre || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{item.terapeuta_nombre || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.fecha_cita ? formatearFecha(item.fecha_cita) : 'N/A'}</td>
                     <td className="px-6 py-4">
                       {item.recepcion_marco ? (
                         <>
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            item.recepcion_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${item.recepcion_estado_id === 7 ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
                             {getEstadoTexto(item.recepcion_estado_id)}
                           </span>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {item.recepcion_fecha ? formatearFecha(item.recepcion_fecha) : ''}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-1">{item.recepcion_fecha ? formatearFecha(item.recepcion_fecha) : ''}</p>
                         </>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                          Sin marcar
-                        </span>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">No marcó</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       {item.terapeuta_marco ? (
                         <>
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            item.terapeuta_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${item.terapeuta_estado_id === 7 ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
                             {getEstadoTexto(item.terapeuta_estado_id)}
                           </span>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {item.terapeuta_fecha ? formatearFecha(item.terapeuta_fecha) : ''}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-1">{item.terapeuta_fecha ? formatearFecha(item.terapeuta_fecha) : ''}</p>
                         </>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                          Sin marcar
-                        </span>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">No marcó</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${getColorByTipo(item.tipo_inconsistencia)}`}>
                         <ExclamationTriangleIcon className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-xs font-bold">
-                          {item.tipo_inconsistencia}
-                        </span>
+                        <span className="text-xs font-bold">{item.tipo_inconsistencia}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => abrirModal(item)}
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                      >
+                        <PencilSquareIcon className="w-4 h-4" />
+                        Modificar
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -998,72 +791,29 @@ const Inconsistencias = () => {
                 Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, inconsistenciasFiltradas.length)} de {inconsistenciasFiltradas.length} inconsistencias
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(0)}
-                  disabled={page === 0}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200"
-                >
-                  Primero
-                </button>
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 0}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200"
-                >
-                  Anterior
-                </button>
-
+                <button onClick={() => setPage(0)} disabled={page === 0} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Primero</button>
+                <button onClick={() => setPage(page - 1)} disabled={page === 0} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Anterior</button>
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
                     let pageNum;
-                    if (totalPages <= 3) {
-                      pageNum = i;
-                    } else if (page < 2) {
-                      pageNum = i;
-                    } else if (page > totalPages - 3) {
-                      pageNum = totalPages - 3 + i;
-                    } else {
-                      pageNum = page - 1 + i;
-                    }
-
+                    if (totalPages <= 3)            pageNum = i;
+                    else if (page < 2)              pageNum = i;
+                    else if (page > totalPages - 3) pageNum = totalPages - 3 + i;
+                    else                            pageNum = page - 1 + i;
                     return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                          page === pageNum
-                            ? 'bg-red-600 text-white'
-                            : 'hover:bg-gray-200 text-gray-700'
-                        }`}
-                      >
+                      <button key={pageNum} onClick={() => setPage(pageNum)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${page === pageNum ? 'bg-red-600 text-white' : 'hover:bg-gray-200 text-gray-700'}`}>
                         {pageNum + 1}
                       </button>
                     );
                   })}
                 </div>
-
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= totalPages - 1}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200"
-                >
-                  Siguiente
-                </button>
-                <button
-                  onClick={() => setPage(totalPages - 1)}
-                  disabled={page >= totalPages - 1}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200"
-                >
-                  Último
-                </button>
+                <button onClick={() => setPage(page + 1)} disabled={page >= totalPages - 1} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Siguiente</button>
+                <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Último</button>
               </div>
-
               <select
                 value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value));
-                  setPage(0);
-                }}
+                onChange={(e) => { setRowsPerPage(parseInt(e.target.value)); setPage(0); }}
                 className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
               >
                 <option value={10}>10 por página</option>
@@ -1080,24 +830,136 @@ const Inconsistencias = () => {
       <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-bold text-gray-900 mb-3">Tipos de Inconsistencias:</h3>
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span className="text-gray-700"><strong>Ninguno marcó asistencia:</strong> Ni admisión ni terapeuta registraron después de 24 horas</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span className="text-gray-700"><strong>Falta registro de admisión:</strong> Solo el terapeuta marcó, falta que admisión registre</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span className="text-gray-700"><strong>Falta registro del terapeuta:</strong> Solo admisión marcó, falta que el terapeuta registre</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-            <span className="text-gray-700"><strong>Estados no coinciden:</strong> Ambos marcaron pero con estados diferentes (Ej: Admisión: Asistió, Terapeuta: Sesión Dictada)</span>
-          </div>
+          {[
+            { color: 'bg-red-500', text: '<strong>Ninguno marcó asistencia:</strong> Ni admisión ni terapeuta registraron después de 24 horas' },
+            { color: 'bg-yellow-500', text: '<strong>Falta registro de admisión:</strong> Solo el terapeuta marcó, falta que admisión registre' },
+            { color: 'bg-yellow-500', text: '<strong>Falta registro del terapeuta:</strong> Solo admisión marcó, falta que el terapeuta registre' },
+            { color: 'bg-orange-500', text: '<strong>Estados no coinciden:</strong> Ambos marcaron pero con estados diferentes' },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-3 h-3 ${item.color} rounded-full flex-shrink-0`} />
+              <span className="text-gray-700" dangerouslySetInnerHTML={{ __html: item.text }} />
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* Modal de Modificación */}
+      {modalAbierto && asistenciaSeleccionada && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header del Modal */}
+            <div className="bg-red-600 px-6 py-4 rounded-t-xl">
+              <h2 className="text-xl font-bold text-white">Modificar Asistencia - Cita #{asistenciaSeleccionada.cita_id}</h2>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="p-6">
+              {/* Información de la Cita */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1"><span className="font-semibold">Paciente:</span> {asistenciaSeleccionada.paciente_nombre}</p>
+                <p className="text-sm text-gray-600 mb-1"><span className="font-semibold">Terapeuta:</span> {asistenciaSeleccionada.terapeuta_nombre}</p>
+                <p className="text-sm text-gray-600"><span className="font-semibold">Fecha:</span> {formatearFecha(asistenciaSeleccionada.fecha_cita)}</p>
+              </div>
+
+              {/* Estado de Recepción */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Estado de Recepción/Admisión
+                </label>
+                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setEstadoRecepcion(estadoRecepcion === 7 ? null : 7)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                      estadoRecepcion === 7
+                        ? 'bg-green-600 text-white ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
+                    }`}
+                  >
+                    ✓ Asistió
+                  </button>
+                  <button
+                    onClick={() => setEstadoRecepcion(estadoRecepcion === 6 ? null : 6)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                      estadoRecepcion === 6
+                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
+                    }`}
+                  >
+                    ◆ Sesión Dictada
+                  </button>
+                </div>
+                {estadoRecepcion === null && (
+                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                    Sin marcar — se guardará como pendiente
+                  </p>
+                )}
+              </div>
+
+              {/* Estado de Terapeuta */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Estado de Terapeuta
+                </label>
+                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setEstadoTerapeuta(estadoTerapeuta === 7 ? null : 7)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                      estadoTerapeuta === 7
+                        ? 'bg-green-600 text-white ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
+                    }`}
+                  >
+                    ✓ Asistió
+                  </button>
+                  <button
+                    onClick={() => setEstadoTerapeuta(estadoTerapeuta === 6 ? null : 6)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                      estadoTerapeuta === 6
+                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
+                    }`}
+                  >
+                    ◆ Sesión Dictada
+                  </button>
+                </div>
+                {estadoTerapeuta === null && (
+                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                    Sin marcar — se guardará como pendiente
+                  </p>
+                )}
+              </div>
+
+              {/* Advertencia */}
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <span className="font-bold">⚠️ Advertencia:</span> Esta acción sobrescribirá los estados marcados por admisión y terapeuta.
+                </p>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex gap-3">
+                <button
+                  onClick={cerrarModal}
+                  disabled={guardando}
+                  className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-all disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleGuardarCambios}
+                  disabled={guardando}
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                >
+                  {guardando ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

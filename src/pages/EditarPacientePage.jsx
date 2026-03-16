@@ -210,9 +210,10 @@ useEffect(() => {
       if (id) {
         try {
           let url = `/nota-evolucion/paciente/${id}`;
-          // Solo filtrar por trabajador_id si es terapeuta NO jefe
-          const esTerapeutaNoJefe = user?.rol?.id === ROLES.TERAPEUTA && !user?.cargo?.es_jefe;
-          if (esTerapeutaNoJefe) {
+          // Los terapeutas (incluidos los jefes) envían su trabajador_id
+          // El backend filtra: si es jefe, devuelve sus notas + las de subordinados
+          const esTerapeuta = user?.rol?.id === ROLES.TERAPEUTA;
+          if (esTerapeuta) {
             url += `?trabajador_id=${user.id}`;
           }
           const notas = await obtenerNotasEvolucionPorPaciente(id, url);

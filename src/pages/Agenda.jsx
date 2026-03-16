@@ -500,10 +500,6 @@ const guardarCita = async (datosFormulario = null) => {
     console.log('📅 Cantidad de fechas/horas:', datos.fechasHoras?.length);
 
     // Validaciones básicas
-    if (!datos.paciente_id) {
-      throw new Error('Se requiere seleccionar un paciente');
-    }
-
     if (!datos.motivo_id) {
       throw new Error('Se requiere seleccionar un motivo');
     }
@@ -521,17 +517,22 @@ const guardarCita = async (datosFormulario = null) => {
     const tipoCita = determinarTipoCita(datos.motivo_id);
     console.log('📋 Tipo de cita:', tipoCita);
 
+    // Validar paciente solo para citas normales y visitas escolares (NO para reuniones clínicas)
+    if (tipoCita !== 'REUNION_CLINICA' && !datos.paciente_id) {
+      throw new Error('Se requiere seleccionar un paciente');
+    }
+
     // Construir datos base comunes
     let datosBase = {
       motivo_id: parseInt(datos.motivo_id),
-      paciente_id: datos.paciente_id,
+      paciente_id: datos.paciente_id || null,
       estado_id: parseInt(datos.estado_id || 1),
       duracion_minutos: parseInt(datos.duracion || 40),
       nota: datos.nota || '',
       user_id_crea: currentUser.id,
       motivo_accion: datos.motivo_accion || '',
  // ✅ INCLUIR MOTIVO DE ACCIÓN
-      
+
     };
 
     // Agregar campos según tipo de cita
@@ -891,6 +892,7 @@ const guardarCita = async (datosFormulario = null) => {
               <span>Calendario de Citas</span>
             </button>
 
+           {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
             <button
               onClick={() => setTabActivo('bloqueos')}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
@@ -902,6 +904,7 @@ const guardarCita = async (datosFormulario = null) => {
               <Ban className="w-5 h-5" />
               <span>Horarios Bloqueados</span>
             </button>
+          )}
           </div>
 
           {/* Estadísticas - solo en tab calendario */}

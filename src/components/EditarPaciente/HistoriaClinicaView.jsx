@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList } from 'lucide-react';
+import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User } from 'lucide-react';
 import { guardarReporteEvolucion, actualizarReporteEvolucion, obtenerReporteEvolucion } from '../../services/historiaClinicaService';
 import { getServiciosPorPaciente } from '../../services/pacienteService';
 
@@ -9,6 +9,7 @@ import ReporteEvolucion from './HistoriaClinicaView/components/ReporteEvolucion'
 import { calcularEdad } from '../../utils/date';
 import EvaluacionTerapiaOcupacional from './HistoriaClinicaView/components/EvaluacionTOcupacionalView';
 import IndicacionTerapeuticaView from './HistoriaClinicaView/components/IndicacionTerapeuticaView';
+import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
 
 const HistoriaClinicaView = ({ paciente, user }) => {
   const [serviciosPaciente, setServiciosPaciente] = useState([]);
@@ -306,6 +307,8 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         );
       case 'entrevista-padres':
         return <EntrevistaPadresView paciente={paciente} user={user} />;
+      case 'entrevista-adultos':
+        return <EntrevistaAdultos pacienteId={paciente?.id} usuarioId={user?.id} user={user} />;
       case 'evaluacion-terapia-ocupacional':
         return <EvaluacionTerapiaOcupacional pacienteId={paciente?.id} usuarioId={user?.id} user={user} />;
       case 'indicacion-terapeutica':
@@ -337,6 +340,14 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       icon: Users,
       color: 'blue',
       visible: visibleTabs.some(tab => tab.id === 'entrevista-padres')
+    },
+    {
+      id: 'entrevista-adultos',
+      title: 'Entrevista Psicológica para Adultos',
+      description: 'Registro completo de evaluación psicológica para pacientes adultos',
+      icon: User,
+      color: 'purple',
+      visible: true // Siempre visible
     },
     {
       id: 'evaluacion-terapia-ocupacional',

@@ -7,16 +7,15 @@ import {
 } from '@heroicons/react/24/outline';
 import { getEstadisticasPromociones } from '../../services/promocionesService';
 
-const StatCard = ({ icon: Icon, title, value, subtitle, color = 'blue' }) => {
+const StatCard = ({ icon: Icon, title, value, subtitle, color = 'purple' }) => {
   const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600',
-    purple: 'from-purple-500 to-purple-600',
-    pink: 'from-pink-500 to-pink-600',
+    purple: 'from-[#7B1FA2] to-[#9C27B0]',
+    green:  'from-[#A3C644] to-[#8FB82D]',
+    pink:   'from-[#E91E63] to-[#F06292]',
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
@@ -35,9 +34,7 @@ const EstadisticasTab = () => {
   const [estadisticas, setEstadisticas] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    cargarEstadisticas();
-  }, []);
+  useEffect(() => { cargarEstadisticas(); }, []);
 
   const cargarEstadisticas = async () => {
     setLoading(true);
@@ -51,8 +48,7 @@ const EstadisticasTab = () => {
     }
   };
 
-  // Calcular totales
-  const totalUsos = estadisticas.reduce((sum, e) => sum + parseInt(e.total_usos || 0), 0);
+  const totalUsos   = estadisticas.reduce((sum, e) => sum + parseInt(e.total_usos || 0), 0);
   const totalAhorro = estadisticas.reduce((sum, e) => sum + parseFloat(e.ahorro_total || 0), 0);
   const promoMasUsada = estadisticas.length > 0
     ? estadisticas.reduce((max, e) => parseInt(e.total_usos) > parseInt(max.total_usos) ? e : max, estadisticas[0])
@@ -60,14 +56,15 @@ const EstadisticasTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Resumen General */}
+
+      {/* Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           icon={TicketIcon}
           title="Total de Usos"
           value={totalUsos.toLocaleString()}
           subtitle="Promociones aplicadas"
-          color="blue"
+          color="purple"
         />
         <StatCard
           icon={CurrencyDollarIcon}
@@ -85,65 +82,64 @@ const EstadisticasTab = () => {
         />
       </div>
 
-      {/* Tabla de Estadísticas */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Tabla */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <ChartBarIcon className="w-5 h-5 text-[#E91E63]" />
+            <ChartBarIcon className="w-5 h-5 text-[#7B1FA2]" />
             <h3 className="font-bold text-gray-900">Estadísticas por Promoción</h3>
           </div>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Cargando estadísticas...</div>
+          <div className="flex justify-center py-16">
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin" />
+          </div>
         ) : estadisticas.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No hay estadísticas disponibles
+          <div className="text-center py-16 text-gray-400">
+            <ChartBarIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="font-medium">No hay estadísticas disponibles</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600">Promoción</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">Total Usos</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">Ahorro Total</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">Promedio por Uso</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">% del Total</th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Promoción</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total Usos</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Ahorro Total</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Promedio por Uso</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">% del Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {estadisticas.map(stat => {
-                  const usos = parseInt(stat.total_usos || 0);
-                  const ahorro = parseFloat(stat.ahorro_total || 0);
-                  const promedio = usos > 0 ? ahorro / usos : 0;
+                  const usos       = parseInt(stat.total_usos || 0);
+                  const ahorro     = parseFloat(stat.ahorro_total || 0);
+                  const promedio   = usos > 0 ? ahorro / usos : 0;
                   const porcentaje = totalUsos > 0 ? (usos / totalUsos) * 100 : 0;
 
                   return (
                     <tr key={stat.promocion_id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                        {stat.promocion_id}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-sm text-gray-900">{stat.nombre_promocion}</div>
-                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{stat.promocion_id}</td>
+                      <td className="px-6 py-4 font-semibold text-sm text-gray-900">{stat.nombre_promocion}</td>
                       <td className="px-6 py-4 text-right">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#7B1FA2]/10 text-[#7B1FA2]">
                           {usos.toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right font-semibold text-green-600">
+                      <td className="px-6 py-4 text-right font-semibold text-[#A3C644]">
                         S/ {ahorro.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-600">
+                      <td className="px-6 py-4 text-right text-gray-600">
                         S/ {promedio.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-[#E91E63] to-[#F06292]"
+                              className="h-full bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0]"
                               style={{ width: `${Math.min(porcentaje, 100)}%` }}
                             />
                           </div>
@@ -158,18 +154,16 @@ const EstadisticasTab = () => {
               </tbody>
               <tfoot className="bg-gray-50 border-t border-gray-200">
                 <tr>
-                  <td colSpan={2} className="px-6 py-4 text-sm font-bold text-gray-900">
-                    TOTAL
-                  </td>
+                  <td colSpan={2} className="px-6 py-4 text-sm font-bold text-gray-900">TOTAL</td>
                   <td className="px-6 py-4 text-right">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#7B1FA2]/10 text-[#7B1FA2]">
                       {totalUsos.toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-green-700">
+                  <td className="px-6 py-4 text-right font-bold text-[#A3C644]">
                     S/ {totalAhorro.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td colSpan={2}></td>
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>

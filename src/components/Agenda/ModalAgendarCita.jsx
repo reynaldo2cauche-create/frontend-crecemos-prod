@@ -99,6 +99,13 @@ const ModalAgendarCita = ({
     currentUser?.rol?.id === ROLES.ADMISION ||
     currentUser?.rol?.id === ROLES.TERAPEUTA;
   const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR && !modoSoloLectura;
+
+  // 🔒 BLOQUEAR EDICIÓN PARA ADMISIONISTA SI YA HAY ASISTENCIA REGISTRADA (por cualquiera de los dos)
+  const bloqueadoPorAsistencia = esRecepcionista && modoEdicion && (
+    seguimientoAsistencia?.recepcion_marco == 1 ||
+    seguimientoAsistencia?.terapeuta_marco == 1
+  );
+
   const [guardandoLocal, setGuardandoLocal] = useState(false);
   // ========== RESETEAR ESTADOS AL CERRAR MODAL ==========
   useEffect(() => {
@@ -175,6 +182,14 @@ const ModalAgendarCita = ({
     }
   };
 
+  // 🔒 Cargar seguimiento apenas se abre el modal en edición (para validar bloqueo)
+  useEffect(() => {
+    if (open && modoEdicion && citaEditando?.id) {
+      cargarSeguimientoAsistencia();
+    }
+  }, [open, modoEdicion, citaEditando?.id, cargarSeguimientoAsistencia]);
+
+  // Recargar seguimiento cuando se cambia a la pestaña de asistencia
   useEffect(() => {
     if (tabValue === 2 && modoEdicion && citaEditando?.id) {
       cargarSeguimientoAsistencia();
@@ -972,10 +987,26 @@ const handleGuardar = useCallback(async () => {
                   )}
                 </div>
 
+                {/* 🔒 ADVERTENCIA: CITA CON ASISTENCIA REGISTRADA */}
+                {bloqueadoPorAsistencia && (
+                  <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-red-900 mb-1">
+                        🔒 Cita bloqueada para edición
+                      </p>
+                      <p className="text-xs text-red-800">
+                        Ya registraste la asistencia para esta cita. No se puede editar para evitar reutilización de citas antiguas. Solo un administrador puede modificarla.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* PACIENTE */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Paciente <span className="text-red-500">*</span>
+                    Paciente {tipoCita !== 'REUNION_CLINICA' && <span className="text-red-500">*</span>}
+                    {tipoCita === 'REUNION_CLINICA' && <span className="text-gray-400 text-xs ml-1">(Opcional)</span>}
                   </label>
                   <div className="relative">
                     <input
@@ -983,7 +1014,7 @@ const handleGuardar = useCallback(async () => {
                       placeholder="Buscar por nombre..."
                       value={queryPaciente}
                       onChange={(e) => setQueryPaciente(e.target.value)}
-                      disabled={esTerapeuta || modoSoloLectura}
+                      disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                       className="w-full px-4 py-2.5 pl-10 bg-white border border-gray-200 rounded-xl text-sm text-gray-900
                       focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/20
                       transition-all disabled:opacity-60 disabled:bg-gray-50
@@ -992,7 +1023,7 @@ const handleGuardar = useCallback(async () => {
                     <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   </div>
 
-                  {queryPaciente.length >= 2 && pacientes.length > 0 && !modoSoloLectura && (
+                  {queryPaciente.length >= 2 && pacientes.length > 0 && !modoSoloLectura && !bloqueadoPorAsistencia && (
                     <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                       {pacientes.map((paciente) => (
                         <button
@@ -1018,7 +1049,7 @@ const handleGuardar = useCallback(async () => {
                         </div>
                         <p className="text-sm font-semibold text-gray-900">{formularioCita.paciente.nombre_completo}</p>
                       </div>
-                      {!esTerapeuta && !modoSoloLectura && (
+                      {!esTerapeuta && !modoSoloLectura && !bloqueadoPorAsistencia && (
                         <button onClick={() => onFormularioChange('paciente', null)} className="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition-all">
                           <X className="w-4 h-4" />
                         </button>
@@ -1054,7 +1085,7 @@ const handleGuardar = useCallback(async () => {
                         <select
                           value={formularioCita.servicio_id || ''}
                           onChange={(e) => onFormularioChange('servicio_id', e.target.value)}
-                          disabled={esTerapeuta || modoSoloLectura}
+                          disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                           className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                         >
                           <option value="">Seleccionar servicio...</option>
@@ -1096,7 +1127,7 @@ const handleGuardar = useCallback(async () => {
                       <select
                         value={formularioCita.duracion}
                         onChange={(e) => onFormularioChange('duracion', e.target.value)}
-                        disabled={esTerapeuta || modoSoloLectura}
+                        disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                       >
                         <option value="">Seleccionar duración...</option>
@@ -1116,7 +1147,7 @@ const handleGuardar = useCallback(async () => {
                             {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
                           </label>
                         </div>
-                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && (
+                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
                             onClick={agregarFechaHora}
                             className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-all text-[#7B1FA2] hover:bg-purple-50"
@@ -1143,7 +1174,7 @@ const handleGuardar = useCallback(async () => {
                                   alert('Solo se pueden agendar citas de lunes a sábado');
                                 }
                               }}
-                              disabled={esTerapeuta || modoSoloLectura}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                             />
                             <select
@@ -1212,7 +1243,7 @@ const handleGuardar = useCallback(async () => {
                                         alert('Solo se pueden agendar citas de lunes a sábado');
                                       }
                                     }}
-                                    disabled={esTerapeuta || modoSoloLectura}
+                                    disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                                   />
                                   <select
@@ -1370,7 +1401,7 @@ const handleGuardar = useCallback(async () => {
                               <select
                                 value={servicio.servicio_id || ''}
                                 onChange={(e) => actualizarServicio(index, e.target.value)}
-                                disabled={esTerapeuta || modoSoloLectura}
+                                disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                 className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
                               >
                                 <option value="">Seleccionar servicio...</option>
@@ -1441,7 +1472,7 @@ const handleGuardar = useCallback(async () => {
                         <label className="block text-sm font-semibold text-gray-700">
                           {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
                         </label>
-                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && (
+                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
                             onClick={() => onFormularioChange('agregarFechaHora', null)}
                             className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
@@ -1468,7 +1499,7 @@ const handleGuardar = useCallback(async () => {
                                   alert('Solo se pueden agendar citas de lunes a sábado');
                                 }
                               }}
-                              disabled={esTerapeuta || modoSoloLectura}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                             />
                             <select
@@ -1536,7 +1567,7 @@ const handleGuardar = useCallback(async () => {
                                         alert('Solo se pueden agendar citas de lunes a sábado');
                                       }
                                     }}
-                                    disabled={esTerapeuta || modoSoloLectura}
+                                    disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                                   />
                                   <select
@@ -1685,7 +1716,7 @@ const handleGuardar = useCallback(async () => {
                                 if (modoSoloLectura) return;
                                 setDocumentoFirmado(e.target.checked);
                               }}
-                              disabled={esTerapeuta || modoSoloLectura}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:opacity-60 cursor-pointer"
                             />
                             <span className="text-sm font-medium text-gray-700">Autorización de visita firmada</span>
@@ -1739,7 +1770,7 @@ const handleGuardar = useCallback(async () => {
                       <select
                         value={formularioCita.duracion}
                         onChange={(e) => onFormularioChange('duracion', e.target.value)}
-                        disabled={esTerapeuta || modoSoloLectura}
+                        disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                       >
                         <option value="">Seleccionar duración...</option>
@@ -1757,7 +1788,7 @@ const handleGuardar = useCallback(async () => {
                         <label className="block text-sm font-semibold text-gray-700">
                           {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
                         </label>
-                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && (
+                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
                             onClick={() => onFormularioChange('agregarFechaHora', null)}
                             className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
@@ -1784,7 +1815,7 @@ const handleGuardar = useCallback(async () => {
                                   alert('Solo se pueden agendar citas de lunes a sábado');
                                 }
                               }}
-                              disabled={esTerapeuta || modoSoloLectura}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                             />
                             <select
@@ -1852,7 +1883,7 @@ const handleGuardar = useCallback(async () => {
                                         alert('Solo se pueden agendar citas de lunes a sábado');
                                       }
                                     }}
-                                    disabled={esTerapeuta || modoSoloLectura}
+                                    disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                                   />
                                   <select
@@ -1988,16 +2019,22 @@ const handleGuardar = useCallback(async () => {
                               </div>
                             </div>
                           )}
-                          {item.paciente && (
+                          {(item.paciente || item.tipo_cita === 'REUNION_CLINICA') && (
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <p className="text-xs font-semibold text-gray-600 mb-1">Paciente:</p>
-                                <p className="text-sm font-medium text-gray-900">{item.paciente.nombre_completo}</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {item.tipo_cita === 'REUNION_CLINICA' && !item.paciente
+                                    ? 'Reunión Interna'
+                                    : item.paciente?.nombre_completo}
+                                </p>
                               </div>
-                              <div>
-                                <p className="text-xs font-semibold text-gray-600 mb-1">Documento:</p>
-                                <p className="text-sm font-medium text-gray-900">{item.paciente.numero_documento}</p>
-                              </div>
+                              {item.paciente && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 mb-1">Documento:</p>
+                                  <p className="text-sm font-medium text-gray-900">{item.paciente.numero_documento}</p>
+                                </div>
+                              )}
                             </div>
                           )}
                           <div className="grid grid-cols-2 gap-3">
@@ -2397,9 +2434,11 @@ const handleGuardar = useCallback(async () => {
                     <div>
                       <p className="text-xs font-semibold text-gray-600 mb-1">Paciente:</p>
                       <p className="text-sm font-medium text-gray-900">
-                        {citaEditando?.paciente ?
-                          `${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()
-                          : 'No especificado'}
+                        {citaEditando?.tipo_cita === 'REUNION_CLINICA' && !citaEditando?.paciente
+                          ? 'Reunión Interna'
+                          : citaEditando?.paciente
+                            ? `${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()
+                            : 'No especificado'}
                       </p>
                     </div>
                     <div>
@@ -2571,7 +2610,7 @@ const handleGuardar = useCallback(async () => {
                   </button>
                  <button
                     onClick={handleGuardar}
-                    disabled={guardando || guardandoLocal || modoSoloLectura}
+                    disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
                     className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {(guardando || guardandoLocal) ? (
@@ -2610,7 +2649,11 @@ const handleGuardar = useCallback(async () => {
               {citaEditando && (
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
                   <p className="text-sm text-gray-600">
-                    <span className="font-semibold">Paciente:</span> {formularioCita.paciente?.nombre_completo || 'N/A'}
+                    <span className="font-semibold">Paciente:</span> {
+                      citaEditando.tipo_cita === 'REUNION_CLINICA' && !formularioCita.paciente
+                        ? 'Reunión Interna'
+                        : (formularioCita.paciente?.nombre_completo || 'N/A')
+                    }
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     <span className="font-semibold">Fecha:</span> {formularioCita.fechasHoras?.[0]?.fecha} - {formularioCita.fechasHoras?.[0]?.horaInicio}

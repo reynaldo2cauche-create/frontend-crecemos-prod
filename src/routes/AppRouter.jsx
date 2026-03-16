@@ -264,7 +264,8 @@ export const AppRouter = () => {
           </PrivateRoute>
         } />
 
-        <Route path="/intranet/asistencias/admin" element={
+        {/* Ruta desactivada - Funcionalidad integrada en Inconsistencias */}
+        {/* <Route path="/intranet/asistencias/admin" element={
           <PrivateRoute>
             <SidebarProvider>
               <Sidebar />
@@ -273,7 +274,7 @@ export const AppRouter = () => {
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
-        } />
+        } /> */}
 
         <Route path="/intranet/popup-promocional" element={
           <PrivateRoute>

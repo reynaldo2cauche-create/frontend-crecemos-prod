@@ -3,13 +3,19 @@ import api from './api';
  * Obtiene notificaciones recientes (leídas y no leídas) del último mes
  * @param {number} limite - Cantidad de notificaciones a obtener
  * @param {number} offset - Offset para paginación
+ * @param {string} fecha - Filtro de fecha (opcional)
+ * @param {string} tipo - Filtro de tipo de notificación (opcional)
  * @returns {Promise} Respuesta con notificaciones
  */
-export const obtenerNotificacionesRecientes = async (limite = 20, offset = 0) => {
+export const obtenerNotificacionesRecientes = async (limite = 20, offset = 0, fecha = undefined, tipo = undefined) => {
   try {
-    const response = await api.get('notificaciones/recientes', {
-      params: { limite, offset }
-    });
+    const params = { limite, offset };
+
+    // Solo agregar filtros si tienen valor
+    if (fecha) params.fecha = fecha;
+    if (tipo) params.tipo = tipo;
+
+    const response = await api.get('notificaciones/recientes', { params });
     return response.data;
   } catch (error) {
     console.error('❌ Error al obtener notificaciones recientes:', error);

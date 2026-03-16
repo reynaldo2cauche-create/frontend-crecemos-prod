@@ -59,6 +59,32 @@ const calcularIgv = (total, tipoComprobanteId) => {
   return { base: t / 1.18, igv: t - t / 1.18, conIgv: true };
 };
 
+/**
+ * Detecta el tipo de beneficio de una promoción aplicada.
+ * beneficio_tipo_id: 1=Desc%, 2=Desc fijo, 3=Ítem más barato gratis, 4=Producto de regalo
+ */
+const getInfoBeneficio = (promoAplicada) => {
+  const reglas = promoAplicada.promocion?.reglas || [];
+  const reglaRegalo    = reglas.find((r) => r.beneficio_tipo_id === 4);
+  const reglaItemGratis = reglas.find((r) => r.beneficio_tipo_id === 3);
+
+  if (reglaRegalo) {
+    return {
+      esProductoGratis: true,
+      esItemGratis: false,
+      nombreProducto: reglaRegalo.beneficio_producto?.nombre || 'Producto de regalo',
+    };
+  }
+  if (reglaItemGratis) {
+    return {
+      esProductoGratis: false,
+      esItemGratis: true,
+      nombreProducto: null,
+    };
+  }
+  return { esProductoGratis: false, esItemGratis: false, nombreProducto: null };
+};
+
 // ─── Subcomponentes de UI ─────────────────────────────────────────────────────
 
 const ComprobanteLabel = ({ nombre, id }) => {
@@ -80,12 +106,16 @@ const DescuentoLabel = ({ tipoDescuento, valor, monto, className = '' }) => {
   );
 };
 
-// ─── Panel de Promociones (usa datos embebidos, sin fetch extra) ──────────────
+// ─── Panel de Promociones ─────────────────────────────────────────────────────
 
 const PanelPromocionesDetalle = ({ promociones = [] }) => {
   if (!promociones || promociones.length === 0) return null;
 
-  const totalAhorrado = promociones.reduce((s, p) => s + parseFloat(p.monto_ahorrado || 0), 0);
+  // Solo acumular ahorro de promos que son descuento (no producto/ítem gratis)
+  const totalAhorrado = promociones.reduce((s, p) => {
+    const { esProductoGratis, esItemGratis } = getInfoBeneficio(p);
+    return (esProductoGratis || esItemGratis) ? s : s + parseFloat(p.monto_ahorrado || 0);
+  }, 0);
 
   return (
     <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl space-y-2">
@@ -95,28 +125,48 @@ const PanelPromocionesDetalle = ({ promociones = [] }) => {
           {promociones.length} promoción{promociones.length > 1 ? 'es' : ''} aplicada{promociones.length > 1 ? 's' : ''}
         </span>
       </div>
-      {promociones.map((p, i) => (
-        <div key={i} className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2">
-          <div className="flex items-center gap-2">
-            <GiftIcon className="w-3.5 h-3.5 text-green-500 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-green-800">
-                {p.promocion?.nombre || `Promoción #${p.promocion_id}`}
-              </p>
-              {p.promocion?.descripcion && (
-                <p className="text-xs text-green-600">{p.promocion.descripcion}</p>
-              )}
+
+      {promociones.map((p, i) => {
+        const { esProductoGratis, esItemGratis, nombreProducto } = getInfoBeneficio(p);
+        return (
+          <div key={i} className="flex items-start justify-between bg-white/70 rounded-lg px-3 py-2 gap-3">
+            <div className="flex items-start gap-2">
+              <GiftIcon className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-green-800">
+                  {p.promocion?.nombre || `Promoción #${p.promocion_id}`}
+                </p>
+                {p.promocion?.descripcion && (
+                  <p className="text-xs text-green-600">{p.promocion.descripcion}</p>
+                )}
+                {esProductoGratis && (
+                  <p className="text-xs font-medium text-emerald-700 mt-0.5">
+                    🎁 Producto incluido gratis: <span className="font-bold">{nombreProducto}</span>
+                  </p>
+                )}
+                {esItemGratis && (
+                  <p className="text-xs font-medium text-emerald-700 mt-0.5">
+                    🎁 El ítem más barato va <span className="font-bold">gratis</span>
+                  </p>
+                )}
+              </div>
             </div>
+            {/* Mostrar monto solo si es descuento normal */}
+            {!esProductoGratis && !esItemGratis && (
+              <span className="text-sm font-bold text-green-700 shrink-0">
+                -{formatMonto(p.monto_ahorrado)}
+              </span>
+            )}
           </div>
-          <span className="text-sm font-bold text-green-700 shrink-0 ml-3">
-            -{formatMonto(p.monto_ahorrado)}
-          </span>
+        );
+      })}
+
+      {totalAhorrado > 0 && (
+        <div className="flex items-center justify-between pt-2 border-t border-green-200">
+          <span className="text-sm font-bold text-green-800">Total ahorrado</span>
+          <span className="text-sm font-bold text-green-700">-{formatMonto(totalAhorrado)}</span>
         </div>
-      ))}
-      <div className="flex items-center justify-between pt-2 border-t border-green-200">
-        <span className="text-sm font-bold text-green-800">Total ahorrado</span>
-        <span className="text-sm font-bold text-green-700">-{formatMonto(totalAhorrado)}</span>
-      </div>
+      )}
     </div>
   );
 };
@@ -124,14 +174,18 @@ const PanelPromocionesDetalle = ({ promociones = [] }) => {
 // ─── TicketPreviewHTML ────────────────────────────────────────────────────────
 
 const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
-  // ✅ FIX: usar las promociones que ya vienen embebidas en la venta
   const promociones = venta.promociones_aplicadas || [];
 
   const toFloat = (v) => parseFloat(v || 0);
-  const total   = toFloat(venta.total);
+  const total     = toFloat(venta.total);
   const descuento = toFloat(venta.descuento_monto);
   const detalles  = venta.detalles || [];
-  const totalPromos = promociones.reduce((s, p) => s + parseFloat(p.monto_ahorrado || 0), 0);
+
+  // Solo sumar descuentos reales (excluir producto/ítem gratis)
+  const totalPromos = promociones.reduce((s, p) => {
+    const { esProductoGratis, esItemGratis } = getInfoBeneficio(p);
+    return (esProductoGratis || esItemGratis) ? s : s + parseFloat(p.monto_ahorrado || 0);
+  }, 0);
 
   const nombreCliente = (() => {
     if (venta.paciente)          return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
@@ -240,22 +294,40 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
           <span>DESCUENTOS(-)</span><span>S/ {formatMoney(descuento)}</span>
         </div>
       )}
-      {/* Bloque de promociones usando datos embebidos */}
       {promociones.length > 0 && (
         <div style={{ borderTop: '1px dashed #bbf7d0', marginTop: '3px', paddingTop: '3px' }}>
-          <div style={{ display: 'flex', fontSize: '9px', fontWeight: '700', color: '#15803d', marginBottom: '2px' }}>
-            <span>✦ PROMOCIONES APLICADAS</span>
+          <div style={{ fontSize: '9px', fontWeight: '700', color: '#15803d', marginBottom: '2px' }}>
+            ✦ PROMOCIONES APLICADAS
           </div>
-          {promociones.map((p, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#16a34a', marginBottom: '2px' }}>
-              <span style={{ flex: 1, paddingRight: '4px' }}>• {p.promocion?.nombre || `Promo #${p.promocion_id}`}</span>
-              <span style={{ fontWeight: '700', flexShrink: 0 }}>-S/ {formatMoney(p.monto_ahorrado)}</span>
+          {promociones.map((p, i) => {
+            const { esProductoGratis, esItemGratis, nombreProducto } = getInfoBeneficio(p);
+            return (
+              <div key={i} style={{ marginBottom: '3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#16a34a' }}>
+                  <span style={{ flex: 1, paddingRight: '4px' }}>• {p.promocion?.nombre || `Promo #${p.promocion_id}`}</span>
+                  {!esProductoGratis && !esItemGratis && (
+                    <span style={{ fontWeight: '700', flexShrink: 0 }}>-S/ {formatMoney(p.monto_ahorrado)}</span>
+                  )}
+                </div>
+                {esProductoGratis && (
+                  <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>
+                    🎁 Incluye gratis: <strong>{nombreProducto}</strong>
+                  </div>
+                )}
+                {esItemGratis && (
+                  <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>
+                    🎁 El ítem más barato va <strong>gratis</strong>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {totalPromos > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '10px', color: '#15803d', background: '#f0fdf4', borderRadius: '2px', padding: '2px 3px', margin: '2px 0 4px' }}>
+              <span>AHORRO TOTAL PROMOCIONES</span>
+              <span>-S/ {formatMoney(totalPromos)}</span>
             </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '10px', color: '#15803d', background: '#f0fdf4', borderRadius: '2px', padding: '2px 3px', margin: '2px 0 4px' }}>
-            <span>AHORRO TOTAL PROMOCIONES</span>
-            <span>-S/ {formatMoney(totalPromos)}</span>
-          </div>
+          )}
         </div>
       )}
       {requiereIGV && (
@@ -290,14 +362,18 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
 // ─── HTML para ventana de impresión ──────────────────────────────────────────
 
 const buildTicketHTML = (venta, tipo) => {
-  // ✅ FIX: usar las promociones embebidas en la venta
   const promociones = venta.promociones_aplicadas || [];
 
   const toFloat = (v) => parseFloat(v || 0);
   const fm      = (n)  => parseFloat(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const total   = toFloat(venta.total);
   const desc    = toFloat(venta.descuento_monto);
-  const totalPromos = promociones.reduce((s, p) => s + parseFloat(p.monto_ahorrado || 0), 0);
+
+  const totalPromos = promociones.reduce((s, p) => {
+    const reglas = p.promocion?.reglas || [];
+    const esGratis = reglas.some((r) => r.beneficio_tipo_id === 3 || r.beneficio_tipo_id === 4);
+    return esGratis ? s : s + parseFloat(p.monto_ahorrado || 0);
+  }, 0);
 
   const fechaEmision = (() => {
     const str = String(venta.fecha_venta || '');
@@ -355,15 +431,28 @@ const buildTicketHTML = (venta, tipo) => {
   const promosHTML = promociones.length > 0 ? `
     <div style="border-top:1px dashed #bbf7d0;margin-top:3px;padding-top:3px">
       <div style="font-size:9px;font-weight:700;color:#15803d;margin-bottom:2px">✦ PROMOCIONES APLICADAS</div>
-      ${promociones.map(p => `
-        <div class="row" style="color:#16a34a;font-size:9px">
-          <span style="flex:1;padding-right:4px">• ${p.promocion?.nombre || `Promo #${p.promocion_id}`}</span>
-          <span style="font-weight:700;flex-shrink:0">-S/ ${fm(p.monto_ahorrado)}</span>
-        </div>
-      `).join('')}
-      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:10px;color:#15803d;background:#f0fdf4;border-radius:2px;padding:2px 3px;margin:2px 0 4px">
-        <span>AHORRO TOTAL PROMOCIONES</span><span>-S/ ${fm(totalPromos)}</span>
-      </div>
+      ${promociones.map(p => {
+        const reglas       = p.promocion?.reglas || [];
+        const reglaRegalo  = reglas.find(r => r.beneficio_tipo_id === 4);
+        const reglaGratis  = reglas.find(r => r.beneficio_tipo_id === 3);
+        const esProducto   = !!reglaRegalo;
+        const esItemGratis = !!reglaGratis && !reglaRegalo;
+        const nombreProd   = reglaRegalo?.beneficio_producto?.nombre || 'Producto de regalo';
+        return `
+          <div style="margin-bottom:3px">
+            <div class="row" style="color:#16a34a;font-size:9px">
+              <span style="flex:1;padding-right:4px">• ${p.promocion?.nombre || `Promo #${p.promocion_id}`}</span>
+              ${!esProducto && !esItemGratis ? `<span style="font-weight:700;flex-shrink:0">-S/ ${fm(p.monto_ahorrado)}</span>` : ''}
+            </div>
+            ${esProducto   ? `<div style="font-size:8px;color:#15803d;padding-left:8px">🎁 Incluye gratis: <strong>${nombreProd}</strong></div>` : ''}
+            ${esItemGratis ? `<div style="font-size:8px;color:#15803d;padding-left:8px">🎁 El ítem más barato va <strong>gratis</strong></div>` : ''}
+          </div>
+        `;
+      }).join('')}
+      ${totalPromos > 0 ? `
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:10px;color:#15803d;background:#f0fdf4;border-radius:2px;padding:2px 3px;margin:2px 0 4px">
+          <span>AHORRO TOTAL PROMOCIONES</span><span>-S/ ${fm(totalPromos)}</span>
+        </div>` : ''}
     </div>
   ` : '';
 
@@ -429,7 +518,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
   const [downloading, setDownloading] = useState(false);
   const ticketRef = useRef(null);
 
-  // ✅ FIX: las promociones ya vienen embebidas en la venta, sin fetch extra
   const promociones = venta.promociones_aplicadas || [];
 
   useEffect(() => {
@@ -460,7 +548,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
 
   const handleImprimir = async () => {
     if (formato === 'ticket') {
-      // ✅ FIX: buildTicketHTML ahora lee las promociones desde venta.promociones_aplicadas
       const ventana = window.open('', '_blank');
       ventana.document.write(buildTicketHTML(venta, tipo));
       ventana.document.close();
@@ -575,8 +662,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
 const DetalleVentaModal = ({ venta, tipo, onClose }) => {
   const [mostrarPrint, setMostrarPrint] = useState(false);
   const { base, igv, conIgv } = calcularIgv(venta.total, venta.tipo_comprobante?.id);
-
-  // ✅ FIX: usar directamente las promociones embebidas, sin llamada extra al backend
   const promociones = venta.promociones_aplicadas || [];
 
   return (
@@ -683,7 +768,6 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
               </div>
             </div>
 
-            {/* ✅ FIX: Panel de promociones con datos embebidos, sin fetch extra */}
             <PanelPromocionesDetalle promociones={promociones} />
 
             <div className="space-y-2 border-t pt-4">
@@ -739,7 +823,6 @@ const HistorialVentasTab = () => {
       const filtrosAPI = {};
       if (filtros.fechaDesde) filtrosAPI.desde = filtros.fechaDesde;
       if (filtros.fechaHasta) filtrosAPI.hasta = filtros.fechaHasta;
-      // ✅ Las ventas ya traen promociones_aplicadas embebidas desde el backend
       const [servsData, prodsData] = await Promise.all([getVentasServicios(filtrosAPI), getVentasProductos(filtrosAPI)]);
       setVentasServicios(servsData || []);
       setVentasProductos(prodsData || []);
@@ -864,7 +947,6 @@ const HistorialVentasTab = () => {
                         <td className="px-4 py-4 text-center">
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">{(v.detalles || []).length}</span>
                         </td>
-                        {/* ✅ FIX: columna de promos directo desde datos embebidos */}
                         <td className="px-4 py-4 text-center">
                           {promos.length > 0
                             ? <span className="flex items-center justify-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">

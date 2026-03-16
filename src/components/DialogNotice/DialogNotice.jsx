@@ -29,8 +29,8 @@ const DialogNotice = ({ open, onClose, popupData }) => {
           boxShadow: 'none',
           overflow: 'visible',
           margin: '20px',
-          maxWidth: '460px',
-          width: '90%',
+          maxWidth: '520px',
+          width: '92%',
         }
       }}
       BackdropProps={{

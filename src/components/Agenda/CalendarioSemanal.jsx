@@ -90,7 +90,14 @@ const CitaCard = React.memo(({
       <div className="flex flex-col h-full justify-between text-xs">
         <div className="mb-1">
           <p className="font-bold text-gray-900 leading-tight truncate">
-            {cita.paciente?.nombres || cita.paciente_nombre || 'Sin paciente'}
+            {cita.tipo_cita === 'REUNION_CLINICA' && !cita.paciente && !cita.paciente_nombre
+              ? 'Reunión Interna'
+              : (() => {
+                  if (cita.paciente && typeof cita.paciente === 'object') {
+                    return `${cita.paciente.nombres || ''} ${cita.paciente.apellido_paterno || ''} ${cita.paciente.apellido_materno || ''}`.trim();
+                  }
+                  return cita.paciente_nombre || 'Sin paciente';
+                })()}
           </p>
           <p className="text-[10px] text-gray-600 truncate">
             {cita.hora_inicio?.substring(0,5) || cita.hora} - {obtenerHoraFin(cita)}
@@ -551,27 +558,23 @@ const CalendarioSemanal = ({
 
                               <div className="font-bold text-blue-700 text-[9px] leading-[1.2] break-words line-clamp-2">
                                 {(() => {
-                                  let primerNombre = '';
-                                  let primerApellido = '';
-
-                                  // Extraer del objeto paciente directamente
-                                  if (cita.paciente && typeof cita.paciente === 'object') {
-                                    // Obtener primer nombre (si hay varios nombres, tomar el primero)
-                                    const nombres = cita.paciente.nombres || '';
-                                    primerNombre = nombres.trim().split(/\s+/)[0] || '';
-
-                                    // Obtener primer apellido
-                                    primerApellido = cita.paciente.apellido_paterno ||
-                                                    (cita.paciente.apellidos || '').trim().split(/\s+/)[0] || '';
-                                  } else if (cita.paciente_nombre || (cita.paciente && typeof cita.paciente === 'string')) {
-                                    // Si viene como string, dividir
-                                    const nombreCompleto = cita.paciente_nombre || cita.paciente || '';
-                                    const palabras = nombreCompleto.trim().split(/\s+/);
-                                    primerNombre = palabras[0] || '';
-                                    primerApellido = palabras[1] || '';
+                                  // Si es reunión clínica sin paciente, mostrar "Reunión Interna"
+                                  if (cita.tipo_cita === 'REUNION_CLINICA' && !cita.paciente && !cita.paciente_nombre) {
+                                    return 'Reunión Interna';
                                   }
 
-                                  return `${primerNombre} ${primerApellido}`.trim() || 'Paciente';
+                                  // Extraer del objeto paciente directamente - NOMBRE COMPLETO
+                                  if (cita.paciente && typeof cita.paciente === 'object') {
+                                    const nombres = cita.paciente.nombres || '';
+                                    const apellidoPaterno = cita.paciente.apellido_paterno || '';
+                                    const apellidoMaterno = cita.paciente.apellido_materno || '';
+                                    return `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim() || 'Paciente';
+                                  } else if (cita.paciente_nombre || (cita.paciente && typeof cita.paciente === 'string')) {
+                                    // Si viene como string, mostrar completo
+                                    return (cita.paciente_nombre || cita.paciente || 'Paciente').trim();
+                                  }
+
+                                  return 'Paciente';
                                 })()}
                               </div>
 

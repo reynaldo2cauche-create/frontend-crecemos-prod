@@ -317,6 +317,14 @@ const useNotificaciones = () => {
           ? response.nuevo_conteo
           : (prev) => Math.max(0, prev - 1)
       );
+
+      // Si estamos en el tab de no leídas, recargar para actualizar la lista
+      if (tabActivo === 'no_leidas') {
+        // Pequeño delay para que se sincronice con el backend
+        setTimeout(() => {
+          cargarDesdeInicio(filtros, tabActivo);
+        }, 300);
+      }
     } catch {
       // Revertir si falla
       setNotificaciones(prev =>
@@ -324,17 +332,27 @@ const useNotificaciones = () => {
       );
       setTotalNoLeidasReal(prev => prev + 1);
     }
-  }, []);
+  }, [tabActivo, filtros, cargarDesdeInicio]);
 
   const marcarTodasComoLeidas = useCallback(async () => {
     setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
     setTotalNoLeidasReal(0);
     try {
       await marcarLeidasAPI();
+      // Recargar para actualizar la lista
+      setTimeout(() => {
+        cargarDesdeInicio(filtros, tabActivo);
+      }, 300);
     } catch {
       cargarDesdeInicio(filtros, tabActivo);
     }
   }, [filtros, tabActivo, cargarDesdeInicio]);
+
+  // Recargar cuando cambia de tab
+  const cambiarTab = useCallback((nuevoTab) => {
+    setTabActivo(nuevoTab);
+    cargarDesdeInicio(filtros, nuevoTab);
+  }, [filtros, cargarDesdeInicio]);
 
   const { noLeidas, leidas } = useMemo(() => ({
     noLeidas: notificaciones.filter(n => !n.leida),
@@ -344,7 +362,7 @@ const useNotificaciones = () => {
   return {
     noLeidas, leidas, totalNoLeidasReal,
     cargando, cargandoMas, hayMas, error,
-    filtros, tabActivo, setTabActivo,
+    filtros, tabActivo, cambiarTab,
     cargarDesdeInicio, cargarMas,
     aplicarFiltros,
     marcarUnaComoLeida, marcarTodasComoLeidas,
@@ -361,7 +379,7 @@ const NotificacionesGlobales = () => {
   const {
     noLeidas, leidas, totalNoLeidasReal,
     cargando, cargandoMas, hayMas, error,
-    filtros, tabActivo, setTabActivo,
+    filtros, tabActivo, cambiarTab,
     cargarDesdeInicio, cargarMas,
     aplicarFiltros,
     marcarUnaComoLeida, marcarTodasComoLeidas,
@@ -454,14 +472,14 @@ const NotificacionesGlobales = () => {
               <div className="flex">
                 <TabButton
                   activo={tabActivo === 'no_leidas'}
-                  onClick={() => setTabActivo('no_leidas')}
+                  onClick={() => cambiarTab('no_leidas')}
                   label="Sin leer"
                   count={totalNoLeidasReal}
                   variante="no_leidas"
                 />
                 <TabButton
                   activo={tabActivo === 'leidas'}
-                  onClick={() => setTabActivo('leidas')}
+                  onClick={() => cambiarTab('leidas')}
                   label="Leídas"
                   count={leidas.length}
                   variante="leidas"
