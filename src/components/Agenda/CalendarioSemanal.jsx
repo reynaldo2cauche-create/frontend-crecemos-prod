@@ -8,9 +8,11 @@ import {
   Ban,
   X,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+import { detectarHuecosEnDia, getHuecoEnSlot } from '../../utils/huecosCalendario';
 
 // ✅ Componente memoizado para cada cita individual
 const CitaCard = React.memo(({
@@ -123,15 +125,18 @@ const CalendarioSemanal = ({
   bloqueos = [],
   onSlotClick,
   onCitaClick,
+  onHuecoClick, // 🆕 Callback para click en hueco
   getEstadoColor,
   fechaActual = new Date(),
   onFechaChange,
   currentUser = null,
-  cargando = false
+  cargando = false,
+  mostrarHuecos = true // 🆕 Flag para mostrar/ocultar huecos
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
   const [bloqueoSeleccionado, setBloqueoSeleccionado] = useState(null);
+  const [huecosPorDia, setHuecosPorDia] = useState({}); // 🆕 Almacenar huecos detectados
 
 
  // Generar horas según el día de la semana
@@ -220,6 +225,29 @@ const CalendarioSemanal = ({
 
     setDiasSemana(calcularDiasSemana(fechaActual));
   }, [fechaActual]);
+
+  // 🆕 Detectar huecos cuando cambien las citas o los días
+  useEffect(() => {
+    if (!mostrarHuecos || !citas || citas.length === 0 || !diasSemana || diasSemana.length === 0) {
+      console.log('⚠️ No se detectan huecos:', { mostrarHuecos, citasLength: citas?.length, diasSemanaLength: diasSemana?.length });
+      setHuecosPorDia({});
+      return;
+    }
+
+    console.log('🔍 Detectando huecos para', diasSemana.length, 'días con', citas.length, 'citas');
+    const huecos = {};
+    diasSemana.forEach(dia => {
+      const horas = generarHorasPorDia(dia.fecha.getDay());
+      const huecosDelDia = detectarHuecosEnDia(citas, horas, dia.fechaString);
+      if (huecosDelDia && huecosDelDia.length > 0) {
+        console.log(`✅ ${huecosDelDia.length} huecos encontrados en ${dia.fechaString}:`, huecosDelDia);
+        huecos[dia.fechaString] = huecosDelDia;
+      }
+    });
+
+    console.log('📊 Huecos totales por día:', huecos);
+    setHuecosPorDia(huecos);
+  }, [citas, diasSemana, mostrarHuecos]);
 
   const toMinutes = (hhmm) => {
     const [h, m] = hhmm.split(':').map(n => parseInt(n, 10));
@@ -435,197 +463,246 @@ const CalendarioSemanal = ({
                       No hay horarios disponibles para este día
                     </div>
                   )}
-                  {horasDelDia.map((hora) => {
-                    const citasInfo = getCitasEnSlot(dia, hora);
-                    const bloqueo = getBloqueoEnSlot(dia, hora);
-                    const hayCitas = citasInfo && citasInfo.length > 0;
-                    const estaBloqueado = !!bloqueo;
-                    const puedeHacerClic = !hayCitas && !esTerapeuta && !estaBloqueado;
+                  {horasDelDia.map((hora, horaIndex) => {
+  const citasInfo = getCitasEnSlot(dia, hora);
+  const bloqueo = getBloqueoEnSlot(dia, hora);
+  const hayCitas = citasInfo && citasInfo.length > 0;
+  const estaBloqueado = !!bloqueo;
+  const puedeHacerClic = !hayCitas && !esTerapeuta && !estaBloqueado;
 
-                    const handleSlotClick = () => {
-                      // Si está bloqueado, mostrar modal con información del bloqueo
-                      if (estaBloqueado && bloqueo) {
-                        setBloqueoSeleccionado(bloqueo);
-                        setModalBloqueoAbierto(true);
-                      } else if (puedeHacerClic && onSlotClick) {
-                        onSlotClick(dia, hora);
-                      }
-                    };
+  // ✅ Detectar si hay un hueco que cae en este slot
+  const huecosHoy = huecosPorDia[dia.fechaString] || [];
+  let huecoEnEsteSlot = null;
+  let posicionHueco = null; // Para calcular dónde renderizar el hueco
 
+  if (huecosHoy.length > 0) {
+    const slotStartMin = toMinutes(hora);
+    const slotEndMin = slotStartMin + slotDurationMin;
+
+    // Buscar si hay un hueco que se superpone con este slot
+    const huecoMatch = huecosHoy.find(h => {
+      const huecoStartMin = toMinutes(h.hora_inicio.substring(0, 5));
+      const huecoEndMin = toMinutes(h.hora_fin.substring(0, 5));
+      return huecoStartMin < slotEndMin && huecoEndMin > slotStartMin;
+    });
+
+    if (huecoMatch) {
+      huecoEnEsteSlot = huecoMatch;
+
+      // Calcular dónde empieza el hueco dentro de este slot
+      const huecoStartMin = toMinutes(huecoMatch.hora_inicio.substring(0, 5));
+      const huecoEndMin = toMinutes(huecoMatch.hora_fin.substring(0, 5));
+
+      // Inicio del hueco dentro del slot (en minutos desde el inicio del slot)
+      const huecoStartEnSlot = Math.max(0, huecoStartMin - slotStartMin);
+      // Fin del hueco dentro del slot
+      const huecoEndEnSlot = Math.min(slotDurationMin, huecoEndMin - slotStartMin);
+
+      // Convertir a pixels (80px total / 40min)
+      const pixelsPorMinuto = 80 / slotDurationMin;
+      posicionHueco = {
+        top: huecoStartEnSlot * pixelsPorMinuto,
+        height: (huecoEndEnSlot - huecoStartEnSlot) * pixelsPorMinuto
+      };
+    }
+  }
+
+  const handleSlotClick = () => {
+    if (estaBloqueado && bloqueo) {
+      setBloqueoSeleccionado(bloqueo);
+      setModalBloqueoAbierto(true);
+    } else if (huecoEnEsteSlot && onHuecoClick) {
+      onHuecoClick(huecoEnEsteSlot, dia);
+    } else if (puedeHacerClic && onSlotClick) {
+      onSlotClick(dia, hora);
+    }
+  };
+
+  return (
+    <React.Fragment key={`${dia.fechaString}-${hora}`}>
+      <div
+        onClick={handleSlotClick}
+        className={`relative h-[80px] border-b border-gray-200 ${
+          estaBloqueado
+            ? 'bg-red-50 cursor-pointer hover:bg-red-100'
+            : huecoEnEsteSlot
+            ? 'cursor-pointer'
+            : puedeHacerClic
+            ? 'cursor-pointer hover:bg-purple-50/50'
+            : 'cursor-default'
+        } ${esHoy && !estaBloqueado ? 'bg-purple-50/20' : ''}`}
+      >
+        {/* Etiqueta de hora */}
+        <div className={`absolute left-2 top-1 text-xs font-semibold z-20 px-1.5 py-0.5 rounded shadow-sm ${
+          estaBloqueado ? 'bg-red-100 text-red-700' : 'bg-white/90 text-gray-500'
+        }`}>
+          {hora}
+        </div>
+
+        {/* Indicador de bloqueo */}
+        {estaBloqueado && !hayCitas && (
+          <div className="absolute inset-0 flex items-center justify-center z-5 pointer-events-none">
+            <div className="text-center">
+              <div className="text-red-600 font-bold text-xs mb-1">🚫 BLOQUEADO</div>
+              <div className="text-red-500 text-[10px]">
+                {bloqueo.tipoBloqueo?.nombre || 'Horario no disponible'}
+              </div>
+              <div className="text-red-400 text-[9px] mt-1 italic">
+                Click para ver motivo
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Citas */}
+        {citasInfo && citasInfo.map((slotInfo, index) => {
+          const cita = slotInfo.cita;
+          if (!slotInfo.isTop) return null;
+
+          const totalCitas = citasInfo.filter(c => c.isTop).length;
+          const anchoCita = totalCitas === 1 ? 'calc(100% - 8px)' : `calc(${100 / totalCitas}% - 4px)`;
+          const indiceCitaVisible = citasInfo.filter(c => c.isTop).findIndex(c => c.cita.id === cita.id);
+          const leftOffset = totalCitas === 1 ? '4px' : `calc(${(100 / totalCitas) * indiceCitaVisible}% + 2px)`;
+          const estadoColor = getEstadoColor ? getEstadoColor(cita.estado) : '#7B1FA2';
+
+          return (
+            <div
+              key={`${cita.id}-${index}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCitaClick && onCitaClick({
+                  id: cita.id,
+                  fecha: dia.fechaString,
+                  hora: hora,
+                  cita
+                });
+              }}
+              style={{
+                width: anchoCita,
+                height: `${slotInfo.alturaTotal}px`,
+                left: leftOffset,
+                borderLeftColor: estadoColor
+              }}
+              className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
+            >
+              {/* Badge motivo */}
+              {(() => {
+                const motivoNombre = cita.motivo?.nombre || '';
+                let badge = { text: 'CITA', color: 'bg-gray-500' };
+
+                if (motivoNombre.toLowerCase().includes('entrevista de padres') || motivoNombre.toLowerCase().includes('entrevista padres')) {
+                  badge = { text: 'EP', color: 'bg-green-500' };
+                } else if (motivoNombre.toLowerCase().includes('entrevista adolescentes') || motivoNombre.toLowerCase().includes('entrevista adultos')) {
+                  badge = { text: 'EA', color: 'bg-emerald-500' };
+                } else if (motivoNombre.toLowerCase().includes('reevaluación') || motivoNombre.toLowerCase().includes('reevaluacion')) {
+                  badge = { text: 'REEV', color: 'bg-orange-500' };
+                } else if (motivoNombre.toLowerCase().includes('evaluación') || motivoNombre.toLowerCase().includes('evaluacion')) {
+                  badge = { text: 'EVAL', color: 'bg-yellow-500' };
+                } else if (motivoNombre.toLowerCase().includes('sesión de terapia') || motivoNombre.toLowerCase().includes('sesion de terapia')) {
+                  badge = { text: 'ST', color: 'bg-blue-500' };
+                } else if (motivoNombre.toLowerCase().includes('informe verbal')) {
+                  badge = { text: 'IV', color: 'bg-indigo-500' };
+                } else if (motivoNombre.toLowerCase().includes('reunión clínica') || motivoNombre.toLowerCase().includes('reunion clinica')) {
+                  badge = { text: 'RC', color: 'bg-purple-500' };
+                } else if (motivoNombre.toLowerCase().includes('visita escolar')) {
+                  badge = { text: 'VE', color: 'bg-teal-500' };
+                } else if (motivoNombre) {
+                  const palabras = motivoNombre.split(' ').filter(p => p.length > 2);
+                  badge.text = palabras.slice(0, 2).map(p => p[0]).join('').toUpperCase();
+                }
+
+                return (
+                  <div className={`absolute top-1 right-1 ${badge.color} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>
+                    {badge.text}
+                  </div>
+                );
+              })()}
+
+              <div className="font-bold text-blue-700 text-[9px] leading-[1.2] break-words line-clamp-2">
+                {(() => {
+                  if (cita.tipo_cita === 'REUNION_CLINICA' && !cita.paciente && !cita.paciente_nombre) {
+                    return 'Reunión Interna';
+                  }
+                  if (cita.paciente && typeof cita.paciente === 'object') {
+                    const nombres = cita.paciente.nombres || '';
+                    const apellidoPaterno = cita.paciente.apellido_paterno || '';
+                    const apellidoMaterno = cita.paciente.apellido_materno || '';
+                    return `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim() || 'Paciente';
+                  } else if (cita.paciente_nombre || (cita.paciente && typeof cita.paciente === 'string')) {
+                    return (cita.paciente_nombre || cita.paciente || 'Paciente').trim();
+                  }
+                  return 'Paciente';
+                })()}
+              </div>
+
+              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0 flex items-center gap-1">
+                {(() => {
+                  const tipoCita = cita.tipo_cita;
+                  if (tipoCita === 'REUNION_CLINICA') {
+                    const cantTerapeutas = cita.terapeutas?.length || 0;
                     return (
-                      <div
-                        key={`${dia.fechaString}-${hora}`}
-                        onClick={handleSlotClick}
-                        className={`relative h-[80px] border-b border-gray-200 ${
-                          estaBloqueado
-                            ? 'bg-red-50 cursor-pointer hover:bg-red-100'
-                            : puedeHacerClic
-                            ? 'cursor-pointer hover:bg-purple-50/50'
-                            : 'cursor-default'
-                        } ${esHoy && !estaBloqueado ? 'bg-purple-50/20' : ''}`}
-                      >
-                        {/* Etiqueta de hora */}
-                        <div className={`absolute left-2 top-1 text-xs font-semibold z-20 px-1.5 py-0.5 rounded shadow-sm ${
-                          estaBloqueado ? 'bg-red-100 text-red-700' : 'bg-white/90 text-gray-500'
-                        }`}>
-                          {hora}
-                        </div>
-
-                        {/* Indicador de bloqueo */}
-                        {estaBloqueado && !hayCitas && (
-                          <div className="absolute inset-0 flex items-center justify-center z-5 pointer-events-none">
-                            <div className="text-center">
-                              <div className="text-red-600 font-bold text-xs mb-1">🚫 BLOQUEADO</div>
-                              <div className="text-red-500 text-[10px]">
-                                {bloqueo.tipoBloqueo?.nombre || 'Horario no disponible'}
-                              </div>
-                              <div className="text-red-400 text-[9px] mt-1 italic">
-                                Click para ver motivo
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Citas */}
-                        {citasInfo && citasInfo.map((slotInfo, index) => {
-                          const cita = slotInfo.cita;
-                          if (!slotInfo.isTop) return null;
-
-                          const totalCitas = citasInfo.filter(c => c.isTop).length;
-                          const anchoCita = totalCitas === 1 ? 'calc(100% - 8px)' : `calc(${100 / totalCitas}% - 4px)`;
-                          const indiceCitaVisible = citasInfo.filter(c => c.isTop).findIndex(c => c.cita.id === cita.id);
-                          const leftOffset = totalCitas === 1 ? '4px' : `calc(${(100 / totalCitas) * indiceCitaVisible}% + 2px)`;
-
-                          const estadoColor = getEstadoColor ? getEstadoColor(cita.estado) : '#7B1FA2';
-
-                          return (
-                            <div
-                              key={`${cita.id}-${index}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onCitaClick && onCitaClick({
-                                  id: cita.id,
-                                  fecha: dia.fechaString,
-                                  hora: hora,
-                                  cita
-                                });
-                              }}
-                              style={{
-                                width: anchoCita,
-                                height: `${slotInfo.alturaTotal}px`,
-                                left: leftOffset,
-                                borderLeftColor: estadoColor
-                              }}
-                              className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
-                            >
-                              {/* Badge de motivo de cita */}
-                              {(() => {
-                                // Obtener el motivo de la cita
-                                const motivoNombre = cita.motivo?.nombre || '';
-                                let badge = { text: 'CITA', color: 'bg-gray-500' };
-
-                                // Abreviaturas según los motivos reales del sistema
-                                // ⚠️ IMPORTANTE: Verificar "reevaluación" ANTES que "evaluación"
-                                // porque "reevaluación" contiene la palabra "evaluación"
-                                if (motivoNombre.toLowerCase().includes('entrevista de padres') || motivoNombre.toLowerCase().includes('entrevista padres')) {
-                                  badge = { text: 'EP', color: 'bg-green-500' }; // Entrevista de Padres
-                                } else if (motivoNombre.toLowerCase().includes('entrevista adolescentes') || motivoNombre.toLowerCase().includes('entrevista adultos')) {
-                                  badge = { text: 'EA', color: 'bg-emerald-500' }; // Entrevista Adolescentes/Adultos
-                                } else if (motivoNombre.toLowerCase().includes('reevaluación') || motivoNombre.toLowerCase().includes('reevaluacion')) {
-                                  badge = { text: 'REEV', color: 'bg-orange-500' }; // Reevaluación
-                                } else if (motivoNombre.toLowerCase().includes('evaluación') || motivoNombre.toLowerCase().includes('evaluacion')) {
-                                  badge = { text: 'EVAL', color: 'bg-yellow-500' }; // Evaluación
-                                } else if (motivoNombre.toLowerCase().includes('sesión de terapia') || motivoNombre.toLowerCase().includes('sesion de terapia')) {
-                                  badge = { text: 'ST', color: 'bg-blue-500' }; // Sesión de Terapia
-                                } else if (motivoNombre.toLowerCase().includes('informe verbal')) {
-                                  badge = { text: 'IV', color: 'bg-indigo-500' }; // Informe Verbal
-                                } else if (motivoNombre.toLowerCase().includes('reunión clínica') || motivoNombre.toLowerCase().includes('reunion clinica')) {
-                                  badge = { text: 'RC', color: 'bg-purple-500' }; // Reunión Clínica
-                                } else if (motivoNombre.toLowerCase().includes('visita escolar')) {
-                                  badge = { text: 'VE', color: 'bg-teal-500' }; // Visita Escolar
-                                } else if (motivoNombre) {
-                                  // Generar abreviatura automática si hay un motivo nuevo
-                                  const palabras = motivoNombre.split(' ').filter(p => p.length > 2);
-                                  badge.text = palabras.slice(0, 2).map(p => p[0]).join('').toUpperCase();
-                                }
-
-                                return (
-                                  <div className={`absolute top-1 right-1 ${badge.color} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>
-                                    {badge.text}
-                                  </div>
-                                );
-                              })()}
-
-                              <div className="font-bold text-blue-700 text-[9px] leading-[1.2] break-words line-clamp-2">
-                                {(() => {
-                                  // Si es reunión clínica sin paciente, mostrar "Reunión Interna"
-                                  if (cita.tipo_cita === 'REUNION_CLINICA' && !cita.paciente && !cita.paciente_nombre) {
-                                    return 'Reunión Interna';
-                                  }
-
-                                  // Extraer del objeto paciente directamente - NOMBRE COMPLETO
-                                  if (cita.paciente && typeof cita.paciente === 'object') {
-                                    const nombres = cita.paciente.nombres || '';
-                                    const apellidoPaterno = cita.paciente.apellido_paterno || '';
-                                    const apellidoMaterno = cita.paciente.apellido_materno || '';
-                                    return `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim() || 'Paciente';
-                                  } else if (cita.paciente_nombre || (cita.paciente && typeof cita.paciente === 'string')) {
-                                    // Si viene como string, mostrar completo
-                                    return (cita.paciente_nombre || cita.paciente || 'Paciente').trim();
-                                  }
-
-                                  return 'Paciente';
-                                })()}
-                              </div>
-
-                              <div className="text-gray-600 text-[10px] leading-tight truncate mt-0 flex items-center gap-1">
-                                {(() => {
-                                  const tipoCita = cita.tipo_cita;
-
-                                  // REUNIÓN CLÍNICA: Mostrar cantidad de terapeutas
-                                  if (tipoCita === 'REUNION_CLINICA') {
-                                    const cantTerapeutas = cita.terapeutas?.length || 0;
-                                    return (
-                                      <>
-                                        <Users className="w-3 h-3 flex-shrink-0 text-purple-600" />
-                                        <span className="truncate">{cantTerapeutas} terapeuta{cantTerapeutas !== 1 ? 's' : ''}</span>
-                                      </>
-                                    );
-                                  }
-
-                                  // VISITA ESCOLAR: Mostrar nombre del colegio
-                                  if (tipoCita === 'VISITA_ESCOLAR') {
-                                    const colegio = cita.nombre_colegio || 'Colegio';
-                                    return (
-                                      <>
-                                        <School className="w-3 h-3 flex-shrink-0 text-orange-600" />
-                                        <span className="truncate">{colegio.substring(0, 12)}{colegio.length > 12 ? '...' : ''}</span>
-                                      </>
-                                    );
-                                  }
-
-                                  // CITA NORMAL: Mostrar servicio
-                                  const servicio = cita.servicio_nombre ||
-                                                  (typeof cita.servicio === 'string' ? cita.servicio : cita.servicio?.nombre) ||
-                                                  'Servicio';
-                                  return <span className="truncate">{servicio.substring(0, 15) + (servicio.length > 15 ? '...' : '')}</span>;
-                                })()}
-                              </div>
-
-                              <div className="flex items-center justify-between mt-0">
-                                <span className="text-[10px] font-bold text-gray-600">
-                                  {formatearHora(cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora)}-{obtenerHoraFin(cita)}
-                                </span>
-                                <span className="text-[9px] px-1.5 py-0.5 bg-gray-500 text-white rounded-full font-semibold">
-                                  {cita.duracion_minutos || 60}m
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <>
+                        <Users className="w-3 h-3 flex-shrink-0 text-purple-600" />
+                        <span className="truncate">{cantTerapeutas} terapeuta{cantTerapeutas !== 1 ? 's' : ''}</span>
+                      </>
                     );
-                  })}
+                  }
+                  if (tipoCita === 'VISITA_ESCOLAR') {
+                    const colegio = cita.nombre_colegio || 'Colegio';
+                    return (
+                      <>
+                        <School className="w-3 h-3 flex-shrink-0 text-orange-600" />
+                        <span className="truncate">{colegio.substring(0, 12)}{colegio.length > 12 ? '...' : ''}</span>
+                      </>
+                    );
+                  }
+                  const servicio = cita.servicio_nombre ||
+                    (typeof cita.servicio === 'string' ? cita.servicio : cita.servicio?.nombre) ||
+                    'Servicio';
+                  return <span className="truncate">{servicio.substring(0, 15) + (servicio.length > 15 ? '...' : '')}</span>;
+                })()}
+              </div>
+
+              <div className="flex items-center justify-between mt-0">
+                <span className="text-[10px] font-bold text-gray-600">
+                  {formatearHora(cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora)}-{obtenerHoraFin(cita)}
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 bg-gray-500 text-white rounded-full font-semibold">
+                  {cita.duracion_minutos || 60}m
+                </span>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* ✅ Hueco: calculado con posición exacta */}
+        {huecoEnEsteSlot && posicionHueco && (
+          <div
+            style={{
+              position: 'absolute',
+              top: `${posicionHueco.top}px`,
+              left: '4px',
+              right: '4px',
+              height: `${posicionHueco.height}px`,
+              zIndex: 25
+            }}
+            className="cursor-pointer bg-green-50/70 border border-dashed border-green-400 hover:bg-green-100/80 hover:border-green-500 transition-all rounded-md flex items-center justify-center gap-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              onHuecoClick && onHuecoClick(huecoEnEsteSlot, dia);
+            }}
+          >
+            <Plus className="w-4 h-4 text-green-600 flex-shrink-0" />
+            <span className="text-green-700 font-bold text-xs">
+              HUECO {huecoEnEsteSlot.minutos_disponibles}min
+              &nbsp;({huecoEnEsteSlot.hora_inicio.substring(0, 5)} - {huecoEnEsteSlot.hora_fin.substring(0, 5)})
+            </span>
+          </div>
+        )}
+      </div>
+    </React.Fragment>
+  );
+})}
                 </div>
               </div>
             );

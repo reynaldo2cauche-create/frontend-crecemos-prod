@@ -78,6 +78,10 @@ import HistorialVentasTab from '../pages/Ventas/HistorialVentasTab';
 import TarifasTab from '../pages/Inventario/Tarifastab';
 import PromocionesPage from '../pages/Promociones/PromocionesPage';
 
+import RegistrarReclamo from '../pages/LibroReclamaciones/RegistrarReclamo';
+import ConsultarReclamo from '../pages/LibroReclamaciones/ConsultarReclamo';
+import PanelAdmin from '../pages/LibroReclamaciones/PanelAdmin';
+
 export const AppRouter = () => {
   return (
     <>
@@ -426,6 +430,17 @@ export const AppRouter = () => {
           </PrivateRoute>
         } />
 
+        <Route path="/intranet/libro-reclamaciones" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <PanelAdmin />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
         <Route path="/preguntas" element={<Preguntas />} />
         <Route path="/" element={<BasicLayout />}>
           <Route index element={<HomePage />} />
@@ -450,14 +465,19 @@ export const AppRouter = () => {
           <Route path="adulto-evaluacion-psicologica-universidad" element={<AdultoEvalPsicolUniverPage />} />
           <Route path="terminos-condiciones" element={<TerminosCondiciones />} />
           <Route path="mantenimiento" element={<Mantenimiento />} />
-          
+
           <Route path="reglamento-interno" element={<ReglamentoInterno />} />
           <Route path="politica-privacidad" element={<PoliticaPrivacidad />} />
           <Route path="trabaja-nosotros" element={<TrabajaNosotros />} />
           <Route path="registro-paciente" element={<RegistroPacientePage />} />
-          <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
           <Route path="verificar-documento" element={<VerificarDocumentos />} />
           <Route path="verificar-beneficios" element={<VerificarBeneficios />} />
+
+          {/* Libro de Reclamaciones */}
+          <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
+          <Route path="libro-reclamaciones/registrar" element={<RegistrarReclamo />} />
+          <Route path="libro-reclamaciones/consultar" element={<ConsultarReclamo />} />
+
           <Route path="loading" element={<Loading />} />
           <Route path="*" element={<ErrorPage />} />
         </Route>

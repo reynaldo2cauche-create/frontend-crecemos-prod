@@ -79,6 +79,12 @@ const menuItems = [
   { text: 'Postulaciones', path: '/intranet/postulaciones', icon: BriefcaseIcon },
   { text: 'Certificaciones', path: '/intranet/archivos-oficiales', icon: DocumentCheckIcon },
   { text: 'Auditoría', path: '/intranet/auditoria', icon: ShieldCheckIcon, adminOnly: true },
+  { 
+  text: 'Reclamaciones', 
+  path: '/intranet/libro-reclamaciones', 
+  icon: ClipboardDocumentCheckIcon, 
+  adminOnly: true 
+},
   {
     text: 'Recursos Humanos',
     icon: UsersIcon,
