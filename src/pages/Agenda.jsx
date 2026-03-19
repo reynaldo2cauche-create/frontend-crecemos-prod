@@ -21,7 +21,6 @@ import ModalAgendarCita from '../components/Agenda/ModalAgendarCita';
 import CalendarioSemanal from '../components/Agenda/CalendarioSemanal';
 import EstadisticasCitas from '../components/Agenda/EstadisticasCitas';
 import ListaBloqueos from '../components/Agenda/ListaBloqueos';
-import AgendarEnHuecoModal from '../components/citas/AgendarEnHuecoModal';
 
 // Servicios
 import {
@@ -37,8 +36,6 @@ import { getServicios } from '../services/catalogoService';
 import { getTrabajadores } from '../services/trabajadorService';
 import { actualizarCita } from '../services/citaService';
 import { obtenerBloqueosPorTerapeuta, obtenerBloqueosActivos } from '../services/bloqueoService';
-import { obtenerConfiguracionAgenda } from '../services/agendaFlexibleService';
-import { getPacientesAll } from '../services/pacienteService';
 
 // Hooks y utilidades
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -103,13 +100,6 @@ const Agenda = () => {
 
   // Estado para tabs
   const [tabActivo, setTabActivo] = useState('calendario'); // 'calendario' | 'bloqueos'
-
-  // 🆕 Estados para modal de hueco
-  const [modalHuecoAbierto, setModalHuecoAbierto] = useState(false);
-  const [huecoSeleccionado, setHuecoSeleccionado] = useState(null);
-  const [diaHueco, setDiaHueco] = useState(null);
-  const [configAgenda, setConfigAgenda] = useState(null);
-  const [pacientes, setPacientes] = useState([]); // Se cargarán cuando se necesiten
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -368,59 +358,6 @@ const Agenda = () => {
     });
     setCitaEditando(null);
     setModalAbierto(true);
-  };
-
-  // 🆕 Handler para click en hueco
-  const handleHuecoClick = async (hueco, dia) => {
-    console.log('🎯 handleHuecoClick ejecutado - Hueco:', hueco, 'Dia:', dia);
-    setHuecoSeleccionado(hueco);
-    setDiaHueco(dia);
-
-    // Cargar pacientes si no están cargados
-    if (pacientes.length === 0) {
-      try {
-        console.log('📥 Cargando pacientes...');
-        const pacientesRes = await getPacientesAll();
-        console.log('✅ Pacientes cargados:', pacientesRes.length);
-        setPacientes(pacientesRes);
-      } catch (error) {
-        console.error('❌ Error al cargar pacientes:', error);
-      }
-    } else {
-      console.log('ℹ️ Pacientes ya están cargados:', pacientes.length);
-    }
-
-    // Cargar configuración si no está cargada
-    if (!configAgenda) {
-      try {
-        console.log('📥 Cargando configuración de agenda...');
-        const config = await obtenerConfiguracionAgenda();
-        console.log('✅ Configuración cargada:', config);
-        setConfigAgenda(config);
-      } catch (error) {
-        console.error('❌ Error al cargar configuración:', error);
-        // Usar configuración por defecto
-        setConfigAgenda({
-          limite_movimiento_minutos: 30,
-          permitir_agendar_huecos: true,
-          preguntar_antes_mover: true,
-          validar_horario_laboral: true,
-          respetar_citas_fijas: true
-        });
-      }
-    } else {
-      console.log('ℹ️ Configuración ya está cargada:', configAgenda);
-    }
-
-    console.log('🚀 Abriendo modal de hueco...');
-    setModalHuecoAbierto(true);
-  };
-
-  const handleHuecoSuccess = () => {
-    setModalHuecoAbierto(false);
-    setRecargarCitas(prev => prev + 1); // 🆕 Forzar recarga de citas
-    setRecargarEstadisticas(prev => prev + 1);
-    mostrarNotificacion('Cita agendada exitosamente en hueco', 'success');
   };
 
   const handleCitaClick = async (citaData) => {
@@ -1059,7 +996,6 @@ const guardarCita = async (datosFormulario = null) => {
             bloqueos={bloqueos}
             onSlotClick={abrirModalDesdeSlot}
             onCitaClick={handleCitaClick}
-            onHuecoClick={handleHuecoClick}
             getEstadoColor={getEstadoColorCustom}
             fechaActual={fechaActual}
             onFechaChange={(nuevaFecha) => {
@@ -1068,7 +1004,6 @@ const guardarCita = async (datosFormulario = null) => {
             }}
             currentUser={currentUser}
             cargando={cargando}
-            mostrarHuecos={true}
           />
         )}
 
@@ -1128,23 +1063,6 @@ const guardarCita = async (datosFormulario = null) => {
           citas={todasLasCitas}
           bloqueos={bloqueos}
         />
-
-        {/* 🆕 Modal Agendar en Hueco */}
-        {modalHuecoAbierto && huecoSeleccionado && diaHueco && (
-          <AgendarEnHuecoModal
-            isOpen={modalHuecoAbierto}
-            onClose={() => setModalHuecoAbierto(false)}
-            hueco={huecoSeleccionado}
-            doctorId={huecoSeleccionado.doctor_id || terapeutaFiltro}
-            fecha={diaHueco.fechaString}
-            pacientes={pacientes}
-            servicios={servicios}
-            motivos={motivos}
-            usuarioId={currentUser?.id}
-            onSuccess={handleHuecoSuccess}
-            configAgenda={configAgenda}
-          />
-        )}
       </div>
     </div>
   );

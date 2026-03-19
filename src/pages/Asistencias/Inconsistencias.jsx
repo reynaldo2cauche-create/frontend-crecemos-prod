@@ -452,7 +452,7 @@ const Inconsistencias = () => {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Inconsistencias de Asistencia</h1>
-            <p className="text-gray-600">Revise las discrepancias entre recepción y terapeuta</p>
+            <p className="text-gray-600">Revise las discrepancias entre recepción y terapeuta </p>
           </div>
         </div>
       </div>
@@ -831,7 +831,7 @@ const Inconsistencias = () => {
         <h3 className="text-sm font-bold text-gray-900 mb-3">Tipos de Inconsistencias:</h3>
         <div className="space-y-2 text-sm">
           {[
-            { color: 'bg-red-500', text: '<strong>Ninguno marcó asistencia:</strong> Ni admisión ni terapeuta registraron después de 24 horas' },
+            { color: 'bg-red-500', text: '<strong>Ninguno marcó asistencia:</strong> Ni admisión ni terapeuta registraron después de las 9pm del día de la cita' },
             { color: 'bg-yellow-500', text: '<strong>Falta registro de admisión:</strong> Solo el terapeuta marcó, falta que admisión registre' },
             { color: 'bg-yellow-500', text: '<strong>Falta registro del terapeuta:</strong> Solo admisión marcó, falta que el terapeuta registre' },
             { color: 'bg-orange-500', text: '<strong>Estados no coinciden:</strong> Ambos marcaron pero con estados diferentes' },

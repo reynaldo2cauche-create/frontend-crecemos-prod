@@ -7,7 +7,7 @@ import api from './api';
  * @param {string} tipo - Filtro de tipo de notificación (opcional)
  * @returns {Promise} Respuesta con notificaciones
  */
-export const obtenerNotificacionesRecientes = async (limite = 20, offset = 0, fecha = undefined, tipo = undefined) => {
+export const obtenerNotificacionesRecientes = async (limite = 15, offset = 0, fecha = undefined, tipo = undefined) => {
   try {
     const params = { limite, offset };
 

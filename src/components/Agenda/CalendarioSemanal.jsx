@@ -8,11 +8,9 @@ import {
   Ban,
   X,
   Clock,
-  AlertCircle,
-  Plus
+  AlertCircle
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
-import { detectarHuecosEnDia, getHuecoEnSlot } from '../../utils/huecosCalendario';
 
 // ✅ Componente memoizado para cada cita individual
 const CitaCard = React.memo(({
@@ -125,18 +123,15 @@ const CalendarioSemanal = ({
   bloqueos = [],
   onSlotClick,
   onCitaClick,
-  onHuecoClick, // 🆕 Callback para click en hueco
   getEstadoColor,
   fechaActual = new Date(),
   onFechaChange,
   currentUser = null,
-  cargando = false,
-  mostrarHuecos = true // 🆕 Flag para mostrar/ocultar huecos
+  cargando = false
 }) => {
   const [diasSemana, setDiasSemana] = useState([]);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
   const [bloqueoSeleccionado, setBloqueoSeleccionado] = useState(null);
-  const [huecosPorDia, setHuecosPorDia] = useState({}); // 🆕 Almacenar huecos detectados
 
 
  // Generar horas según el día de la semana
@@ -225,29 +220,6 @@ const CalendarioSemanal = ({
 
     setDiasSemana(calcularDiasSemana(fechaActual));
   }, [fechaActual]);
-
-  // 🆕 Detectar huecos cuando cambien las citas o los días
-  useEffect(() => {
-    if (!mostrarHuecos || !citas || citas.length === 0 || !diasSemana || diasSemana.length === 0) {
-      console.log('⚠️ No se detectan huecos:', { mostrarHuecos, citasLength: citas?.length, diasSemanaLength: diasSemana?.length });
-      setHuecosPorDia({});
-      return;
-    }
-
-    console.log('🔍 Detectando huecos para', diasSemana.length, 'días con', citas.length, 'citas');
-    const huecos = {};
-    diasSemana.forEach(dia => {
-      const horas = generarHorasPorDia(dia.fecha.getDay());
-      const huecosDelDia = detectarHuecosEnDia(citas, horas, dia.fechaString);
-      if (huecosDelDia && huecosDelDia.length > 0) {
-        console.log(`✅ ${huecosDelDia.length} huecos encontrados en ${dia.fechaString}:`, huecosDelDia);
-        huecos[dia.fechaString] = huecosDelDia;
-      }
-    });
-
-    console.log('📊 Huecos totales por día:', huecos);
-    setHuecosPorDia(huecos);
-  }, [citas, diasSemana, mostrarHuecos]);
 
   const toMinutes = (hhmm) => {
     const [h, m] = hhmm.split(':').map(n => parseInt(n, 10));
@@ -467,52 +439,16 @@ const CalendarioSemanal = ({
   const citasInfo = getCitasEnSlot(dia, hora);
   const bloqueo = getBloqueoEnSlot(dia, hora);
   const hayCitas = citasInfo && citasInfo.length > 0;
+  // ✅ NUEVA: slot que solo tiene continuación de cita anterior, ninguna empieza aquí
+const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
+  // Agregar esta variable junto a hayCitas
   const estaBloqueado = !!bloqueo;
   const puedeHacerClic = !hayCitas && !esTerapeuta && !estaBloqueado;
-
-  // ✅ Detectar si hay un hueco que cae en este slot
-  const huecosHoy = huecosPorDia[dia.fechaString] || [];
-  let huecoEnEsteSlot = null;
-  let posicionHueco = null; // Para calcular dónde renderizar el hueco
-
-  if (huecosHoy.length > 0) {
-    const slotStartMin = toMinutes(hora);
-    const slotEndMin = slotStartMin + slotDurationMin;
-
-    // Buscar si hay un hueco que se superpone con este slot
-    const huecoMatch = huecosHoy.find(h => {
-      const huecoStartMin = toMinutes(h.hora_inicio.substring(0, 5));
-      const huecoEndMin = toMinutes(h.hora_fin.substring(0, 5));
-      return huecoStartMin < slotEndMin && huecoEndMin > slotStartMin;
-    });
-
-    if (huecoMatch) {
-      huecoEnEsteSlot = huecoMatch;
-
-      // Calcular dónde empieza el hueco dentro de este slot
-      const huecoStartMin = toMinutes(huecoMatch.hora_inicio.substring(0, 5));
-      const huecoEndMin = toMinutes(huecoMatch.hora_fin.substring(0, 5));
-
-      // Inicio del hueco dentro del slot (en minutos desde el inicio del slot)
-      const huecoStartEnSlot = Math.max(0, huecoStartMin - slotStartMin);
-      // Fin del hueco dentro del slot
-      const huecoEndEnSlot = Math.min(slotDurationMin, huecoEndMin - slotStartMin);
-
-      // Convertir a pixels (80px total / 40min)
-      const pixelsPorMinuto = 80 / slotDurationMin;
-      posicionHueco = {
-        top: huecoStartEnSlot * pixelsPorMinuto,
-        height: (huecoEndEnSlot - huecoStartEnSlot) * pixelsPorMinuto
-      };
-    }
-  }
 
   const handleSlotClick = () => {
     if (estaBloqueado && bloqueo) {
       setBloqueoSeleccionado(bloqueo);
       setModalBloqueoAbierto(true);
-    } else if (huecoEnEsteSlot && onHuecoClick) {
-      onHuecoClick(huecoEnEsteSlot, dia);
     } else if (puedeHacerClic && onSlotClick) {
       onSlotClick(dia, hora);
     }
@@ -520,24 +456,27 @@ const CalendarioSemanal = ({
 
   return (
     <React.Fragment key={`${dia.fechaString}-${hora}`}>
-      <div
-        onClick={handleSlotClick}
-        className={`relative h-[80px] border-b border-gray-200 ${
-          estaBloqueado
-            ? 'bg-red-50 cursor-pointer hover:bg-red-100'
-            : huecoEnEsteSlot
-            ? 'cursor-pointer'
-            : puedeHacerClic
-            ? 'cursor-pointer hover:bg-purple-50/50'
-            : 'cursor-default'
-        } ${esHoy && !estaBloqueado ? 'bg-purple-50/20' : ''}`}
-      >
-        {/* Etiqueta de hora */}
-        <div className={`absolute left-2 top-1 text-xs font-semibold z-20 px-1.5 py-0.5 rounded shadow-sm ${
-          estaBloqueado ? 'bg-red-100 text-red-700' : 'bg-white/90 text-gray-500'
-        }`}>
-          {hora}
-        </div>
+          <div
+            onClick={handleSlotClick}
+            style={esSoloContinuacion ? { backgroundColor: 'transparent' } : {}}  // ← fondo transparente solo en continuación
+            className={`relative h-[80px] border-b border-gray-200 overflow-visible ${
+              estaBloqueado
+                ? 'bg-red-50 cursor-pointer hover:bg-red-100'
+                : puedeHacerClic
+                ? 'cursor-pointer hover:bg-purple-50/50'
+                : 'cursor-default'
+            } ${esHoy && !estaBloqueado ? 'bg-purple-50/20' : ''}`}
+          >
+            {/* Etiqueta hora — z-index bajo para no tapar cita en slots de continuación */}
+            <div className={`absolute left-2 top-1 text-xs font-semibold px-1.5 py-0.5 rounded shadow-sm ${
+              estaBloqueado
+                ? 'bg-red-100 text-red-700 z-20'
+                : esSoloContinuacion
+                ? 'z-[5] bg-white/50 text-gray-300'  // ← casi invisible, debajo de la cita
+                : 'z-20 bg-white/90 text-gray-500'   // ← normal
+            }`}>
+              {hora}
+            </div>
 
         {/* Indicador de bloqueo */}
         {estaBloqueado && !hayCitas && (
@@ -554,37 +493,44 @@ const CalendarioSemanal = ({
           </div>
         )}
 
-        {/* Citas */}
-        {citasInfo && citasInfo.map((slotInfo, index) => {
-          const cita = slotInfo.cita;
-          if (!slotInfo.isTop) return null;
+               {citasInfo && citasInfo.map((slotInfo, index) => {
+                const cita = slotInfo.cita;
+                if (!slotInfo.isTop) return null;
 
-          const totalCitas = citasInfo.filter(c => c.isTop).length;
-          const anchoCita = totalCitas === 1 ? 'calc(100% - 8px)' : `calc(${100 / totalCitas}% - 4px)`;
-          const indiceCitaVisible = citasInfo.filter(c => c.isTop).findIndex(c => c.cita.id === cita.id);
-          const leftOffset = totalCitas === 1 ? '4px' : `calc(${(100 / totalCitas) * indiceCitaVisible}% + 2px)`;
-          const estadoColor = getEstadoColor ? getEstadoColor(cita.estado) : '#7B1FA2';
+                const totalCitas = citasInfo.filter(c => c.isTop).length;
+                const anchoCita = totalCitas === 1 ? 'calc(100% - 8px)' : `calc(${100 / totalCitas}% - 4px)`;
+                const indiceCitaVisible = citasInfo.filter(c => c.isTop).findIndex(c => c.cita.id === cita.id);
+                const leftOffset = totalCitas === 1 ? '4px' : `calc(${(100 / totalCitas) * indiceCitaVisible}% + 2px)`;
+                const estadoColor = getEstadoColor ? getEstadoColor(cita.estado) : '#7B1FA2';
 
-          return (
-            <div
-              key={`${cita.id}-${index}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onCitaClick && onCitaClick({
-                  id: cita.id,
-                  fecha: dia.fechaString,
-                  hora: hora,
-                  cita
-                });
-              }}
-              style={{
-                width: anchoCita,
-                height: `${slotInfo.alturaTotal}px`,
-                left: leftOffset,
-                borderLeftColor: estadoColor
-              }}
-              className="absolute top-0.5 bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md hover:from-blue-100 hover:to-blue-150 transition-all z-10 overflow-hidden"
-            >
+                // ✅ Top exacto dentro del slot
+                const startStr = cita.hora_inicio ? cita.hora_inicio.substring(0, 5) : hora;
+                const startMin = toMinutes(startStr);
+                const slotStartMin = toMinutes(hora);
+                const topPx = ((startMin - slotStartMin) / slotDurationMin) * 80;
+
+                // ✅ Altura proporcional a la duración real
+                const duracionMinutos = cita.duracion_minutos || 40;
+                const alturaTotal = (duracionMinutos / slotDurationMin) * 80 - 2;
+
+                return (
+                  <div
+                    key={`${cita.id}-${index}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCitaClick && onCitaClick({ id: cita.id, fecha: dia.fechaString, hora, cita });
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: `${topPx + 2}px`,
+                      width: anchoCita,
+                      height: `${alturaTotal}px`,
+                      left: leftOffset,
+                      borderLeftColor: estadoColor,
+                      zIndex: 10,
+                    }}
+                    className="bg-gradient-to-br from-blue-50 to-blue-100 border border-gray-200 border-l-4 rounded-lg pt-6 px-2 pb-2 cursor-pointer hover:shadow-md transition-all overflow-hidden"
+                  >
               {/* Badge motivo */}
               {(() => {
                 const motivoNombre = cita.motivo?.nombre || '';
@@ -674,31 +620,6 @@ const CalendarioSemanal = ({
             </div>
           );
         })}
-
-        {/* ✅ Hueco: calculado con posición exacta */}
-        {huecoEnEsteSlot && posicionHueco && (
-          <div
-            style={{
-              position: 'absolute',
-              top: `${posicionHueco.top}px`,
-              left: '4px',
-              right: '4px',
-              height: `${posicionHueco.height}px`,
-              zIndex: 25
-            }}
-            className="cursor-pointer bg-green-50/70 border border-dashed border-green-400 hover:bg-green-100/80 hover:border-green-500 transition-all rounded-md flex items-center justify-center gap-2"
-            onClick={(e) => {
-              e.stopPropagation();
-              onHuecoClick && onHuecoClick(huecoEnEsteSlot, dia);
-            }}
-          >
-            <Plus className="w-4 h-4 text-green-600 flex-shrink-0" />
-            <span className="text-green-700 font-bold text-xs">
-              HUECO {huecoEnEsteSlot.minutos_disponibles}min
-              &nbsp;({huecoEnEsteSlot.hora_inicio.substring(0, 5)} - {huecoEnEsteSlot.hora_fin.substring(0, 5)})
-            </span>
-          </div>
-        )}
       </div>
     </React.Fragment>
   );

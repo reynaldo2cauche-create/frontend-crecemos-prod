@@ -15,7 +15,10 @@ const LIMIT = 15;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-const normalizarNotif = (n) => ({ ...n, leida: Boolean(n.leida) });
+const normalizarNotif = (n) => ({
+  ...n,
+  leida: n.leida === 1 || n.leida === '1' || n.leida === true
+});
 
 const formatearTiempo = (fecha) =>
   new Date(fecha).toLocaleString('es-ES', {
@@ -259,11 +262,20 @@ const useNotificaciones = () => {
         nuevosFiltros.tipo  || undefined,
       );
 
-      setNotificaciones((response.notificaciones || []).map(normalizarNotif));
+      console.log('🔍 [DEBUG] Respuesta del backend:', response);
+      console.log('🔍 [DEBUG] Notificaciones recibidas:', response.notificaciones?.length || 0);
+      console.log('🔍 [DEBUG] Total no leídas del backend:', response.total_no_leidas);
+
+      const notificacionesNormalizadas = (response.notificaciones || []).map(normalizarNotif);
+      console.log('🔍 [DEBUG] Después de normalizar:', notificacionesNormalizadas.length);
+      console.log('🔍 [DEBUG] Primeras 3 notificaciones:', notificacionesNormalizadas.slice(0, 3));
+
+      setNotificaciones(notificacionesNormalizadas);
       setHayMas(response.tiene_mas || false);
       setTotalNoLeidasReal(response.total_no_leidas || 0);
       offsetRef.current = LIMIT;
-    } catch {
+    } catch (error) {
+      console.error('❌ [DEBUG] Error al cargar notificaciones:', error);
       setError('No se pudieron cargar las notificaciones');
     } finally {
       setCargando(false);
@@ -291,7 +303,7 @@ const useNotificaciones = () => {
       });
 
       setHayMas(response.tiene_mas || false);
-      setTotalNoLeidasReal(response.total_no_leidas || 0);
+      // NO actualizar el contador aquí - se mantiene el total inicial
       offsetRef.current += LIMIT;
     } catch { /* silencioso */ } finally {
       setCargandoMas(false);
@@ -306,44 +318,38 @@ const useNotificaciones = () => {
   }, [tabActivo, cargarDesdeInicio]);
 
   const marcarUnaComoLeida = useCallback(async (notificacionId) => {
-    // Optimistic update
-    setNotificaciones(prev =>
-      prev.map(n => n.id === notificacionId ? { ...n, leida: true } : n)
-    );
     try {
+      // PRIMERO: llamar al backend (sin optimistic update)
       const response = await marcarComoLeida(notificacionId);
-      setTotalNoLeidasReal(
-        response.nuevo_conteo !== undefined
-          ? response.nuevo_conteo
-          : (prev) => Math.max(0, prev - 1)
+
+      // SEGUNDO: actualizar local solo después de confirmación del backend
+      setNotificaciones(prev =>
+        prev.map(n => n.id === notificacionId ? { ...n, leida: true } : n)
       );
 
-      // Si estamos en el tab de no leídas, recargar para actualizar la lista
-      if (tabActivo === 'no_leidas') {
-        // Pequeño delay para que se sincronice con el backend
-        setTimeout(() => {
-          cargarDesdeInicio(filtros, tabActivo);
-        }, 300);
+      // Actualizar contador con el valor del backend
+      if (response.nuevo_conteo !== undefined) {
+        setTotalNoLeidasReal(response.nuevo_conteo);
+      } else {
+        setTotalNoLeidasReal(prev => Math.max(0, prev - 1));
       }
-    } catch {
-      // Revertir si falla
-      setNotificaciones(prev =>
-        prev.map(n => n.id === notificacionId ? { ...n, leida: false } : n)
-      );
-      setTotalNoLeidasReal(prev => prev + 1);
+    } catch (error) {
+      console.error('Error al marcar como leída:', error);
+      // No hacer nada - la notificación sigue no leída
     }
-  }, [tabActivo, filtros, cargarDesdeInicio]);
+  }, []);
 
   const marcarTodasComoLeidas = useCallback(async () => {
-    setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
-    setTotalNoLeidasReal(0);
     try {
+      // PRIMERO: llamar al backend
       await marcarLeidasAPI();
-      // Recargar para actualizar la lista
-      setTimeout(() => {
-        cargarDesdeInicio(filtros, tabActivo);
-      }, 300);
-    } catch {
+
+      // SEGUNDO: actualizar local después de confirmación
+      setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
+      setTotalNoLeidasReal(0);
+    } catch (error) {
+      console.error('Error al marcar todas como leídas:', error);
+      // Recargar si falla para sincronizar
       cargarDesdeInicio(filtros, tabActivo);
     }
   }, [filtros, tabActivo, cargarDesdeInicio]);
@@ -354,10 +360,18 @@ const useNotificaciones = () => {
     cargarDesdeInicio(filtros, nuevoTab);
   }, [filtros, cargarDesdeInicio]);
 
-  const { noLeidas, leidas } = useMemo(() => ({
-    noLeidas: notificaciones.filter(n => !n.leida),
-    leidas:   notificaciones.filter(n =>  n.leida),
-  }), [notificaciones]);
+  const { noLeidas, leidas } = useMemo(() => {
+    const result = {
+      noLeidas: notificaciones.filter(n => !n.leida),
+      leidas:   notificaciones.filter(n =>  n.leida),
+    };
+
+    console.log('🔍 [DEBUG] Total notificaciones:', notificaciones.length);
+    console.log('🔍 [DEBUG] No leídas filtradas:', result.noLeidas.length);
+    console.log('🔍 [DEBUG] Leídas filtradas:', result.leidas.length);
+
+    return result;
+  }, [notificaciones]);
 
   return {
     noLeidas, leidas, totalNoLeidasReal,
@@ -481,7 +495,7 @@ const NotificacionesGlobales = () => {
                   activo={tabActivo === 'leidas'}
                   onClick={() => cambiarTab('leidas')}
                   label="Leídas"
-                  count={leidas.length}
+                  count={0}
                   variante="leidas"
                 />
               </div>

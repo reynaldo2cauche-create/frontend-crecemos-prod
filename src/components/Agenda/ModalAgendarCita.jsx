@@ -1177,24 +1177,90 @@ const handleGuardar = useCallback(async () => {
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                             />
-                            <select
-                              value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                              onChange={(e) => {
-                                if (modoSoloLectura) return;
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                              }}
-                              disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                            >
-                              <option value="">
-                                {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                              </option>
-                              {formularioCita.fechasHoras?.[0]?.fecha &&
-                                generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                  <option key={hora} value={hora}>{hora}</option>
-                                ))
-                              }
-                            </select>
+                            <div className="flex flex-col gap-2">
+                              <select
+                                value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                                onChange={(e) => {
+                                  if (modoSoloLectura) return;
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                </option>
+                                {formularioCita.fechasHoras?.[0]?.fecha && (() => {
+                                  const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
+                                  const horaActual = formularioCita.fechasHoras[0].horaInicio;
+
+                                  // Si hay una hora seleccionada que no está en la lista, agregarla
+                                  if (horaActual && !horasDisponibles.includes(horaActual)) {
+                                    const todasLasHoras = [...horasDisponibles, horaActual].sort();
+                                    return todasLasHoras.map(hora => (
+                                      <option
+                                        key={hora}
+                                        value={hora}
+                                        style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}
+                                      >
+                                        {hora}{hora === horaActual ? ' (ajustada)' : ''}
+                                      </option>
+                                    ));
+                                  }
+
+                                  return horasDisponibles.map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ));
+                                })()}
+                              </select>
+
+                              {formularioCita.fechasHoras?.[0]?.horaInicio && (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales - 10;
+
+                                      if (nuevosMinutos >= 0) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    -10 min
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales + 10;
+
+                                      if (nuevosMinutos < 24 * 60) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    +10 min
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
                             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -1502,24 +1568,90 @@ const handleGuardar = useCallback(async () => {
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                             />
-                            <select
-                              value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                              onChange={(e) => {
-                                if (modoSoloLectura) return;
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                              }}
-                              disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                            >
-                              <option value="">
-                                {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                              </option>
-                              {formularioCita.fechasHoras?.[0]?.fecha &&
-                                generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                  <option key={hora} value={hora}>{hora}</option>
-                                ))
-                              }
-                            </select>
+                            <div className="flex flex-col gap-2">
+                              <select
+                                value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                                onChange={(e) => {
+                                  if (modoSoloLectura) return;
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                </option>
+                                {formularioCita.fechasHoras?.[0]?.fecha && (() => {
+                                  const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
+                                  const horaActual = formularioCita.fechasHoras[0].horaInicio;
+
+                                  // Si hay una hora seleccionada que no está en la lista, agregarla
+                                  if (horaActual && !horasDisponibles.includes(horaActual)) {
+                                    const todasLasHoras = [...horasDisponibles, horaActual].sort();
+                                    return todasLasHoras.map(hora => (
+                                      <option
+                                        key={hora}
+                                        value={hora}
+                                        style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}
+                                      >
+                                        {hora}{hora === horaActual ? ' (ajustada)' : ''}
+                                      </option>
+                                    ));
+                                  }
+
+                                  return horasDisponibles.map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ));
+                                })()}
+                              </select>
+
+                              {formularioCita.fechasHoras?.[0]?.horaInicio && (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales - 10;
+
+                                      if (nuevosMinutos >= 0) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    -10 min
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales + 10;
+
+                                      if (nuevosMinutos < 24 * 60) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    +10 min
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
                             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -1818,24 +1950,90 @@ const handleGuardar = useCallback(async () => {
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                             />
-                            <select
-                              value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                              onChange={(e) => {
-                                if (modoSoloLectura) return;
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                              }}
-                              disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                            >
-                              <option value="">
-                                {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                              </option>
-                              {formularioCita.fechasHoras?.[0]?.fecha &&
-                                generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                  <option key={hora} value={hora}>{hora}</option>
-                                ))
-                              }
-                            </select>
+                            <div className="flex flex-col gap-2">
+                              <select
+                                value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                                onChange={(e) => {
+                                  if (modoSoloLectura) return;
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                </option>
+                                {formularioCita.fechasHoras?.[0]?.fecha && (() => {
+                                  const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
+                                  const horaActual = formularioCita.fechasHoras[0].horaInicio;
+
+                                  // Si hay una hora seleccionada que no está en la lista, agregarla
+                                  if (horaActual && !horasDisponibles.includes(horaActual)) {
+                                    const todasLasHoras = [...horasDisponibles, horaActual].sort();
+                                    return todasLasHoras.map(hora => (
+                                      <option
+                                        key={hora}
+                                        value={hora}
+                                        style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}
+                                      >
+                                        {hora}{hora === horaActual ? ' (ajustada)' : ''}
+                                      </option>
+                                    ));
+                                  }
+
+                                  return horasDisponibles.map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ));
+                                })()}
+                              </select>
+
+                              {formularioCita.fechasHoras?.[0]?.horaInicio && (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales - 10;
+
+                                      if (nuevosMinutos >= 0) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    -10 min
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales + 10;
+
+                                      if (nuevosMinutos < 24 * 60) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    +10 min
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
                             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
