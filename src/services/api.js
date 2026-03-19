@@ -222,4 +222,18 @@ export const getSubordinados = async (jefeId) => {
   return response.data;
 };
 
+// ============== FUNCIONES DE VENTAS/SESIONES ==============
+
+/**
+ * Obtiene sesiones disponibles para un paciente
+ * @param {number} pacienteId - ID del paciente
+ * @param {number} servicioId - ID del servicio (opcional, para filtrar)
+ * @returns {Promise<Array>} Lista de sesiones disponibles del paciente
+ */
+export const obtenerSesionesDisponibles = async (pacienteId, servicioId = null) => {
+  const params = servicioId ? { servicioId } : {};
+  const response = await api.get(`/citas/paciente/${pacienteId}/sesiones-disponibles`, { params });
+  return response.data;
+};
+
 export default api;

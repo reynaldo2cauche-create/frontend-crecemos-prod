@@ -26,7 +26,7 @@ import { useMotivosCita } from '../../hooks/useMotivosCita';
 import { useHistorialCita } from '../../hooks/useHistorialCita';
 import { useTrabajadores } from '../../hooks/useTrabajadores';
 import { ROLES } from '../../constants/roles';
-import api from '../../services/api';
+import api, { obtenerSesionesDisponibles } from '../../services/api';
 import { useGeofencing } from '../../hooks/useGeofencing';
 
 const ModalAgendarCita = ({
@@ -69,6 +69,10 @@ const ModalAgendarCita = ({
   const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [copiado, setCopiado] = useState(false);
   const [cargandoRecordatorio, setCargandoRecordatorio] = useState(false);
+
+  // ========== ESTADOS PARA SESIONES/VENTAS DISPONIBLES ==========
+  const [sesionesDisponibles, setSesionesDisponibles] = useState([]);
+  const [cargandoSesiones, setCargandoSesiones] = useState(false);
 
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
@@ -113,6 +117,40 @@ const ModalAgendarCita = ({
       setModalYaAbierto(false);
     }
   }, [open]);
+
+  // ========== CARGAR SESIONES DISPONIBLES CUANDO CAMBIA EL PACIENTE ==========
+  useEffect(() => {
+    const cargarSesiones = async () => {
+      const pacienteId = formularioCita.paciente_id;
+      const servicioId = formularioCita.servicio_id;
+
+      // Solo cargar si hay paciente seleccionado y es cita normal
+      if (!pacienteId || tipoCita !== 'NORMAL') {
+        setSesionesDisponibles([]);
+        return;
+      }
+
+      setCargandoSesiones(true);
+      try {
+        const sesiones = await obtenerSesionesDisponibles(pacienteId, servicioId);
+        setSesionesDisponibles(sesiones);
+
+        console.log(`📦 Sesiones disponibles para paciente ${pacienteId}:`, sesiones);
+
+        // Si hay sesiones disponibles y no hay una seleccionada, pre-seleccionar la primera
+        if (sesiones.length > 0 && !formularioCita.venta_servicio_detalle_id) {
+          onFormularioChange('venta_servicio_detalle_id', sesiones[0].id);
+        }
+      } catch (error) {
+        console.error('Error al cargar sesiones disponibles:', error);
+        setSesionesDisponibles([]);
+      } finally {
+        setCargandoSesiones(false);
+      }
+    };
+
+    cargarSesiones();
+  }, [formularioCita.paciente_id, formularioCita.servicio_id, tipoCita]);
 
   // ========== FUNCIONES DE ASISTENCIA ==========
   const cargarSeguimientoAsistencia = useCallback(async () => {
@@ -1893,6 +1931,39 @@ const handleGuardar = useCallback(async () => {
                         })()}
                       </select>
                     </div>
+
+                    {/* Sesiones Disponibles (Solo si hay paciente y es cita normal) */}
+                    {formularioCita.paciente_id && tipoCita === 'NORMAL' && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Sesión/Paquete a Usar <span className="text-red-500">*</span>
+                        </label>
+                        {cargandoSesiones ? (
+                          <div className="w-full px-4 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-500">
+                            Cargando sesiones disponibles...
+                          </div>
+                        ) : sesionesDisponibles.length > 0 ? (
+                          <select
+                            value={formularioCita.venta_servicio_detalle_id || ''}
+                            onChange={(e) => onFormularioChange('venta_servicio_detalle_id', e.target.value)}
+                            disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                          >
+                            <option value="">Seleccionar sesión...</option>
+                            {sesionesDisponibles.map((sesion) => (
+                              <option key={sesion.id} value={sesion.id}>
+                                {sesion.descripcion}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="w-full px-4 py-3 bg-red-50 border-l-4 border-red-400 rounded-lg">
+                            <p className="text-sm text-red-700 font-semibold">⚠️ Este paciente no tiene sesiones disponibles</p>
+                            <p className="text-xs text-red-600 mt-1">Debe comprar un paquete o sesión antes de agendar una cita.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Duración */}
                     <div>
