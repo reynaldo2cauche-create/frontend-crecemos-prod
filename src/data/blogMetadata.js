@@ -417,6 +417,19 @@ export const blogMetadata = [
   readTime: '12 min lectura',
   author: 'Centro Crecemos',
   heroImage: '/assets/img/blog/dia-mujer-hero.webp'
+},
+{
+  id: 33,
+  slug: '21-marzo-dia-mundial-sindrome-down',
+  title: 'Día Mundial del Síndrome de Down: reconocer su valor, comprender sus necesidades y acompañar su desarrollo',
+  excerpt: 'Cada 21 de marzo se conmemora el Día Mundial del Síndrome de Down, una fecha que invita a detenerse y mirar con mayor profundidad. No solo se trata de una condición genética, sino de personas, de historias, de familias, del esfuerzo que hay detrás de ello y, sobre todo, de niños con un enorme potencial que merece ser reconocido.',
+  image: '/assets/img/blog/diasindromedown.webp',
+  date: '21 Marzo 2026',
+  category: 'efemerides',
+  categoryName: 'Eventos Conmemorativos',
+  readTime: '18 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/diasindromedown.webp'
 }
   // Aquí agregas más blogs...
 ];
