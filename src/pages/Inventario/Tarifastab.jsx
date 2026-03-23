@@ -17,9 +17,14 @@ import {
   actualizarTarifa,
   desactivarTarifa,
   activarTarifa,
+  getPreciosPaquetesByServicioTarifa,
+  crearPrecioPaquete,
+  actualizarPrecioPaquete,
+  eliminarPrecioPaquete,
 } from '../../services/inventarioService';
-import { getServicios } from '../../services/serviciosService';
+import { getServicios, getPaquetes } from '../../services/serviciosService';
 import { getMotivosCita } from '../../services/citaService';
+import ModalPreciosPaquetes from './ModalPreciosPaquetes';
 
 const EMPTY_FORM = {
   servicio_id: '',
@@ -218,6 +223,7 @@ const TarifasTab = () => {
   const [busqueda, setBusqueda]         = useState('');
   const [filtroServicio, setFiltroServicio] = useState('');
   const [modal, setModal]               = useState(null); // null | 'crear' | tarifa
+  const [modalPaquetes, setModalPaquetes] = useState(null); // null | tarifa
   const [confirmToggle, setConfirmToggle]   = useState(null);
   const [accionLoading, setAccionLoading]   = useState(false);
 
@@ -430,10 +436,17 @@ const TarifasTab = () => {
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => setModal(t)}
-                          title="Editar precio"
+                          title="Editar precio base"
                           className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors"
                         >
                           <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setModalPaquetes(t)}
+                          title="Configurar precios por paquete"
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <TagIcon className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setConfirmToggle(t)}
@@ -473,6 +486,15 @@ const TarifasTab = () => {
           motivos={motivos}
           onClose={() => setModal(null)}
           onSaved={() => { setModal(null); cargarDatos(); }}
+        />
+      )}
+
+      {/* Modal precios por paquete */}
+      {modalPaquetes && (
+        <ModalPreciosPaquetes
+          tarifa={modalPaquetes}
+          onClose={() => setModalPaquetes(null)}
+          onSaved={() => { cargarDatos(); }}
         />
       )}
 

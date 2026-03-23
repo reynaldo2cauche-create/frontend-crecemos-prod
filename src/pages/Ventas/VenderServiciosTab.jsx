@@ -237,9 +237,7 @@ const VenderServiciosTab = () => {
     setCalculandoPromos(true);
     try {
       const items = lineas.map(l => {
-        const sesionesTotales = l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
-          ? (l.cantidad_paquetes || 1) * (l.sesiones_por_paquete || 1)
-          : (l.sesiones || 1);
+        const sesionesTotales = l.sesiones || 1;
         const subtotalBruto = sesionesTotales * l.precio_unitario;
         let descuento = 0;
         if (l.descuento_tipo && l.descuento_valor) {
@@ -287,10 +285,15 @@ const VenderServiciosTab = () => {
     if (!tarifaSeleccionada) return;
     if (tipoVentaId === TIPOS_VENTA_SERVICIO.PAQUETE && !paqueteSeleccionado) { alert('Debes seleccionar un paquete'); return; }
 
-    let paqueteId = null, paqueteNombre = '', sesionesPorPaquete = null, cantidadPaquetes = null, sesiones = null;
+    let paqueteId = null, paqueteNombre = '', sesionesPorPaquete = null, sesiones = null;
     if (tipoVentaId === TIPOS_VENTA_SERVICIO.PAQUETE) {
       const paq = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
-      if (paq) { sesionesPorPaquete = paq.cantidadSesiones; cantidadPaquetes = 1; paqueteId = paq.id; paqueteNombre = paq.nombre; }
+      if (paq) {
+        sesionesPorPaquete = paq.cantidadSesiones;
+        sesiones = paq.cantidadSesiones; // Iniciar con el mínimo del paquete
+        paqueteId = paq.id;
+        paqueteNombre = paq.nombre;
+      }
     } else {
       sesiones = 1;
     }
@@ -298,6 +301,26 @@ const VenderServiciosTab = () => {
     let pacienteLineaId = pacienteSeleccionado;
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length === 1) {
       pacienteLineaId = pacientesDelResponsable[0].id;
+    }
+
+    // 🆕 Calcular precio unitario según configuración de paquetes
+    let precioUnitario = parseFloat(tarifaSeleccionada.precio || 0);
+    let precioBase = precioUnitario;
+
+    if (tipoVentaId === TIPOS_VENTA_SERVICIO.PAQUETE && paqueteId) {
+      const preciosPaquetes = tarifaSeleccionada.precios_paquetes || [];
+      const configuracion = preciosPaquetes.find(pp => pp.paquete_id === paqueteId && pp.flg_activo === 1);
+
+      if (configuracion) {
+        if (configuracion.tipo_calculo === 'precio_total') {
+          // Precio fijo total dividido por sesiones
+          precioUnitario = parseFloat(configuracion.valor) / sesionesPorPaquete;
+        } else if (configuracion.tipo_calculo === 'descuento_porcentaje') {
+          // Aplicar descuento porcentual al precio base
+          const descuentoPorcentaje = parseFloat(configuracion.valor);
+          precioUnitario = precioBase * (1 - descuentoPorcentaje / 100);
+        }
+      }
     }
 
     setLineas(prev => [...prev, {
@@ -310,10 +333,10 @@ const VenderServiciosTab = () => {
       servicio_nombre: tarifaSeleccionada.servicio?.nombre || `Servicio #${tarifaSeleccionada.servicio_id}`,
       motivo_nombre: tarifaSeleccionada.motivo_cita?.nombre || `Motivo #${tarifaSeleccionada.motivo_cita_id}`,
       paquete_nombre: paqueteNombre,
-      sesiones_por_paquete: sesionesPorPaquete,
-      cantidad_paquetes: cantidadPaquetes,
-      sesiones,
-      precio_unitario: parseFloat(tarifaSeleccionada.precio || 0),
+      sesiones_por_paquete: sesionesPorPaquete, // Guarda el mínimo del paquete
+      sesiones, // Sesiones actuales (puede ser >= sesiones_por_paquete)
+      precio_unitario: precioUnitario,
+      precio_base: precioBase,
       descuento_tipo: '',
       descuento_valor: '',
       paciente_linea_id: pacienteLineaId,
@@ -327,19 +350,26 @@ const VenderServiciosTab = () => {
 
   const setSesiones = (id, val) => setLineas(prev => prev.map(l => {
     if (l.id !== id) return l;
-    return l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
-      ? { ...l, cantidad_paquetes: Math.max(1, val) }
-      : { ...l, sesiones: Math.max(1, val) };
+    // Para paquetes: mínimo = sesiones_por_paquete (ej: si es paquete de 4, mínimo 4)
+    // Para sesiones individuales: mínimo 1
+    const minimo = l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
+      ? l.sesiones_por_paquete
+      : 1;
+    return { ...l, sesiones: Math.max(minimo, val) };
   }));
   const setDescuentoLinea = (id, tipo, valor) => setLineas(prev => prev.map(l => l.id === id ? { ...l, descuento_tipo: tipo, descuento_valor: valor } : l));
   const setPacienteLinea = (id, pacId) => setLineas(prev => prev.map(l => l.id === id ? { ...l, paciente_linea_id: pacId } : l));
   const eliminarLinea = (id) => setLineas(prev => prev.filter(l => l.id !== id));
 
   const calcularLinea = (linea) => {
+    // Para paquetes, usar sesiones directamente (no cantidad_paquetes × sesiones_por_paquete)
     const sesionesTotales = linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
-      ? linea.cantidad_paquetes * linea.sesiones_por_paquete
+      ? linea.sesiones
       : linea.sesiones;
+
     const subtotalBruto = sesionesTotales * linea.precio_unitario;
+
+    // Descuento manual
     let descuento = 0;
     if (linea.descuento_tipo && linea.descuento_valor) {
       descuento = linea.descuento_tipo === '%'
@@ -366,7 +396,7 @@ const VenderServiciosTab = () => {
         ? subtotalDespuesDesc * (parseFloat(descuentoGlobal.valor) / 100)
         : parseFloat(descuentoGlobal.valor);
     }
-    // 🆕 Restar también el descuento por promociones
+    // Restar también el descuento por promociones
     const totalConDesc = subtotalDespuesDesc - descuentoGlobalMonto - totalDescuentoPromo;
     const igvTotal = conIgv ? totalConDesc - totalConDesc / 1.18 : 0;
     const baseTotal = conIgv ? totalConDesc / 1.18 : totalConDesc;
@@ -416,12 +446,10 @@ const VenderServiciosTab = () => {
         tipo_comprobante_id: tipoComprobante,
         fecha_venta,
         detalles: lineas.map(l => {
-          const sesionesTotales = l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE
-            ? (l.cantidad_paquetes || 1) * (l.sesiones_por_paquete || 1)
-            : l.sesiones || 1;
+          const sesionesTotales = l.sesiones || 1;
           const det = {
             tipo_venta_id: l.tipo_venta_servicio_id,
-            servicio_id: parseInt(l.servicio_id),
+            servicio_tarifa_id: parseInt(l.servicio_tarifa_id),
             paciente_id: parseInt(l.paciente_linea_id),
             sesiones_totales: sesionesTotales,
             precio_unitario: parseFloat(l.precio_unitario),
@@ -654,11 +682,11 @@ const VenderServiciosTab = () => {
                         {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => setSesiones(linea.id, linea.cantidad_paquetes - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
-                              <span className="w-12 text-center font-semibold">{linea.cantidad_paquetes}</span>
-                              <button onClick={() => setSesiones(linea.id, linea.cantidad_paquetes + 1)} className="p-1 hover:bg-gray-200 rounded"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
+                              <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} className="p-1 hover:bg-gray-200 rounded"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
                             </div>
-                            <div className="text-xs text-purple-600 mt-1">= {calc.sesionesTotales} sesiones</div>
+                            <div className="text-xs text-purple-600 mt-1">Paquete {linea.paquete_nombre} (mín. {linea.sesiones_por_paquete})</div>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2">
@@ -741,7 +769,7 @@ const VenderServiciosTab = () => {
                       <span className="font-semibold text-gray-500">S/ {totales.igv.toFixed(2)}</span>
                     </div>
                   )}
-                  {/* 🆕 Línea de descuento por promociones */}
+                  {/* Línea de descuento por promociones */}
                   {totalDescuentoPromo > 0 && (
                     <div className="flex items-center justify-between text-sm text-green-700">
                       <span className="flex items-center gap-1"><SparklesIcon className="w-3.5 h-3.5" />Descuento promociones</span>
@@ -769,81 +797,125 @@ const VenderServiciosTab = () => {
       </div>
 
       {/* Modal Tipo de Venta */}
-      {mostrarModalTipoVenta && tarifaSeleccionada && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900">¿Cómo deseas agregar este servicio?</h2>
-              <p className="text-sm text-gray-500 mt-1">{tarifaSeleccionada.servicio?.nombre} - {tarifaSeleccionada.motivo_cita?.nombre}</p>
-              <p className="text-sm font-semibold text-[#7B1FA2] mt-2">S/ {parseFloat(tarifaSeleccionada.precio || 0).toFixed(2)} por sesión</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 transition-all">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                    <span className="text-xl font-bold text-blue-700">1</span>
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-gray-900">Sesión Individual</div>
-                    <div className="text-xs text-gray-500">Venta de 1 sesión</div>
-                  </div>
-                </div>
-                <button onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.SESION)}
-                  className="w-full px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                  Agregar Sesión Individual
-                </button>
-              </div>
+    {mostrarModalTipoVenta && tarifaSeleccionada && createPortal(
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+      
+      {/* Header */}
+      <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-gray-900 text-sm">¿Cómo deseas agregar este servicio?</h2>
+          <p className="text-xs text-gray-500">{tarifaSeleccionada.servicio?.nombre} - {tarifaSeleccionada.motivo_cita?.nombre}</p>
+        </div>
+        <span className="text-sm font-bold text-[#7B1FA2]">S/ {parseFloat(tarifaSeleccionada.precio || 0).toFixed(2)}/sesión</span>
+      </div>
 
-              <div className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 transition-all">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                    <span className="text-xl">📦</span>
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-gray-900">Paquete de Sesiones</div>
-                    <div className="text-xs text-gray-500">Conjunto de múltiples sesiones</div>
-                  </div>
-                </div>
-                {paquetes.length === 0 ? (
-                  <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-700 font-semibold">⚠ No hay paquetes disponibles</p>
-                  </div>
-                ) : (
-                  <div className="mb-3">
-                    <label className="block text-xs font-semibold text-gray-600 mb-2">Selecciona el paquete *</label>
-                    <select value={paqueteSeleccionado} onChange={(e) => setPaqueteSeleccionado(e.target.value)}
-                      className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]">
-                      <option value="">Seleccionar paquete...</option>
-                      {paquetes.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.cantidadSesiones} sesiones)</option>)}
-                    </select>
-                    {paqueteSeleccionado && (() => {
-                      const paq = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
-                      const precioU = parseFloat(tarifaSeleccionada.precio || 0);
-                      const sesiones = paq?.cantidadSesiones || 0;
-                      return (
-                        <div className="mt-2 p-2 bg-purple-50 rounded-lg">
-                          <p className="text-xs text-purple-700"><span className="font-semibold">{sesiones} sesiones</span> × S/ {precioU.toFixed(2)}</p>
-                          <p className="text-sm text-purple-900 font-bold mt-1">Total: S/ {(precioU * sesiones).toFixed(2)}</p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-                <button onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.PAQUETE)}
-                  disabled={!paqueteSeleccionado || paquetes.length === 0}
-                  className="w-full px-4 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed">
-                  {paquetes.length === 0 ? 'No hay paquetes disponibles' : 'Agregar Paquete'}
-                </button>
-              </div>
+      {/* Body horizontal */}
+      <div className="p-4 grid grid-cols-2 gap-3">
+
+        {/* Sesión Individual */}
+        <div className="border-2 border-gray-200 rounded-xl p-3 hover:border-blue-400 transition-all flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+              <span className="text-sm font-bold text-blue-700">1</span>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
-              <button onClick={() => { setMostrarModalTipoVenta(false); setTarifaSeleccionada(null); setPaqueteSeleccionado(''); }}
-                className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Cancelar</button>
+            <div>
+              <div className="font-semibold text-gray-900 text-sm">Sesión Individual</div>
+              <div className="text-xs text-gray-500">Venta de 1 sesión</div>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+          <button
+            onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.SESION)}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+          >
+            Agregar Sesión
+          </button>
+        </div>
+
+        {/* Paquete */}
+        <div className="border-2 border-gray-200 rounded-xl p-3 hover:border-purple-400 transition-all flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+              <span className="text-sm">📦</span>
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900 text-sm">Paquete de Sesiones</div>
+              <div className="text-xs text-gray-500">Múltiples sesiones</div>
+            </div>
+          </div>
+
+          {paquetes.length === 0 ? (
+            <p className="text-xs text-yellow-700 font-semibold bg-yellow-50 border border-yellow-200 rounded-lg px-2 py-1 mb-2">⚠ No hay paquetes disponibles</p>
+          ) : (
+            <div className="mb-2">
+              <select
+                value={paqueteSeleccionado}
+                onChange={(e) => setPaqueteSeleccionado(e.target.value)}
+                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+              >
+                <option value="">Seleccionar paquete...</option>
+                {paquetes.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre} ({p.cantidadSesiones} ses.)</option>
+                ))}
+              </select>
+
+              {paqueteSeleccionado && (() => {
+                const paq = paquetes.find(p => p.id === parseInt(paqueteSeleccionado));
+                const precioNormal = parseFloat(tarifaSeleccionada.precio || 0);
+                const sesiones = paq?.cantidadSesiones || 0;
+                const totalNormal = precioNormal * sesiones;
+                const config = (tarifaSeleccionada.precios_paquetes || [])
+                  .find(pp => pp.paquete_id === parseInt(paqueteSeleccionado) && pp.flg_activo === 1);
+
+                let precioUnitarioPaquete = precioNormal;
+                let totalPaquete = totalNormal;
+
+                if (config) {
+                  if (config.tipo_calculo === 'precio_total') {
+                    totalPaquete = parseFloat(config.valor);
+                    precioUnitarioPaquete = totalPaquete / sesiones;
+                  } else if (config.tipo_calculo === 'descuento_porcentaje') {
+                    precioUnitarioPaquete = precioNormal * (1 - parseFloat(config.valor) / 100);
+                    totalPaquete = precioUnitarioPaquete * sesiones;
+                  }
+                }
+
+                return (
+                  <div className="mt-1.5 p-2 bg-purple-50 border border-purple-200 rounded-lg text-xs space-y-0.5">
+                    <div className="text-gray-400 line-through">S/ {totalNormal.toFixed(2)} normal</div>
+                    <div className="font-bold text-purple-700">Total: S/ {totalPaquete.toFixed(2)}</div>
+                    {config && totalPaquete < totalNormal && (
+                      <div className="text-green-700 font-semibold">¡Ahorras S/ {(totalNormal - totalPaquete).toFixed(2)}!</div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          <button
+            onClick={() => agregarItemConTipo(TIPOS_VENTA_SERVICIO.PAQUETE)}
+            disabled={!paqueteSeleccionado || paquetes.length === 0}
+            className="w-full px-3 py-1.5 text-xs font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {paquetes.length === 0 ? 'Sin paquetes' : 'Agregar Paquete'}
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
+        <button
+          onClick={() => { setMostrarModalTipoVenta(false); setTarifaSeleccionada(null); setPaqueteSeleccionado(''); }}
+          className="px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>,
+  document.body
+)}
 
       {/* Modal Crear Comprador Externo */}
       {mostrarModalExterno && createPortal(

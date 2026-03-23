@@ -19,8 +19,8 @@ import {
   XCircle
 } from 'lucide-react';
 import { listarReclamos, obtenerReclamo, responderReclamo, cambiarEstadoReclamo } from '../../services/libroReclamacionesService';
+import { libroReclamacionesService } from '../../services/libroReclamaciones';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { SERVER_BASE_URL } from '../../services/api';
 import { generarPDFReclamo } from '../../utils/generarPDFReclamo';
 
 const ESTADO_COLORS = {
@@ -55,6 +55,7 @@ const PanelAdmin = () => {
   const [enviando, setEnviando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [archivoVisualizando, setArchivoVisualizando] = useState(null);
+  const [urlArchivoVisualizando, setUrlArchivoVisualizando] = useState(null);
 
   // Snackbar de notificaciones
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -146,6 +147,49 @@ const PanelAdmin = () => {
     } finally {
       setCambiandoEstado(false);
     }
+  };
+
+  // Visualizar archivo con autenticación
+  const handleVisualizarArchivo = async (doc) => {
+    try {
+      const urlBlob = await libroReclamacionesService.visualizarArchivoProtegido(doc.ruta_archivo);
+      setArchivoVisualizando(doc);
+      setUrlArchivoVisualizando(urlBlob);
+    } catch (err) {
+      console.error('Error al visualizar archivo:', err);
+      mostrarNotificacion('Error al cargar el archivo', 'error');
+    }
+  };
+
+  // Descargar archivo con autenticación
+  const handleDescargarArchivo = async (doc) => {
+    try {
+      const blob = await libroReclamacionesService.descargarArchivoProtegido(doc.ruta_archivo);
+
+      // Crear URL temporal para descarga
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.nombre_original;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      mostrarNotificacion('✓ Archivo descargado correctamente', 'success');
+    } catch (err) {
+      console.error('Error al descargar archivo:', err);
+      mostrarNotificacion('Error al descargar el archivo', 'error');
+    }
+  };
+
+  // Cerrar visualizador de archivo y limpiar URL
+  const handleCerrarVisualizador = () => {
+    if (urlArchivoVisualizando) {
+      URL.revokeObjectURL(urlArchivoVisualizando);
+    }
+    setArchivoVisualizando(null);
+    setUrlArchivoVisualizando(null);
   };
 
   const getEstadoBadge = (estado) => {
@@ -548,11 +592,6 @@ const PanelAdmin = () => {
                       </div>
                       <div className="space-y-2">
                         {modalReclamo.documentos.map((doc, index) => {
-                          // Usar el endpoint específico para servir archivos (igual que convenios)
-                          const urlArchivo = `${SERVER_BASE_URL}/backend_api/libro-reclamaciones/publico/archivo/${doc.ruta_archivo}`;
-                          console.log('🔍 URL del archivo:', urlArchivo);
-                          console.log('📂 Nombre del archivo:', doc.ruta_archivo);
-
                           return (
                           <div
                             key={doc.id || index}
@@ -565,28 +604,23 @@ const PanelAdmin = () => {
                                 <p className="text-xs text-gray-500">
                                   {doc.mime} - {(doc.tamaño / 1024).toFixed(2)} KB
                                 </p>
-                                <p className="text-xs text-blue-500 font-mono">
-                                  {urlArchivo}
-                                </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => setArchivoVisualizando(doc)}
+                                onClick={() => handleVisualizarArchivo(doc)}
                                 className="flex items-center gap-1 text-[#7B1FA2] hover:text-[#6A1B9A] text-sm font-medium transition-colors"
                               >
                                 <Eye className="w-4 h-4" />
                                 Ver
                               </button>
-                              <a
-                                href={urlArchivo}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => handleDescargarArchivo(doc)}
                                 className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                               >
                                 <Download className="w-4 h-4" />
                                 Descargar
-                              </a>
+                              </button>
                             </div>
                           </div>
                         );
@@ -773,7 +807,7 @@ const PanelAdmin = () => {
       )}
 
       {/* Modal Visualizador de Archivos */}
-      {archivoVisualizando && (
+      {archivoVisualizando && urlArchivoVisualizando && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-[70]">
           <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white">
@@ -784,7 +818,7 @@ const PanelAdmin = () => {
                 </p>
               </div>
               <button
-                onClick={() => setArchivoVisualizando(null)}
+                onClick={handleCerrarVisualizador}
                 className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -795,7 +829,7 @@ const PanelAdmin = () => {
               {archivoVisualizando.mime.startsWith('image/') ? (
                 <div className="w-full h-full flex items-start justify-center">
                   <img
-                    src={`${SERVER_BASE_URL}/backend_api/libro-reclamaciones/publico/archivo/${archivoVisualizando.ruta_archivo}`}
+                    src={urlArchivoVisualizando}
                     alt={archivoVisualizando.nombre_original}
                     className="max-w-full h-auto rounded-lg shadow-lg"
                     style={{ cursor: 'zoom-in' }}
@@ -812,7 +846,7 @@ const PanelAdmin = () => {
                 </div>
               ) : archivoVisualizando.mime === 'application/pdf' ? (
                 <iframe
-                  src={`${SERVER_BASE_URL}/backend_api/libro-reclamaciones/publico/archivo/${archivoVisualizando.ruta_archivo}`}
+                  src={urlArchivoVisualizando}
                   className="w-full h-full min-h-[600px] rounded-lg"
                   title={archivoVisualizando.nombre_original}
                 />
@@ -820,28 +854,25 @@ const PanelAdmin = () => {
                 <div className="text-center p-8">
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-4">Este tipo de archivo no se puede previsualizar</p>
-                  <a
-                    href={`${SERVER_BASE_URL}/backend_api/libro-reclamaciones/publico/archivo/${archivoVisualizando.ruta_archivo}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => handleDescargarArchivo(archivoVisualizando)}
                     className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Download className="w-4 h-4" />
                     Descargar Archivo
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
 
             <div className="p-4 border-t border-gray-200 bg-white flex justify-end">
-              <a
-                href={`${SERVER_BASE_URL}/backend_api/libro-reclamaciones/publico/archivo/${archivoVisualizando.ruta_archivo}`}
-                download
+              <button
+                onClick={() => handleDescargarArchivo(archivoVisualizando)}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 <Download className="w-4 h-4" />
                 Descargar
-              </a>
+              </button>
             </div>
           </div>
         </div>

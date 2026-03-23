@@ -125,3 +125,33 @@ export const desactivarTarifa = (id, user_id) =>
 
 export const activarTarifa = (id, user_id) =>
   api.patch(`/inventario/tarifas/${id}/activar`, { user_id }).then(r => r.data);
+
+// ============================================================
+// INVENTARIO — PRECIOS DE PAQUETES POR SERVICIO
+// ============================================================
+
+export const getPreciosPaquetes = () =>
+  api.get('/servicio-paquete-precio').then(r => r.data);
+
+export const getPreciosPaquetesByServicioTarifa = (servicioTarifaId) =>
+  api.get(`/servicio-paquete-precio/servicio-tarifa/${servicioTarifaId}`).then(r => r.data);
+
+export const getPrecioPaqueteById = (id) =>
+  api.get(`/servicio-paquete-precio/${id}`).then(r => r.data);
+
+/**
+ * dto: {
+ *   servicio_tarifa_id, paquete_id,
+ *   tipo_calculo: 'precio_total' | 'descuento_porcentaje',
+ *   valor,
+ *   user_crea_id?
+ * }
+ */
+export const crearPrecioPaquete = (dto) =>
+  api.post('/servicio-paquete-precio', dto).then(r => r.data);
+
+export const actualizarPrecioPaquete = (id, dto) =>
+  api.put(`/servicio-paquete-precio/${id}`, dto).then(r => r.data);
+
+export const eliminarPrecioPaquete = (id) =>
+  api.delete(`/servicio-paquete-precio/${id}`).then(r => r.data);

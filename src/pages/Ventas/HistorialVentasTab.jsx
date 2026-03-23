@@ -60,12 +60,26 @@ const calcularIgv = (total, tipoComprobanteId) => {
 };
 
 /**
+ * Resuelve el nombre del servicio desde la ruta correcta:
+ * detalle → servicio_tarifa → servicio → nombre
+ */
+const getServicioNombre = (d) =>
+  d?.servicio_tarifa?.servicio?.nombre || '-';
+
+/**
+ * Resuelve el motivo de cita desde:
+ * detalle → servicio_tarifa → motivo_cita → nombre
+ */
+const getMotivoCita = (d) =>
+  d?.servicio_tarifa?.motivo_cita?.nombre || '';
+
+/**
  * Detecta el tipo de beneficio de una promoción aplicada.
  * beneficio_tipo_id: 1=Desc%, 2=Desc fijo, 3=Ítem más barato gratis, 4=Producto de regalo
  */
 const getInfoBeneficio = (promoAplicada) => {
   const reglas = promoAplicada.promocion?.reglas || [];
-  const reglaRegalo    = reglas.find((r) => r.beneficio_tipo_id === 4);
+  const reglaRegalo     = reglas.find((r) => r.beneficio_tipo_id === 4);
   const reglaItemGratis = reglas.find((r) => r.beneficio_tipo_id === 3);
 
   if (reglaRegalo) {
@@ -76,11 +90,7 @@ const getInfoBeneficio = (promoAplicada) => {
     };
   }
   if (reglaItemGratis) {
-    return {
-      esProductoGratis: false,
-      esItemGratis: true,
-      nombreProducto: null,
-    };
+    return { esProductoGratis: false, esItemGratis: true, nombreProducto: null };
   }
   return { esProductoGratis: false, esItemGratis: false, nombreProducto: null };
 };
@@ -111,7 +121,6 @@ const DescuentoLabel = ({ tipoDescuento, valor, monto, className = '' }) => {
 const PanelPromocionesDetalle = ({ promociones = [] }) => {
   if (!promociones || promociones.length === 0) return null;
 
-  // Solo acumular ahorro de promos que son descuento (no producto/ítem gratis)
   const totalAhorrado = promociones.reduce((s, p) => {
     const { esProductoGratis, esItemGratis } = getInfoBeneficio(p);
     return (esProductoGratis || esItemGratis) ? s : s + parseFloat(p.monto_ahorrado || 0);
@@ -151,7 +160,6 @@ const PanelPromocionesDetalle = ({ promociones = [] }) => {
                 )}
               </div>
             </div>
-            {/* Mostrar monto solo si es descuento normal */}
             {!esProductoGratis && !esItemGratis && (
               <span className="text-sm font-bold text-green-700 shrink-0">
                 -{formatMonto(p.monto_ahorrado)}
@@ -171,17 +179,68 @@ const PanelPromocionesDetalle = ({ promociones = [] }) => {
   );
 };
 
+// ─── Helper: construir rows de detalles para ticket ───────────────────────────
+
+/**
+ * Transforma los detalles de una venta en filas listas para renderizar en ticket.
+ * Centralizado aquí para que TicketPreviewHTML y buildTicketHTML usen la misma lógica.
+ */
+const buildDetalleRows = (detalles, tipo, fm) => {
+  const toFloat = (v) => parseFloat(v || 0);
+
+  return (detalles || []).map((d) => {
+    if (tipo === 'servicio') {
+      const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
+      const motivoCita = getMotivoCita(d);
+      const srvNombre  = getServicioNombre(d);
+
+      let desc, cantidad;
+      if (esPaquete && d.paquete) {
+        const spp  = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
+        cantidad   = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
+        const base = srvNombre !== '-'
+          ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}`
+          : `${d.paquete.nombre} (${spp} SES.)`;
+        desc = motivoCita ? `${base} [${motivoCita}]` : base;
+      } else {
+        cantidad   = (d.sesiones_totales || 0).toFixed(2);
+        desc       = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
+      }
+
+      const precioUnitario = toFloat(d.precio_unitario);
+      const subtotal       = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
+      const paciente       = d.paciente
+        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        : null;
+
+      return {
+        desc,
+        cantidad,
+        precio:   fm(precioUnitario),
+        subtotal: fm(subtotal),
+        paciente,
+      };
+    }
+
+    // Producto
+    return {
+      desc:     d.producto?.nombre || '-',
+      cantidad: toFloat(d.cantidad).toFixed(2),
+      precio:   fm(toFloat(d.precio_unitario)),
+      subtotal: fm(toFloat(d.subtotal)),
+      paciente: null,
+    };
+  });
+};
+
 // ─── TicketPreviewHTML ────────────────────────────────────────────────────────
 
 const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
   const promociones = venta.promociones_aplicadas || [];
+  const toFloat     = (v) => parseFloat(v || 0);
+  const total       = toFloat(venta.total);
+  const descuento   = toFloat(venta.descuento_monto);
 
-  const toFloat = (v) => parseFloat(v || 0);
-  const total     = toFloat(venta.total);
-  const descuento = toFloat(venta.descuento_monto);
-  const detalles  = venta.detalles || [];
-
-  // Solo sumar descuentos reales (excluir producto/ítem gratis)
   const totalPromos = promociones.reduce((s, p) => {
     const { esProductoGratis, esItemGratis } = getInfoBeneficio(p);
     return (esProductoGratis || esItemGratis) ? s : s + parseFloat(p.monto_ahorrado || 0);
@@ -193,33 +252,22 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
     if (venta.comprador_externo) return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '-';
     return '-';
   })();
-  const dni = venta.paciente?.dni || venta.paciente?.numero_documento || venta.responsable?.dni || venta.responsable?.numero_documento || venta.comprador_externo?.dni || '-';
+  const dni = venta.paciente?.dni || venta.paciente?.numero_documento
+    || venta.responsable?.dni || venta.responsable?.numero_documento
+    || venta.comprador_externo?.dni || '-';
 
   const fechaEmision = (() => {
     const str = String(venta.fecha_venta || '');
     const [datePart, timePart] = str.split('T');
     const [y, m, d] = datePart.split('-').map(Number);
-    if (timePart) { const [h, min] = timePart.split(':').map(Number); return new Date(y, m - 1, d, h, min).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    if (timePart) {
+      const [h, min] = timePart.split(':').map(Number);
+      return new Date(y, m - 1, d, h, min).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
     return new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   })();
 
-  const rows = detalles.map((d) => {
-    if (tipo === 'servicio') {
-      const esPaquete = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
-      let desc, cantidad;
-      if (esPaquete && d.paquete) {
-        const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
-        cantidad = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
-        const srv = d.servicio?.nombre || '';
-        desc = srv ? `${d.paquete.nombre} (${spp} SES.) - ${srv}` : `${d.paquete.nombre} (${spp} SES.)`;
-      } else { cantidad = (d.sesiones_totales || 0).toFixed(2); desc = d.servicio?.nombre || '-'; }
-      const precio   = toFloat(d.precio_unitario) * (d.sesiones_totales || 1);
-      const subtotal = precio - toFloat(d.descuento_monto);
-      const paciente = d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : '-';
-      return { desc, cantidad, precio: formatMoney(precio), subtotal: formatMoney(subtotal), paciente };
-    }
-    return { desc: d.producto?.nombre || '-', cantidad: toFloat(d.cantidad).toFixed(2), precio: formatMoney(toFloat(d.precio_unitario)), subtotal: formatMoney(toFloat(d.subtotal)), paciente: null };
-  });
+  const rows = buildDetalleRows(venta.detalles, tipo, formatMoney);
 
   const s = {
     wrap:    { fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif', fontSize: '12px', lineHeight: '1.4', color: '#111', background: '#fff', width: '270px', margin: '0 auto', padding: '12px 10px', boxShadow: '0 2px 16px rgba(0,0,0,0.13)', borderRadius: '4px', fontWeight: '500' },
@@ -363,15 +411,14 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
 
 const buildTicketHTML = (venta, tipo) => {
   const promociones = venta.promociones_aplicadas || [];
-
-  const toFloat = (v) => parseFloat(v || 0);
-  const fm      = (n)  => parseFloat(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const total   = toFloat(venta.total);
-  const desc    = toFloat(venta.descuento_monto);
+  const toFloat     = (v) => parseFloat(v || 0);
+  const fm          = (n) => parseFloat(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const total       = toFloat(venta.total);
+  const desc        = toFloat(venta.descuento_monto);
 
   const totalPromos = promociones.reduce((s, p) => {
-    const reglas = p.promocion?.reglas || [];
-    const esGratis = reglas.some((r) => r.beneficio_tipo_id === 3 || r.beneficio_tipo_id === 4);
+    const reglas    = p.promocion?.reglas || [];
+    const esGratis  = reglas.some((r) => r.beneficio_tipo_id === 3 || r.beneficio_tipo_id === 4);
     return esGratis ? s : s + parseFloat(p.monto_ahorrado || 0);
   }, 0);
 
@@ -379,7 +426,10 @@ const buildTicketHTML = (venta, tipo) => {
     const str = String(venta.fecha_venta || '');
     const [datePart, timePart] = str.split('T');
     const [y, m, d] = datePart.split('-').map(Number);
-    if (timePart) { const [h, min] = timePart.split(':').map(Number); return new Date(y, m - 1, d, h, min).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    if (timePart) {
+      const [h, min] = timePart.split(':').map(Number);
+      return new Date(y, m - 1, d, h, min).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
     return new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   })();
 
@@ -401,23 +451,8 @@ const buildTicketHTML = (venta, tipo) => {
     ? [['Fecha emisión', fechaEmision], ['Comprador', nombreComprador], ['DNI', dniComprador], ['Dirección', '-']]
     : [['Fecha emisión', fechaEmision], ['Cliente', nombreCliente], ['DNI', dni], ['Dirección', '-']];
 
-  const rows = (venta.detalles || []).map(d => {
-    if (tipo === 'servicio') {
-      const esPaquete = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
-      let dsc, cant;
-      if (esPaquete && d.paquete) {
-        const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
-        cant = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
-        const srv = d.servicio?.nombre || '';
-        dsc = srv ? `${d.paquete.nombre} (${spp} SES.) - ${srv}` : `${d.paquete.nombre} (${spp} SES.)`;
-      } else { cant = (d.sesiones_totales || 0).toFixed(2); dsc = d.servicio?.nombre || '-'; }
-      const precio = toFloat(d.precio_unitario) * (d.sesiones_totales || 1);
-      const sub    = precio - toFloat(d.descuento_monto);
-      const pac    = d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null;
-      return { desc: dsc, cantidad: cant, precio: fm(precio), subtotal: fm(sub), paciente: pac };
-    }
-    return { desc: d.producto?.nombre || '-', cantidad: toFloat(d.cantidad).toFixed(2), precio: fm(toFloat(d.precio_unitario)), subtotal: fm(toFloat(d.subtotal)), paciente: null };
-  });
+  // Usar el mismo helper centralizado
+  const rows = buildDetalleRows(venta.detalles, tipo, fm);
 
   const nAL = (num) => {
     const U=['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE'],D=['','DIEZ','VEINTE','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'],E=['DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISEIS','DIECISIETE','DIECIOCHO','DIECINUEVE'],C=['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
@@ -425,8 +460,8 @@ const buildTicketHTML = (venta, tipo) => {
     if(!num)return 'CERO';if(num<1000)return g(num);if(num<1000000)return(Math.floor(num/1000)===1?'MIL':g(Math.floor(num/1000))+' MIL')+(num%1000?' '+g(num%1000):'');return num.toString();
   };
   const importeLetras = `${nAL(Math.floor(total))} CON ${String(Math.round((total % 1) * 100)).padStart(2, '0')}/100 SOLES`;
-  const tipoNombre   = (venta.tipo_comprobante?.nombre || 'TICKET DE VENTA').toUpperCase();
-  const requiereIGV  = tipoNombre.includes('BOLETA') || tipoNombre.includes('FACTURA');
+  const tipoNombre    = (venta.tipo_comprobante?.nombre || 'TICKET DE VENTA').toUpperCase();
+  const requiereIGV   = tipoNombre.includes('BOLETA') || tipoNombre.includes('FACTURA');
 
   const promosHTML = promociones.length > 0 ? `
     <div style="border-top:1px dashed #bbf7d0;margin-top:3px;padding-top:3px">
@@ -739,11 +774,18 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold text-sm text-gray-900">
-                            {tipo === 'servicio' ? d.servicio?.nombre || d.paquete?.nombre || '—' : d.producto?.nombre || '—'}
+                            {tipo === 'servicio'
+                              ? getServicioNombre(d) !== '-' ? getServicioNombre(d) : d.paquete?.nombre || '—'
+                              : d.producto?.nombre || '—'}
                           </p>
                           {tipo === 'servicio' && d.tipo_venta?.nombre && (
                             <span className={`px-2 py-0.5 text-xs font-semibold rounded ${d.tipo_venta.nombre.toLowerCase().includes('paquete') ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                               {d.tipo_venta.nombre}
+                            </span>
+                          )}
+                          {tipo === 'servicio' && getMotivoCita(d) && (
+                            <span className="px-2 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 rounded">
+                              {getMotivoCita(d)}
                             </span>
                           )}
                         </div>
@@ -823,7 +865,10 @@ const HistorialVentasTab = () => {
       const filtrosAPI = {};
       if (filtros.fechaDesde) filtrosAPI.desde = filtros.fechaDesde;
       if (filtros.fechaHasta) filtrosAPI.hasta = filtros.fechaHasta;
-      const [servsData, prodsData] = await Promise.all([getVentasServicios(filtrosAPI), getVentasProductos(filtrosAPI)]);
+      const [servsData, prodsData] = await Promise.all([
+        getVentasServicios(filtrosAPI),
+        getVentasProductos(filtrosAPI),
+      ]);
       setVentasServicios(servsData || []);
       setVentasProductos(prodsData || []);
     } catch (err) { console.error('Error cargando ventas:', err); }
@@ -835,7 +880,8 @@ const HistorialVentasTab = () => {
     ...ventasProductos.map(v => ({ ...v, tipo: 'producto' })),
   ].sort((a, b) => new Date(b.created_at || b.fecha_venta) - new Date(a.created_at || a.fecha_venta));
 
-  const ventasFiltradas = filtros.tipo === 'todos' ? ventasCombinadas
+  const ventasFiltradas = filtros.tipo === 'todos'
+    ? ventasCombinadas
     : ventasCombinadas.filter(v => filtros.tipo === 'servicios' ? v.tipo === 'servicio' : v.tipo === 'producto');
 
   const totalMonto      = ventasFiltradas.reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
@@ -940,8 +986,10 @@ const HistorialVentasTab = () => {
                         <td className="px-4 py-4 text-gray-700">{formatFecha(v.fecha_venta)}</td>
                         <td className="px-4 py-4 text-gray-600 text-xs">{tipoPagadorNombre(v.tipo_pagador_id || v.tipo_comprador_id)}</td>
                         <td className="px-4 py-4 text-gray-900 text-sm">
-                          {v.paciente ? `${v.paciente.nombres} ${v.paciente.apellido_paterno} ${v.paciente.apellido_materno || ''}`.trim()
-                            : v.responsable ? `${v.responsable.nombres} ${v.responsable.apellido_paterno} ${v.responsable.apellido_materno || ''}`.trim()
+                          {v.paciente
+                            ? `${v.paciente.nombres} ${v.paciente.apellido_paterno} ${v.paciente.apellido_materno || ''}`.trim()
+                            : v.responsable
+                            ? `${v.responsable.nombres} ${v.responsable.apellido_paterno} ${v.responsable.apellido_materno || ''}`.trim()
                             : v.comprador_externo ? v.comprador_externo.nombre : '—'}
                         </td>
                         <td className="px-4 py-4 text-center">

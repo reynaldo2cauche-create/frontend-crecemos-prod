@@ -141,23 +141,28 @@ const buildTableRows = (venta, tipo) =>
       const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
       let descripcion;
       let cantidad;
+      const motivoCita = d.servicio_tarifa?.motivo_cita?.nombre || '';
+      
+
 
       if (esPaquete && d.paquete) {
         const sesionesPorPaquete = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
         const sesionesTotales = d.sesiones_totales || 0;
         cantidad = Math.round(sesionesTotales / sesionesPorPaquete);
 
-        const nombreServicio = d.servicio?.nombre || '';
-        descripcion = nombreServicio
+        const nombreServicio = d.servicio_tarifa.servicio?.nombre || '';
+        const baseDesc = nombreServicio
           ? `${d.paquete.nombre} (${sesionesPorPaquete} SES.) - ${nombreServicio}`
           : `${d.paquete.nombre} (${sesionesPorPaquete} SES.)`;
+        descripcion = motivoCita ? `${baseDesc} [${motivoCita}]` : baseDesc;
       } else {
         cantidad = d.sesiones_totales || 0;
-        descripcion = d.servicio?.nombre || '-';
+        const baseDesc = d.servicio_tarifa?.servicio?.nombre || '-';
+        descripcion =   motivoCita ? `${baseDesc} - [${motivoCita}]` : baseDesc;
       }
 
-      const precioUnitario = toFloat(d.precio_unitario) * (d.sesiones_totales || 1);
-      const subtotal       = precioUnitario - toFloat(d.descuento_monto);
+      const precioUnitario = toFloat(d.precio_unitario);
+      const subtotal       = (precioUnitario * (d.sesiones_totales || 1)) - toFloat(d.descuento_monto);
       const pacienteNombre = d.paciente
         ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
         : '-';
