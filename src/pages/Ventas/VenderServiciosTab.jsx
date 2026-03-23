@@ -624,7 +624,14 @@ const VenderServiciosTab = () => {
                     {itemsFiltrados.slice(0, 10).map(item => (
                       <button key={item.id} onClick={() => seleccionarTarifa(item)}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                        <div className="font-semibold text-gray-900">{item.servicio?.nombre || `Servicio #${item.servicio_id}`}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900">{item.servicio?.nombre || `Servicio #${item.servicio_id}`}</span>
+                          {item.servicio?.area?.nombre && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-50 text-purple-700">
+                              {item.servicio.area.nombre}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">Motivo: {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`} | S/ {parseFloat(item.precio || 0).toFixed(2)}</div>
                       </button>
                     ))}

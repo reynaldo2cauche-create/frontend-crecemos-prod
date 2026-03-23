@@ -137,19 +137,40 @@ const TarifaModal = ({ tarifa, servicios, motivos, onClose, onSaved }) => {
 
             <div>
               <label className={labelClass}>Servicio *</label>
-              <select
-                name="servicio_id"
-                value={form.servicio_id}
-                onChange={handleChange}
-                required
-                disabled={isEdit}
-                className={`${inputClass} ${isEdit ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              >
-                <option value="">Seleccionar servicio...</option>
-                {servicios.map((s) => (
-                  <option key={s.id} value={s.id}>{s.nombre}</option>
-                ))}
-              </select>
+             <select
+  name="servicio_id"
+  value={form.servicio_id}
+  onChange={handleChange}
+  required
+  disabled={isEdit}
+  className={`${inputClass} ${isEdit ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+>
+  <option value="">Seleccionar servicio...</option>
+  {(() => {
+    const agrupados = {};
+    servicios.forEach(s => {
+      const areaNombre = s.area?.nombre || 'Otros';
+      if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
+      agrupados[areaNombre].push(s);
+    });
+    const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
+    const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+      const indexA = ordenAreas.indexOf(a);
+      const indexB = ordenAreas.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+    return areasOrdenadas.map(areaNombre => (
+      <optgroup key={areaNombre} label={areaNombre}>
+        {agrupados[areaNombre].map(s => (
+          <option key={s.id} value={s.id}>{s.nombre}</option>
+        ))}
+      </optgroup>
+    ));
+  })()}
+</select>
               {isEdit && (
                 <p className="text-xs text-gray-400 mt-1">El servicio no se puede cambiar. Crea una nueva tarifa si lo necesitas.</p>
               )}
@@ -406,6 +427,7 @@ const TarifasTab = () => {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Área</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Motivo de Cita</th>
                   <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Precio</th>
                   <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Estado</th>
@@ -422,6 +444,11 @@ const TarifasTab = () => {
                       <p className="font-semibold text-gray-900">
                         {t._servicio?.nombre ?? `Servicio #${t.servicio_id}`}
                       </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-700">
+                        {t._servicio?.area?.nombre ?? '-'}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-gray-600">
                       {t._motivo?.nombre ?? `Motivo #${t.motivo_cita_id}`}

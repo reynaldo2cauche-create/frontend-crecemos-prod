@@ -26,7 +26,7 @@ import { useMotivosCita } from '../../hooks/useMotivosCita';
 import { useHistorialCita } from '../../hooks/useHistorialCita';
 import { useTrabajadores } from '../../hooks/useTrabajadores';
 import { ROLES } from '../../constants/roles';
-import api, { obtenerSesionesDisponibles } from '../../services/api';
+import api from '../../services/api';
 import { useGeofencing } from '../../hooks/useGeofencing';
 
 const ModalAgendarCita = ({
@@ -69,10 +69,6 @@ const ModalAgendarCita = ({
   const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [copiado, setCopiado] = useState(false);
   const [cargandoRecordatorio, setCargandoRecordatorio] = useState(false);
-
-  // ========== ESTADOS PARA SESIONES/VENTAS DISPONIBLES ==========
-  const [sesionesDisponibles, setSesionesDisponibles] = useState([]);
-  const [cargandoSesiones, setCargandoSesiones] = useState(false);
 
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
@@ -117,40 +113,6 @@ const ModalAgendarCita = ({
       setModalYaAbierto(false);
     }
   }, [open]);
-
-  // ========== CARGAR SESIONES DISPONIBLES CUANDO CAMBIA EL PACIENTE ==========
-  useEffect(() => {
-    const cargarSesiones = async () => {
-      const pacienteId = formularioCita.paciente_id;
-      const servicioId = formularioCita.servicio_id;
-
-      // Solo cargar si hay paciente seleccionado y es cita normal
-      if (!pacienteId || tipoCita !== 'NORMAL') {
-        setSesionesDisponibles([]);
-        return;
-      }
-
-      setCargandoSesiones(true);
-      try {
-        const sesiones = await obtenerSesionesDisponibles(pacienteId, servicioId);
-        setSesionesDisponibles(sesiones);
-
-        console.log(`📦 Sesiones disponibles para paciente ${pacienteId}:`, sesiones);
-
-        // Si hay sesiones disponibles y no hay una seleccionada, pre-seleccionar la primera
-        if (sesiones.length > 0 && !formularioCita.venta_servicio_detalle_id) {
-          onFormularioChange('venta_servicio_detalle_id', sesiones[0].id);
-        }
-      } catch (error) {
-        console.error('Error al cargar sesiones disponibles:', error);
-        setSesionesDisponibles([]);
-      } finally {
-        setCargandoSesiones(false);
-      }
-    };
-
-    cargarSesiones();
-  }, [formularioCita.paciente_id, formularioCita.servicio_id, tipoCita]);
 
   // ========== FUNCIONES DE ASISTENCIA ==========
   const cargarSeguimientoAsistencia = useCallback(async () => {
@@ -1132,26 +1094,30 @@ const handleGuardar = useCallback(async () => {
                             if (!Array.isArray(lista) || lista.length === 0) {
                               return <option disabled>No hay servicios disponibles</option>;
                             }
-                            const areasMap = { 1: 'Infantil y Adolescentes', 2: 'Adultos' };
                             const agrupados = {};
                             lista.forEach(srv => {
-                              const areaId = srv.area_id || srv.area?.id;
-                              const areaNombre = areasMap[areaId] || 'Otros';
+                              const areaNombre = srv.area?.nombre || 'Otros';
                               if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
                               agrupados[areaNombre].push(srv);
                             });
                             const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                            return ordenAreas
-                              .filter(area => agrupados[area] && agrupados[area].length > 0)
-                              .map(areaNombre => (
-                                <optgroup key={areaNombre} label={areaNombre}>
-                                  {agrupados[areaNombre].map(srv => (
-                                    <option key={srv.id} value={srv.id}>
-                                      {srv.nombre || 'Sin nombre'}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ));
+                            const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+                              const indexA = ordenAreas.indexOf(a);
+                              const indexB = ordenAreas.indexOf(b);
+                              if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                              if (indexA === -1) return 1;
+                              if (indexB === -1) return -1;
+                              return indexA - indexB;
+                            });
+                            return areasOrdenadas.map(areaNombre => (
+                              <optgroup key={areaNombre} label={areaNombre}>
+                                {agrupados[areaNombre].map(srv => (
+                                  <option key={srv.id} value={srv.id}>
+                                    {srv.nombre || 'Sin nombre'}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ));
                           })()}
                         </select>
                       </div>
@@ -1232,7 +1198,6 @@ const handleGuardar = useCallback(async () => {
                                   const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
                                   const horaActual = formularioCita.fechasHoras[0].horaInicio;
 
-                                  // Si hay una hora seleccionada que no está en la lista, agregarla
                                   if (horaActual && !horasDisponibles.includes(horaActual)) {
                                     const todasLasHoras = [...horasDisponibles, horaActual].sort();
                                     return todasLasHoras.map(hora => (
@@ -1262,7 +1227,6 @@ const handleGuardar = useCallback(async () => {
                                       const [h, m] = horaActual.split(':').map(Number);
                                       const minutosActuales = h * 60 + m;
                                       const nuevosMinutos = minutosActuales - 10;
-
                                       if (nuevosMinutos >= 0) {
                                         const nuevaH = Math.floor(nuevosMinutos / 60);
                                         const nuevaM = nuevosMinutos % 60;
@@ -1283,7 +1247,6 @@ const handleGuardar = useCallback(async () => {
                                       const [h, m] = horaActual.split(':').map(Number);
                                       const minutosActuales = h * 60 + m;
                                       const nuevosMinutos = minutosActuales + 10;
-
                                       if (nuevosMinutos < 24 * 60) {
                                         const nuevaH = Math.floor(nuevosMinutos / 60);
                                         const nuevaM = nuevosMinutos % 60;
@@ -1514,24 +1477,28 @@ const handleGuardar = useCallback(async () => {
                                   if (!Array.isArray(lista) || lista.length === 0) {
                                     return <option disabled>No hay servicios</option>;
                                   }
-                                  const areasMap = { 1: 'Infantil y Adolescentes', 2: 'Adultos' };
                                   const agrupados = {};
                                   lista.forEach(srv => {
-                                    const areaId = srv.area_id || srv.area?.id;
-                                    const areaNombre = areasMap[areaId] || 'Otros';
+                                    const areaNombre = srv.area?.nombre || 'Otros';
                                     if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
                                     agrupados[areaNombre].push(srv);
                                   });
                                   const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                                  return ordenAreas
-                                    .filter(area => agrupados[area] && agrupados[area].length > 0)
-                                    .map(areaNombre => (
-                                      <optgroup key={areaNombre} label={areaNombre}>
-                                        {agrupados[areaNombre].map(srv => (
-                                          <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
-                                        ))}
-                                      </optgroup>
-                                    ));
+                                  const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+                                    const indexA = ordenAreas.indexOf(a);
+                                    const indexB = ordenAreas.indexOf(b);
+                                    if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                                    if (indexA === -1) return 1;
+                                    if (indexB === -1) return -1;
+                                    return indexA - indexB;
+                                  });
+                                  return areasOrdenadas.map(areaNombre => (
+                                    <optgroup key={areaNombre} label={areaNombre}>
+                                      {agrupados[areaNombre].map(srv => (
+                                        <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
+                                      ))}
+                                    </optgroup>
+                                  ));
                                 })()}
                               </select>
                               {!esTerapeuta && !modoSoloLectura && (
@@ -1622,8 +1589,6 @@ const handleGuardar = useCallback(async () => {
                                 {formularioCita.fechasHoras?.[0]?.fecha && (() => {
                                   const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
                                   const horaActual = formularioCita.fechasHoras[0].horaInicio;
-
-                                  // Si hay una hora seleccionada que no está en la lista, agregarla
                                   if (horaActual && !horasDisponibles.includes(horaActual)) {
                                     const todasLasHoras = [...horasDisponibles, horaActual].sort();
                                     return todasLasHoras.map(hora => (
@@ -1636,13 +1601,11 @@ const handleGuardar = useCallback(async () => {
                                       </option>
                                     ));
                                   }
-
                                   return horasDisponibles.map(hora => (
                                     <option key={hora} value={hora}>{hora}</option>
                                   ));
                                 })()}
                               </select>
-
                               {formularioCita.fechasHoras?.[0]?.horaInicio && (
                                 <div className="flex gap-1">
                                   <button
@@ -1651,42 +1614,30 @@ const handleGuardar = useCallback(async () => {
                                       if (modoSoloLectura) return;
                                       const horaActual = formularioCita.fechasHoras[0].horaInicio;
                                       const [h, m] = horaActual.split(':').map(Number);
-                                      const minutosActuales = h * 60 + m;
-                                      const nuevosMinutos = minutosActuales - 10;
-
+                                      const nuevosMinutos = h * 60 + m - 10;
                                       if (nuevosMinutos >= 0) {
-                                        const nuevaH = Math.floor(nuevosMinutos / 60);
-                                        const nuevaM = nuevosMinutos % 60;
-                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
                                         onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
                                       }
                                     }}
                                     disabled={esTerapeuta || modoSoloLectura}
                                     className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    -10 min
-                                  </button>
+                                  >-10 min</button>
                                   <button
                                     type="button"
                                     onClick={() => {
                                       if (modoSoloLectura) return;
                                       const horaActual = formularioCita.fechasHoras[0].horaInicio;
                                       const [h, m] = horaActual.split(':').map(Number);
-                                      const minutosActuales = h * 60 + m;
-                                      const nuevosMinutos = minutosActuales + 10;
-
+                                      const nuevosMinutos = h * 60 + m + 10;
                                       if (nuevosMinutos < 24 * 60) {
-                                        const nuevaH = Math.floor(nuevosMinutos / 60);
-                                        const nuevaM = nuevosMinutos % 60;
-                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
                                         onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
                                       }
                                     }}
                                     disabled={esTerapeuta || modoSoloLectura}
                                     className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    +10 min
-                                  </button>
+                                  >+10 min</button>
                                 </div>
                               )}
                             </div>
@@ -1910,60 +1861,31 @@ const handleGuardar = useCallback(async () => {
                           if (!Array.isArray(lista) || lista.length === 0) {
                             return <option disabled>No hay servicios</option>;
                           }
-                          const areasMap = { 1: 'Infantil y Adolescentes', 2: 'Adultos' };
                           const agrupados = {};
                           lista.forEach(srv => {
-                            const areaId = srv.area_id || srv.area?.id;
-                            const areaNombre = areasMap[areaId] || 'Otros';
+                            const areaNombre = srv.area?.nombre || 'Otros';
                             if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
                             agrupados[areaNombre].push(srv);
                           });
                           const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                          return ordenAreas
-                            .filter(area => agrupados[area] && agrupados[area].length > 0)
-                            .map(areaNombre => (
-                              <optgroup key={areaNombre} label={areaNombre}>
-                                {agrupados[areaNombre].map(srv => (
-                                  <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
-                                ))}
-                              </optgroup>
-                            ));
+                          const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+                            const indexA = ordenAreas.indexOf(a);
+                            const indexB = ordenAreas.indexOf(b);
+                            if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                            if (indexA === -1) return 1;
+                            if (indexB === -1) return -1;
+                            return indexA - indexB;
+                          });
+                          return areasOrdenadas.map(areaNombre => (
+                            <optgroup key={areaNombre} label={areaNombre}>
+                              {agrupados[areaNombre].map(srv => (
+                                <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
+                              ))}
+                            </optgroup>
+                          ));
                         })()}
                       </select>
                     </div>
-
-                    {/* Sesiones Disponibles (Solo si hay paciente y es cita normal) */}
-                    {formularioCita.paciente_id && tipoCita === 'NORMAL' && (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Sesión/Paquete a Usar <span className="text-red-500">*</span>
-                        </label>
-                        {cargandoSesiones ? (
-                          <div className="w-full px-4 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-500">
-                            Cargando sesiones disponibles...
-                          </div>
-                        ) : sesionesDisponibles.length > 0 ? (
-                          <select
-                            value={formularioCita.venta_servicio_detalle_id || ''}
-                            onChange={(e) => onFormularioChange('venta_servicio_detalle_id', e.target.value)}
-                            disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">Seleccionar sesión...</option>
-                            {sesionesDisponibles.map((sesion) => (
-                              <option key={sesion.id} value={sesion.id}>
-                                {sesion.descripcion}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div className="w-full px-4 py-3 bg-red-50 border-l-4 border-red-400 rounded-lg">
-                            <p className="text-sm text-red-700 font-semibold">⚠️ Este paciente no tiene sesiones disponibles</p>
-                            <p className="text-xs text-red-600 mt-1">Debe comprar un paquete o sesión antes de agendar una cita.</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     {/* Duración */}
                     <div>
@@ -2037,71 +1959,41 @@ const handleGuardar = useCallback(async () => {
                                 {formularioCita.fechasHoras?.[0]?.fecha && (() => {
                                   const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
                                   const horaActual = formularioCita.fechasHoras[0].horaInicio;
-
-                                  // Si hay una hora seleccionada que no está en la lista, agregarla
                                   if (horaActual && !horasDisponibles.includes(horaActual)) {
                                     const todasLasHoras = [...horasDisponibles, horaActual].sort();
                                     return todasLasHoras.map(hora => (
-                                      <option
-                                        key={hora}
-                                        value={hora}
-                                        style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}
-                                      >
+                                      <option key={hora} value={hora} style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}>
                                         {hora}{hora === horaActual ? ' (ajustada)' : ''}
                                       </option>
                                     ));
                                   }
-
                                   return horasDisponibles.map(hora => (
                                     <option key={hora} value={hora}>{hora}</option>
                                   ));
                                 })()}
                               </select>
-
                               {formularioCita.fechasHoras?.[0]?.horaInicio && (
                                 <div className="flex gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (modoSoloLectura) return;
-                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
-                                      const [h, m] = horaActual.split(':').map(Number);
-                                      const minutosActuales = h * 60 + m;
-                                      const nuevosMinutos = minutosActuales - 10;
-
-                                      if (nuevosMinutos >= 0) {
-                                        const nuevaH = Math.floor(nuevosMinutos / 60);
-                                        const nuevaM = nuevosMinutos % 60;
-                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
-                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
-                                      }
-                                    }}
-                                    disabled={esTerapeuta || modoSoloLectura}
-                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    -10 min
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (modoSoloLectura) return;
-                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
-                                      const [h, m] = horaActual.split(':').map(Number);
-                                      const minutosActuales = h * 60 + m;
-                                      const nuevosMinutos = minutosActuales + 10;
-
-                                      if (nuevosMinutos < 24 * 60) {
-                                        const nuevaH = Math.floor(nuevosMinutos / 60);
-                                        const nuevaM = nuevosMinutos % 60;
-                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
-                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
-                                      }
-                                    }}
-                                    disabled={esTerapeuta || modoSoloLectura}
-                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    +10 min
-                                  </button>
+                                  <button type="button" onClick={() => {
+                                    if (modoSoloLectura) return;
+                                    const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                    const [h, m] = horaActual.split(':').map(Number);
+                                    const nuevosMinutos = h * 60 + m - 10;
+                                    if (nuevosMinutos >= 0) {
+                                      const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
+                                      onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                    }
+                                  }} disabled={esTerapeuta || modoSoloLectura} className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed">-10 min</button>
+                                  <button type="button" onClick={() => {
+                                    if (modoSoloLectura) return;
+                                    const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                    const [h, m] = horaActual.split(':').map(Number);
+                                    const nuevosMinutos = h * 60 + m + 10;
+                                    if (nuevosMinutos < 24 * 60) {
+                                      const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
+                                      onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                    }
+                                  }} disabled={esTerapeuta || modoSoloLectura} className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed">+10 min</button>
                                 </div>
                               )}
                             </div>
@@ -2131,65 +2023,41 @@ const handleGuardar = useCallback(async () => {
                             formularioCita.fechasHoras.map((fechaHora, index) => (
                               <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
                                 {!esTerapeuta && !modoSoloLectura && formularioCita.fechasHoras.length > 1 && (
-                                  <button
-                                    onClick={() => onFormularioChange('eliminarFechaHora', index)}
-                                    className="absolute top-2 right-2 text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all"
-                                  >
+                                  <button onClick={() => onFormularioChange('eliminarFechaHora', index)} className="absolute top-2 right-2 text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all">
                                     <X className="w-4 h-4" />
                                   </button>
                                 )}
                                 <div className="grid grid-cols-2 gap-3">
-                                  <input
-                                    type="date"
-                                    value={fechaHora.fecha}
-                                    onChange={(e) => {
-                                      if (modoSoloLectura) return;
-                                      const fecha = new Date(e.target.value + 'T00:00:00');
-                                      const diaSemana = fecha.getDay();
-                                      if (diaSemana >= 1 && diaSemana <= 6) {
-                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
-                                      } else {
-                                        alert('Solo se pueden agendar citas de lunes a sábado');
-                                      }
-                                    }}
-                                    disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
-                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                                  />
-                                  <select
-                                    value={fechaHora.horaInicio || ''}
-                                    onChange={(e) => {
-                                      if (modoSoloLectura) return;
-                                      onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value });
-                                    }}
-                                    disabled={esTerapeuta || modoSoloLectura || !fechaHora.fecha}
-                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                                  >
-                                    <option value="">
-                                      {!fechaHora.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                                    </option>
-                                    {fechaHora.fecha &&
-                                      generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                        <option key={hora} value={hora}>{hora}</option>
-                                      ))
+                                  <input type="date" value={fechaHora.fecha} onChange={(e) => {
+                                    if (modoSoloLectura) return;
+                                    const fecha = new Date(e.target.value + 'T00:00:00');
+                                    const diaSemana = fecha.getDay();
+                                    if (diaSemana >= 1 && diaSemana <= 6) {
+                                      onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                    } else {
+                                      alert('Solo se pueden agendar citas de lunes a sábado');
                                     }
+                                  }} disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50" />
+                                  <select value={fechaHora.horaInicio || ''} onChange={(e) => {
+                                    if (modoSoloLectura) return;
+                                    onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value });
+                                  }} disabled={esTerapeuta || modoSoloLectura || !fechaHora.fecha} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50">
+                                    <option value="">{!fechaHora.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}</option>
+                                    {fechaHora.fecha && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                      <option key={hora} value={hora}>{hora}</option>
+                                    ))}
                                   </select>
                                 </div>
                                 {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
                                   <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
                                     <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                                    <div className="flex-1">
-                                      <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
-                                      <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
-                                    </div>
+                                    <div className="flex-1"><p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p><p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p></div>
                                   </div>
                                 )}
                                 {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
                                   <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
                                     <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                                    <div className="flex-1">
-                                      <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
-                                      <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
-                                    </div>
+                                    <div className="flex-1"><p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p><p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p></div>
                                   </div>
                                 )}
                               </div>
@@ -2487,13 +2355,8 @@ const handleGuardar = useCallback(async () => {
                         }`}
                       >
                         {guardandoAsistencia ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                            Guardando...
-                          </>
-                        ) : (
-                          '✓ Asistió'
-                        )}
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '✓ Asistió'}
                       </button>
                       <button
                         onClick={() => handleRecepcionMarcar(
@@ -2507,13 +2370,8 @@ const handleGuardar = useCallback(async () => {
                         }`}
                       >
                         {guardandoAsistencia ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                            Guardando...
-                          </>
-                        ) : (
-                          '◆ Sesión Dictada'
-                        )}
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '◆ Sesión Dictada'}
                       </button>
                     </div>
                     {!seguimientoAsistencia?.recepcion_marco && (
@@ -2547,13 +2405,8 @@ const handleGuardar = useCallback(async () => {
                         }`}
                       >
                         {guardandoAsistencia ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                            Guardando...
-                          </>
-                        ) : (
-                          '✓ Asistió'
-                        )}
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '✓ Asistió'}
                       </button>
                       <button
                         onClick={() => handleTerapeutaMarcar(
@@ -2567,13 +2420,8 @@ const handleGuardar = useCallback(async () => {
                         }`}
                       >
                         {guardandoAsistencia ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                            Guardando...
-                          </>
-                        ) : (
-                          '◆ Sesión Dictada'
-                        )}
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '◆ Sesión Dictada'}
                       </button>
                     </div>
                     {!seguimientoAsistencia?.terapeuta_marco && (
@@ -2605,19 +2453,13 @@ const handleGuardar = useCallback(async () => {
                             {seguimientoAsistencia?.recepcion_fecha && (
                               <span className="text-xs text-gray-500">
                                 {new Date(seguimientoAsistencia.recepcion_fecha).toLocaleString('es-PE', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                                 }).replace(',', '')}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">
-                            Pendiente
-                          </span>
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">Pendiente</span>
                         )}
                       </div>
                     )}
@@ -2639,19 +2481,13 @@ const handleGuardar = useCallback(async () => {
                             {seguimientoAsistencia?.terapeuta_fecha && (
                               <span className="text-xs text-gray-500">
                                 {new Date(seguimientoAsistencia.terapeuta_fecha).toLocaleString('es-PE', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                                 }).replace(',', '')}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">
-                            Pendiente
-                          </span>
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">Pendiente</span>
                         )}
                       </div>
                     )}
@@ -2664,9 +2500,7 @@ const handleGuardar = useCallback(async () => {
                       (seguimientoAsistencia.recepcion_estado_id === 6 && seguimientoAsistencia.terapeuta_estado_id === 6)) && (
                       <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-red-600" />
-                        <p className="text-xs text-red-800 font-medium">
-                          ⚠️ Discrepancia detectada entre Recepción y Terapeuta
-                        </p>
+                        <p className="text-xs text-red-800 font-medium">⚠️ Discrepancia detectada entre Recepción y Terapeuta</p>
                       </div>
                     )}
 
@@ -2677,9 +2511,7 @@ const handleGuardar = useCallback(async () => {
                     seguimientoAsistencia.terapeuta_estado_id === 7 && (
                       <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                         <span className="text-green-600 font-bold">✓</span>
-                        <p className="text-xs text-green-800 font-medium">
-                          Asistencia validada correctamente por ambas partes
-                        </p>
+                        <p className="text-xs text-green-800 font-medium">Asistencia validada correctamente por ambas partes</p>
                       </div>
                     )}
                 </div>
@@ -2716,11 +2548,7 @@ const handleGuardar = useCallback(async () => {
                         {citaEditando?.fecha ? (() => {
                           const [year, month, day] = citaEditando.fecha.split('-').map(Number);
                           const fechaLocal = new Date(year, month - 1, day);
-                          return fechaLocal.toLocaleDateString('es-ES', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long'
-                          });
+                          return fechaLocal.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
                         })() : 'No especificada'}
                       </p>
                     </div>
@@ -2761,15 +2589,9 @@ const handleGuardar = useCallback(async () => {
                       className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {cargandoRecordatorio ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Buscando citas...
-                        </>
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Buscando citas...</>
                       ) : (
-                        <>
-                          <MessageCircle className="w-4 h-4" />
-                          Generar Mensaje
-                        </>
+                        <><MessageCircle className="w-4 h-4" />Generar Mensaje</>
                       )}
                     </button>
                   </div>
@@ -2784,33 +2606,19 @@ const handleGuardar = useCallback(async () => {
                         disabled={modoSoloLectura}
                         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-lg font-bold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {copiado ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            ¡Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4" />
-                            Copiar Mensaje
-                          </>
-                        )}
+                        {copiado ? <><Check className="w-4 h-4" />¡Copiado!</> : <><Copy className="w-4 h-4" />Copiar Mensaje</>}
                       </button>
                     </div>
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                       <div className="bg-white rounded-lg p-4 border border-gray-300">
-                        <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans">
-                          {mensajeRecordatorio}
-                        </pre>
+                        <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans">{mensajeRecordatorio}</pre>
                       </div>
                       <div className="mt-3 flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-gray-600">
                           <MessageCircle className="w-4 h-4" />
                           <span>Listo para copiar y pegar en WhatsApp</span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {mensajeRecordatorio.length} caracteres
-                        </div>
+                        <div className="text-xs text-gray-500">{mensajeRecordatorio.length} caracteres</div>
                       </div>
                     </div>
                     <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
@@ -2877,21 +2685,15 @@ const handleGuardar = useCallback(async () => {
                   >
                     Cancelar
                   </button>
-                 <button
+                  <button
                     onClick={handleGuardar}
                     disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
                     className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {(guardando || guardandoLocal) ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Guardando...
-                      </>
+                      <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
                     ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        {modoEdicion ? 'Actualizar' : 'Guardar'}
-                      </>
+                      <><Save className="w-4 h-4" />{modoEdicion ? 'Actualizar' : 'Guardar'}</>
                     )}
                   </button>
                 </>
@@ -2947,16 +2749,10 @@ const handleGuardar = useCallback(async () => {
               </div>
             </div>
             <div className="border-t border-gray-200 px-5 py-3.5 flex justify-end gap-2 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={cerrarDialogoEliminar}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
-              >
+              <button onClick={cerrarDialogoEliminar} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all">
                 Cancelar
               </button>
-              <button
-                onClick={confirmarEliminar}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition-all"
-              >
+              <button onClick={confirmarEliminar} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition-all">
                 <Trash2 className="w-4 h-4" />
                 Eliminar
               </button>
