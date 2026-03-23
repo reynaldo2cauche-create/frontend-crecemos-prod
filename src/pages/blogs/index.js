@@ -36,6 +36,7 @@ import SemanaTCABlog from './psicologia/SemanaTCABlog';
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
 import DiaDerechosHumanosBlog from './efemerides/DiaDerechosHumanosBlog';
 import DiaMujerBlog from './efemerides/DiaMujerBlog';
+import DiaSindromeDownBlog from './efemerides/DiaSindromeDownBlog';
 
 // Blogs de Terapias
 import TerapiaLenguajeBlog from './terapias/TerapiaLenguajeBlog';
@@ -83,6 +84,7 @@ export const blogComponents = {
   'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
   'vacaciones-mejor-momento-evaluar-terapia-lenguaje': VacacionesTerapiaBlog,
   '8-marzo-dia-internacional-mujer-salud-mental': DiaMujerBlog,
+  '21-marzo-dia-mundial-sindrome-down': DiaSindromeDownBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -100,6 +102,7 @@ export {
   DiaDiscapacidadBlog,
   DiaDerechosHumanosBlog,
   DiaMujerBlog,
+  DiaSindromeDownBlog,
   PatronesCrianzaBlog,
   DiaDepresionBlog,
   SemanaTCABlog,
