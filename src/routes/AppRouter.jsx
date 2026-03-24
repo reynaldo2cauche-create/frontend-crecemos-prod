@@ -77,10 +77,12 @@ import VenderProductosTab from '../pages/Ventas/VenderProductosTab';
 import HistorialVentasTab from '../pages/Ventas/HistorialVentasTab';
 import TarifasTab from '../pages/Inventario/Tarifastab';
 import PromocionesPage from '../pages/Promociones/PromocionesPage';
+import TarifarioPage from '../pages/Tarifario/TarifarioPage';
 
 import RegistrarReclamo from '../pages/LibroReclamaciones/RegistrarReclamo';
 import ConsultarReclamo from '../pages/LibroReclamaciones/ConsultarReclamo';
 import PanelAdmin from '../pages/LibroReclamaciones/PanelAdmin';
+import Pagos from '../pages/Pagos';
 
 export const AppRouter = () => {
   return (
@@ -398,6 +400,18 @@ export const AppRouter = () => {
           </PrivateRoute>
         } />
 
+        {/* ── TARIFARIO ────────────────────────────────────────── */}
+        <Route path="/intranet/tarifario" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <TarifarioPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
         {/* ── VENTAS ────────────────────────────────────────── */}
         <Route path="/intranet/ventas/servicios" element={
           <PrivateRoute>
@@ -477,7 +491,7 @@ export const AppRouter = () => {
           <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
           <Route path="libro-reclamaciones/registrar" element={<RegistrarReclamo />} />
           <Route path="libro-reclamaciones/consultar" element={<ConsultarReclamo />} />
-
+          <Route path="pagos" element={<Pagos />} />
           <Route path="loading" element={<Loading />} />
           <Route path="*" element={<ErrorPage />} />
         </Route>

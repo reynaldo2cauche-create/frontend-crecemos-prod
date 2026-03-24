@@ -237,3 +237,6 @@ export const obtenerSesionesDisponibles = async (pacienteId, servicioId = null) 
 };
 
 export default api;
+
+
+
