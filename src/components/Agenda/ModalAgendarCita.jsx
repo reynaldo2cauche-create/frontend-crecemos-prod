@@ -28,6 +28,7 @@ import { useTrabajadores } from '../../hooks/useTrabajadores';
 import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
 import { useGeofencing } from '../../hooks/useGeofencing';
+import { esFeriado, getNombreFeriado } from '../../constants/feriados';
 
 const ModalAgendarCita = ({
   open,
@@ -56,8 +57,17 @@ const ModalAgendarCita = ({
   const [alertaAbierta, setAlertaAbierta] = useState(false);
   const [mensajeAlerta, setMensajeAlerta] = useState('');
   const [tituloAlerta, setTituloAlerta] = useState('Campo Requerido');
+  const [tipoAlerta, setTipoAlerta] = useState('error'); // 'error', 'warning', 'feriado'
 
   const motivoAccion = formularioCita.motivo_accion || '';
+
+  // Helper para mostrar alertas
+  const mostrarAlerta = (titulo, mensaje, tipo = 'error') => {
+    setTituloAlerta(titulo);
+    setMensajeAlerta(mensaje);
+    setTipoAlerta(tipo);
+    setAlertaAbierta(true);
+  };
 
   const [tipoCita, setTipoCita] = useState(null);
   const [terapeutasReunion, setTerapeutasReunion] = useState([]);
@@ -1170,12 +1180,28 @@ const handleGuardar = useCallback(async () => {
                               value={formularioCita.fechasHoras?.[0]?.fecha || ''}
                               onChange={(e) => {
                                 if (modoSoloLectura) return;
-                                const fecha = new Date(e.target.value + 'T00:00:00');
+                                const fechaStr = e.target.value;
+                                const fecha = new Date(fechaStr + 'T00:00:00');
                                 const diaSemana = fecha.getDay();
+
+                                // Validar que no sea domingo
+                                if (diaSemana === 0) {
+                                  mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                  return;
+                                }
+
+                                // Validar que no sea feriado
+                                const feriado = esFeriado(fechaStr);
+                                if (feriado) {
+                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                  return;
+                                }
+
+                                // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
-                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
                                 } else {
-                                  alert('Solo se pueden agendar citas de lunes a sábado');
+                                  mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
                               }}
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
@@ -1302,12 +1328,28 @@ const handleGuardar = useCallback(async () => {
                                     value={fechaHora.fecha}
                                     onChange={(e) => {
                                       if (modoSoloLectura) return;
-                                      const fecha = new Date(e.target.value + 'T00:00:00');
+                                      const fechaStr = e.target.value;
+                                      const fecha = new Date(fechaStr + 'T00:00:00');
                                       const diaSemana = fecha.getDay();
+
+                                      // Validar que no sea domingo
+                                      if (diaSemana === 0) {
+                                        mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                        return;
+                                      }
+
+                                      // Validar que no sea feriado
+                                      const feriado = esFeriado(fechaStr);
+                                      if (feriado) {
+                                        mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                        return;
+                                      }
+
+                                      // Validar que sea de lunes a sábado
                                       if (diaSemana >= 1 && diaSemana <= 6) {
-                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                       } else {
-                                        alert('Solo se pueden agendar citas de lunes a sábado');
+                                        mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                       }
                                     }}
                                     disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
@@ -1562,12 +1604,28 @@ const handleGuardar = useCallback(async () => {
                               value={formularioCita.fechasHoras?.[0]?.fecha || ''}
                               onChange={(e) => {
                                 if (modoSoloLectura) return;
-                                const fecha = new Date(e.target.value + 'T00:00:00');
+                                const fechaStr = e.target.value;
+                                const fecha = new Date(fechaStr + 'T00:00:00');
                                 const diaSemana = fecha.getDay();
+
+                                // Validar que no sea domingo
+                                if (diaSemana === 0) {
+                                  mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                  return;
+                                }
+
+                                // Validar que no sea feriado
+                                const feriado = esFeriado(fechaStr);
+                                if (feriado) {
+                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                  return;
+                                }
+
+                                // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
-                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
                                 } else {
-                                  alert('Solo se pueden agendar citas de lunes a sábado');
+                                  mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
                               }}
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
@@ -1680,12 +1738,28 @@ const handleGuardar = useCallback(async () => {
                                     value={fechaHora.fecha}
                                     onChange={(e) => {
                                       if (modoSoloLectura) return;
-                                      const fecha = new Date(e.target.value + 'T00:00:00');
+                                      const fechaStr = e.target.value;
+                                      const fecha = new Date(fechaStr + 'T00:00:00');
                                       const diaSemana = fecha.getDay();
+
+                                      // Validar que no sea domingo
+                                      if (diaSemana === 0) {
+                                        mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                        return;
+                                      }
+
+                                      // Validar que no sea feriado
+                                      const feriado = esFeriado(fechaStr);
+                                      if (feriado) {
+                                        mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                        return;
+                                      }
+
+                                      // Validar que sea de lunes a sábado
                                       if (diaSemana >= 1 && diaSemana <= 6) {
-                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                       } else {
-                                        alert('Solo se pueden agendar citas de lunes a sábado');
+                                        mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                       }
                                     }}
                                     disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
@@ -1932,12 +2006,28 @@ const handleGuardar = useCallback(async () => {
                               value={formularioCita.fechasHoras?.[0]?.fecha || ''}
                               onChange={(e) => {
                                 if (modoSoloLectura) return;
-                                const fecha = new Date(e.target.value + 'T00:00:00');
+                                const fechaStr = e.target.value;
+                                const fecha = new Date(fechaStr + 'T00:00:00');
                                 const diaSemana = fecha.getDay();
+
+                                // Validar que no sea domingo
+                                if (diaSemana === 0) {
+                                  mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                  return;
+                                }
+
+                                // Validar que no sea feriado
+                                const feriado = esFeriado(fechaStr);
+                                if (feriado) {
+                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                  return;
+                                }
+
+                                // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
-                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
                                 } else {
-                                  alert('Solo se pueden agendar citas de lunes a sábado');
+                                  mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
                               }}
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
@@ -2030,12 +2120,27 @@ const handleGuardar = useCallback(async () => {
                                 <div className="grid grid-cols-2 gap-3">
                                   <input type="date" value={fechaHora.fecha} onChange={(e) => {
                                     if (modoSoloLectura) return;
-                                    const fecha = new Date(e.target.value + 'T00:00:00');
+                                    const fechaStr = e.target.value;
+                                    const fecha = new Date(fechaStr + 'T00:00:00');
                                     const diaSemana = fecha.getDay();
+
+                                    // Validar que no sea domingo
+                                    if (diaSemana === 0) {
+                                      mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                      return;
+                                    }
+
+                                    // Validar que no sea feriado
+                                    const feriado = esFeriado(fechaStr);
+                                    if (feriado) {
+                                      mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                      return;
+                                    }
+
                                     if (diaSemana >= 1 && diaSemana <= 6) {
-                                      onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                      onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                     } else {
-                                      alert('Solo se pueden agendar citas de lunes a sábado');
+                                      mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                     }
                                   }} disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50" />
                                   <select value={fechaHora.horaInicio || ''} onChange={(e) => {
@@ -2762,31 +2867,58 @@ const handleGuardar = useCallback(async () => {
       )}
 
       {/* Modal de Alerta */}
-      {alertaAbierta && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
-            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-orange-200 px-5 py-4 rounded-t-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <AlertCircle className="w-6 h-6 text-white" />
+      {alertaAbierta && (() => {
+        const estilos = {
+          error: {
+            headerBg: 'bg-gradient-to-r from-red-50 to-red-100',
+            headerBorder: 'border-red-200',
+            iconBg: 'bg-gradient-to-br from-red-400 to-red-600',
+            icon: <AlertCircle className="w-6 h-6 text-white" />,
+            buttonBg: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+          },
+          warning: {
+            headerBg: 'bg-gradient-to-r from-yellow-50 to-orange-50',
+            headerBorder: 'border-yellow-200',
+            iconBg: 'bg-gradient-to-br from-yellow-400 to-orange-500',
+            icon: <AlertTriangle className="w-6 h-6 text-white" />,
+            buttonBg: 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
+          },
+          feriado: {
+            headerBg: 'bg-gradient-to-r from-orange-50 to-yellow-50',
+            headerBorder: 'border-orange-200',
+            iconBg: 'bg-gradient-to-br from-orange-400 to-orange-600',
+            icon: <Calendar className="w-6 h-6 text-white" />,
+            buttonBg: 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
+          }
+        };
+        const estilo = estilos[tipoAlerta] || estilos.error;
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+              <div className={`${estilo.headerBg} border-b ${estilo.headerBorder} px-5 py-4 rounded-t-2xl`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 ${estilo.iconBg} rounded-xl flex items-center justify-center shadow-lg`}>
+                    {estilo.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">{tituloAlerta}</h3>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">{tituloAlerta}</h3>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{mensajeAlerta}</p>
+              </div>
+              <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
+                <button
+                  onClick={() => { setAlertaAbierta(false); setTituloAlerta('Campo Requerido'); setTipoAlerta('error'); }}
+                  className={`w-full px-4 py-2.5 ${estilo.buttonBg} text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all`}
+                >
+                  Entendido
+                </button>
               </div>
             </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-700 leading-relaxed">{mensajeAlerta}</p>
-            </div>
-            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={() => { setAlertaAbierta(false); setTituloAlerta('Campo Requerido'); }}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
-              >
-                Entendido
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 };

@@ -266,8 +266,8 @@ const Sidebar = () => {
               </div>
             </div>
 
-            {/* Notificaciones - Solo para administradores */}
-            {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION) && (
+            {/* Notificaciones - Para administradores, admisión y terapeutas */}
+            {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION || user?.rol?.id === ROLES.TERAPEUTA) && (
               <div className="flex-shrink-0">
                 <NotificacionesGlobales />
               </div>

@@ -259,12 +259,13 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
       }
       
       if (nuevosSearchParams.nombreCompleto && nuevosSearchParams.nombreCompleto.trim() !== '') {
-        const nombreLower = nuevosSearchParams.nombreCompleto.toLowerCase();
-        filtered = filtered.filter(p => 
-          (p.nombres && p.nombres.toLowerCase().includes(nombreLower)) ||
-          (p.apellido_paterno && p.apellido_paterno.toLowerCase().includes(nombreLower)) ||
-          (p.apellido_materno && p.apellido_materno.toLowerCase().includes(nombreLower))
-        );
+        const nombreLower = nuevosSearchParams.nombreCompleto.toLowerCase().trim();
+        const terminos = nombreLower.split(/\s+/); // ["lucero", "margarita"]
+
+        filtered = filtered.filter(p => {
+          const nombreCompleto = `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase();
+          return terminos.every(termino => nombreCompleto.includes(termino));
+        });
       }
       
       setFilteredPacientes(filtered);

@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+import { esFeriado, getNombreFeriado } from '../../constants/feriados';
 
 // ✅ Componente memoizado para cada cita individual
 const CitaCard = React.memo(({
@@ -132,6 +133,8 @@ const CalendarioSemanal = ({
   const [diasSemana, setDiasSemana] = useState([]);
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false);
   const [bloqueoSeleccionado, setBloqueoSeleccionado] = useState(null);
+  const [modalFeriadoAbierto, setModalFeriadoAbierto] = useState(false);
+  const [feriadoSeleccionado, setFeriadoSeleccionado] = useState(null);
 
 
  // Generar horas según el día de la semana
@@ -330,7 +333,7 @@ const CalendarioSemanal = ({
   const formatearRangoSemana = () => {
     if (diasSemana.length === 0) return '';
     const inicio = diasSemana[0];
-    const fin = diasSemana[4]; // Viernes (último día)
+    const fin = diasSemana[5]; // Sábado (último día)
 
     const mesInicio = inicio.fecha.toLocaleDateString('es-ES', { month: 'short' });
     const mesFin = fin.fecha.toLocaleDateString('es-ES', { month: 'short' });
@@ -438,15 +441,19 @@ const CalendarioSemanal = ({
                   {horasDelDia.map((hora, horaIndex) => {
   const citasInfo = getCitasEnSlot(dia, hora);
   const bloqueo = getBloqueoEnSlot(dia, hora);
+  const feriado = esFeriado(dia.fechaString);
   const hayCitas = citasInfo && citasInfo.length > 0;
   // ✅ NUEVA: slot que solo tiene continuación de cita anterior, ninguna empieza aquí
 const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
   // Agregar esta variable junto a hayCitas
-  const estaBloqueado = !!bloqueo;
+  const estaBloqueado = !!bloqueo || !!feriado;
   const puedeHacerClic = !hayCitas && !esTerapeuta && !estaBloqueado;
 
   const handleSlotClick = () => {
-    if (estaBloqueado && bloqueo) {
+    if (feriado) {
+      setFeriadoSeleccionado(feriado);
+      setModalFeriadoAbierto(true);
+    } else if (estaBloqueado && bloqueo) {
       setBloqueoSeleccionado(bloqueo);
       setModalBloqueoAbierto(true);
     } else if (puedeHacerClic && onSlotClick) {
@@ -460,16 +467,16 @@ const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
             onClick={handleSlotClick}
             style={esSoloContinuacion ? { backgroundColor: 'transparent' } : {}}  // ← fondo transparente solo en continuación
             className={`relative h-[80px] border-b border-gray-200 overflow-visible ${
-              estaBloqueado
+              feriado || estaBloqueado
                 ? 'bg-red-50 cursor-pointer hover:bg-red-100'
                 : puedeHacerClic
                 ? 'cursor-pointer hover:bg-purple-50/50'
                 : 'cursor-default'
-            } ${esHoy && !estaBloqueado ? 'bg-purple-50/20' : ''}`}
+            } ${esHoy && !estaBloqueado && !feriado ? 'bg-purple-50/20' : ''}`}
           >
             {/* Etiqueta hora — z-index bajo para no tapar cita en slots de continuación */}
             <div className={`absolute left-2 top-1 text-xs font-semibold px-1.5 py-0.5 rounded shadow-sm ${
-              estaBloqueado
+              feriado || estaBloqueado
                 ? 'bg-red-100 text-red-700 z-20'
                 : esSoloContinuacion
                 ? 'z-[5] bg-white/50 text-gray-300'  // ← casi invisible, debajo de la cita
@@ -478,8 +485,20 @@ const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
               {hora}
             </div>
 
+        {/* Indicador de feriado */}
+        {feriado && !hayCitas && (
+          <div className="absolute inset-0 flex items-center justify-center z-5 pointer-events-none">
+            <div className="text-center">
+              <div className="text-red-600 font-bold text-xs mb-1">🎉 FERIADO</div>
+              <div className="text-red-500 text-[10px]">
+                {feriado.nombre}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Indicador de bloqueo */}
-        {estaBloqueado && !hayCitas && (
+        {estaBloqueado && !feriado && !hayCitas && (
           <div className="absolute inset-0 flex items-center justify-center z-5 pointer-events-none">
             <div className="text-center">
               <div className="text-red-600 font-bold text-xs mb-1">🚫 BLOQUEADO</div>
@@ -737,6 +756,75 @@ const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
                 className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Información de Feriado */}
+      {modalFeriadoAbierto && feriadoSeleccionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Feriado Nacional</h2>
+                </div>
+                <button
+                  onClick={() => setModalFeriadoAbierto(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Nombre del Feriado */}
+              <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
+                <div className="text-4xl mb-3">🎉</div>
+                <h3 className="text-lg font-bold text-red-900 mb-2">
+                  {feriadoSeleccionado.nombre}
+                </h3>
+                <p className="text-sm text-red-700">
+                  {new Date(feriadoSeleccionado.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+
+              {/* Información */}
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-900 mb-1">
+                      No se pueden agendar citas en feriados
+                    </p>
+                    <p className="text-xs text-red-700">
+                      Este día está bloqueado automáticamente por ser feriado nacional. El centro permanecerá cerrado.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl border-t border-gray-100">
+              <button
+                onClick={() => setModalFeriadoAbierto(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold"
+              >
+                Entendido
               </button>
             </div>
           </div>

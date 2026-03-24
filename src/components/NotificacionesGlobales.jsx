@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Bell, X, TriangleAlert, Info, Calendar, Cake, Trash,
   Clock, PenSquare, FileText, Loader2, PartyPopper,
-  Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown
+  Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown, ClipboardList, FileUp
 } from 'lucide-react';
 import {
   obtenerNotificacionesRecientes,
@@ -29,16 +29,18 @@ const formatearTiempo = (fecha) =>
 // ─── config visual ────────────────────────────────────────────────────────────
 
 const TIPO_CONFIG = {
-  CUMPLEANOS_PACIENTE: { icono: Cake,          color: 'text-pink-500',   borde: 'border-pink-400',   label: 'Cumpleaños paciente'  },
-  CUMPLEANOS_EMPLEADO: { icono: PartyPopper,   color: 'text-purple-500', borde: 'border-purple-400', label: 'Cumpleaños empleado'  },
-  ANIVERSARIO_LABORAL: { icono: Briefcase,     color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Aniversario laboral'  },
-  CUMPLEANOS:          { icono: Cake,          color: 'text-pink-500',   borde: 'border-pink-400',   label: 'Cumpleaños'           },
-  ANIVERSARIO:         { icono: Calendar,      color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Aniversario'          },
-  ACCESO:              { icono: TriangleAlert, color: 'text-orange-500', borde: 'border-orange-400', label: 'Acceso'               },
-  CITA_ELIMINADA:      { icono: Trash,         color: 'text-red-500',    borde: 'border-red-400',    label: 'Cita eliminada'       },
-  CITA_MODIFICADA:     { icono: PenSquare,     color: 'text-indigo-500', borde: 'border-indigo-400', label: 'Cita modificada'      },
-  NOTA_EVOLUCION:      { icono: FileText,      color: 'text-green-500',  borde: 'border-green-400',  label: 'Nota de evolución'    },
-  DEFAULT:             { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
+  CUMPLEANOS_PACIENTE:      { icono: Cake,          color: 'text-pink-500',   borde: 'border-pink-400',   label: 'Cumpleaños paciente'  },
+  CUMPLEANOS_EMPLEADO:      { icono: PartyPopper,   color: 'text-purple-500', borde: 'border-purple-400', label: 'Cumpleaños empleado'  },
+  ANIVERSARIO_LABORAL:      { icono: Briefcase,     color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Aniversario laboral'  },
+  CUMPLEANOS:               { icono: Cake,          color: 'text-pink-500',   borde: 'border-pink-400',   label: 'Cumpleaños'           },
+  ANIVERSARIO:              { icono: Calendar,      color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Aniversario'          },
+  ACCESO:                   { icono: TriangleAlert, color: 'text-orange-500', borde: 'border-orange-400', label: 'Acceso'               },
+  CITA_ELIMINADA:           { icono: Trash,         color: 'text-red-500',    borde: 'border-red-400',    label: 'Cita eliminada'       },
+  CITA_MODIFICADA:          { icono: PenSquare,     color: 'text-indigo-500', borde: 'border-indigo-400', label: 'Cita modificada'      },
+  NOTA_EVOLUCION:           { icono: FileText,      color: 'text-green-500',  borde: 'border-green-400',  label: 'Nota de evolución'    },
+  INDICACION_TERAPEUTICA:   { icono: ClipboardList, color: 'text-teal-500',   borde: 'border-teal-400',   label: 'Indicación terapéutica' },
+  DOCUMENTO_SUBIDO:         { icono: FileUp,        color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Documento subido'     },
+  DEFAULT:                  { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
 };
 
 const getTipoConfig  = (tipo) => TIPO_CONFIG[tipo] || TIPO_CONFIG.DEFAULT;
