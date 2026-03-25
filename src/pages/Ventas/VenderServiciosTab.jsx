@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import logoUrl from '/logo-text-short.png';
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -12,6 +13,9 @@ import {
   DocumentTextIcon,
   ClipboardDocumentListIcon,
   SparklesIcon,
+  PrinterIcon,
+  ArrowDownTrayIcon,
+  ReceiptPercentIcon,
 } from '@heroicons/react/24/outline';
 import {
   crearVentaServicio,
@@ -29,6 +33,17 @@ import {
   getTodosLosResponsables,
   getPacientesPorResponsable,
 } from '../../services/pacienteService';
+import ModalExito from '../../components/Ventas/ModalExito';
+import {
+  generarTicketPDF,
+  generarTicketTermico,
+  generarPDFA4,
+  obtenerPreviewURL,
+  getImporteLetras,
+  getNombreComprador,
+  getDniComprador,
+  formatMoney,
+} from '../../utils/pdfGenerator';
 
 // Tipo de venta para servicios (según tipo_venta_promo)
 const TIPO_VENTA_SERVICIO_ID = 2;
@@ -137,6 +152,361 @@ const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) 
   );
 };
 
+// ─── TicketPreviewHTML ────────────────────────────────────────────────────────
+const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
+  const promociones = venta.promociones_aplicadas || [];
+  const toFloat = (v) => parseFloat(v || 0);
+  const total = toFloat(venta.total);
+  const descuento = toFloat(venta.descuento_monto);
+
+  // Helper para formatear montos - asegura que sea número
+  const fm = (v) => formatMoney(toFloat(v));
+
+  const nombreCliente = getNombreComprador(venta);
+  const dni = getDniComprador(venta);
+
+  const fechaEmision = (() => {
+    const str = String(venta.fecha_venta || '');
+    const [datePart, timePart] = str.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    if (timePart) {
+      const [h, min] = timePart.split(':').map(Number);
+      return new Date(y, m - 1, d, h, min).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    return new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  })();
+
+  const s = {
+    wrap: { fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif', fontSize: '12px', lineHeight: '1.4', color: '#111', background: '#fff', width: '270px', margin: '0 auto', padding: '12px 10px', boxShadow: '0 2px 16px rgba(0,0,0,0.13)', borderRadius: '4px', fontWeight: '500' },
+    center: { textAlign: 'center', display: 'block' },
+    bold: { fontWeight: '600' },
+    hr: { border: 'none', borderTop: '1px dashed #aaa', margin: '6px 0' },
+    hrSolid: { border: 'none', borderTop: '1px solid #ccc', margin: '6px 0' },
+    row: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px' },
+  };
+
+  const tipoComprobante = (venta.tipo_comprobante?.nombre || '').toUpperCase();
+  const requiereIGV = tipoComprobante.includes('BOLETA') || tipoComprobante.includes('FACTURA');
+
+  return (
+    <div ref={ref} style={s.wrap} data-ticket-preview="true" id="ticket-preview-node">
+      <div style={{ textAlign: 'center', marginBottom: '6px' }}>
+        <img src={logoUrl} alt="Crecemos" style={{ width: '130px', height: 'auto', display: 'block', margin: '0 auto' }} />
+      </div>
+      <div style={{ textAlign: 'center', fontSize: '10px', lineHeight: '1.4' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '12px' }}>CONTIGO CRECEMOS E.I.R.L.</div>
+        <div>Centro de terapias Crecemos</div>
+        <div>LT. 5 MZ. W1 URB. EL PINAR PARCELA H</div>
+        <div>LIMA LIMA COMAS — Telf.: 957 064 401</div>
+        <div>info@crecemos.com.pe</div>
+        <div style={{ fontWeight: 'bold', marginTop: '2px' }}>R.U.C. N° 20601074380</div>
+      </div>
+      <hr style={s.hrSolid} />
+      <div style={{ ...s.center, ...s.bold, fontSize: '11px', color: '#7B1FA2' }}>
+        {(venta.tipo_comprobante?.nombre || 'TICKET DE VENTA').toUpperCase()}
+      </div>
+      <div style={{ ...s.center, ...s.bold, fontSize: '14px', color: '#7B1FA2', letterSpacing: '1px', margin: '3px 0' }}>
+        {venta.codigo_comprobante || '#00000'}
+      </div>
+      <hr style={s.hrSolid} />
+      <div style={{ marginBottom: '6px' }}>
+        <div style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
+          <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>Fecha emisión:</span>
+          <span style={{ wordBreak: 'break-word' }}>{fechaEmision}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
+          <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>Comprador:</span>
+          <span style={{ wordBreak: 'break-word' }}>{nombreCliente}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
+          <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>DNI:</span>
+          <span style={{ wordBreak: 'break-word' }}>{dni}</span>
+        </div>
+      </div>
+      <hr style={s.hr} />
+      <div style={{ marginBottom: '4px', fontSize: '10px', fontWeight: '600' }}>SERVICIOS:</div>
+      {(venta.detalles || []).map((d, i) => {
+        const nombreServicio = d.servicio_tarifa?.servicio?.nombre || '-';
+        const motivoCita = d.servicio_tarifa?.motivo_cita?.nombre || '';
+        const area = d.servicio_tarifa?.servicio?.area?.nombre || '';
+        const tituloServicio = motivoCita ? `${nombreServicio} - ${motivoCita}` : nombreServicio;
+
+        return (
+          <div key={i} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
+            <div style={{ fontSize: '10px', marginBottom: '2px', wordBreak: 'break-word', ...s.bold }}>
+              <span>{d.sesiones_totales || 0} SES.</span> — {tituloServicio}
+            </div>
+            <div style={{ fontSize: '8px', color: '#666', marginBottom: '2px' }}>
+              {area} | P.Unit: S/ {fm(d.precio_unitario)}
+            </div>
+            {d.paciente && (
+              <div style={{ fontSize: '9px', marginBottom: '2px', color: '#7B1FA2' }}>
+                <span style={s.bold}>Paciente:</span> {d.paciente.nombres} {d.paciente.apellidos || d.paciente.apellido_paterno || ''}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+              <span style={{ color: '#555' }}>Subtotal:</span>
+              <span style={s.bold}>S/ {fm(toFloat(d.precio_unitario) * toFloat(d.sesiones_totales) - toFloat(d.descuento_monto))}</span>
+            </div>
+          </div>
+        );
+      })}
+      <hr style={s.hr} />
+      {descuento > 0 && (
+        <div style={{ ...s.row, color: '#b45309' }}>
+          <span>DESCUENTOS(-)</span><span>S/ {fm(descuento)}</span>
+        </div>
+      )}
+      {requiereIGV && (
+        <>
+          <div style={s.row}><span>BASE IMPONIBLE</span><span>S/ {fm(total / 1.18)}</span></div>
+          <div style={s.row}><span>IGV (18%)</span><span>S/ {fm(total - total / 1.18)}</span></div>
+        </>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', ...s.bold, fontSize: '13px', color: '#7B1FA2', margin: '4px 0 3px' }}>
+        <span>TOTAL</span><span>S/ {fm(total)}</span>
+      </div>
+      <hr style={s.hrSolid} />
+      <div style={{ fontSize: '8px', marginBottom: '4px', lineHeight: '1.3' }}>
+        <span style={s.bold}>IMPORTE EN LETRAS: </span>
+        <span>{getImporteLetras(total)}</span>
+      </div>
+      {venta.nota?.trim() && (
+        <>
+          <hr style={s.hr} />
+          <div style={{ fontSize: '8px' }}>
+            <div style={s.bold}>OBSERVACIONES:</div>
+            <div style={{ marginTop: '2px', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{venta.nota}</div>
+          </div>
+        </>
+      )}
+      <hr style={s.hrSolid} />
+      <div style={{ ...s.center, ...s.bold, color: '#7B1FA2', marginTop: '4px', fontSize: '9px' }}>¡Gracias por su preferencia!</div>
+    </div>
+  );
+});
+
+// ─── Modal Vista Previa ───────────────────────────────────────────────────────
+const FORMATOS_IMPRESION = [
+  { id: 'a4', label: 'A4', desc: 'Carta / Oficio', Icon: DocumentTextIcon },
+  { id: 'ticket', label: 'Ticket 72mm', desc: 'Impresora térmica', Icon: ReceiptPercentIcon },
+];
+
+const PrintPreviewModal = ({ venta, tipo, onClose }) => {
+  const [formato, setFormato] = useState('a4');
+  const [a4Url, setA4Url] = useState(null);
+  const [loadingA4, setLoadingA4] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const ticketRef = useRef(null);
+
+  useEffect(() => {
+    if (formato !== 'a4') return;
+    let cancelled = false;
+    setLoadingA4(true);
+    setA4Url(null);
+    obtenerPreviewURL(venta, tipo, 'a4')
+      .then(url => { if (!cancelled) setA4Url(url); })
+      .catch(err => console.error('Error preview A4:', err))
+      .finally(() => { if (!cancelled) setLoadingA4(false); });
+    return () => { cancelled = true; };
+  }, [venta, tipo, formato]);
+
+  const handleDescargar = async () => {
+    setDownloading(true);
+    try {
+      if (formato === 'ticket') {
+        if (!ticketRef.current) { alert('Vista previa no disponible'); return; }
+        await generarTicketTermico(ticketRef.current, venta, tipo);
+      } else {
+        await generarTicketPDF(venta, tipo);
+      }
+    } catch (err) {
+      console.error('Error descargando:', err);
+      alert('Error al generar el PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleImprimir = async () => {
+    if (formato === 'ticket') {
+      const ventana = window.open('', '_blank');
+      const buildTicketHTML = () => {
+        const toFloat = (v) => parseFloat(v || 0);
+        const total = toFloat(venta.total);
+        const fm = (n) => toFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        const nombreCliente = getNombreComprador(venta);
+        const dni = getDniComprador(venta);
+        const fechaStr = String(venta.fecha_venta || '');
+        const [datePart, timePart] = fechaStr.split('T');
+        const [y, m, d] = datePart.split('-').map(Number);
+        const fechaEmision = timePart
+          ? new Date(y, m - 1, d, ...timePart.split(':').map(Number)).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const tipoNombre = (venta.tipo_comprobante?.nombre || 'TICKET DE VENTA').toUpperCase();
+        const requiereIGV = tipoNombre.includes('BOLETA') || tipoNombre.includes('FACTURA');
+
+        return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;width:72mm;padding:10px 8px;font-weight:500}
+  @media print{@page{size:72mm auto;margin:0}body{width:72mm}}
+  .center{text-align:center}.bold{font-weight:700}.purple{color:#7B1FA2}
+  hr.d{border:none;border-top:1px dashed #aaa;margin:6px 0}hr.s{border:none;border-top:1px solid #ccc;margin:6px 0}
+  .row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px}
+  .item{margin-bottom:4px;border-bottom:1px dotted #ddd;padding-bottom:3px}
+</style></head><body>
+  <div class="center" style="margin-bottom:6px"><img src="${window.location.origin}/logo-text-short.png" style="width:130px;height:auto;display:block;margin:0 auto"></div>
+  <div class="center" style="font-size:10px;line-height:1.4">
+    <div class="bold" style="font-size:12px">CONTIGO CRECEMOS E.I.R.L.</div>
+    <div>Centro de terapias Crecemos</div><div>LT. 5 MZ. W1 URB. EL PINAR PARCELA H</div>
+    <div>LIMA LIMA COMAS — Telf.: 957 064 401</div><div>info@crecemos.com.pe</div>
+    <div class="bold" style="margin-top:2px">R.U.C. N° 20601074380</div>
+  </div>
+  <hr class="s">
+  <div class="center bold purple" style="font-size:11px">${tipoNombre}</div>
+  <div class="center bold purple" style="font-size:14px;letter-spacing:1px;margin:3px 0">${venta.codigo_comprobante || '#00000'}</div>
+  <hr class="s">
+  <div style="margin-bottom:6px;font-size:10px">
+    <div style="display:flex;gap:3px;margin-bottom:2px"><span class="bold" style="min-width:75px">Fecha emisión:</span><span>${fechaEmision}</span></div>
+    <div style="display:flex;gap:3px;margin-bottom:2px"><span class="bold" style="min-width:75px">Comprador:</span><span>${nombreCliente}</span></div>
+    <div style="display:flex;gap:3px;margin-bottom:2px"><span class="bold" style="min-width:75px">DNI:</span><span>${dni}</span></div>
+  </div>
+  <hr class="d">
+  <div class="bold" style="margin-bottom:4px;font-size:10px">SERVICIOS:</div>
+  ${(venta.detalles || []).map(d => {
+    const nombreServicio = d.servicio_tarifa?.servicio?.nombre || '-';
+    const motivoCita = d.servicio_tarifa?.motivo_cita?.nombre || '';
+    const area = d.servicio_tarifa?.servicio?.area?.nombre || '';
+    const tituloServicio = motivoCita ? `${nombreServicio} - ${motivoCita}` : nombreServicio;
+
+    return `
+    <div class="item">
+      <div style="font-size:10px;margin-bottom:2px;word-break:break-word;font-weight:700"><strong>${d.sesiones_totales || 0} SES.</strong> — ${tituloServicio}</div>
+      <div style="font-size:8px;color:#666;margin-bottom:2px">${area} | P.Unit: S/ ${fm(d.precio_unitario)}</div>
+      ${d.paciente ? `<div style="font-size:9px;color:#7B1FA2;margin-bottom:2px"><strong>Paciente:</strong> ${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}</div>` : ''}
+      <div style="display:flex;justify-content:space-between;font-size:10px"><span style="color:#555">Subtotal:</span><strong>S/ ${fm(toFloat(d.precio_unitario) * toFloat(d.sesiones_totales) - toFloat(d.descuento_monto))}</strong></div>
+    </div>
+  `;
+  }).join('')}
+  <hr class="d">
+  ${requiereIGV ? `<div class="row"><span>BASE IMPONIBLE</span><span>S/ ${fm(total / 1.18)}</span></div><div class="row"><span>IGV (18%)</span><span>S/ ${fm(total - total / 1.18)}</span></div>` : ''}
+  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px"><span>TOTAL</span><span>S/ ${fm(total)}</span></div>
+  <hr class="s">
+  <div class="center bold purple" style="margin-top:4px;font-size:10px">¡Gracias por su preferencia!</div>
+  <script>window.onload=function(){window.focus();window.print();}<\/script>
+</body></html>`;
+      };
+      ventana.document.write(buildTicketHTML());
+      ventana.document.close();
+    } else {
+      try {
+        setDownloading(true);
+        const doc = await generarPDFA4(venta, tipo);
+        const pdfUrl = URL.createObjectURL(doc.output('blob'));
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:0;height:0';
+        document.body.appendChild(iframe);
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              iframe.contentWindow.focus();
+              iframe.contentWindow.print();
+            } catch {}
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+              URL.revokeObjectURL(pdfUrl);
+            }, 1000);
+          }, 500);
+        };
+        iframe.src = pdfUrl;
+      } catch {
+        alert('Error al preparar la impresión');
+      } finally {
+        setDownloading(false);
+      }
+    }
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <PrinterIcon className="w-5 h-5 text-[#7B1FA2]" />
+            <h2 className="font-bold text-gray-900">Vista Previa de Impresión</h2>
+            {venta.codigo_comprobante && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">{venta.codigo_comprobante}</span>
+            )}
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <XMarkIcon className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Formato:</span>
+          {FORMATOS_IMPRESION.map(({ id, label, desc, Icon }) => (
+            <button key={id} onClick={() => setFormato(id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${formato === id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'
+              }`}>
+              <Icon className="w-4 h-4" />{label}
+              <span className={`text-xs font-normal ${formato === id ? 'text-purple-500' : 'text-gray-400'}`}>{desc}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-auto bg-gray-100 relative min-h-0">
+          {formato === 'a4' && (
+            <>
+              {loadingA4 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 gap-3 z-10">
+                  <div className="w-10 h-10 border-4 border-gray-300 border-t-[#7B1FA2] rounded-full animate-spin" />
+                  <p className="text-sm text-gray-500 font-medium">Generando vista previa A4...</p>
+                </div>
+              )}
+              {a4Url && !loadingA4 && (
+                <iframe src={a4Url} className="w-full border-0" style={{ height: '100%', minHeight: '500px' }} title="Vista previa A4" />
+              )}
+              {!a4Url && !loadingA4 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-sm text-gray-400">No se pudo generar la vista previa</p>
+                </div>
+              )}
+            </>
+          )}
+          {formato === 'ticket' && (
+            <div className="py-8 px-4 flex justify-center">
+              <TicketPreviewHTML ref={ticketRef} venta={venta} tipo={tipo} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+          <p className="text-xs text-gray-400">
+            {formato === 'ticket' ? 'Descarga o imprime el ticket térmico de 72mm' : 'Descarga o imprime en formato A4 (210 × 297 mm)'}
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">Cerrar</button>
+            <button onClick={handleDescargar} disabled={downloading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#7B1FA2] bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 disabled:opacity-50">
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              {downloading ? 'Generando...' : 'Descargar PDF'}
+            </button>
+            <button onClick={handleImprimir} disabled={downloading}
+              className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50">
+              <PrinterIcon className="w-5 h-5" />
+              {downloading ? 'Generando...' : 'Imprimir'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 const VenderServiciosTab = () => {
   const [tarifas, setTarifas] = useState([]);
@@ -174,6 +544,11 @@ const VenderServiciosTab = () => {
   const [mostrarModalExterno, setMostrarModalExterno] = useState(false);
   const [formExterno, setFormExterno] = useState({ dni: '', nombre: '', telefono: '', email: '' });
   const [pacientesDelResponsable, setPacientesDelResponsable] = useState([]);
+
+  // Estados para mostrar éxito
+  const [mostrarModalExito, setMostrarModalExito] = useState(false);
+  const [ventaGuardada, setVentaGuardada] = useState(null);
+  const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -477,31 +852,45 @@ const VenderServiciosTab = () => {
       payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
     }
 
-    const ventaCreada = await crearVentaServicio(payload);
+    const venta = await crearVentaServicio(payload);
 
       // 🆕 Registrar promociones aplicadas en el historial
-      if (ventaCreada?.id && promocionesAplicadas.length > 0) {
+      if (venta?.id && promocionesAplicadas.length > 0) {
         await Promise.allSettled(
           promocionesAplicadas.map(p =>
             registrarPromocionAplicada({
               promocion_id: p.promocion.id,
               tipo_venta_id: TIPO_VENTA_SERVICIO_ID,
-              venta_id: ventaCreada.id,
+              venta_id: venta.id,
               monto_ahorrado: p.descuento,
             })
           )
         );
       }
 
-      setExito('¡Venta de servicios registrada exitosamente!');
-      resetForm();
-      setTimeout(() => setExito(''), 5000);
+      // Mostrar modal de éxito pero NO limpiar el formulario
+      setVentaGuardada(venta);
+      setMostrarModalExito(true);
+      // NO llamar a resetForm() - el usuario decide cuándo limpiar
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Error al registrar la venta';
       setError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImprimirComprobante = () => {
+    if (!ventaGuardada) {
+      alert('No hay venta para imprimir');
+      return;
+    }
+    setMostrarModalImpresion(true);
+  };
+
+  const handleNuevaVenta = () => {
+    resetForm();
+    setVentaGuardada(null);
   };
 
   const totales = calcularTotales();
@@ -624,15 +1013,12 @@ const VenderServiciosTab = () => {
                     {itemsFiltrados.slice(0, 10).map(item => (
                       <button key={item.id} onClick={() => seleccionarTarifa(item)}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-900">{item.servicio?.nombre || `Servicio #${item.servicio_id}`}</span>
-                          {item.servicio?.area?.nombre && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-50 text-purple-700">
-                              {item.servicio.area.nombre}
-                            </span>
-                          )}
+                        <div className="font-semibold text-gray-900">
+                          {item.servicio?.nombre || `Servicio #${item.servicio_id}`} - {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`}
                         </div>
-                        <div className="text-xs text-gray-500">Motivo: {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`} | S/ {parseFloat(item.precio || 0).toFixed(2)}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {item.servicio?.area?.nombre || 'Sin área'} | S/ {parseFloat(item.precio || 0).toFixed(2)}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -794,11 +1180,39 @@ const VenderServiciosTab = () => {
 
           {/* Acciones */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button onClick={resetForm} className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">Cancelar</button>
-            <button onClick={handleSubmit} disabled={loading || lineas.length === 0}
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? 'Guardando...' : 'Guardar Venta'}
-            </button>
+            {ventaGuardada ? (
+              <>
+                {/* Botones cuando ya se guardó la venta */}
+                <button
+                  onClick={handleNuevaVenta}
+                  className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Nueva Venta
+                </button>
+                <button
+                  onClick={handleImprimirComprobante}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2"
+                >
+                  <DocumentTextIcon className="w-4 h-4" />
+                  Imprimir Comprobante
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Botones normales */}
+                <button onClick={resetForm} className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading || lineas.length === 0}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Guardando...' : 'Guardar Venta'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -955,6 +1369,22 @@ const VenderServiciosTab = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Modal de éxito */}
+      <ModalExito
+        isOpen={mostrarModalExito}
+        onClose={() => setMostrarModalExito(false)}
+        mensaje="¡Venta Registrada!"
+      />
+
+      {/* Modal de vista previa para impresión */}
+      {mostrarModalImpresion && ventaGuardada && (
+        <PrintPreviewModal
+          venta={ventaGuardada}
+          tipo="servicio"
+          onClose={() => setMostrarModalImpresion(false)}
+        />
       )}
     </div>
   );

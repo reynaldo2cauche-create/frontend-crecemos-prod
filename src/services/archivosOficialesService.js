@@ -228,10 +228,10 @@ const archivosOficialesService = {
       // Agregar marca de agua distribuida en todas las páginas
       const result = await downloadPDFWithWatermark(blob, filename, {
         codigo: codigo,
-        opacity: 0.8,
-        logoPath: '/assets/img/documento-logo.webp',
-        logoWidth: 200,
-        logoHeight: 200,
+        opacity: 0.08,
+        logoPath: '/videologo.png',
+        logoWidth: 180,
+        logoHeight: 180,
         rotation: 45,
         distributeAcrossPage: true
       });
