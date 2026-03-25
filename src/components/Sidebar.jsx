@@ -79,12 +79,7 @@ const menuItems = [
   { text: 'Postulaciones', path: '/intranet/postulaciones', icon: BriefcaseIcon },
   { text: 'Certificaciones', path: '/intranet/archivos-oficiales', icon: DocumentCheckIcon },
   { text: 'Auditoría', path: '/intranet/auditoria', icon: ShieldCheckIcon, adminOnly: true },
-  { 
-  text: 'Reclamaciones', 
-  path: '/intranet/libro-reclamaciones', 
-  icon: ClipboardDocumentCheckIcon, 
-  adminOnly: true 
-},
+
   {
     text: 'Recursos Humanos',
     icon: UsersIcon,
@@ -123,7 +118,16 @@ const menuItems = [
       { text: 'Historial de Ventas', path: '/intranet/ventas/historial', icon: ClipboardDocumentCheckIcon },
     ]
   },
+
   { text: 'Tarifario', path: '/intranet/tarifario', icon: CurrencyDollarIcon, adminAdmisionOnly: true },
+   { 
+  text: 'Reclamaciones', 
+  path: '/intranet/libro-reclamaciones', 
+  icon: ClipboardDocumentCheckIcon, 
+  adminOnly: true,
+  isReclamaciones: true,
+  fullLogo: '/assets/img/librito.png'
+},
   { text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi', isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.webp' },
   { text: 'Izipay', path: 'https://secure.micuentaweb.pe/vads-merchant/loginAction.do', isExternal: true, isIzipay: true, fullLogo: '/assets/img/index/izipay.png', adminAdmisionOnly: true },
 ];
@@ -514,6 +518,35 @@ const Sidebar = () => {
                   </button>
                 );
               }
+
+              if (item.isReclamaciones) {
+  return (
+    <button
+      key={item.text}
+      onClick={handleClick}
+      disabled={itemBloqueado}
+      className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
+        itemBloqueado
+          ? 'opacity-40 cursor-not-allowed'
+          : 'bg-transparent hover:bg-purple-50 cursor-pointer'
+      }`}
+      title={item.text}
+      style={{ animation: `fadeIn 0.4s ease-out ${index * 0.05}s both` }}
+    >
+      <img
+        src={item.fullLogo}
+        alt={item.text}
+        className={`transition-all duration-300 ${
+          itemBloqueado ? '' : 'group-hover:scale-105'
+        } ${isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'}`}
+        style={{
+          objectFit: 'contain',
+          filter: itemBloqueado ? 'grayscale(100%)' : 'none'
+        }}
+      />
+    </button>
+  );
+}
                // Items normales
                   return (
                     <button

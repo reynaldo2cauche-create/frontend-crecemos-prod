@@ -57,12 +57,37 @@ export const getDistritosByProvincia = async (provinciaId) => {
 
 export const getServicios = async () => {
   const cacheKey = 'catalogos:servicios';
+
+  // TEMPORAL: Limpiar caché para forzar reordenamiento
+  // TODO: Remover después de verificar que funciona
+  cacheManager.delete(cacheKey);
+
   const cached = cacheManager.get(cacheKey);
   if (cached) return cached;
 
   const response = await api.get('/catalogos/servicios');
-  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
-  return response.data;
+
+  // Ordenar servicios: primero Infantil, luego Adultos
+  const serviciosOrdenados = response.data.sort((a, b) => {
+    const areaNombreA = (a.area?.nombre || '').toLowerCase().trim();
+    const areaNombreB = (b.area?.nombre || '').toLowerCase().trim();
+
+    // Verificar si es infantil (con variaciones posibles)
+    const esInfantilA = areaNombreA.includes('infantil');
+    const esInfantilB = areaNombreB.includes('infantil');
+
+    // Si A es Infantil y B no, A va primero
+    if (esInfantilA && !esInfantilB) return -1;
+    // Si B es Infantil y A no, B va primero
+    if (!esInfantilA && esInfantilB) return 1;
+    // Si ambos son del mismo tipo, mantener el orden original
+    return 0;
+  });
+
+  console.log('🔍 Servicios ordenados:', serviciosOrdenados.map(s => ({ nombre: s.nombre, area: s.area?.nombre })));
+
+  cacheManager.set(cacheKey, serviciosOrdenados, CATALOG_TTL);
+  return serviciosOrdenados;
 };
 
 export const getRelacionesResponsable = async () => {

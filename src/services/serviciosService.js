@@ -8,7 +8,28 @@ import api from './api';
  * Obtener todos los servicios del catálogo
  */
 export const getServicios = () =>
-  api.get('/catalogos/servicios').then(r => r.data);
+  api.get('/catalogos/servicios').then(r => {
+    // Ordenar servicios: primero Infantil, luego Adultos
+    const serviciosOrdenados = r.data.sort((a, b) => {
+      const areaNombreA = (a.area?.nombre || '').toLowerCase().trim();
+      const areaNombreB = (b.area?.nombre || '').toLowerCase().trim();
+
+      // Verificar si es infantil (con variaciones posibles)
+      const esInfantilA = areaNombreA.includes('infantil');
+      const esInfantilB = areaNombreB.includes('infantil');
+
+      // Si A es Infantil y B no, A va primero
+      if (esInfantilA && !esInfantilB) return -1;
+      // Si B es Infantil y A no, B va primero
+      if (!esInfantilA && esInfantilB) return 1;
+      // Si ambos son del mismo tipo, mantener el orden original
+      return 0;
+    });
+
+    console.log('🔍 Servicios ordenados (serviciosService):', serviciosOrdenados.map(s => ({ nombre: s.nombre, area: s.area?.nombre })));
+
+    return serviciosOrdenados;
+  });
 
 /**
  * Obtener áreas de servicio

@@ -153,7 +153,7 @@ const TarifaModal = ({ tarifa, servicios, motivos, onClose, onSaved }) => {
       if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
       agrupados[areaNombre].push(s);
     });
-    const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
+    const ordenAreas = ['Área Infantil', 'Área Adolescentes y Adultos', 'Otros'];
     const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
       const indexA = ordenAreas.indexOf(a);
       const indexB = ordenAreas.indexOf(b);

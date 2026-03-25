@@ -4,17 +4,13 @@ import { getServicios } from '../../services/serviciosService';
 import { getMotivosCita } from '../../services/citaService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 const fmt = (n) => (n != null ? `S/ ${parseFloat(n).toFixed(0)}` : null);
 
 const esEntrevista = (nombre = '') => nombre.toLowerCase().includes('entrevista');
 const esEvaluacion = (nombre = '') => nombre.toLowerCase().includes('evaluaci');
-const esPagoTotal  = (nombre = '') => nombre.toLowerCase().includes('total');
+const esPagoTotal = (nombre = '') => nombre.toLowerCase().includes('total');
 
-const ORDEN_AREAS = ['Infantil y Adolescentes', 'Adultos'];
-
-// ─── Badge de descuento ───────────────────────────────────────────────────────
-
+// ─── Badge ───────────────────────────────────────────────────────────────────
 const Badge = ({ tipo }) => {
   if (tipo === 'vigencia')
     return (
@@ -42,7 +38,6 @@ const Badge = ({ tipo }) => {
 };
 
 // ─── Tabla de tarifas ─────────────────────────────────────────────────────────
-
 const TarifaTable = ({ rows }) => (
   <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
     <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
@@ -50,7 +45,6 @@ const TarifaTable = ({ rows }) => (
       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-center">Descuento</span>
       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Tarifa</span>
     </div>
-
     {rows.map((row, i) => (
       <div
         key={i}
@@ -78,26 +72,25 @@ const TarifaTable = ({ rows }) => (
 );
 
 // ─── Grid de paquetes ─────────────────────────────────────────────────────────
-
 const PaquetesGrid = ({ paquetes, precioBase }) => {
   if (!paquetes || paquetes.length === 0) return null;
 
   const cards = paquetes.map((p) => {
-    const paquete   = p.paquete;
-    const sesiones  = paquete?.cantidadSesiones ?? paquete?.cantidad_sesiones ?? '?';
+    const paquete = p.paquete;
+    const sesiones = paquete?.cantidadSesiones ?? paquete?.cantidad_sesiones ?? '?';
     let precioTotal = null;
-    let unitario    = null;
-    let ahorro      = null;
+    let unitario = null;
+    let ahorro = null;
 
     if (p.tipo_calculo === 'precio_total') {
       precioTotal = parseFloat(p.valor);
-      unitario    = precioTotal / sesiones;
+      unitario = precioTotal / sesiones;
       if (precioBase != null) ahorro = precioBase * sesiones - precioTotal;
     } else if (p.tipo_calculo === 'descuento_porcentaje' && precioBase != null) {
-      const pct   = parseFloat(p.valor) / 100;
-      unitario    = precioBase * (1 - pct);
+      const pct = parseFloat(p.valor) / 100;
+      unitario = precioBase * (1 - pct);
       precioTotal = unitario * sesiones;
-      ahorro      = precioBase * sesiones - precioTotal;
+      ahorro = precioBase * sesiones - precioTotal;
     }
 
     return { sesiones, precioTotal, unitario, ahorro };
@@ -108,17 +101,16 @@ const PaquetesGrid = ({ paquetes, precioBase }) => {
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
         Paquetes disponibles
       </p>
-      <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
-        {/* Sesión suelta como referencia */}
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
         {precioBase != null && (
-          <div className="bg-white border border-gray-200 rounded-lg p-2.5 text-center">
+          <div className="bg-white border border-gray-200 rounded-lg p-2.5 text-center hover:shadow-md transition-shadow">
             <p className="text-xs text-gray-400 mb-1">1 sesión</p>
             <p className="text-base font-semibold text-gray-900">{fmt(precioBase)}</p>
             <p className="text-xs text-gray-400">{fmt(precioBase)} c/u</p>
           </div>
         )}
         {cards.map((c, i) => (
-          <div key={i} className="bg-white border border-gray-200 rounded-lg p-2.5 text-center">
+          <div key={i} className="bg-white border border-gray-200 rounded-lg p-2.5 text-center hover:shadow-md transition-shadow">
             <p className="text-xs text-gray-400 mb-1">{c.sesiones} sesiones</p>
             <p className="text-base font-semibold text-gray-900">
               {c.precioTotal != null ? fmt(c.precioTotal) : '—'}
@@ -138,13 +130,108 @@ const PaquetesGrid = ({ paquetes, precioBase }) => {
   );
 };
 
-// ─── Panel de detalle de un servicio ─────────────────────────────────────────
+// ─── Tarjeta de servicio (versión minimalista moderna) ─────────────────────────
+const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Obtener el precio base más bajo (terapia individual)
+  let precioBase = null;
+  let tienePaquetes = false;
+  let tiposServicio = new Set();
+  
+  tarifas.forEach((t) => {
+    const nombre = motivosMap[t.motivo_cita_id] ?? '';
+    const precio = parseFloat(t.precio);
+    
+    if (!esEntrevista(nombre) && !esEvaluacion(nombre)) {
+      if (precioBase === null || precio < precioBase) precioBase = precio;
+    }
+    
+    if (esEntrevista(nombre)) tiposServicio.add('Entrevista');
+    if (esEvaluacion(nombre)) tiposServicio.add('Evaluación');
+    if (!esEntrevista(nombre) && !esEvaluacion(nombre)) tiposServicio.add('Terapia');
+    
+    if ((t.precios_paquetes ?? []).length > 0) tienePaquetes = true;
+  });
 
-const DetalleServicio = ({ servicio, tarifas, motivosMap }) => {
-  const rowsEval    = [];
+  const tiposArray = Array.from(tiposServicio);
+
+  return (
+    <button
+      onClick={() => onClick(servicio)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`group relative p-5 rounded-2xl transition-all duration-300 text-left ${
+        isSelected
+          ? 'bg-purple-50 border-2 border-[#7B1FA2] shadow-xl scale-[1.02]'
+          : 'bg-white border border-gray-100 hover:border-[#7B1FA2]/30 hover:shadow-xl hover:-translate-y-1'
+      }`}
+    >
+      {/* Nombre del servicio */}
+      <h3 className="text-lg font-bold text-gray-800 mb-2 pr-8 group-hover:text-[#7B1FA2] transition-colors">
+        {servicio.nombre}
+      </h3>
+
+      {/* Tipos de servicio como badges */}
+      {tiposArray.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {tiposArray.map((tipo, idx) => (
+            <span 
+              key={idx}
+              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium"
+            >
+              {tipo}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Precio */}
+      {precioBase && (
+        <div className="mt-2 pt-3 border-t border-gray-100 flex items-end justify-between">
+          <div>
+            <p className="text-xs text-gray-400 font-medium mb-1">Desde</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-[#7B1FA2]">
+                {fmt(precioBase)}
+              </span>
+              <span className="text-xs text-gray-400">/ sesión</span>
+            </div>
+          </div>
+          
+          {/* Indicador de click */}
+          <div className={`transform transition-all duration-300 ${isHovered ? 'translate-x-1' : ''}`}>
+            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+              <svg className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Badge de paquetes */}
+      {tienePaquetes && (
+        <div className={`absolute top-4 right-4 transition-all duration-300 ${isHovered ? 'scale-110' : ''}`}>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Paquetes
+          </span>
+        </div>
+      )}
+    </button>
+  );
+};
+
+// ─── Panel lateral de detalle ────────────────────────────────────────────────
+const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
+  const [isClosing, setIsClosing] = useState(false);
+  const rowsEval = [];
   const rowsTerapia = [];
-  let precioBase    = null;
-  let paquetes      = [];
+  let precioBase = null;
+  let paquetes = [];
 
   tarifas.forEach((t) => {
     const nombre = motivosMap[t.motivo_cita_id] ?? `Motivo #${t.motivo_cita_id}`;
@@ -171,64 +258,99 @@ const DetalleServicio = ({ servicio, tarifas, motivosMap }) => {
     }
   });
 
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 300);
+  };
+
   return (
-    <div className="h-full overflow-y-auto p-6 max-w-2xl">
+    <>
+      {/* Overlay */}
+      <div 
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-all duration-300 ${
+          isClosing ? 'opacity-0' : 'opacity-100'
+        }`}
+        onClick={handleClose}
+      />
+      
+      {/* Panel lateral */}
+      <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
+        isClosing ? 'translate-x-full' : 'translate-x-0'
+      }`}>
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b border-gray-200">
+            <div className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900">{servicio.nombre}</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {servicio.area?.nombre ?? 'Área no especificada'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleClose}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
 
-      {/* Cabecera del servicio */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] inline-block" />
-          <span className="text-xs font-semibold text-[#7B1FA2] uppercase tracking-wide">
-            {servicio.area?.nombre ?? 'Área'}
-          </span>
+          {/* Contenido */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {rowsEval.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                  Evaluación
+                </p>
+                <TarifaTable rows={rowsEval} />
+              </div>
+            )}
+
+            {rowsTerapia.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                  Terapia
+                </p>
+                <TarifaTable rows={rowsTerapia} />
+              </div>
+            )}
+
+            {paquetes.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                  Paquetes
+                </p>
+                <PaquetesGrid paquetes={paquetes} precioBase={precioBase} />
+              </div>
+            )}
+
+            {/* Nota */}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <p className="text-xs text-gray-500">
+                * Aplica el 5% de descuento adicional a partir de 8 sesiones
+              </p>
+            </div>
+          </div>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900">{servicio.nombre}</h2>
       </div>
-
-      {/* Evaluación */}
-      {rowsEval.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Evaluación
-          </p>
-          <TarifaTable rows={rowsEval} />
-        </div>
-      )}
-
-      {/* Terapia */}
-      {rowsTerapia.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Terapia
-          </p>
-          <TarifaTable rows={rowsTerapia} />
-        </div>
-      )}
-
-      {/* Paquetes */}
-      {paquetes.length > 0 && (
-        <div className="mb-4">
-          <PaquetesGrid paquetes={paquetes} precioBase={precioBase} />
-        </div>
-      )}
-
-      {/* Nota */}
-      <p className="text-xs text-gray-400">
-        * Aplica el 5% de dsct adicional a partir de 8 sesiones
-      </p>
-    </div>
+    </>
   );
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-
 const TarifarioPage = () => {
-  const [tarifas, setTarifas]     = useState([]);
+  const [tarifas, setTarifas] = useState([]);
   const [servicios, setServicios] = useState([]);
-  const [motivos, setMotivos]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [activoId, setActivoId]   = useState(null);
+  const [motivos, setMotivos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedServicio, setSelectedServicio] = useState(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
@@ -251,13 +373,11 @@ const TarifarioPage = () => {
     cargar();
   }, []);
 
-  // Mapa motivoId → nombre
   const motivosMap = useMemo(
     () => Object.fromEntries(motivos.map((m) => [m.id, m.nombre])),
-    [motivos],
+    [motivos]
   );
 
-  // Mapa servicioId → tarifas[]
   const tarifasMap = useMemo(() => {
     const map = {};
     tarifas.forEach((t) => {
@@ -267,40 +387,30 @@ const TarifarioPage = () => {
     return map;
   }, [tarifas]);
 
-  // Servicios agrupados por área, ordenados, solo los que tienen tarifas activas
-  const areas = useMemo(() => {
-    const grupos = {};
-    servicios
-      .filter((s) => (tarifasMap[s.id] ?? []).length > 0)
-      .forEach((s) => {
-        const area = s.area?.nombre || 'Otros';
-        if (!grupos[area]) grupos[area] = [];
-        grupos[area].push(s);
-      });
-
-    return Object.keys(grupos)
-      .sort((a, b) => {
-        const ia = ORDEN_AREAS.indexOf(a);
-        const ib = ORDEN_AREAS.indexOf(b);
-        if (ia === -1 && ib === -1) return a.localeCompare(b);
-        if (ia === -1) return 1;
-        if (ib === -1) return -1;
-        return ia - ib;
-      })
-      .map((nombre) => ({ nombre, servicios: grupos[nombre] }));
+  const serviciosConTarifas = useMemo(() => {
+    return servicios.filter((s) => (tarifasMap[s.id] ?? []).length > 0);
   }, [servicios, tarifasMap]);
 
-  // Seleccionar primer servicio por defecto cuando cargan
-  useEffect(() => {
-    if (areas.length > 0 && activoId === null) {
-      setActivoId(areas[0].servicios[0]?.id ?? null);
-    }
-  }, [areas]);
+  const serviciosAgrupados = useMemo(() => {
+    const grupos = {};
+    serviciosConTarifas.forEach((s) => {
+      const area = s.area?.nombre || 'Otros';
+      if (!grupos[area]) grupos[area] = [];
+      grupos[area].push(s);
+    });
+    return grupos;
+  }, [serviciosConTarifas]);
 
-  const servicioActivo = servicios.find((s) => s.id === activoId) ?? null;
-  const tarifasActivo  = tarifasMap[activoId] ?? [];
+  const handleServicioClick = (servicio) => {
+    setSelectedServicio(servicio);
+    setPanelOpen(true);
+  };
 
-  // ── Loading ──
+  const handleClosePanel = () => {
+    setPanelOpen(false);
+    setTimeout(() => setSelectedServicio(null), 300);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -312,7 +422,6 @@ const TarifarioPage = () => {
     );
   }
 
-  // ── Error ──
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -326,12 +435,10 @@ const TarifarioPage = () => {
     );
   }
 
-  // ── Layout principal ──
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-
+    <div className="bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-[#7B1FA2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,82 +448,60 @@ const TarifarioPage = () => {
           </div>
           <div>
             <h1 className="text-base font-bold text-gray-900 leading-tight">Tarifario de Servicios</h1>
-            <p className="text-xs text-gray-400">Crecemos · Centro Integral de Terapias</p>
+            <p className="text-xs text-gray-400">Selecciona un servicio para ver sus tarifas</p>
           </div>
         </div>
       </div>
 
-      {/* Body: sidebar + detalle */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* ── Sidebar: lista de servicios agrupados por área ── */}
-        <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Servicios</p>
+      {/* Grid de servicios */}
+      <div className="p-6">
+        {Object.entries(serviciosAgrupados).map(([areaNombre, areaServicios]) => (
+          <div key={areaNombre} className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-5 bg-[#7B1FA2] rounded-full" />
+              <h2 className="text-lg font-semibold text-gray-800">{areaNombre}</h2>
+              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                {areaServicios.length}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {areaServicios.map((servicio) => (
+                <ServicioCard
+                  key={servicio.id}
+                  servicio={servicio}
+                  tarifas={tarifasMap[servicio.id] ?? []}
+                  motivosMap={motivosMap}
+                  onClick={handleServicioClick}
+                  isSelected={selectedServicio?.id === servicio.id && panelOpen}
+                />
+              ))}
+            </div>
           </div>
+        ))}
 
-          {areas.map((area) => (
-            <div key={area.nombre} className="mb-1">
-              {/* Etiqueta de área */}
-              <div className="px-4 pt-4 pb-1.5">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  {area.nombre}
-                </p>
-              </div>
-
-              {/* Botones de servicio */}
-              {area.servicios.map((svc) => {
-                const isActive = svc.id === activoId;
-                return (
-                  <button
-                    key={svc.id}
-                    onClick={() => setActivoId(svc.id)}
-                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition-colors border-l-2 ${
-                      isActive
-                        ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]'
-                        : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${
-                        isActive ? 'bg-[#7B1FA2]' : 'bg-gray-300'
-                      }`}
-                    />
-                    <span className={`text-sm leading-snug ${isActive ? 'font-medium' : ''}`}>
-                      {svc.nombre}
-                    </span>
-                  </button>
-                );
-              })}
+        {serviciosConTarifas.length === 0 && (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-          ))}
-        </aside>
-
-        {/* ── Panel derecho: detalle del servicio seleccionado ── */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          {servicioActivo ? (
-            <DetalleServicio
-              key={activoId}
-              servicio={servicioActivo}
-              tarifas={tarifasActivo}
-              motivosMap={motivosMap}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto">
-                  <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-400">Selecciona un servicio</p>
-              </div>
-            </div>
-          )}
-        </main>
-
+            <p className="text-gray-400">No hay servicios disponibles</p>
+          </div>
+        )}
       </div>
+
+      {/* Panel lateral */}
+      {panelOpen && selectedServicio && (
+        <DetallePanel
+          servicio={selectedServicio}
+          tarifas={tarifasMap[selectedServicio.id] ?? []}
+          motivosMap={motivosMap}
+          onClose={handleClosePanel}
+        />
+      )}
     </div>
   );
 };
