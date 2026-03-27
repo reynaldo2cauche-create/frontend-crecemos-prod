@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ROLES_NAMES, ROLES } from '../constants/roles';
 import NotificacionesGlobales from './NotificacionesGlobales';
 import { useGeofencing } from '../hooks/useGeofencing';
@@ -398,9 +398,9 @@ const Sidebar = () => {
                           const isSubActive = location.pathname === subItem.path;
 
                           return (
-                            <button
+                            <Link
                               key={subItem.text}
-                              onClick={() => navigate(subItem.path)}
+                              to={subItem.path}
                               className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-300 group outline-none ${
                                 isSubActive
                                   ? 'bg-purple-50 text-[#7B1FA2]'
@@ -412,7 +412,7 @@ const Sidebar = () => {
                               {isSubActive && (
                                 <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0 ml-auto"></div>
                               )}
-                            </button>
+                            </Link>
                           );
                         })}
                       </div>
@@ -448,18 +448,24 @@ const Sidebar = () => {
                // Renderizado especial para Webmail con logo completo
                 if (item.isWebmail) {
                   return (
-                    <button
+                    <a
                       key={item.text}
-                      onClick={handleClick}
-                      disabled={itemBloqueado}
+                      href={itemBloqueado ? undefined : item.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={itemBloqueado ? (e) => {
+                        e.preventDefault();
+                        handleClick();
+                      } : undefined}
                       className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
-                        itemBloqueado 
-                          ? 'opacity-40 cursor-not-allowed' 
+                        itemBloqueado
+                          ? 'opacity-40 cursor-not-allowed'
                           : 'bg-transparent hover:bg-purple-50 cursor-pointer'
                       } ${isCollapsed ? 'px-2' : ''}`}
                       title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : item.text}
                       style={{
-                        animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
+                        animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`,
+                        pointerEvents: itemBloqueado ? 'auto' : undefined
                       }}
                     >
                       <img
@@ -468,7 +474,7 @@ const Sidebar = () => {
                         className={`transition-all duration-300 ${
                           itemBloqueado ? '' : 'group-hover:scale-105'
                         } ${isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'}`}
-                        style={{ 
+                        style={{
                           objectFit: 'contain',
                           filter: itemBloqueado ? 'grayscale(100%)' : 'none'
                         }}
@@ -478,17 +484,22 @@ const Sidebar = () => {
                           <span className="text-white text-xs font-bold">🔒</span>
                         </div>
                       )}
-                    </button>
+                    </a>
                   );
                 }
 
               // Renderizado especial para Izipay con logo completo
               if (item.isIzipay) {
                 return (
-                  <button
+                  <a
                     key={item.text}
-                    onClick={handleClick}
-                    disabled={itemBloqueado}
+                    href={itemBloqueado ? undefined : item.path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={itemBloqueado ? (e) => {
+                      e.preventDefault();
+                      handleClick();
+                    } : undefined}
                     className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
                       itemBloqueado
                         ? 'opacity-40 cursor-not-allowed'
@@ -496,7 +507,8 @@ const Sidebar = () => {
                     } ${isCollapsed ? 'px-2' : ''}`}
                     title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : item.text}
                     style={{
-                      animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
+                      animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`,
+                      pointerEvents: itemBloqueado ? 'auto' : undefined
                     }}
                   >
                     <img
@@ -515,23 +527,29 @@ const Sidebar = () => {
                         <span className="text-white text-xs font-bold">🔒</span>
                       </div>
                     )}
-                  </button>
+                  </a>
                 );
               }
 
               if (item.isReclamaciones) {
   return (
-    <button
+    <Link
       key={item.text}
-      onClick={handleClick}
-      disabled={itemBloqueado}
+      to={item.path}
+      onClick={itemBloqueado ? (e) => {
+        e.preventDefault();
+        handleClick();
+      } : undefined}
       className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
         itemBloqueado
           ? 'opacity-40 cursor-not-allowed'
           : 'bg-transparent hover:bg-purple-50 cursor-pointer'
       }`}
       title={item.text}
-      style={{ animation: `fadeIn 0.4s ease-out ${index * 0.05}s both` }}
+      style={{
+        animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`,
+        pointerEvents: itemBloqueado ? 'none' : undefined
+      }}
     >
       <img
         src={item.fullLogo}
@@ -544,27 +562,31 @@ const Sidebar = () => {
           filter: itemBloqueado ? 'grayscale(100%)' : 'none'
         }}
       />
-    </button>
+    </Link>
   );
 }
                // Items normales
-                  return (
-                    <button
-                      key={item.text}
-                      onClick={handleClick}
-                      disabled={itemBloqueado}
-                      className={`menu-item w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
-                        itemBloqueado
-                          ? 'opacity-40 cursor-not-allowed' // 🔒 BLOQUEADO: Opaco, sin hover
-                          : isActive
-                          ? 'text-gray-900 cursor-pointer'
-                          : 'text-gray-600 hover:text-gray-900 cursor-pointer'
-                      } ${isCollapsed ? 'justify-center' : ''}`}
-                      title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : (isCollapsed ? item.text : '')}
-                      style={{
-                        animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
-                      }}
-                    >
+                  const linkProps = {
+                    key: item.text,
+                    className: `menu-item w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
+                      itemBloqueado
+                        ? 'opacity-40 cursor-not-allowed' // 🔒 BLOQUEADO: Opaco, sin hover
+                        : isActive
+                        ? 'text-gray-900 cursor-pointer'
+                        : 'text-gray-600 hover:text-gray-900 cursor-pointer'
+                    } ${isCollapsed ? 'justify-center' : ''}`,
+                    title: itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : (isCollapsed ? item.text : ''),
+                    style: {
+                      animation: `fadeIn 0.4s ease-out ${index * 0.05}s both`
+                    },
+                    onClick: itemBloqueado ? (e) => {
+                      e.preventDefault();
+                      handleClick();
+                    } : undefined
+                  };
+
+                  const LinkContent = (
+                    <>
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
                         itemBloqueado
                           ? 'bg-gray-200 text-gray-400' // 🔒 BLOQUEADO: Gris
@@ -584,19 +606,28 @@ const Sidebar = () => {
                       >
                         {item.text}
                       </span>
-                      
+
                       {/* Indicador de item activo */}
                       {!isCollapsed && isActive && !itemBloqueado && (
                         <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0"></div>
                       )}
-                      
+
                       {/* 🔒 Candado para items bloqueados */}
                       {itemBloqueado && !isCollapsed && (
                         <div className="flex items-center gap-1 text-red-500 flex-shrink-0">
                           <span className="text-xs">🔒</span>
                         </div>
                       )}
-                    </button>
+                    </>
+                  );
+
+                  return (
+                    <Link
+                      {...linkProps}
+                      to={item.path}
+                    >
+                      {LinkContent}
+                    </Link>
                   );
                 })}          
                 </div>
@@ -608,8 +639,8 @@ const Sidebar = () => {
             // Vista colapsada - Iconos verticales centrados
             <div className="flex flex-col items-center gap-2">
               {/* Avatar del usuario */}
-              <button
-                onClick={() => navigate('/intranet/mi-perfil')}
+              <Link
+                to="/intranet/mi-perfil"
                 className="w-full flex items-center justify-center p-2.5 text-gray-500 rounded-xl transition-all duration-300 outline-none hover:scale-110 hover:bg-purple-50"
                 style={{
                   border: 'none',
@@ -624,7 +655,7 @@ const Sidebar = () => {
                   </div>
                   <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#A3C644] rounded-full animate-pulse" style={{ border: '2px solid white' }}></div>
                 </div>
-              </button>
+              </Link>
 
               {/* Cerrar sesión */}
               <button
@@ -646,8 +677,8 @@ const Sidebar = () => {
             // Vista expandida - Layout horizontal completo
             <div className="space-y-2">
               {/* Botón de perfil completo */}
-              <button
-                onClick={() => navigate('/intranet/mi-perfil')}
+              <Link
+                to="/intranet/mi-perfil"
                 className="w-full flex items-center gap-3 p-2.5 text-gray-600 rounded-xl transition-all duration-300 group outline-none hover:scale-[1.02]"
                 style={{
                   border: 'none',
@@ -672,7 +703,7 @@ const Sidebar = () => {
                   </p>
                 </div>
                 <UserCircleIcon className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] flex-shrink-0 transition-all duration-300 group-hover:scale-125" />
-              </button>
+              </Link>
 
               {/* Botón cerrar sesión */}
               <div className="flex items-center gap-2">

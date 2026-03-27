@@ -231,6 +231,20 @@ const ModalAgendarCita = ({
     return 'Terapeuta no especificado';
   };
 
+  // ========== FUNCIÓN AUXILIAR PARA OBTENER SALUDO SEGÚN HORA ==========
+  const obtenerSaludo = () => {
+    const ahora = new Date();
+    const hora = ahora.getHours();
+
+    if (hora >= 0 && hora < 12) {
+      return 'Buenos días';
+    } else if (hora >= 12 && hora < 19) {
+      return 'Buenas tardes';
+    } else {
+      return 'Buenas noches';
+    }
+  };
+
   // ========== FUNCIÓN PARA GENERAR RECORDATORIO ==========
   const generarMensajeRecordatorio = useCallback(async () => {
     if (modoSoloLectura) return;
@@ -282,18 +296,17 @@ const ModalAgendarCita = ({
           ? formatearNombreTitulo(`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim())
           : 'Paciente';
 
-        // Calcular si es menor de edad
-        let esMenorDeEdad = false;
-        if (citaEditando.paciente?.fecha_nacimiento) {
-          const hoy = new Date();
-          const fechaNac = new Date(citaEditando.paciente.fecha_nacimiento);
-          let edad = hoy.getFullYear() - fechaNac.getFullYear();
-          const mes_diff = hoy.getMonth() - fechaNac.getMonth();
-          if (mes_diff < 0 || (mes_diff === 0 && hoy.getDate() < fechaNac.getDate())) {
-            edad--;
-          }
-          esMenorDeEdad = edad < 18;
+        // Verificar si tiene responsable activo (principal)
+        let tieneResponsable = false;
+        if (citaEditando.paciente?.responsables && Array.isArray(citaEditando.paciente.responsables)) {
+          const responsablePrincipal = citaEditando.paciente.responsables.find(
+            r => r.activo && (r.orden === 1 || r.orden === '1')
+          );
+          tieneResponsable = !!responsablePrincipal;
         }
+
+        // Obtener saludo dinámico según la hora actual
+        const saludo = obtenerSaludo();
 
         let mensaje;
         if (citasMismoDia.length > 1) {
@@ -307,17 +320,17 @@ const ModalAgendarCita = ({
             if (index < citasMismoDia.length - 1) mensajeCitas += '\n';
           });
 
-          if (esMenorDeEdad) {
-            // Mensaje para responsable de menor de edad
-            mensaje = `Buen día, Sr(a).
+          if (tieneResponsable) {
+            // Mensaje para responsable (si el paciente tiene responsable)
+            mensaje = `${saludo}, Sr(a).
 Le hacemos recordar las citas de *${nombrePaciente}* para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 ${mensajeCitas}
 
 🥳 ¡Los esperamos! ✨`;
           } else {
-            // Mensaje para paciente adulto
-            mensaje = `Buen día, *${nombrePaciente}*
+            // Mensaje directo al paciente (si no tiene responsable)
+            mensaje = `${saludo}, *${nombrePaciente}*
 Le hacemos recordar sus citas para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 ${mensajeCitas}
@@ -326,9 +339,9 @@ ${mensajeCitas}
           }
         } else {
           // Una sola cita (usa la cita que se está editando para tener los datos completos)
-          if (esMenorDeEdad) {
-            // Mensaje para responsable de menor de edad
-            mensaje = `Buen día, Sr(a).
+          if (tieneResponsable) {
+            // Mensaje para responsable (si el paciente tiene responsable)
+            mensaje = `${saludo}, Sr(a).
 Le hacemos recordar la cita de *${nombrePaciente}* para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 🕓 *${formatearHora(citaEditando.hora_inicio)}*
@@ -337,8 +350,8 @@ Le hacemos recordar la cita de *${nombrePaciente}* para el día
 
 🥳 ¡Los esperamos! ✨`;
           } else {
-            // Mensaje para paciente adulto
-            mensaje = `Buen día, *${nombrePaciente}*
+            // Mensaje directo al paciente (si no tiene responsable)
+            mensaje = `${saludo}, *${nombrePaciente}*
 Le hacemos recordar su cita para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 🕓 *${formatearHora(citaEditando.hora_inicio)}*
@@ -392,18 +405,17 @@ Le hacemos recordar su cita para el día
         ? formatearNombreTitulo(formularioCita.paciente.nombre_completo)
         : 'Paciente';
 
-      // Calcular si es menor de edad
-      let esMenorDeEdad = false;
-      if (formularioCita.paciente?.fecha_nacimiento) {
-        const hoy = new Date();
-        const fechaNac = new Date(formularioCita.paciente.fecha_nacimiento);
-        let edad = hoy.getFullYear() - fechaNac.getFullYear();
-        const mes_diff = hoy.getMonth() - fechaNac.getMonth();
-        if (mes_diff < 0 || (mes_diff === 0 && hoy.getDate() < fechaNac.getDate())) {
-          edad--;
-        }
-        esMenorDeEdad = edad < 18;
+      // Verificar si tiene responsable activo (principal)
+      let tieneResponsable = false;
+      if (formularioCita.paciente?.responsables && Array.isArray(formularioCita.paciente.responsables)) {
+        const responsablePrincipal = formularioCita.paciente.responsables.find(
+          r => r.activo && (r.orden === 1 || r.orden === '1')
+        );
+        tieneResponsable = !!responsablePrincipal;
       }
+
+      // Obtener saludo dinámico según la hora actual
+      const saludo = obtenerSaludo();
 
       let servicioNombre = 'Servicio no especificado';
       if (tipoCita === 'NORMAL' && formularioCita.servicio_id) {
@@ -425,9 +437,9 @@ Le hacemos recordar su cita para el día
       }
 
       let mensaje;
-      if (esMenorDeEdad) {
-        // Mensaje para responsable de menor de edad
-        mensaje = `Buen día, Sr(a).
+      if (tieneResponsable) {
+        // Mensaje para responsable (si el paciente tiene responsable)
+        mensaje = `${saludo}, Sr(a).
 Le hacemos recordar la cita de *${nombrePaciente}* para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 🕓 *${horaFormateada}*
@@ -436,8 +448,8 @@ Le hacemos recordar la cita de *${nombrePaciente}* para el día
 
 🥳 ¡Los esperamos! ✨`;
       } else {
-        // Mensaje para paciente adulto
-        mensaje = `Buen día, *${nombrePaciente}*
+        // Mensaje directo al paciente (si no tiene responsable)
+        mensaje = `${saludo}, *${nombrePaciente}*
 Le hacemos recordar su cita para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 🕓 *${horaFormateada}*

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User } from 'lucide-react';
+import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User, FileCheck } from 'lucide-react';
 import { guardarReporteEvolucion, actualizarReporteEvolucion, obtenerReporteEvolucion } from '../../services/historiaClinicaService';
 import { getServiciosPorPaciente } from '../../services/pacienteService';
 
@@ -10,6 +10,7 @@ import { calcularEdad } from '../../utils/date';
 import EvaluacionTerapiaOcupacional from './HistoriaClinicaView/components/EvaluacionTOcupacionalView';
 import IndicacionTerapeuticaView from './HistoriaClinicaView/components/IndicacionTerapeuticaView';
 import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
+import SolicitudInformeView from './HistoriaClinicaView/components/SolicitudInformeView';
 
 const HistoriaClinicaView = ({ paciente, user }) => {
   const [serviciosPaciente, setServiciosPaciente] = useState([]);
@@ -313,6 +314,8 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         return <EvaluacionTerapiaOcupacional pacienteId={paciente?.id} usuarioId={user?.id} user={user} />;
       case 'indicacion-terapeutica':
         return <IndicacionTerapeuticaView paciente={paciente} user={user} />;
+      case 'solicitud-informe':
+        return <SolicitudInformeView paciente={paciente} user={user} />;
       default:
         return <div>Contenido no encontrado</div>;
     }
@@ -362,6 +365,14 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       title: 'Indicación Terapéutica',
       description: 'Prescripción de sesiones y recomendaciones terapéuticas',
       icon: ClipboardList,
+      color: 'purple',
+      visible: true // Siempre visible
+    },
+    {
+      id: 'solicitud-informe',
+      title: 'Solicitud de Informe',
+      description: 'Gestión de solicitudes de informes terapéuticos',
+      icon: FileCheck,
       color: 'purple',
       visible: true // Siempre visible
     }

@@ -9,6 +9,8 @@ import {
   ExclamationTriangleIcon,
   XMarkIcon,
   CubeIcon,
+  BuildingOfficeIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
@@ -361,6 +363,8 @@ const ProductosTab = () => {
   const [accionLoading, setAccionLoading] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
   const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+  // Nuevo: filtro por tipo de producto (1=venta, 2=uso interno, null=todos)
+  const [filtroTipo, setFiltroTipo] = useState(1); // Por defecto mostrar "Para venta"
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -390,10 +394,16 @@ const ProductosTab = () => {
 
   useEffect(() => { cargarDatos(); }, [mostrarTodos, soloStockBajo]);
 
-  const productosFiltrados = productos.filter(p =>
-    p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    p.codigo?.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const productosFiltrados = productos.filter(p => {
+    // Filtro por búsqueda
+    const coincideBusqueda = p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.codigo?.toLowerCase().includes(busqueda.toLowerCase());
+
+    // Filtro por tipo de producto
+    const coincideTipo = filtroTipo === null || p.tipo_producto_id === filtroTipo;
+
+    return coincideBusqueda && coincideTipo;
+  });
 
   // Paginación
   const totalPaginas = Math.ceil(productosFiltrados.length / registrosPorPagina);
@@ -404,7 +414,7 @@ const ProductosTab = () => {
   // Resetear a página 1 cuando cambia el filtro
   useEffect(() => {
     setPaginaActual(1);
-  }, [busqueda, mostrarTodos, soloStockBajo]);
+  }, [busqueda, mostrarTodos, soloStockBajo, filtroTipo]);
 
   const handleToggleEstado = async () => {
     if (!confirmToggle) return;
@@ -424,9 +434,32 @@ const ProductosTab = () => {
     }
   };
 
-  const stockBajoCount = productos.filter(p => p.activo && p.stock_actual <= p.stock_minimo).length;
-  const activos = productos.filter(p => p.activo).length;
-  const sinStock = productos.filter(p => p.activo && p.stock_actual === 0).length;
+  // Estadísticas generales (filtradas por tipo si aplica)
+  const productosParaStats = filtroTipo === null
+    ? productos
+    : productos.filter(p => p.tipo_producto_id === filtroTipo);
+
+  const stockBajoCount = productosParaStats.filter(p => p.activo && p.stock_actual <= p.stock_minimo).length;
+  const activos = productosParaStats.filter(p => p.activo).length;
+  const sinStock = productosParaStats.filter(p => p.activo && p.stock_actual === 0).length;
+
+  // Estadísticas separadas por tipo
+  const productosVenta = productos.filter(p => p.tipo_producto_id === 1);
+  const productosUsoInterno = productos.filter(p => p.tipo_producto_id === 2);
+
+  const statsVenta = {
+    total: productosVenta.length,
+    activos: productosVenta.filter(p => p.activo).length,
+    stockBajo: productosVenta.filter(p => p.activo && p.stock_actual <= p.stock_minimo).length,
+    sinStock: productosVenta.filter(p => p.activo && p.stock_actual === 0).length,
+  };
+
+  const statsUsoInterno = {
+    total: productosUsoInterno.length,
+    activos: productosUsoInterno.filter(p => p.activo).length,
+    stockBajo: productosUsoInterno.filter(p => p.activo && p.stock_actual <= p.stock_minimo).length,
+    sinStock: productosUsoInterno.filter(p => p.activo && p.stock_actual === 0).length,
+  };
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -437,6 +470,45 @@ const ProductosTab = () => {
         <p className="text-sm text-gray-500 mt-1">Gestión de productos e inventario</p>
       </div>
 
+     {/* Filtro por Tipo de Producto */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setFiltroTipo(1)}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition-all ${
+            filtroTipo === 1
+              ? 'bg-[#7B1FA2] text-white border-[#7B1FA2] shadow-md'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-[#7B1FA2] hover:text-[#7B1FA2]'
+          }`}
+        >
+          <CubeIcon className="w-4 h-4" />
+          Para Venta ({statsVenta.total})
+        </button>
+
+        <button
+          onClick={() => setFiltroTipo(2)}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition-all ${
+            filtroTipo === 2
+              ? 'bg-[#7B1FA2] text-white border-[#7B1FA2] shadow-md'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-[#7B1FA2] hover:text-[#7B1FA2]'
+          }`}
+        >
+          <BuildingOfficeIcon className="w-4 h-4" />
+          Uso Interno ({statsUsoInterno.total})
+        </button>
+
+        <button
+          onClick={() => setFiltroTipo(null)}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition-all ${
+            filtroTipo === null
+              ? 'bg-[#7B1FA2] text-white border-[#7B1FA2] shadow-md'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-[#7B1FA2] hover:text-[#7B1FA2]'
+          }`}
+        >
+          <Squares2X2Icon className="w-4 h-4" />
+          Ver Todos ({productos.length})
+        </button>
+      </div>
+
       {/* Estadísticas */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
@@ -445,8 +517,10 @@ const ProductosTab = () => {
               <CubeIcon className="w-5 h-5 text-[#7B1FA2]" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-900">{productos.length}</div>
-              <div className="text-xs text-gray-500 font-medium">Total</div>
+              <div className="text-2xl font-bold text-gray-900">{productosParaStats.length}</div>
+              <div className="text-xs text-gray-500 font-medium">
+                Total{filtroTipo === 1 ? ' (Venta)' : filtroTipo === 2 ? ' (Uso Interno)' : ''}
+              </div>
             </div>
           </div>
         </div>

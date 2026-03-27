@@ -468,13 +468,33 @@ const TarifasTab = () => {
                         >
                           <PencilSquareIcon className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => setModalPaquetes(t)}
-                          title="Configurar precios por paquete"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <TagIcon className="w-4 h-4" />
-                        </button>
+                        {(() => {
+                          const motivoNombre = (t._motivo?.nombre || '').toLowerCase();
+                          const esSesionTerapia = motivoNombre.includes('sesión') || motivoNombre.includes('sesion') || motivoNombre.includes('terapia');
+                          const esEvaluacion = motivoNombre.includes('evaluación') || motivoNombre.includes('evaluacion');
+                          const puedeConfigurarPaquetes = esSesionTerapia || esEvaluacion;
+
+                          return (
+                            <button
+                              onClick={() => {
+                                if (!puedeConfigurarPaquetes) {
+                                  alert('Los paquetes solo pueden configurarse para:\n• Sesiones de terapia\n• Evaluaciones\n\nMotivo actual: ' + (t._motivo?.nombre || 'No especificado'));
+                                  return;
+                                }
+                                setModalPaquetes(t);
+                              }}
+                              title={puedeConfigurarPaquetes ? "Configurar precios por paquete" : "No disponible para este tipo de servicio"}
+                              disabled={!puedeConfigurarPaquetes}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                puedeConfigurarPaquetes
+                                  ? 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                                  : 'text-gray-300 cursor-not-allowed'
+                              }`}
+                            >
+                              <TagIcon className="w-4 h-4" />
+                            </button>
+                          );
+                        })()}
                         <button
                           onClick={() => setConfirmToggle(t)}
                           title={t.activo ? 'Desactivar' : 'Activar'}
