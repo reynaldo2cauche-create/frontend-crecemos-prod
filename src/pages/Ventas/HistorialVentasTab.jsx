@@ -190,6 +190,19 @@ const buildDetalleRows = (detalles, tipo, fm) => {
 
   return (detalles || []).map((d) => {
     if (tipo === 'servicio') {
+      // Si hay descripcionLinea, usarla directamente (para documentos o descripción personalizada)
+      if (d.descripcionLinea) {
+        return {
+          desc: d.descripcionLinea,
+          cantidad: (d.sesiones_totales || 1).toFixed(2),
+          precio: fm(toFloat(d.precio_unitario)),
+          subtotal: fm(toFloat(d.subtotal)),
+          paciente: d.paciente
+            ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+            : null,
+        };
+      }
+
       const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
       const motivoCita = getMotivoCita(d);
       const srvNombre  = getServicioNombre(d);
@@ -775,8 +788,8 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold text-sm text-gray-900">
                             {tipo === 'servicio'
-                              ? getServicioNombre(d) !== '-' ? getServicioNombre(d) : d.paquete?.nombre || '—'
-                              : d.producto?.nombre || '—'}
+                              ? (d.descripcionLinea || getServicioNombre(d) || d.paquete?.nombre || '—')
+                              : (d.producto?.nombre || '—')}
                           </p>
                           {tipo === 'servicio' && d.tipo_venta?.nombre && (
                             <span className={`px-2 py-0.5 text-xs font-semibold rounded ${d.tipo_venta.nombre.toLowerCase().includes('paquete') ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>

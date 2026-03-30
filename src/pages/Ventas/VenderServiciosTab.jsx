@@ -22,10 +22,12 @@ import {
   TIPOS_DESCUENTO,
   TIPOS_VENTA_SERVICIO,
   TIPOS_PAGADOR,
+  TIPOS_ITEM_VENTA,
   getCompradoresExternos,
   crearCompradorExterno,
   getTiposComprobante,
 } from '../../services/ventasService';
+import { getDocumentosTarifa } from '../../services/documentoTarifaService';
 import { calcularPromociones, registrarPromocionAplicada } from '../../services/promocionesService';
 import { getTarifasServicios, getPaquetes } from '../../services/serviciosService';
 import {
@@ -152,6 +154,108 @@ const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) 
   );
 };
 
+// ─── Helpers para el ticket ──────────────────────────────────────────────────
+
+/**
+ * Resuelve el nombre del servicio desde la ruta correcta:
+ * detalle → servicio_tarifa → servicio → nombre
+ */
+const getServicioNombre = (d) =>
+  d?.servicio_tarifa?.servicio?.nombre || '-';
+
+/**
+ * Resuelve el motivo de cita desde:
+ * detalle → servicio_tarifa → motivo_cita → nombre
+ */
+const getMotivoCita = (d) =>
+  d?.servicio_tarifa?.motivo_cita?.nombre || '';
+
+/**
+ * Detecta el tipo de beneficio de una promoción aplicada.
+ * beneficio_tipo_id: 1=Desc%, 2=Desc fijo, 3=Ítem más barato gratis, 4=Producto de regalo
+ */
+const getInfoBeneficio = (promoAplicada) => {
+  const reglas = promoAplicada.promocion?.reglas || [];
+  const reglaRegalo     = reglas.find((r) => r.beneficio_tipo_id === 4);
+  const reglaItemGratis = reglas.find((r) => r.beneficio_tipo_id === 3);
+
+  if (reglaRegalo) {
+    return {
+      esProductoGratis: true,
+      esItemGratis: false,
+      nombreProducto: reglaRegalo.beneficio_producto?.nombre || 'Producto de regalo',
+    };
+  }
+  if (reglaItemGratis) {
+    return { esProductoGratis: false, esItemGratis: true, nombreProducto: null };
+  }
+  return { esProductoGratis: false, esItemGratis: false, nombreProducto: null };
+};
+
+/**
+ * Transforma los detalles de una venta en filas listas para renderizar en ticket.
+ */
+const buildDetalleRows = (detalles, tipo, fm) => {
+  const toFloat = (v) => parseFloat(v || 0);
+
+  return (detalles || []).map((d) => {
+    if (tipo === 'servicio') {
+      // Si hay descripcionLinea, usarla directamente (para documentos o descripción personalizada)
+      if (d.descripcionLinea || d.descripcion_linea) {
+        return {
+          desc: d.descripcionLinea || d.descripcion_linea,
+          cantidad: (d.sesiones_totales || 1).toFixed(2),
+          precio: fm(toFloat(d.precio_unitario)),
+          subtotal: fm(toFloat(d.subtotal)),
+          paciente: d.paciente
+            ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+            : null,
+        };
+      }
+
+      const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
+      const motivoCita = getMotivoCita(d);
+      const srvNombre  = getServicioNombre(d);
+
+      let desc, cantidad;
+      if (esPaquete && d.paquete) {
+        const spp  = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
+        cantidad   = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
+        const base = srvNombre !== '-'
+          ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}`
+          : `${d.paquete.nombre} (${spp} SES.)`;
+        desc = motivoCita ? `${base} [${motivoCita}]` : base;
+      } else {
+        cantidad   = (d.sesiones_totales || 0).toFixed(2);
+        desc       = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
+      }
+
+      const precioUnitario = toFloat(d.precio_unitario);
+      const subtotal       = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
+      const paciente       = d.paciente
+        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        : null;
+
+      return {
+        desc,
+        cantidad,
+        precio:   fm(precioUnitario),
+        subtotal: fm(subtotal),
+        paciente,
+      };
+    }
+
+    // Producto
+    return {
+      desc:     d.producto?.nombre || '-',
+      cantidad: toFloat(d.cantidad).toFixed(2),
+      precio:   fm(toFloat(d.precio_unitario)),
+      subtotal: fm(toFloat(d.subtotal)),
+      paciente: null,
+    };
+  });
+};
+
 // ─── TicketPreviewHTML ────────────────────────────────────────────────────────
 const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
   const promociones = venta.promociones_aplicadas || [];
@@ -162,8 +266,15 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
   // Helper para formatear montos - asegura que sea número
   const fm = (v) => formatMoney(toFloat(v));
 
+  const totalPromos = promociones.reduce((s, p) => {
+    const { esProductoGratis, esItemGratis } = getInfoBeneficio(p);
+    return (esProductoGratis || esItemGratis) ? s : s + parseFloat(p.monto_ahorrado || 0);
+  }, 0);
+
   const nombreCliente = getNombreComprador(venta);
   const dni = getDniComprador(venta);
+
+  const rows = buildDetalleRows(venta.detalles, tipo, formatMoney);
 
   const fechaEmision = (() => {
     const str = String(venta.fecha_venta || '');
@@ -210,51 +321,81 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
       </div>
       <hr style={s.hrSolid} />
       <div style={{ marginBottom: '6px' }}>
-        <div style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
-          <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>Fecha emisión:</span>
-          <span style={{ wordBreak: 'break-word' }}>{fechaEmision}</span>
-        </div>
-        <div style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
-          <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>Comprador:</span>
-          <span style={{ wordBreak: 'break-word' }}>{nombreCliente}</span>
-        </div>
-        <div style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
-          <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>DNI:</span>
-          <span style={{ wordBreak: 'break-word' }}>{dni}</span>
-        </div>
+        {[
+          ['Fecha emisión', fechaEmision],
+          ['Comprador', nombreCliente],
+          ['DNI', dni],
+          ['Dirección', '-']
+        ].map(([label, value]) => (
+          <div key={label} style={{ display: 'flex', gap: '3px', marginBottom: '2px', fontSize: '9px' }}>
+            <span style={{ ...s.bold, minWidth: '70px', flexShrink: 0 }}>{label}:</span>
+            <span style={{ wordBreak: 'break-word' }}>{value}</span>
+          </div>
+        ))}
       </div>
       <hr style={s.hr} />
-      <div style={{ marginBottom: '4px', fontSize: '10px', fontWeight: '600' }}>SERVICIOS:</div>
-      {(venta.detalles || []).map((d, i) => {
-        const nombreServicio = d.servicio_tarifa?.servicio?.nombre || '-';
-        const motivoCita = d.servicio_tarifa?.motivo_cita?.nombre || '';
-        const area = d.servicio_tarifa?.servicio?.area?.nombre || '';
-        const tituloServicio = motivoCita ? `${nombreServicio} - ${motivoCita}` : nombreServicio;
-
-        return (
-          <div key={i} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
-            <div style={{ fontSize: '10px', marginBottom: '2px', wordBreak: 'break-word', ...s.bold }}>
-              <span>{d.sesiones_totales || 0} SES.</span> — {tituloServicio}
-            </div>
-            <div style={{ fontSize: '8px', color: '#666', marginBottom: '2px' }}>
-              {area} | P.Unit: S/ {fm(d.precio_unitario)}
-            </div>
-            {d.paciente && (
-              <div style={{ fontSize: '9px', marginBottom: '2px', color: '#7B1FA2' }}>
-                <span style={s.bold}>Paciente:</span> {d.paciente.nombres} {d.paciente.apellidos || d.paciente.apellido_paterno || ''}
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
-              <span style={{ color: '#555' }}>Subtotal:</span>
-              <span style={s.bold}>S/ {fm(toFloat(d.precio_unitario) * toFloat(d.sesiones_totales) - toFloat(d.descuento_monto))}</span>
-            </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', ...s.bold, borderBottom: '1px dashed #aaa', paddingBottom: '2px', marginBottom: '3px' }}>
+        <span style={{ width: '25px' }}>Cant.</span>
+        <span style={{ flex: 1, paddingLeft: '3px' }}>Descripción</span>
+        <span style={{ width: '42px', textAlign: 'right' }}>P.Unit</span>
+        <span style={{ width: '42px', textAlign: 'right' }}>Total</span>
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
+          <div style={{ fontSize: '10px', marginBottom: '2px', wordBreak: 'break-word' }}>
+            <span style={s.bold}>{r.cantidad} NIU</span> — {r.desc}
           </div>
-        );
-      })}
+          {tipo === 'servicio' && r.paciente && r.paciente !== '-' && (
+            <div style={{ fontSize: '9px', marginBottom: '2px', color: '#7B1FA2' }}>
+              <span style={s.bold}>Paciente:</span> {r.paciente}
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+            <span style={{ color: '#555' }}>P.Unit: S/ {r.precio}</span>
+            <span style={s.bold}>S/ {r.subtotal}</span>
+          </div>
+        </div>
+      ))}
       <hr style={s.hr} />
       {descuento > 0 && (
         <div style={{ ...s.row, color: '#b45309' }}>
           <span>DESCUENTOS(-)</span><span>S/ {fm(descuento)}</span>
+        </div>
+      )}
+      {promociones.length > 0 && (
+        <div style={{ borderTop: '1px dashed #bbf7d0', marginTop: '3px', paddingTop: '3px' }}>
+          <div style={{ fontSize: '9px', fontWeight: '700', color: '#15803d', marginBottom: '2px' }}>
+            ✦ PROMOCIONES APLICADAS
+          </div>
+          {promociones.map((p, i) => {
+            const { esProductoGratis, esItemGratis, nombreProducto } = getInfoBeneficio(p);
+            return (
+              <div key={i} style={{ marginBottom: '3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#16a34a' }}>
+                  <span style={{ flex: 1, paddingRight: '4px' }}>• {p.promocion?.nombre || `Promo #${p.promocion_id}`}</span>
+                  {!esProductoGratis && !esItemGratis && (
+                    <span style={{ fontWeight: '700', flexShrink: 0 }}>-S/ {fm(p.monto_ahorrado)}</span>
+                  )}
+                </div>
+                {esProductoGratis && (
+                  <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>
+                    🎁 Incluye gratis: <strong>{nombreProducto}</strong>
+                  </div>
+                )}
+                {esItemGratis && (
+                  <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>
+                    🎁 El ítem más barato va <strong>gratis</strong>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {totalPromos > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '10px', color: '#15803d', background: '#f0fdf4', borderRadius: '2px', padding: '2px 3px', margin: '2px 0 4px' }}>
+              <span>AHORRO TOTAL PROMOCIONES</span>
+              <span>-S/ {fm(totalPromos)}</span>
+            </div>
+          )}
         </div>
       )}
       {requiereIGV && (
@@ -510,6 +651,7 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
 // ─── Componente principal ─────────────────────────────────────────────────────
 const VenderServiciosTab = () => {
   const [tarifas, setTarifas] = useState([]);
+  const [documentosTarifa, setDocumentosTarifa] = useState([]);
   const [paquetes, setPaquetes] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [responsables, setResponsables] = useState([]);
@@ -576,14 +718,16 @@ const VenderServiciosTab = () => {
 
   const cargarDatos = async () => {
     try {
-      const [tarifasData, pacData, respData, compData, tiposComp] = await Promise.all([
+      const [tarifasData, docData, pacData, respData, compData, tiposComp] = await Promise.all([
         getTarifasServicios(),
+        getDocumentosTarifa(),
         getPacientesAll(),
         getTodosLosResponsables(),
         getCompradoresExternos(),
         getTiposComprobante(),
       ]);
       setTarifas(Array.isArray(tarifasData) ? tarifasData.filter(t => t.flg_activo || t.activo) : []);
+      setDocumentosTarifa(Array.isArray(docData) ? docData.filter(d => d.flgActivo || d.flg_activo) : []);
       setPacientes(Array.isArray(pacData) ? pacData : []);
       setResponsables(respData?.data && Array.isArray(respData.data) ? respData.data : []);
       setCompradoresExternos(Array.isArray(compData) ? compData : []);
@@ -643,16 +787,50 @@ const VenderServiciosTab = () => {
   };
 
   const itemsFiltrados = busqueda
-    ? tarifas.filter(t => {
-        const q = busqueda.toLowerCase();
-        return (t.servicio?.nombre || '').toLowerCase().includes(q) || (t.motivo_cita?.nombre || '').toLowerCase().includes(q);
-      })
+    ? [
+        // Agregar servicios con tipo de item
+        ...tarifas.filter(t => {
+          const q = busqueda.toLowerCase();
+          return (t.servicio?.nombre || '').toLowerCase().includes(q) || (t.motivo_cita?.nombre || '').toLowerCase().includes(q);
+        }).map(t => ({ ...t, _tipo: TIPOS_ITEM_VENTA.SERVICIO })),
+        // Agregar documentos con tipo de item
+        ...documentosTarifa.filter(d => {
+          const q = busqueda.toLowerCase();
+          return (d.nombre || '').toLowerCase().includes(q) || (d.descripcion || '').toLowerCase().includes(q);
+        }).map(d => ({ ...d, _tipo: TIPOS_ITEM_VENTA.DOCUMENTO }))
+      ]
     : [];
 
   const seleccionarTarifa = (tarifa) => {
     setTarifaSeleccionada(tarifa);
     setPaqueteSeleccionado('');
     setMostrarModalTipoVenta(true);
+    setMostrarResultados(false);
+  };
+
+  const seleccionarDocumento = (documento) => {
+    // Agregar documento directamente (no necesita modal de tipo venta)
+    let pacienteLineaId = pacienteSeleccionado;
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length === 1) {
+      pacienteLineaId = pacientesDelResponsable[0].id;
+    }
+
+    setLineas(prev => [...prev, {
+      id: Date.now(),
+      tipo_item_venta: TIPOS_ITEM_VENTA.DOCUMENTO,
+      tipo_venta_servicio_id: TIPOS_VENTA_SERVICIO.SESION, // Default
+      documento_tarifa_id: documento.id,
+      documento_nombre: documento.nombre,
+      descripcion_linea: documento.nombre,
+      sesiones: 1, // Los documentos siempre son cantidad 1
+      precio_unitario: parseFloat(documento.precio || 0),
+      precio_base: parseFloat(documento.precio || 0),
+      descuento_tipo: '',
+      descuento_valor: '',
+      paciente_linea_id: pacienteLineaId,
+    }]);
+
+    setBusqueda('');
     setMostrarResultados(false);
   };
 
@@ -698,18 +876,27 @@ const VenderServiciosTab = () => {
       }
     }
 
+    // Construir descripcion_linea
+    const motivoNombre = tarifaSeleccionada.motivo_cita?.nombre || '';
+    const servicioNombre = tarifaSeleccionada.servicio?.nombre || `Servicio #${tarifaSeleccionada.servicio_id}`;
+    const descripcionLinea = paqueteNombre
+      ? `${paqueteNombre} (${sesionesPorPaquete} SES.) - ${servicioNombre}${motivoNombre ? ` [${motivoNombre}]` : ''}`
+      : `${sesiones} ${sesiones === 1 ? 'Sesión' : 'Sesiones'} de ${motivoNombre ? motivoNombre + ' - ' : ''}${servicioNombre}`;
+
     setLineas(prev => [...prev, {
       id: Date.now(),
+      tipo_item_venta: TIPOS_ITEM_VENTA.SERVICIO,
       tipo_venta_servicio_id: tipoVentaId,
       servicio_tarifa_id: tarifaSeleccionada.id,
       servicio_id: tarifaSeleccionada.servicio_id,
       motivo_cita_id: tarifaSeleccionada.motivo_cita_id || null,
       paquete_id: paqueteId,
-      servicio_nombre: tarifaSeleccionada.servicio?.nombre || `Servicio #${tarifaSeleccionada.servicio_id}`,
-      motivo_nombre: tarifaSeleccionada.motivo_cita?.nombre || `Motivo #${tarifaSeleccionada.motivo_cita_id}`,
+      servicio_nombre: servicioNombre,
+      motivo_nombre: motivoNombre,
       paquete_nombre: paqueteNombre,
-      sesiones_por_paquete: sesionesPorPaquete, // Guarda el mínimo del paquete
-      sesiones, // Sesiones actuales (puede ser >= sesiones_por_paquete)
+      descripcion_linea: descripcionLinea,
+      sesiones_por_paquete: sesionesPorPaquete,
+      sesiones,
       precio_unitario: precioUnitario,
       precio_base: precioBase,
       descuento_tipo: '',
@@ -822,18 +1009,40 @@ const VenderServiciosTab = () => {
         fecha_venta,
         detalles: lineas.map(l => {
           const sesionesTotales = l.sesiones || 1;
+          const tipoItem = l.tipo_item_venta || TIPOS_ITEM_VENTA.SERVICIO;
+
           const det = {
+            tipo_item_venta: tipoItem,
             tipo_venta_id: l.tipo_venta_servicio_id,
-            servicio_tarifa_id: parseInt(l.servicio_tarifa_id),
             paciente_id: parseInt(l.paciente_linea_id),
             sesiones_totales: sesionesTotales,
             precio_unitario: parseFloat(l.precio_unitario),
           };
-          if (l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && l.paquete_id) det.paquete_id = parseInt(l.paquete_id);
+
+          // Campos específicos de servicio
+          if (tipoItem === TIPOS_ITEM_VENTA.SERVICIO) {
+            det.servicio_tarifa_id = parseInt(l.servicio_tarifa_id);
+            if (l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && l.paquete_id) {
+              det.paquete_id = parseInt(l.paquete_id);
+            }
+          }
+
+          // Campos específicos de documento
+          if (tipoItem === TIPOS_ITEM_VENTA.DOCUMENTO) {
+            det.documento_tarifa_id = parseInt(l.documento_tarifa_id);
+          }
+
+          // Descripción para la boleta
+          if (l.descripcion_linea) {
+            det.descripcion_linea = l.descripcion_linea;
+          }
+
+          // Descuentos
           if (l.descuento_tipo && l.descuento_valor) {
             det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
             det.descuento_valor = parseFloat(l.descuento_valor);
           }
+
           return det;
         }),
       };
@@ -996,31 +1205,57 @@ const VenderServiciosTab = () => {
                 </div>
               )}
 
-              {/* Búsqueda tarifa */}
+              {/* Búsqueda tarifa/documento */}
               <div className="relative" ref={searchRef}>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Buscar Tarifa</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Buscar Servicio o Documento
+                </label>
                 <div className="relative">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input type="text" value={busqueda}
                     onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
                     onFocus={() => setMostrarResultados(true)}
-                    placeholder="Buscar por servicio o motivo..."
+                    placeholder="Buscar por servicio, motivo o documento..."
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
                   />
                 </div>
                 {mostrarResultados && busqueda && itemsFiltrados.length > 0 && (
                   <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                    {itemsFiltrados.slice(0, 10).map(item => (
-                      <button key={item.id} onClick={() => seleccionarTarifa(item)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                        <div className="font-semibold text-gray-900">
-                          {item.servicio?.nombre || `Servicio #${item.servicio_id}`} - {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {item.servicio?.area?.nombre || 'Sin área'} | S/ {parseFloat(item.precio || 0).toFixed(2)}
-                        </div>
-                      </button>
-                    ))}
+                    {itemsFiltrados.slice(0, 10).map((item, idx) => {
+                      const esServicio = item._tipo === TIPOS_ITEM_VENTA.SERVICIO;
+                      return (
+                        <button key={`${item._tipo}-${item.id}-${idx}`}
+                          onClick={() => esServicio ? seleccionarTarifa(item) : seleccionarDocumento(item)}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                          <div className="flex items-start gap-2">
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded whitespace-nowrap ${
+                              esServicio ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                            }`}>
+                              {esServicio ? 'Servicio' : 'Documento'}
+                            </span>
+                            <div className="flex-1">
+                              {esServicio ? (
+                                <>
+                                  <div className="font-semibold text-gray-900">
+                                    {item.servicio?.nombre || `Servicio #${item.servicio_id}`} - {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {item.servicio?.area?.nombre || 'Sin área'} | S/ {parseFloat(item.precio || 0).toFixed(2)}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="font-semibold text-gray-900">{item.nombre}</div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {item.descripcion || 'Sin descripción'} | S/ {parseFloat(item.precio || 0).toFixed(2)}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1050,14 +1285,29 @@ const VenderServiciosTab = () => {
                     <tr key={linea.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 text-xs font-semibold rounded ${linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                            {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'Paquete' : 'Sesión'}
-                          </span>
+                          {linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded bg-green-100 text-green-700">
+                              Documento
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded ${linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'Paquete' : 'Sesión'}
+                            </span>
+                          )}
                         </div>
-                        <div className="font-semibold text-gray-900 mt-1">{linea.servicio_nombre}</div>
-                        <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>
-                        {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
-                          <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
+                        {linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
+                          <>
+                            <div className="font-semibold text-gray-900 mt-1">{linea.documento_nombre || linea.descripcion_linea}</div>
+                            <div className="text-xs text-gray-500">Sin cita requerida</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-semibold text-gray-900 mt-1">{linea.servicio_nombre}</div>
+                            <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>
+                            {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
+                              <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="px-4 py-4 min-w-[200px]">
@@ -1072,7 +1322,9 @@ const VenderServiciosTab = () => {
                         />
                       </td>
                       <td className="px-4 py-4">
-                        {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
+                        {linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
+                          <div className="text-center font-semibold text-gray-600">1</div>
+                        ) : linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>

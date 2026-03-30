@@ -161,3 +161,11 @@ export const TIPOS_DESCUENTO = {
   MONTO_FIJO: 2,
 };
 
+/**
+ * Tipos de item en venta: 1=Servicio con cita, 2=Documento sin cita
+ */
+export const TIPOS_ITEM_VENTA = {
+  SERVICIO: 1,
+  DOCUMENTO: 2,
+};
+

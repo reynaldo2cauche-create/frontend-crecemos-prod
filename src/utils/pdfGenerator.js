@@ -138,11 +138,32 @@ const getImporteLetras = (total) => {
 const buildTableRows = (venta, tipo) =>
   (venta.detalles || []).map((d) => {
     if (tipo === 'servicio') {
+      // Usar descripcion_linea si está disponible (nuevo sistema)
+      if (d.descripcionLinea || d.descripcion_linea) {
+        const descripcion = d.descripcionLinea || d.descripcion_linea;
+        const esDocumento = d.tipoItemVenta === 2 || d.tipo_item_venta === 2;
+        const cantidad = esDocumento ? 1 : (d.sesiones_totales || 0);
+        const precioUnitario = toFloat(d.precio_unitario);
+        const subtotal = (precioUnitario * (d.sesiones_totales || 1)) - toFloat(d.descuento_monto);
+        const pacienteNombre = d.paciente
+          ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+          : '-';
+        return {
+          descripcion,
+          codigo: String(d.servicio?.id || d.servicio_tarifa?.servicio?.id || 0).padStart(4, '0'),
+          cantidad,
+          precioUnitario,
+          subtotal,
+          paciente: pacienteNombre
+        };
+      }
+
+      // Sistema antiguo: construir desde las relaciones
       const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
       let descripcion;
       let cantidad;
       const motivoCita = d.servicio_tarifa?.motivo_cita?.nombre || '';
-      
+
 
 
       if (esPaquete && d.paquete) {

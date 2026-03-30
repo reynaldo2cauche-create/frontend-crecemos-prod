@@ -440,7 +440,33 @@ export const getBlogBySlug = (slug) => {
 };
 
 // Función helper para obtener blogs por categoría
+// Función auxiliar para convertir fecha en español a objeto Date
+const parseSpanishDate = (dateString) => {
+  const monthMap = {
+    'Enero': 0, 'Febrero': 1, 'Marzo': 2, 'Abril': 3, 'Mayo': 4, 'Junio': 5,
+    'Julio': 6, 'Agosto': 7, 'Septiembre': 8, 'Octubre': 9, 'Noviembre': 10, 'Diciembre': 11
+  };
+
+  const parts = dateString.split(' ');
+  const day = parseInt(parts[0]);
+  const month = monthMap[parts[1]];
+  const year = parseInt(parts[2]);
+
+  return new Date(year, month, day);
+};
+
 export const getBlogsByCategory = (category) => {
-  if (category === 'todos') return blogMetadata;
-  return blogMetadata.filter(blog => blog.category === category);
+  let filteredBlogs;
+  if (category === 'todos') {
+    filteredBlogs = blogMetadata;
+  } else {
+    filteredBlogs = blogMetadata.filter(blog => blog.category === category);
+  }
+
+  // Ordenar por fecha: más reciente primero
+  return filteredBlogs.sort((a, b) => {
+    const dateA = parseSpanishDate(a.date);
+    const dateB = parseSpanishDate(b.date);
+    return dateB - dateA; // Orden descendente (más reciente primero)
+  });
 };
