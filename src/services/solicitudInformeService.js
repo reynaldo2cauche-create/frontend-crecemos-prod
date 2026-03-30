@@ -78,11 +78,22 @@ export const eliminarSolicitudInforme = async (solicitudId) => {
  * PASO 1 — Terapeuta sube el archivo del informe.
  * Estado: Pendiente Subida → Pendiente Revisión.
  * @param {number} solicitudId
- * @param {{ archivo_url: string, user_actua_id?: number }} data
+ * @param {File} archivo - Archivo PDF/Word
  */
-export const subirArchivoInforme = async (solicitudId, data) => {
+export const subirArchivoInforme = async (solicitudId, archivo) => {
   try {
-    const response = await api.patch(`/solicitud-informe/${solicitudId}/subir-archivo`, data);
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+
+    const response = await api.post(
+      `/solicitud-informe/${solicitudId}/subir-archivo`,
+      formData,
+      {
+        headers: {
+          'Content-Type': undefined,  // ← elimina el json default, axios pone el multipart+boundary solo
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error('Error al subir archivo del informe:', error);
@@ -94,11 +105,11 @@ export const subirArchivoInforme = async (solicitudId, data) => {
  * PASO 2 — Jefa revisa el informe (aprueba o rechaza).
  * Estado: Pendiente Revisión → Aprobado (4) o Rechazado (3).
  * @param {number} solicitudId
- * @param {{ estado_id: 3 | 4, revisor_id: number, comentario?: string }} data
+ * @param {{ estado_id: 3 | 4, comentario?: string }} data
  */
 export const revisarInforme = async (solicitudId, data) => {
   try {
-    const response = await api.patch(`/solicitud-informe/${solicitudId}/revisar`, data);
+    const response = await api.post(`/solicitud-informe/${solicitudId}/revisar`, data);
     return response.data;
   } catch (error) {
     console.error('Error al revisar el informe:', error);
@@ -110,11 +121,10 @@ export const revisarInforme = async (solicitudId, data) => {
  * PASO 3 — Admisión marca el informe como entregado al paciente.
  * Estado: Aprobado → Entregado (5).
  * @param {number} solicitudId
- * @param {{ user_actua_id?: number }} data
  */
-export const marcarInformeEntregado = async (solicitudId, data = {}) => {
+export const marcarInformeEntregado = async (solicitudId) => {
   try {
-    const response = await api.patch(`/solicitud-informe/${solicitudId}/marcar-entregado`, data);
+    const response = await api.post(`/solicitud-informe/${solicitudId}/marcar-entregado`, {});
     return response.data;
   } catch (error) {
     console.error('Error al marcar informe como entregado:', error);

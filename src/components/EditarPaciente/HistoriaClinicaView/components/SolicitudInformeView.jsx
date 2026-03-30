@@ -2,69 +2,126 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText, Plus, X, Save, Calendar, DollarSign, User, Receipt,
   Eye, Trash2, CheckCircle, ChevronDown, ChevronUp, AlertCircle,
-  Package, Clock, Banknote, Hash
+  Package, Clock, Banknote, Hash, Upload, Check, XCircle, FileCheck,
+  Send, Download, ZoomIn, ZoomOut, RotateCw,
 } from 'lucide-react';
 import {
   crearSolicitudInforme,
   obtenerSolicitudesInformePorPaciente,
   eliminarSolicitudInforme,
   obtenerModalidadesPago,
-  obtenerEstadosPago
+  subirArchivoInforme,
+  revisarInforme,
+  marcarInformeEntregado,
+  obtenerRevisionesInforme,
 } from '../../../../services/solicitudInformeService';
 import { getVentasServicios } from '../../../../services/ventasService';
 import { getTiposDocumento } from '../../../../services/tiposArchivoService';
 import { getServiciosPorPaciente } from '../../../../services/pacienteService';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
-const fmtMoney = (v) => `S/ ${Number(v ?? 0).toFixed(2)}`;
-const fmtDate  = (d) => d ? new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-
-// Calcular fecha + N días (formato YYYY-MM-DD para input type="date")
-const addDays = (dateStr, days) => {
-  const date = new Date(dateStr);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
+const ESTADO = {
+  PENDIENTE_SUBIDA:   1,
+  PENDIENTE_REVISION: 2,
+  RECHAZADO:          3,
+  APROBADO:           4,
+  ENTREGADO:          5,
 };
 
-const ESTADO_COLOR = {
-  1: { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  dot: 'bg-amber-400',  label: 'Pendiente' },
+const ESTADO_STYLE = {
+  1: { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Pendiente Subida',    Icon: Clock },
+  2: { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-700',    dot: 'bg-blue-500',    label: 'Pendiente Revisión',  Icon: Eye },
+  3: { bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700',     dot: 'bg-red-500',     label: 'Rechazado',           Icon: XCircle },
+  4: { bg: 'bg-green-50',   border: 'border-green-200',   text: 'text-green-700',   dot: 'bg-green-500',   label: 'Aprobado',            Icon: CheckCircle },
+  5: { bg: 'bg-purple-50',  border: 'border-purple-200',  text: 'text-purple-700',  dot: 'bg-purple-500',  label: 'Entregado',           Icon: Package },
+};
+
+const ESTADO_PAGO_STYLE = {
+  1: { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Pendiente' },
   2: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Pagado' },
 };
-const estadoStyle = (id) => ESTADO_COLOR[id] ?? { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', dot: 'bg-gray-400', label: '—' };
+
+const estadoStyle     = (id) => ESTADO_STYLE[id]      ?? { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', dot: 'bg-gray-400', label: '—', Icon: AlertCircle };
+const estadoPagoStyle = (id) => ESTADO_PAGO_STYLE[id] ?? { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', dot: 'bg-gray-400', label: '—' };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmtMoney = (v) => `S/ ${Number(v ?? 0).toFixed(2)}`;
+const fmtDate  = (d) => d
+  ? new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
+  : '—';
+
+const addDays = (dateStr, days) => {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
+
+const isPDF  = (url) => url?.toLowerCase().endsWith('.pdf');
+const isWord = (url) => /\.(doc|docx)$/i.test(url ?? '');
 
 const getFormInitial = () => {
-  const fechaSolicitud = new Date().toISOString().split('T')[0];
-  const fechaEntrega = addDays(fechaSolicitud, 5); // 5 días después
-
+  const hoy = new Date().toISOString().split('T')[0];
   return {
-    servicio_id:       null,
-    venta_servicio_id: '',
-    tipo_archivo_id:   '',
-    especialista_id:   '',
-    fecha_solicitud:   fechaSolicitud,
-    fecha_entrega:     fechaEntrega,
-    monto:             '',
-    nro_recibo:        '',
-    modalidad_pago_id: '',
-    estado_pago_id:    1,
-    nota:              '',
+    servicio_id: null, venta_servicio_id: '', tipo_archivo_id: '',
+    especialista_id: '', fecha_solicitud: hoy, fecha_entrega: addDays(hoy, 5),
+    monto: '', nro_recibo: '', modalidad_pago_id: '', estado_pago_id: 1, nota: '',
   };
 };
 
-// ─── Snackbar ────────────────────────────────────────────────────────────────
+/**
+ * Lógica de permisos del workflow.
+ *
+ * Quién puede hacer qué en cada estado:
+ * - PENDIENTE_SUBIDA   → la terapeuta asignada sube el archivo
+ * - PENDIENTE_REVISION → la jefa de la terapeuta (o la misma terapeuta si es_jefe) revisa
+ * - RECHAZADO          → la terapeuta asignada corrige y re-sube
+ * - APROBADO           → admision/admin marca como entregado
+ * - ENTREGADO          → flujo cerrado
+ */
+const resolverAcciones = (solicitud, user) => {
+  if (!solicitud || !user) return {};
+
+  const esAsignada   = user.id === solicitud.especialista_id;
+  const especialista = solicitud.especialista ?? {};
+
+  // cargo.es_jefe viene del backend (trabajador_centro → cargo → es_jefe)
+  const terapeutaEsJefa = Boolean(especialista.cargo?.es_jefe);
+
+
+  // 1. El usuario logueado es jefe (user.cargo.es_jefe) Y no es la terapeuta asignada
+  // 2. ES la terapeuta asignada Y su cargo.es_jefe      → jefa se auto-revisa (sin intermediario)
+  const puedeRevisar =
+    (Boolean(user.cargo?.es_jefe) && !esAsignada) ||
+    (esAsignada && terapeutaEsJefa);
+
+  const estado = solicitud.estado_solicitud_id;
+
+  return {
+    subir:    esAsignada && estado === ESTADO.PENDIENTE_SUBIDA,
+    reSubir:  esAsignada && estado === ESTADO.RECHAZADO,
+    revisar:  puedeRevisar && estado === ESTADO.PENDIENTE_REVISION,
+    entregar: estado === ESTADO.APROBADO,   // admision/admin (cualquier usuario con acceso)
+  };
+};
+
+// ─── Clases reutilizables ─────────────────────────────────────────────────────
+
+const INPUT_CLS = 'w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all placeholder:text-gray-300';
+const LABEL_CLS = 'block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide';
+
+// ─── Snackbar ─────────────────────────────────────────────────────────────────
 
 const Snackbar = ({ msg, tipo, onClose }) => (
   <div className={`
     fixed top-5 right-5 z-[99999] flex items-center gap-3
     px-4 py-3 rounded-xl shadow-lg border text-sm font-medium
-    transition-all duration-300
     ${tipo === 'error' ? 'bg-white border-red-200 text-red-700' : 'bg-white border-emerald-200 text-emerald-700'}
   `}>
     {tipo === 'error'
       ? <AlertCircle className="w-4 h-4 shrink-0" />
-      : <CheckCircle className="w-4 h-4 shrink-0" />
-    }
+      : <CheckCircle className="w-4 h-4 shrink-0" />}
     <span>{msg}</span>
     <button onClick={onClose} className="ml-1 opacity-50 hover:opacity-100">
       <X className="w-3.5 h-3.5" />
@@ -72,25 +129,25 @@ const Snackbar = ({ msg, tipo, onClose }) => (
   </div>
 );
 
-// ─── VentaCard (opción del select de venta) ──────────────────────────────────
-// Muestra la info relevante de cada venta para que el usuario entienda qué está eligiendo
+// ─── VentaOptionCard ──────────────────────────────────────────────────────────
 
 const VentaOptionCard = ({ venta, selected, onClick }) => {
-  // Extraer ítems de informe físico (tipo_item_venta === 2) del detalle
-  const itemsInforme = (venta.detalles ?? []).filter(d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2);
-  const descripcion  = itemsInforme.map(d => d.descripcionLinea ?? d.descripcion_linea ?? 'Informe').join(', ');
+  const itemsInforme = (venta.detalles ?? []).filter(
+    d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2
+  );
+  const descripcion = itemsInforme
+    .map(d => d.descripcionLinea ?? d.descripcion_linea ?? 'Informe')
+    .join(', ');
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`
-        w-full text-left px-4 py-3 rounded-xl border-2 transition-all
+      className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all
         ${selected
           ? 'border-[#7B1FA2] bg-purple-50'
           : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/40'
-        }
-      `}
+        }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -114,15 +171,16 @@ const VentaOptionCard = ({ venta, selected, onClick }) => {
   );
 };
 
-// ─── VentaSelector ──────────────────────────────────────────────────────────
-// Desplegable personalizado con tarjetas de venta
+// ─── VentaSelector ────────────────────────────────────────────────────────────
 
 const VentaSelector = ({ ventas, value, onChange, loading }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -131,144 +189,122 @@ const VentaSelector = ({ ventas, value, onChange, loading }) => {
 
   return (
     <div ref={ref} className="relative">
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`
-          w-full px-4 py-2.5 border-2 rounded-xl text-sm text-left flex items-center justify-between
+        className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm text-left flex items-center justify-between
           transition-all focus:outline-none
           ${open ? 'border-[#7B1FA2] ring-2 ring-purple-100' : 'border-gray-200 hover:border-gray-300'}
-          ${!selected ? 'text-gray-400' : 'text-gray-900'}
-        `}
+          ${!selected ? 'text-gray-400' : 'text-gray-900'}`}
       >
         <span className="truncate">
           {selected
             ? `${selected.codigo_comprobante ?? `Venta #${selected.id}`} — ${fmtMoney(selected.total)}`
-            : loading ? 'Cargando ventas...' : ventas.length === 0 ? 'Sin ventas con informe pendiente' : 'Seleccionar venta de informe...'
-          }
+            : loading ? 'Cargando...' : ventas.length === 0 ? 'Sin ventas disponibles' : 'Seleccionar venta...'}
         </span>
-        {open ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
+        {open
+          ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+          : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
       </button>
-
-      {/* Dropdown */}
       {open && (
         <div className="absolute z-50 mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-          {ventas.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-400">
-              No hay ventas de informe disponibles
-            </div>
-          ) : (
-            <div className="max-h-64 overflow-y-auto p-2 space-y-2">
-              {ventas.map(v => (
-                <VentaOptionCard
-                  key={v.id}
-                  venta={v}
-                  selected={String(v.id) === String(value)}
-                  onClick={() => { onChange(v.id); setOpen(false); }}
-                />
-              ))}
-            </div>
-          )}
+          {ventas.length === 0
+            ? <div className="px-4 py-6 text-center text-sm text-gray-400">No hay ventas disponibles</div>
+            : (
+              <div className="max-h-64 overflow-y-auto p-2 space-y-2">
+                {ventas.map(v => (
+                  <VentaOptionCard
+                    key={v.id}
+                    venta={v}
+                    selected={String(v.id) === String(value)}
+                    onClick={() => { onChange(v.id); setOpen(false); }}
+                  />
+                ))}
+              </div>
+            )}
         </div>
       )}
     </div>
   );
 };
 
-// ─── Formulario inline ───────────────────────────────────────────────────────
+// ─── FormularioSolicitud ──────────────────────────────────────────────────────
 
-const FormularioSolicitud = ({ onSubmit, onCancel, loading, ventasInforme, tiposArchivo, terapeutas, modalidadesPago, user }) => {
+const FormularioSolicitud = ({
+  onSubmit, onCancel, loading,
+  ventasInforme, tiposArchivo, terapeutas, modalidadesPago, user,
+}) => {
   const [form, setForm] = useState({ ...getFormInitial(), especialista_id: user?.id ?? '' });
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const ventaSeleccionada = ventasInforme.find(v => String(v.id) === String(form.venta_servicio_id));
 
-  // Si hay una sola venta disponible, preseleccionar
+  // Auto-seleccionar si solo hay una venta
   useEffect(() => {
-    if (ventasInforme.length === 1 && !form.venta_servicio_id) {
-      seleccionarVenta(ventasInforme[0].id);
-    }
+    if (ventasInforme.length === 1 && !form.venta_servicio_id) seleccionarVenta(ventasInforme[0].id);
   }, [ventasInforme]);
 
-  // Actualizar fecha_entrega automáticamente cuando cambia fecha_solicitud
+  // Fecha entrega = fecha solicitud + 5 días (auto)
   useEffect(() => {
-    if (form.fecha_solicitud) {
-      const nuevaFechaEntrega = addDays(form.fecha_solicitud, 5);
-      setForm(p => ({ ...p, fecha_entrega: nuevaFechaEntrega }));
-    }
+    if (form.fecha_solicitud) set('fecha_entrega', addDays(form.fecha_solicitud, 5));
   }, [form.fecha_solicitud]);
 
-  // Al elegir una venta: autocompletar monto, nro_recibo y derivar servicio_id (requerido por DTO)
   const seleccionarVenta = (ventaId) => {
     const venta = ventasInforme.find(v => String(v.id) === String(ventaId));
     if (!venta) { set('venta_servicio_id', ventaId); return; }
 
-    // Monto: suma de ítems tipo informe físico (tipoItemVenta === 2)
     const itemsInforme = (venta.detalles ?? []).filter(
       d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2
     );
     const montoInforme = itemsInforme.reduce(
       (acc, d) => acc + Number(d.subtotal ?? d.precio_unitario ?? 0), 0
     );
-
-    // servicio_id: tomarlo del primer detalle de sesión (tipoItemVenta === 1)
-    const detalleConServicio = (venta.detalles ?? []).find(
-      d => (d.tipoItemVenta === 1 || d.tipo_item_venta === 1)
+    const detalleServicio = (venta.detalles ?? []).find(
+      d => d.tipoItemVenta === 1 || d.tipo_item_venta === 1
     ) ?? (venta.detalles ?? [])[0];
     const servicioId =
-      detalleConServicio?.servicio_tarifa?.servicio?.id ??
-      detalleConServicio?.servicio?.id ??
-      null;
+      detalleServicio?.servicio_tarifa?.servicio?.id ??
+      detalleServicio?.servicio?.id ?? null;
 
     setForm(p => ({
       ...p,
       venta_servicio_id: ventaId,
-      servicio_id:       servicioId,
-      monto:             montoInforme > 0 ? montoInforme.toFixed(2) : p.monto,
-      nro_recibo:        venta.codigo_comprobante ?? p.nro_recibo,
+      servicio_id: servicioId,
+      monto: montoInforme > 0 ? montoInforme.toFixed(2) : p.monto,
+      nro_recibo: venta.codigo_comprobante ?? p.nro_recibo,
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Validación mínima
-    if (!form.venta_servicio_id) return;
-    if (!form.servicio_id)       return;
-    if (!form.tipo_archivo_id)   return;
-    if (!form.especialista_id)   return;
-    if (!form.monto || Number(form.monto) <= 0) return;
-    if (!form.nro_recibo.trim()) return;
+    if (!form.venta_servicio_id || !form.servicio_id || !form.tipo_archivo_id ||
+        !form.especialista_id || !form.monto || Number(form.monto) <= 0 ||
+        !form.nro_recibo.trim()) return;
 
     onSubmit({
       ...form,
-      servicio_id:   Number(form.servicio_id),
-      monto:         parseFloat(form.monto),
-      fecha_entrega: form.fecha_entrega || null,  // MySQL no acepta '' en columna date
-      nota:          form.nota || null,
+      servicio_id:       Number(form.servicio_id),
+      venta_servicio_id: Number(form.venta_servicio_id),
+      tipo_archivo_id:   Number(form.tipo_archivo_id),
+      especialista_id:   Number(form.especialista_id),
+      monto:             parseFloat(form.monto),
+      modalidad_pago_id: form.modalidad_pago_id ? Number(form.modalidad_pago_id) : null,
+      estado_pago_id:    form.estado_pago_id ? Number(form.estado_pago_id) : 1,
+      fecha_entrega:     form.fecha_entrega || null,
+      nota:              form.nota || null,
     });
   };
 
-  const inputClass = "w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all placeholder:text-gray-300";
-  const labelClass = "block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide";
-  const required   = <span className="text-red-400 ml-0.5">*</span>;
+  const required = <span className="text-red-400 ml-0.5">*</span>;
 
   return (
     <form onSubmit={handleSubmit} className="mt-4 border-t border-gray-100 pt-5 space-y-5">
-
-      {/* Step 1: Venta */}
+      {/* Venta */}
       <div>
-        <label className={labelClass}>
-          <span className="flex items-center gap-1.5">
-            <Receipt className="w-3.5 h-3.5" /> Venta de informe {required}
-          </span>
+        <label className={LABEL_CLS}>
+          <span className="flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" /> Venta de informe {required}</span>
         </label>
-        <VentaSelector
-          ventas={ventasInforme}
-          value={form.venta_servicio_id}
-          onChange={seleccionarVenta}
-          loading={loading}
-        />
+        <VentaSelector ventas={ventasInforme} value={form.venta_servicio_id} onChange={seleccionarVenta} loading={loading} />
         {ventaSeleccionada && (
           <p className="mt-1.5 text-xs text-purple-600 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
@@ -277,47 +313,32 @@ const FormularioSolicitud = ({ onSubmit, onCancel, loading, ventasInforme, tipos
         )}
       </div>
 
-      {/* Step 2: Tipo de informe + especialista */}
+      {/* Tipo + Especialista */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Tipo de informe {required}</span>
           </label>
-          <select
-            value={form.tipo_archivo_id}
-            onChange={e => set('tipo_archivo_id', e.target.value)}
-            className={inputClass}
-            required
-          >
+          <select value={form.tipo_archivo_id} onChange={e => set('tipo_archivo_id', e.target.value)} className={INPUT_CLS} required>
             <option value="">Seleccionar...</option>
-            {tiposArchivo.map(t => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
-            ))}
+            {tiposArchivo.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
           </select>
         </div>
-
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Especialista {required}</span>
           </label>
-          <select
-            value={form.especialista_id}
-            onChange={e => set('especialista_id', e.target.value)}
-            className={inputClass}
-            required
-          >
+          <select value={form.especialista_id} onChange={e => set('especialista_id', e.target.value)} className={INPUT_CLS} required>
             <option value="">Seleccionar...</option>
-            {terapeutas.map(t => (
-              <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
-            ))}
+            {terapeutas.map(t => <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Step 3: Pago */}
+      {/* Monto + Recibo + Modalidad */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Monto (S/) {required}</span>
           </label>
           <div className="relative">
@@ -325,121 +346,74 @@ const FormularioSolicitud = ({ onSubmit, onCancel, loading, ventasInforme, tipos
               type="number" step="0.01" min="0.01"
               value={form.monto}
               onChange={e => set('monto', e.target.value)}
-              className={`${inputClass} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="30.00"
-              required
-              readOnly={ventaSeleccionada}
-              disabled={ventaSeleccionada}
+              className={`${INPUT_CLS} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              placeholder="30.00" required
+              readOnly={!!ventaSeleccionada} disabled={!!ventaSeleccionada}
             />
             {ventaSeleccionada && form.monto && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">
-                auto
-              </span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">auto</span>
             )}
           </div>
         </div>
-
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> N° Recibo {required}</span>
           </label>
           <div className="relative">
             <input
-              type="text"
-              value={form.nro_recibo}
+              type="text" value={form.nro_recibo}
               onChange={e => set('nro_recibo', e.target.value)}
-              className={`${inputClass} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="REC-001"
-              required
-              readOnly={ventaSeleccionada}
-              disabled={ventaSeleccionada}
+              className={`${INPUT_CLS} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              placeholder="REC-001" required
+              readOnly={!!ventaSeleccionada} disabled={!!ventaSeleccionada}
             />
             {ventaSeleccionada && form.nro_recibo && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">
-                auto
-              </span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">auto</span>
             )}
           </div>
         </div>
-
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Modalidad</span>
           </label>
-          <select
-            value={form.modalidad_pago_id}
-            onChange={e => set('modalidad_pago_id', e.target.value)}
-            className={inputClass}
-          >
+          <select value={form.modalidad_pago_id} onChange={e => set('modalidad_pago_id', e.target.value)} className={INPUT_CLS}>
             <option value="">Seleccionar...</option>
-            {modalidadesPago.map(m => (
-              <option key={m.id} value={m.id}>{m.nombre}</option>
-            ))}
+            {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Step 4: Fechas */}
+      {/* Fechas */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Fecha solicitud {required}</span>
           </label>
-          <input
-            type="date"
-            value={form.fecha_solicitud}
-            onChange={e => set('fecha_solicitud', e.target.value)}
-            className={inputClass}
-            required
-          />
+          <input type="date" value={form.fecha_solicitud} onChange={e => set('fecha_solicitud', e.target.value)} className={INPUT_CLS} required />
         </div>
         <div>
-          <label className={labelClass}>
+          <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5">
               <CheckCircle className="w-3.5 h-3.5" /> Fecha entrega
-              <span className="text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md normal-case">
-                +5 días auto
-              </span>
+              <span className="text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md normal-case">+5 días auto</span>
             </span>
           </label>
-          <div className="relative">
-            <input
-              type="date"
-              value={form.fecha_entrega}
-              onChange={e => set('fecha_entrega', e.target.value)}
-              className={inputClass}
-              min={form.fecha_solicitud}
-            />
-          </div>
+          <input type="date" value={form.fecha_entrega} onChange={e => set('fecha_entrega', e.target.value)} className={INPUT_CLS} min={form.fecha_solicitud} />
         </div>
       </div>
 
       {/* Nota */}
       <div>
-        <label className={labelClass}>Observaciones</label>
-        <textarea
-          value={form.nota}
-          onChange={e => set('nota', e.target.value)}
-          className={`${inputClass} resize-none`}
-          rows={2}
-          placeholder="Notas adicionales..."
-        />
+        <label className={LABEL_CLS}>Observaciones</label>
+        <textarea value={form.nota} onChange={e => set('nota', e.target.value)} className={`${INPUT_CLS} resize-none`} rows={2} placeholder="Notas adicionales..." />
       </div>
 
       {/* Acciones */}
       <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-        >
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
           Cancelar
         </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 flex items-center gap-2 transition-all"
-        >
+        <button type="submit" disabled={loading} className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 flex items-center gap-2 transition-all">
           <Save className="w-4 h-4" />
           {loading ? 'Guardando...' : 'Registrar solicitud'}
         </button>
@@ -448,23 +422,362 @@ const FormularioSolicitud = ({ onSubmit, onCancel, loading, ventasInforme, tipos
   );
 };
 
-// ─── Tarjeta de solicitud ─────────────────────────────────────────────────────
+// ─── VisualizadorPDF ──────────────────────────────────────────────────────────
 
-const SolicitudCard = ({ solicitud, onVer, onEliminar }) => {
-  const style = estadoStyle(solicitud.estado_pago_id);
+const VisualizadorPDF = ({ url, onClose }) => {
+  const [scale, setScale] = useState(1);
+
+  // La URL puede ser relativa (/uploads/...) — la completamos con la base del servidor
+  const fullUrl = url?.startsWith('http') ? url : `${window.location.origin}${url}`;
+
+  return (
+    <div className="fixed inset-0 z-[90000] flex flex-col bg-black/80 backdrop-blur-sm">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-5 py-3 bg-gray-900 border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-semibold text-white truncate max-w-[300px]">{url?.split('/').pop()}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setScale(s => Math.max(0.5, s - 0.2))}
+            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
+            title="Reducir"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <span className="text-xs text-gray-400 w-12 text-center">{Math.round(scale * 100)}%</span>
+          <button
+            onClick={() => setScale(s => Math.min(2.5, s + 0.2))}
+            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
+            title="Ampliar"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setScale(1)}
+            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
+            title="Restablecer zoom"
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
+          <a
+            href={fullUrl}
+            download
+            className="ml-2 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center gap-1.5 transition-all"
+          >
+            <Download className="w-3.5 h-3.5" /> Descargar
+          </a>
+          <button onClick={onClose} className="ml-1 p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Iframe del PDF */}
+      <div className="flex-1 overflow-auto bg-gray-800 flex items-start justify-center p-4">
+        <div style={{ transform: `scale(${scale})`, transformOrigin: 'top center', transition: 'transform 0.2s ease', width: '100%' }}>
+          <iframe
+            src={`${fullUrl}#toolbar=0&navpanes=0`}
+            title="Previsualización PDF"
+            className="w-full rounded-lg shadow-2xl bg-white"
+            style={{ height: '85vh', border: 'none' }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── ModalSubirArchivo ────────────────────────────────────────────────────────
+
+const ModalSubirArchivo = ({ solicitud, onClose, onSuccess }) => {
+  const [archivo, setArchivo]   = useState(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [error, setError]       = useState(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const tiposPermitidos = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    if (!tiposPermitidos.includes(file.type)) {
+      setError('Solo se permiten archivos PDF o Word (.doc/.docx)');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setError('El archivo no debe superar los 20 MB');
+      return;
+    }
+    setError(null);
+    setArchivo(file);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!archivo) return;
+    try {
+      setSubiendo(true);
+      await subirArchivoInforme(solicitud.id, archivo);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al subir el archivo');
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-4 rounded-t-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+              <Upload className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-base font-bold text-white">Subir Informe</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className={`${LABEL_CLS} mb-2`}>Archivo del informe *</label>
+            <input
+              type="file" accept=".pdf,.doc,.docx"
+              onChange={handleFileChange}
+              className={INPUT_CLS} required
+            />
+            {archivo && (
+              <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                {archivo.name} ({(archivo.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
+            )}
+            {error && (
+              <p className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {error}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
+            <p className="font-semibold mb-1">Formatos permitidos:</p>
+            <p>PDF (.pdf) · Word (.doc, .docx) · Máx. 20 MB</p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+              Cancelar
+            </button>
+            <button type="submit" disabled={subiendo || !archivo} className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 flex items-center gap-2 transition-all">
+              <Upload className="w-4 h-4" />
+              {subiendo ? 'Subiendo...' : 'Subir archivo'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ─── ModalRevisarInforme ──────────────────────────────────────────────────────
+
+const ModalRevisarInforme = ({ solicitud, onClose, onSuccess }) => {
+  const [accion,    setAccion]    = useState(null); // 'aprobar' | 'rechazar'
+  const [comentario, setComentario] = useState('');
+  const [guardando,  setGuardando]  = useState(false);
+  const [error,      setError]      = useState(null);
+  const [verPDF,     setVerPDF]     = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!accion) return;
+    if (accion === 'rechazar' && !comentario.trim()) {
+      setError('El comentario es obligatorio al rechazar');
+      return;
+    }
+    try {
+      setGuardando(true);
+      await revisarInforme(solicitud.id, {
+        estado_id: accion === 'aprobar' ? ESTADO.APROBADO : ESTADO.RECHAZADO,
+        comentario: comentario.trim() || null,
+      });
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al revisar el informe');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const terapeutaEsJefa = Boolean(solicitud.especialista?.cargo?.es_jefe);
+
+  return (
+    <>
+      {verPDF && solicitud.archivo_url && (
+        <VisualizadorPDF url={solicitud.archivo_url} onClose={() => setVerPDF(false)} />
+      )}
+
+      <div className="fixed inset-0 z-[80000] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+          <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-4 rounded-t-2xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileCheck className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Revisar Informe</h2>
+                {terapeutaEsJefa && (
+                  <p className="text-xs text-purple-200">Revisión propia — eres jefa asignada</p>
+                )}
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Info solicitud */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase">Tipo de informe</p>
+                  <p className="text-gray-900 font-medium">{solicitud.tipo_archivo?.nombre ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase">Terapeuta</p>
+                  <p className="text-gray-900 font-medium">
+                    {solicitud.especialista?.nombres} {solicitud.especialista?.apellidos}
+                    {terapeutaEsJefa && <span className="ml-1 text-[10px] font-bold text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded-md">JEFA</span>}
+                  </p>
+                </div>
+              </div>
+
+              {/* Archivo */}
+              {solicitud.archivo_url && (
+                <div className="pt-3 border-t border-gray-200 flex items-center gap-3">
+                  {isPDF(solicitud.archivo_url) && (
+                    <button
+                      type="button"
+                      onClick={() => setVerPDF(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] rounded-lg transition-all"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Previsualizar PDF
+                    </button>
+                  )}
+                  <a
+                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${window.location.origin}${solicitud.archivo_url}`}
+                    download
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#7B1FA2] border border-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {isWord(solicitud.archivo_url) ? 'Descargar Word' : 'Descargar'}
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Acción */}
+            <div>
+              <label className={`${LABEL_CLS} mb-2`}>¿Qué deseas hacer? *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setAccion('aprobar'); setError(null); }}
+                  className={`px-4 py-3 rounded-xl border-2 transition-all text-sm font-semibold
+                    ${accion === 'aprobar'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'}`}
+                >
+                  <Check className="w-5 h-5 mx-auto mb-1" /> Aprobar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAccion('rechazar'); setError(null); }}
+                  className={`px-4 py-3 rounded-xl border-2 transition-all text-sm font-semibold
+                    ${accion === 'rechazar'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-red-300'}`}
+                >
+                  <XCircle className="w-5 h-5 mx-auto mb-1" /> Rechazar
+                </button>
+              </div>
+            </div>
+
+            {/* Comentario */}
+            <div>
+              <label className={`${LABEL_CLS} mb-2`}>
+                Comentario {accion === 'rechazar' && <span className="text-red-400">*</span>}
+              </label>
+              <textarea
+                value={comentario}
+                onChange={e => { setComentario(e.target.value); setError(null); }}
+                className={`${INPUT_CLS} resize-none`}
+                rows={4}
+                placeholder={accion === 'rechazar' ? 'Indica qué debe corregirse...' : 'Comentarios opcionales...'}
+                required={accion === 'rechazar'}
+              />
+            </div>
+
+            {error && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {error}
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+                Cancelar
+              </button>
+              <button type="submit" disabled={guardando || !accion} className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 flex items-center gap-2 transition-all">
+                <Send className="w-4 h-4" />
+                {guardando ? 'Enviando...' : 'Enviar revisión'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ─── SolicitudCard ────────────────────────────────────────────────────────────
+
+const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
+  const sw    = estadoStyle(solicitud.estado_solicitud_id);
+  const sp    = estadoPagoStyle(solicitud.estado_pago_id);
+  const { Icon } = sw;
+  const acciones = resolverAcciones(solicitud, user);
+
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-sm transition-all">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          {/* Fila 1: servicio + estado */}
+          {/* Fila 1: tipo + badges */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-sm font-semibold text-gray-900 truncate">
               {solicitud.tipo_archivo?.nombre ?? '—'}
             </span>
-            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${style.bg} ${style.text} ${style.border}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-              {solicitud.estado_pago?.nombre ?? style.label}
+            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sw.bg} ${sw.text} ${sw.border}`}>
+              <Icon className="w-3 h-3" /> {sw.label}
             </span>
+            {solicitud.estado_pago_id && (
+              <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sp.bg} ${sp.text} ${sp.border}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${sp.dot}`} />
+                {solicitud.estado_pago?.nombre ?? sp.label}
+              </span>
+            )}
           </div>
 
           {/* Fila 2: metadatos */}
@@ -476,38 +789,55 @@ const SolicitudCard = ({ solicitud, onVer, onEliminar }) => {
             <span className="flex items-center gap-1">
               <User className="w-3.5 h-3.5" />
               {solicitud.especialista?.nombres} {solicitud.especialista?.apellidos}
+              {solicitud.especialista?.cargo?.es_jefe && (
+                <span className="ml-1 text-[10px] font-bold text-purple-500 bg-purple-50 px-1 py-0.5 rounded">JEFA</span>
+              )}
             </span>
             <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              {fmtDate(solicitud.fecha_solicitud)}
+              <Calendar className="w-3.5 h-3.5" /> {fmtDate(solicitud.fecha_solicitud)}
             </span>
             <span className="flex items-center gap-1 font-semibold text-gray-700">
-              <DollarSign className="w-3.5 h-3.5" />
-              {fmtMoney(solicitud.monto)}
+              <DollarSign className="w-3.5 h-3.5" /> {fmtMoney(solicitud.monto)}
             </span>
-            {solicitud.fecha_entrega && (
-              <span className="flex items-center gap-1 text-emerald-600">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Entregado {fmtDate(solicitud.fecha_entrega)}
-              </span>
-            )}
           </div>
+
+          {/* Botones de workflow */}
+          {(acciones.subir || acciones.reSubir || acciones.revisar || acciones.entregar) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {acciones.subir && (
+                <button onClick={() => onAccion('subir', solicitud)}
+                  className="px-3 py-1.5 text-xs font-semibold bg-[#7B1FA2] text-white rounded-lg hover:bg-[#6A1B9A] flex items-center gap-1 transition-all">
+                  <Upload className="w-3 h-3" /> Subir archivo
+                </button>
+              )}
+              {acciones.reSubir && (
+                <button onClick={() => onAccion('subir', solicitud)}
+                  className="px-3 py-1.5 text-xs font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center gap-1 transition-all">
+                  <Upload className="w-3 h-3" /> Corregir y re-subir
+                </button>
+              )}
+              {acciones.revisar && (
+                <button onClick={() => onAccion('revisar', solicitud)}
+                  className="px-3 py-1.5 text-xs font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-1 transition-all">
+                  <FileCheck className="w-3 h-3" /> Revisar informe
+                </button>
+              )}
+              {acciones.entregar && (
+                <button onClick={() => onAccion('entregar', solicitud)}
+                  className="px-3 py-1.5 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1 transition-all">
+                  <Package className="w-3 h-3" /> Marcar entregado
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Acciones */}
+        {/* Acciones secundarias */}
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => onVer(solicitud)}
-            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-            title="Ver detalle"
-          >
+          <button onClick={() => onVer(solicitud)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Ver detalle">
             <Eye className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onEliminar(solicitud.id)}
-            className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all"
-            title="Eliminar"
-          >
+          <button onClick={() => onEliminar(solicitud.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Eliminar">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -516,95 +846,192 @@ const SolicitudCard = ({ solicitud, onVer, onEliminar }) => {
   );
 };
 
-// ─── Modal Ver Detalles ───────────────────────────────────────────────────────
+// ─── ModalVer ─────────────────────────────────────────────────────────────────
 
 const ModalVer = ({ solicitud, onClose }) => {
+  const [revisiones,         setRevisiones]         = useState([]);
+  const [cargandoRevisiones, setCargandoRevisiones] = useState(false);
+  const [verPDF,             setVerPDF]             = useState(false);
+
+  useEffect(() => {
+    if (!solicitud?.id) return;
+    setCargandoRevisiones(true);
+    obtenerRevisionesInforme(solicitud.id)
+      .then(data => setRevisiones(data ?? []))
+      .catch(() => {})
+      .finally(() => setCargandoRevisiones(false));
+  }, [solicitud?.id]);
+
   if (!solicitud) return null;
-  const style = estadoStyle(solicitud.estado_pago_id);
+
+  const sw = estadoStyle(solicitud.estado_solicitud_id);
+  const sp = estadoPagoStyle(solicitud.estado_pago_id);
+  const { Icon } = sw;
 
   return (
-    <div className="fixed inset-0 z-[80000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-4 rounded-t-2xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <FileText className="w-4.5 h-4.5 text-white" />
-            </div>
-            <h2 className="text-base font-bold text-white">Detalle de Solicitud</h2>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
-            <X className="w-4 h-4 text-white" />
-          </button>
-        </div>
+    <>
+      {verPDF && solicitud.archivo_url && (
+        <VisualizadorPDF url={solicitud.archivo_url} onClose={() => setVerPDF(false)} />
+      )}
 
-        {/* Body */}
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {[
-              ['Tipo de informe',  solicitud.tipo_archivo?.nombre],
-              ['Venta asociada',   solicitud.venta_servicio?.codigo_comprobante ?? `#${solicitud.venta_servicio_id}`],
-              ['Especialista',     `${solicitud.especialista?.nombres ?? ''} ${solicitud.especialista?.apellidos ?? ''}`],
-              ['Monto',            fmtMoney(solicitud.monto)],
-              ['N° Recibo',        solicitud.nro_recibo],
-              ['Modalidad de pago', solicitud.modalidad_pago?.nombre ?? '—'],
-              ['Fecha solicitud',  fmtDate(solicitud.fecha_solicitud)],
-              ['Fecha entrega',    fmtDate(solicitud.fecha_entrega)],
-            ].map(([label, val]) => (
-              <div key={label}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-                <p className="text-gray-900 font-medium">{val || '—'}</p>
+      <div className="fixed inset-0 z-[80000] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText className="w-4.5 h-4.5 text-white" />
               </div>
-            ))}
+              <h2 className="text-base font-bold text-white">Detalle de Solicitud</h2>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
 
-            <div className="col-span-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Estado</p>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${style.bg} ${style.text} ${style.border}`}>
-                <span className={`w-2 h-2 rounded-full ${style.dot}`} />
-                {solicitud.estado_pago?.nombre ?? style.label}
+          <div className="p-6 space-y-5">
+            {/* Badges de estado */}
+            <div className="flex flex-wrap gap-2">
+              <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${sw.bg} ${sw.text} ${sw.border}`}>
+                <Icon className="w-4 h-4" /> {sw.label}
+              </span>
+              <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${sp.bg} ${sp.text} ${sp.border}`}>
+                <span className={`w-2 h-2 rounded-full ${sp.dot}`} />
+                {solicitud.estado_pago?.nombre ?? sp.label}
               </span>
             </div>
+
+            {/* Datos principales */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {[
+                ['Tipo de informe',   solicitud.tipo_archivo?.nombre],
+                ['Venta asociada',    solicitud.venta_servicio?.codigo_comprobante ?? `#${solicitud.venta_servicio_id}`],
+                ['Especialista',      `${solicitud.especialista?.nombres ?? ''} ${solicitud.especialista?.apellidos ?? ''}`],
+                ['Monto',             fmtMoney(solicitud.monto)],
+                ['N° Recibo',         solicitud.nro_recibo],
+                ['Modalidad de pago', solicitud.modalidad_pago?.nombre ?? '—'],
+                ['Fecha solicitud',   fmtDate(solicitud.fecha_solicitud)],
+                ['Fecha entrega',     fmtDate(solicitud.fecha_entrega)],
+              ].map(([label, val]) => (
+                <div key={label}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+                  <p className="text-gray-900 font-medium">{val || '—'}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Archivo subido */}
+            {solicitud.archivo_url && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Archivo del informe</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  {isPDF(solicitud.archivo_url) && (
+                    <button
+                      onClick={() => setVerPDF(true)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] rounded-lg transition-all"
+                    >
+                      <Eye className="w-4 h-4" /> Previsualizar PDF
+                    </button>
+                  )}
+                  <a
+                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${window.location.origin}${solicitud.archivo_url}`}
+                    download
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-green-700 border border-green-400 hover:bg-green-100 rounded-lg transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    {isWord(solicitud.archivo_url) ? 'Descargar Word' : 'Descargar PDF'}
+                  </a>
+                </div>
+                {solicitud.fecha_subida_archivo && (
+                  <p className="text-xs text-green-600 mt-2">
+                    Subido el {fmtDate(solicitud.fecha_subida_archivo)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Notas */}
+            {solicitud.nota && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Observaciones</p>
+                <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">{solicitud.nota}</p>
+              </div>
+            )}
+
+            {/* Historial de revisiones */}
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Historial de revisiones</p>
+              {cargandoRevisiones ? (
+                <div className="flex justify-center py-4">
+                  <div className="w-6 h-6 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin" />
+                </div>
+              ) : revisiones.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">Sin revisiones aún</p>
+              ) : (
+                <div className="space-y-2">
+                  {revisiones.map((rev, idx) => {
+                    const aprobado = rev.estado_id === ESTADO.APROBADO;
+                    return (
+                      <div key={idx} className={`border-2 rounded-xl p-3 ${aprobado ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          {aprobado
+                            ? <CheckCircle className="w-4 h-4 text-green-600" />
+                            : <XCircle className="w-4 h-4 text-red-600" />}
+                          <span className={`text-sm font-semibold ${aprobado ? 'text-green-700' : 'text-red-700'}`}>
+                            {aprobado ? 'Aprobado' : 'Rechazado'}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-auto">{fmtDate(rev.fecha_revision)}</span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          <strong>Revisor:</strong> {rev.revisor?.nombres} {rev.revisor?.apellidos}
+                        </p>
+                        {rev.comentario && (
+                          <p className="text-xs text-gray-700 mt-2 bg-white/60 rounded p-2">
+                            <strong>Comentario:</strong> {rev.comentario}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {solicitud.nota && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Observaciones</p>
-              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">{solicitud.nota}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="px-6 pb-6 flex justify-end">
-          <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-all">
-            Cerrar
-          </button>
+          <div className="px-6 pb-6 flex justify-end">
+            <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-all">
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── SolicitudInformeView (Componente principal) ──────────────────────────────
 
-const SolicitudInformeView = ({ paciente, user }) => {
+
+  const SolicitudInformeView = ({ paciente, user: userProp }) => {
+  const user = userProp ?? JSON.parse(localStorage.getItem('user') ?? 'null');
   const [solicitudes,       setSolicitudes]       = useState([]);
   const [ventasInforme,     setVentasInforme]     = useState([]);
   const [tiposArchivo,      setTiposArchivo]      = useState([]);
   const [modalidadesPago,   setModalidadesPago]   = useState([]);
-  const [terapeutas,        setTerapeutas]        = useState([]);  // solo los asignados al paciente
+  const [terapeutas,        setTerapeutas]        = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [modalVer,          setModalVer]          = useState(null);
+  const [modalSubir,        setModalSubir]        = useState(null);
+  const [modalRevisar,      setModalRevisar]      = useState(null);
   const [loading,           setLoading]           = useState(false);
   const [snack,             setSnack]             = useState(null);
 
-  // ── Snack helper ──
   const toast = (msg, tipo = 'success') => {
     setSnack({ msg, tipo });
     setTimeout(() => setSnack(null), 3500);
   };
 
-  // ── Carga inicial ──
   useEffect(() => {
     if (paciente?.id) cargarDatos();
   }, [paciente?.id]);
@@ -612,7 +1039,6 @@ const SolicitudInformeView = ({ paciente, user }) => {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-
       const [solicitudesData, ventasData, tiposData, modalidadesData, serviciosPaciente] = await Promise.all([
         obtenerSolicitudesInformePorPaciente(paciente.id),
         getVentasServicios({ pacienteId: paciente.id }),
@@ -625,33 +1051,25 @@ const SolicitudInformeView = ({ paciente, user }) => {
       setTiposArchivo(tiposData ?? []);
       setModalidadesPago(modalidadesData ?? []);
 
-      // Extraer terapeutas únicos asignados al paciente
-      // Estructura: [{ asignaciones: [{ estado, activo, terapeuta: {...} }] }]
+      // Terapeutas activos del paciente (deduplicados)
       const terapeutasMap = new Map();
       (serviciosPaciente ?? []).forEach(item => {
-        (item.asignaciones ?? []).forEach(asignacion => {
-          if (asignacion.estado === 'ACTIVO' && asignacion.activo && asignacion.terapeuta?.id) {
-            terapeutasMap.set(asignacion.terapeuta.id, asignacion.terapeuta);
+        (item.asignaciones ?? []).forEach(a => {
+          if (a.estado === 'ACTIVO' && a.activo && a.terapeuta?.id) {
+            terapeutasMap.set(a.terapeuta.id, a.terapeuta);
           }
         });
       });
       setTerapeutas([...terapeutasMap.values()]);
 
-      // ── Filtrar ventas aptas para solicitud de informe ──
-      // Regla: deben tener al menos 1 detalle con tipoItemVenta === 2 (cobro puntual/informe físico)
-      // y no haber sido ya usadas en una solicitud existente
-      const ventaIdsYaUsadas = new Set(
+      // Ventas con informe que aún no tienen solicitud
+      const ventaIdsUsadas = new Set(
         (solicitudesData ?? []).map(s => s.venta_servicio_id).filter(Boolean)
       );
-
-      const ventasFiltradas = (ventasData ?? []).filter(v => {
-        const tieneInforme = (v.detalles ?? []).some(
-          d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2
-        );
-        const noUsada = !ventaIdsYaUsadas.has(v.id);
-        return tieneInforme && noUsada;
-      });
-
+      const ventasFiltradas = (ventasData ?? []).filter(v =>
+        (v.detalles ?? []).some(d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2) &&
+        !ventaIdsUsadas.has(v.id)
+      );
       setVentasInforme(ventasFiltradas);
     } catch (err) {
       console.error(err);
@@ -661,7 +1079,6 @@ const SolicitudInformeView = ({ paciente, user }) => {
     }
   };
 
-  // ── Submit ──
   const handleSubmit = async (formData) => {
     try {
       setLoading(true);
@@ -671,32 +1088,51 @@ const SolicitudInformeView = ({ paciente, user }) => {
       await cargarDatos();
     } catch (err) {
       console.error(err);
-      const msg = err?.response?.data?.message ?? 'Error al registrar la solicitud';
-      toast(msg, 'error');
+      toast(err?.response?.data?.message ?? 'Error al registrar la solicitud', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Eliminar ──
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Eliminar esta solicitud?')) return;
     try {
       await eliminarSolicitudInforme(id);
       toast('Solicitud eliminada');
       cargarDatos();
-    } catch (err) {
+    } catch {
       toast('Error al eliminar', 'error');
     }
   };
 
-  // ── Render ──
+  const handleAccion = async (accion, solicitud) => {
+    if (accion === 'subir') {
+      setModalSubir(solicitud);
+    } else if (accion === 'revisar') {
+      setModalRevisar(solicitud);
+    } else if (accion === 'entregar') {
+      if (!window.confirm('¿Marcar este informe como entregado al paciente?')) return;
+      try {
+        await marcarInformeEntregado(solicitud.id);
+        toast('Informe marcado como entregado');
+        cargarDatos();
+      } catch {
+        toast('Error al marcar como entregado', 'error');
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Notificación flotante */}
       {snack && <Snackbar msg={snack.msg} tipo={snack.tipo} onClose={() => setSnack(null)} />}
-      {modalVer && <ModalVer solicitud={modalVer} onClose={() => setModalVer(null)} />}
 
-      {/* Header del acordión */}
+      {/* Modales */}
+      {modalVer     && <ModalVer solicitud={modalVer} onClose={() => setModalVer(null)} />}
+      {modalSubir   && <ModalSubirArchivo solicitud={modalSubir} onClose={() => setModalSubir(null)} onSuccess={cargarDatos} />}
+      {modalRevisar && <ModalRevisarInforme solicitud={modalRevisar} onClose={() => setModalRevisar(null)} onSuccess={cargarDatos} />}
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
@@ -705,7 +1141,9 @@ const SolicitudInformeView = ({ paciente, user }) => {
           <div>
             <h3 className="text-sm font-bold text-gray-900">Solicitudes de Informe</h3>
             <p className="text-xs text-gray-400">
-              {solicitudes.length === 0 ? 'Sin solicitudes' : `${solicitudes.length} solicitud${solicitudes.length > 1 ? 'es' : ''}`}
+              {solicitudes.length === 0
+                ? 'Sin solicitudes'
+                : `${solicitudes.length} solicitud${solicitudes.length > 1 ? 'es' : ''}`}
             </p>
           </div>
         </div>
@@ -722,23 +1160,19 @@ const SolicitudInformeView = ({ paciente, user }) => {
         )}
       </div>
 
-      {/* Formulario inline (se abre/cierra en el acordión) */}
+      {/* Formulario */}
       {mostrarFormulario && (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-bold text-gray-800">Nueva solicitud de informe</p>
-            <button
-              onClick={() => setMostrarFormulario(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={() => setMostrarFormulario(false)} className="text-gray-400 hover:text-gray-600">
               <X className="w-4 h-4" />
             </button>
           </div>
-          {/* Aviso si no hay ventas disponibles */}
           {ventasInforme.length === 0 ? (
             <div className="mt-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <p>No hay ventas con informe físico disponibles para este paciente, o todas ya tienen solicitud asociada.</p>
+              <p>No hay ventas con informe físico disponibles o todas tienen solicitud asociada.</p>
             </div>
           ) : (
             <FormularioSolicitud
@@ -771,8 +1205,10 @@ const SolicitudInformeView = ({ paciente, user }) => {
             <SolicitudCard
               key={s.id}
               solicitud={s}
+              user={user}
               onVer={setModalVer}
               onEliminar={handleEliminar}
+              onAccion={handleAccion}
             />
           ))}
         </div>
