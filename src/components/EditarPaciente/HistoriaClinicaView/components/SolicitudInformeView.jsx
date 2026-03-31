@@ -18,6 +18,7 @@ import {
 import { getVentasServicios } from '../../../../services/ventasService';
 import { getTiposDocumento } from '../../../../services/tiposArchivoService';
 import { getServiciosPorPaciente } from '../../../../services/pacienteService';
+import { SERVER_BASE_URL } from '../../../../services/api';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -89,6 +90,16 @@ const resolverAcciones = (solicitud, user) => {
   // cargo.es_jefe viene del backend (trabajador_centro → cargo → es_jefe)
   const terapeutaEsJefa = Boolean(especialista.cargo?.es_jefe);
 
+  // 🔍 DEBUG: Log de permisos
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔍 DEBUG - Resolver Acciones para solicitud #' + solicitud.id);
+  console.log('👤 Usuario logueado:', { id: user.id, nombre: user.nombres, cargo: user.cargo });
+  console.log('📋 Solicitud estado:', solicitud.estado_solicitud_id, ESTADO_STYLE[solicitud.estado_solicitud_id]?.label);
+  console.log('👩‍⚕️ Especialista asignada:', { id: especialista.id, nombre: especialista.nombres, cargo: especialista.cargo });
+  console.log('✅ Es asignada?:', esAsignada);
+  console.log('👔 Usuario es jefe?:', Boolean(user.cargo?.es_jefe), '(user.cargo.es_jefe =', user.cargo?.es_jefe, ')');
+  console.log('👔 Terapeuta es jefa?:', terapeutaEsJefa);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // 1. El usuario logueado es jefe (user.cargo.es_jefe) Y no es la terapeuta asignada
   // 2. ES la terapeuta asignada Y su cargo.es_jefe      → jefa se auto-revisa (sin intermediario)
@@ -98,12 +109,17 @@ const resolverAcciones = (solicitud, user) => {
 
   const estado = solicitud.estado_solicitud_id;
 
-  return {
+  const acciones = {
     subir:    esAsignada && estado === ESTADO.PENDIENTE_SUBIDA,
     reSubir:  esAsignada && estado === ESTADO.RECHAZADO,
     revisar:  puedeRevisar && estado === ESTADO.PENDIENTE_REVISION,
     entregar: estado === ESTADO.APROBADO,   // admision/admin (cualquier usuario con acceso)
   };
+
+  console.log('🎯 Acciones permitidas:', acciones);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  return acciones;
 };
 
 // ─── Clases reutilizables ─────────────────────────────────────────────────────
@@ -427,44 +443,22 @@ const FormularioSolicitud = ({
 const VisualizadorPDF = ({ url, onClose }) => {
   const [scale, setScale] = useState(1);
 
-  // La URL puede ser relativa (/uploads/...) — la completamos con la base del servidor
-  const fullUrl = url?.startsWith('http') ? url : `${window.location.origin}${url}`;
+  // La URL puede ser relativa (/uploads/...) — la completamos con la base del servidor (backend)
+  const fullUrl = url?.startsWith('http') ? url : `${SERVER_BASE_URL}${url}`;
 
   return (
-    <div className="fixed inset-0 z-[90000] flex flex-col bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[90000] flex flex-col bg-black/90 backdrop-blur-sm">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-5 py-3 bg-gray-900 border-b border-gray-700">
+      <div className="flex items-center justify-between px-5 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-semibold text-white truncate max-w-[300px]">{url?.split('/').pop()}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setScale(s => Math.max(0.5, s - 0.2))}
-            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
-            title="Reducir"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <span className="text-xs text-gray-400 w-12 text-center">{Math.round(scale * 100)}%</span>
-          <button
-            onClick={() => setScale(s => Math.min(2.5, s + 0.2))}
-            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
-            title="Ampliar"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setScale(1)}
-            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
-            title="Restablecer zoom"
-          >
-            <RotateCw className="w-4 h-4" />
-          </button>
           <a
             href={fullUrl}
             download
-            className="ml-2 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center gap-1.5 transition-all"
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center gap-1.5 transition-all"
           >
             <Download className="w-3.5 h-3.5" /> Descargar
           </a>
@@ -474,16 +468,13 @@ const VisualizadorPDF = ({ url, onClose }) => {
         </div>
       </div>
 
-      {/* Iframe del PDF */}
-      <div className="flex-1 overflow-auto bg-gray-800 flex items-start justify-center p-4">
-        <div style={{ transform: `scale(${scale})`, transformOrigin: 'top center', transition: 'transform 0.2s ease', width: '100%' }}>
-          <iframe
-            src={`${fullUrl}#toolbar=0&navpanes=0`}
-            title="Previsualización PDF"
-            className="w-full rounded-lg shadow-2xl bg-white"
-            style={{ height: '85vh', border: 'none' }}
-          />
-        </div>
+      {/* Iframe del PDF - SIN scrolls anidados */}
+      <div className="flex-1 bg-gray-800 relative">
+        <iframe
+          src={`${fullUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+          title="Previsualización PDF"
+          className="absolute inset-0 w-full h-full border-none"
+        />
       </div>
     </div>
   );
@@ -677,7 +668,7 @@ const ModalRevisarInforme = ({ solicitud, onClose, onSuccess }) => {
                     </button>
                   )}
                   <a
-                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${window.location.origin}${solicitud.archivo_url}`}
+                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${SERVER_BASE_URL}${solicitud.archivo_url}`}
                     download
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#7B1FA2] border border-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
                   >
@@ -935,7 +926,7 @@ const ModalVer = ({ solicitud, onClose }) => {
                     </button>
                   )}
                   <a
-                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${window.location.origin}${solicitud.archivo_url}`}
+                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${SERVER_BASE_URL}${solicitud.archivo_url}`}
                     download
                     className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-green-700 border border-green-400 hover:bg-green-100 rounded-lg transition-all"
                   >
@@ -1015,6 +1006,16 @@ const ModalVer = ({ solicitud, onClose }) => {
 
   const SolicitudInformeView = ({ paciente, user: userProp }) => {
   const user = userProp ?? JSON.parse(localStorage.getItem('user') ?? 'null');
+
+  // 🔍 DEBUG: Log del usuario al inicio
+  console.log('\n🚀 SolicitudInformeView - Usuario cargado:', {
+    id: user?.id,
+    nombre: user?.nombres,
+    apellidos: user?.apellidos,
+    cargo: user?.cargo,
+    'cargo.es_jefe': user?.cargo?.es_jefe,
+  });
+
   const [solicitudes,       setSolicitudes]       = useState([]);
   const [ventasInforme,     setVentasInforme]     = useState([]);
   const [tiposArchivo,      setTiposArchivo]      = useState([]);
@@ -1050,6 +1051,18 @@ const ModalVer = ({ solicitud, onClose }) => {
       setSolicitudes(solicitudesData ?? []);
       setTiposArchivo(tiposData ?? []);
       setModalidadesPago(modalidadesData ?? []);
+
+      // 🔍 DEBUG: Log de solicitudes cargadas
+      console.log('📋 Solicitudes cargadas:', solicitudesData?.length ?? 0);
+      if (solicitudesData?.length > 0) {
+        console.log('Primera solicitud (muestra):', {
+          id: solicitudesData[0].id,
+          estado: solicitudesData[0].estado_solicitud_id,
+          estado_nombre: solicitudesData[0].estado_solicitud?.nombre,
+          especialista: solicitudesData[0].especialista,
+          'especialista.cargo': solicitudesData[0].especialista?.cargo,
+        });
+      }
 
       // Terapeutas activos del paciente (deduplicados)
       const terapeutasMap = new Map();

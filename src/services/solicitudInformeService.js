@@ -82,6 +82,9 @@ export const eliminarSolicitudInforme = async (solicitudId) => {
  */
 export const subirArchivoInforme = async (solicitudId, archivo) => {
   try {
+    console.log('📤 Subiendo archivo para solicitud #' + solicitudId);
+    console.log('📎 Archivo:', archivo.name, archivo.type, archivo.size + ' bytes');
+
     const formData = new FormData();
     formData.append('archivo', archivo);
 
@@ -94,9 +97,15 @@ export const subirArchivoInforme = async (solicitudId, archivo) => {
         },
       }
     );
+
+    console.log('✅ Respuesta del servidor:', response.data);
+    console.log('📋 Nuevo estado:', response.data?.estado_solicitud_id);
+    console.log('🔗 URL del archivo:', response.data?.archivo_url);
+
     return response.data;
   } catch (error) {
-    console.error('Error al subir archivo del informe:', error);
+    console.error('❌ Error al subir archivo del informe:', error);
+    console.error('❌ Detalles del error:', error.response?.data);
     throw error;
   }
 };
