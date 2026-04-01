@@ -23,7 +23,6 @@ const AsistenciasPorPaciente = () => {
   useEffect(() => {
     cargarPacientes();
 
-    // Establecer fechas por defecto (semana actual: lunes a sábado)
     const hoy = new Date();
     const diaSemana = hoy.getDay();
 
@@ -64,7 +63,6 @@ const AsistenciasPorPaciente = () => {
   const cargarPacientes = async () => {
     try {
       const response = await api.get('/pacientes');
-      // Agregar nombre_completo a cada paciente
       const pacientesConNombre = response.data.map(p => ({
         ...p,
         nombre_completo: `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.trim()
@@ -73,6 +71,16 @@ const AsistenciasPorPaciente = () => {
     } catch (error) {
       console.error('Error al cargar pacientes:', error);
     }
+  };
+
+  const calcularEstadisticas = (data) => {
+    const total = data.length;
+    const completadas = data.filter(a => a.terapeuta_estado_id === 7 && a.recepcion_estado_id === 7).length;
+    const sesionDictada = data.filter(a => a.recepcion_estado_id === 6 || a.terapeuta_estado_id === 6).length;
+    // Pendiente = al menos uno de los dos no marcó
+    const pendientes = data.filter(a => !a.recepcion_marco || !a.terapeuta_marco).length;
+
+    setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
   };
 
   const cargarAsistencias = async (pacienteId) => {
@@ -84,23 +92,21 @@ const AsistenciasPorPaciente = () => {
     setCargando(true);
     try {
       const data = await obtenerAsistenciasPorPaciente(pacienteId, fechaInicio, fechaFin);
-      setAsistencias(data.asistencias || []);
-      calcularEstadisticas(data.asistencias || []);
+
+      // ✅ Solo mostrar citas donde al menos uno marcó
+      const conRegistro = (data.asistencias || []).filter(
+        a => a.recepcion_marco == 1 || a.terapeuta_marco == 1
+      );
+
+      setAsistencias(conRegistro);
+      calcularEstadisticas(conRegistro);
+      setPage(0);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
       alert('Error al cargar asistencias');
     } finally {
       setCargando(false);
     }
-  };
-
-  const calcularEstadisticas = (data) => {
-    const total = data.length;
-    const completadas = data.filter(a => a.terapeuta_estado_id === 7 && a.recepcion_estado_id === 7).length;
-    const sesionDictada = data.filter(a => a.recepcion_estado_id === 6 || a.terapeuta_estado_id === 6).length;
-    const pendientes = data.filter(a => !a.terapeuta_marco || !a.recepcion_marco).length;
-
-    setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
   };
 
   const seleccionarPaciente = (paciente) => {
@@ -131,7 +137,6 @@ const AsistenciasPorPaciente = () => {
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Buscador de Paciente */}
           <div className="md:col-span-2 relative">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Buscar Paciente
@@ -147,7 +152,6 @@ const AsistenciasPorPaciente = () => {
               <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
             </div>
 
-            {/* Dropdown de resultados */}
             {pacienteFiltrado.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {pacienteFiltrado.map(paciente => (
@@ -166,7 +170,6 @@ const AsistenciasPorPaciente = () => {
             )}
           </div>
 
-          {/* Fecha Inicio */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Fecha Inicio
@@ -179,7 +182,6 @@ const AsistenciasPorPaciente = () => {
             />
           </div>
 
-          {/* Fecha Fin */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Fecha Fin
@@ -275,65 +277,65 @@ const AsistenciasPorPaciente = () => {
                   asistencias
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((asistencia) => (
-                    <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        #{asistencia.cita_id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {asistencia.terapeuta_nombre || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {asistencia.fecha_cita ? formatearFecha(asistencia.fecha_cita) : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.recepcion_marco ? (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            asistencia.recepcion_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {asistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.terapeuta_marco ? (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            asistencia.terapeuta_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {asistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.recepcion_marco && asistencia.terapeuta_marco ? (
-                          asistencia.recepcion_estado_id === 7 && asistencia.terapeuta_estado_id === 7 ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                              ✓ Validado
+                      <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                          #{asistencia.cita_id}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {asistencia.terapeuta_nombre || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {asistencia.fecha_cita ? formatearFecha(asistencia.fecha_cita) : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.recepcion_marco == 1 ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                              asistencia.recepcion_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {asistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                              Inconsistencia
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Pendiente
                             </span>
-                          )
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Incompleto
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.terapeuta_marco == 1 ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                              asistencia.terapeuta_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {asistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.recepcion_marco == 1 && asistencia.terapeuta_marco == 1 ? (
+                            asistencia.recepcion_estado_id === 7 && asistencia.terapeuta_estado_id === 7 ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                ✓ Validado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                Inconsistencia
+                              </span>
+                            )
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Incompleto
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                 )}
               </tbody>
             </table>
