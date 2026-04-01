@@ -3,7 +3,7 @@ import {
   FileText, Plus, X, Save, Calendar, DollarSign, User, Receipt,
   Eye, Trash2, CheckCircle, ChevronDown, ChevronUp, AlertCircle,
   Package, Clock, Banknote, Hash, Upload, Check, XCircle, FileCheck,
-  Send, Download, ZoomIn, ZoomOut, RotateCw,
+  Send, Download, ZoomIn, ZoomOut, RotateCw, Info,
 } from 'lucide-react';
 import {
   crearSolicitudInforme,
@@ -19,6 +19,7 @@ import { getVentasServicios } from '../../../../services/ventasService';
 import { getTiposDocumento } from '../../../../services/tiposArchivoService';
 import { getServiciosPorPaciente } from '../../../../services/pacienteService';
 import { SERVER_BASE_URL } from '../../../../services/api';
+import { ROLES } from '../../../../constants/roles';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -49,9 +50,28 @@ const estadoPagoStyle = (id) => ESTADO_PAGO_STYLE[id] ?? { bg: 'bg-gray-50', bor
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmtMoney = (v) => `S/ ${Number(v ?? 0).toFixed(2)}`;
-const fmtDate  = (d) => d
-  ? new Date(d).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
-  : '—';
+
+/**
+ * Formatea una fecha evitando problemas de zona horaria.
+ * Si la fecha viene como "2024-04-01T00:00:00Z", la trata como fecha local.
+ */
+const fmtDate = (d) => {
+  if (!d) return '—';
+
+  // Si viene en formato ISO, extraer solo la parte de fecha (YYYY-MM-DD)
+  const dateStr = typeof d === 'string' ? d.split('T')[0] : d;
+
+  // Crear fecha como local (sin conversión de zona horaria)
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const fecha = new Date(year, month - 1, day); // month - 1 porque los meses van de 0-11
+
+  return fecha.toLocaleDateString('es-PE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'America/Lima'
+  });
+};
 
 const addDays = (dateStr, days) => {
   const d = new Date(dateStr);
@@ -72,6 +92,26 @@ const getFormInitial = () => {
 };
 
 /**
+ * Verifica permisos según roles
+ */
+const puedeCrearSolicitud = (user) => {
+  if (!user?.rol?.id) return false;
+  return user.rol.id === ROLES.ADMINISTRADOR || user.rol.id === ROLES.ADMISION;
+};
+
+const puedeVerInformacionBancaria = (user, solicitud) => {
+  if (!user?.rol?.id) return false;
+  // Solo Admisión y Administrador pueden ver información de venta/bancaria
+  return user.rol.id === ROLES.ADMINISTRADOR || user.rol.id === ROLES.ADMISION;
+};
+
+const puedeEliminarSolicitud = (user) => {
+  if (!user?.rol?.id) return false;
+  // Solo Admisión y Administrador pueden eliminar
+  return user.rol.id === ROLES.ADMINISTRADOR || user.rol.id === ROLES.ADMISION;
+};
+
+/**
  * Lógica de permisos del workflow.
  *
  * Quién puede hacer qué en cada estado:
@@ -89,31 +129,42 @@ const resolverAcciones = (solicitud, user) => {
 
   // cargo.es_jefe viene del backend (trabajador_centro → cargo → es_jefe)
   const terapeutaEsJefa = Boolean(especialista.cargo?.es_jefe);
+  const userEsJefa = Boolean(user.cargo?.es_jefe);
 
   // 🔍 DEBUG: Log de permisos
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🔍 DEBUG - Resolver Acciones para solicitud #' + solicitud.id);
-  console.log('👤 Usuario logueado:', { id: user.id, nombre: user.nombres, cargo: user.cargo });
+  console.log('👤 Usuario logueado:', { id: user.id, nombre: user.nombres, rol: user.rol, cargo: user.cargo });
   console.log('📋 Solicitud estado:', solicitud.estado_solicitud_id, ESTADO_STYLE[solicitud.estado_solicitud_id]?.label);
   console.log('👩‍⚕️ Especialista asignada:', { id: especialista.id, nombre: especialista.nombres, cargo: especialista.cargo });
   console.log('✅ Es asignada?:', esAsignada);
-  console.log('👔 Usuario es jefe?:', Boolean(user.cargo?.es_jefe), '(user.cargo.es_jefe =', user.cargo?.es_jefe, ')');
+  console.log('👔 Usuario es jefe?:', userEsJefa);
   console.log('👔 Terapeuta es jefa?:', terapeutaEsJefa);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // 1. El usuario logueado es jefe (user.cargo.es_jefe) Y no es la terapeuta asignada
-  // 2. ES la terapeuta asignada Y su cargo.es_jefe      → jefa se auto-revisa (sin intermediario)
-  const puedeRevisar =
-    (Boolean(user.cargo?.es_jefe) && !esAsignada) ||
-    (esAsignada && terapeutaEsJefa);
-
   const estado = solicitud.estado_solicitud_id;
 
+  // Si la terapeuta asignada es jefa, puede subir directamente sin revisión
+  // En ese caso, cuando sube el archivo, el backend debería aprobar automáticamente
+
+  // La terapeuta asignada puede subir
+  const puedeSubir = esAsignada && estado === ESTADO.PENDIENTE_SUBIDA;
+  const puedeReSubir = esAsignada && estado === ESTADO.RECHAZADO;
+
+  // La jefa puede revisar si:
+  // 1. Es jefa Y NO es la terapeuta asignada (revisa el trabajo de otras)
+  // 2. O es la terapeuta asignada Y es jefa (auto-revisa su propio trabajo)
+  const puedeRevisar = userEsJefa && estado === ESTADO.PENDIENTE_REVISION;
+
+  // Solo Admisión y Administrador pueden marcar como entregado
+  const puedeEntregar = estado === ESTADO.APROBADO &&
+                        (user.rol?.id === ROLES.ADMINISTRADOR || user.rol?.id === ROLES.ADMISION);
+
   const acciones = {
-    subir:    esAsignada && estado === ESTADO.PENDIENTE_SUBIDA,
-    reSubir:  esAsignada && estado === ESTADO.RECHAZADO,
-    revisar:  puedeRevisar && estado === ESTADO.PENDIENTE_REVISION,
-    entregar: estado === ESTADO.APROBADO,   // admision/admin (cualquier usuario con acceso)
+    subir:    puedeSubir,
+    reSubir:  puedeReSubir,
+    revisar:  puedeRevisar,
+    entregar: puedeEntregar,
   };
 
   console.log('🎯 Acciones permitidas:', acciones);
@@ -144,6 +195,145 @@ const Snackbar = ({ msg, tipo, onClose }) => (
     </button>
   </div>
 );
+
+// ─── Modal de Confirmación ────────────────────────────────────────────────────
+
+const ModalConfirmacion = ({ isOpen, onClose, onConfirm, titulo, mensaje, tipo = 'danger', loading = false }) => {
+  if (!isOpen) return null;
+
+  const configs = {
+    danger: {
+      color: 'red',
+      icon: Trash2,
+      bgGradient: 'from-red-500 to-red-600',
+      btnClass: 'bg-red-500 hover:bg-red-600',
+    },
+    warning: {
+      color: 'amber',
+      icon: AlertCircle,
+      bgGradient: 'from-amber-500 to-amber-600',
+      btnClass: 'bg-amber-500 hover:bg-amber-600',
+    },
+    success: {
+      color: 'green',
+      icon: CheckCircle,
+      bgGradient: 'from-green-500 to-green-600',
+      btnClass: 'bg-green-500 hover:bg-green-600',
+    },
+  };
+
+  const config = configs[tipo] || configs.danger;
+  const Icon = config.icon;
+
+  return (
+    <div className="fixed inset-0 z-[90000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className={`bg-gradient-to-r ${config.bgGradient} px-6 py-4 rounded-t-2xl flex items-center justify-between`}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-base font-bold text-white">{titulo}</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <p className="text-sm text-gray-700 leading-relaxed">{mensaje}</p>
+
+          <div className="flex items-center justify-end gap-3 mt-6">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className={`px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 flex items-center gap-2 transition-all ${config.btnClass}`}
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Confirmar
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Modal de Alerta ──────────────────────────────────────────────────────────
+
+const ModalAlerta = ({ isOpen, onClose, titulo, mensaje, tipo = 'error' }) => {
+  if (!isOpen) return null;
+
+  const configs = {
+    error: {
+      color: 'red',
+      icon: XCircle,
+      bgGradient: 'from-red-500 to-red-600',
+    },
+    warning: {
+      color: 'amber',
+      icon: AlertCircle,
+      bgGradient: 'from-amber-500 to-amber-600',
+    },
+    info: {
+      color: 'blue',
+      icon: Info,
+      bgGradient: 'from-blue-500 to-blue-600',
+    },
+  };
+
+  const config = configs[tipo] || configs.error;
+  const Icon = config.icon;
+
+  return (
+    <div className="fixed inset-0 z-[90000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className={`bg-gradient-to-r ${config.bgGradient} px-6 py-4 rounded-t-2xl flex items-center justify-between`}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-base font-bold text-white">{titulo}</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <p className="text-sm text-gray-700 leading-relaxed">{mensaje}</p>
+
+          <div className="flex items-center justify-end gap-3 mt-6">
+            <button
+              onClick={onClose}
+              className="px-5 py-2 text-sm font-semibold text-white bg-gray-600 rounded-xl hover:bg-gray-700 transition-all"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ─── VentaOptionCard ──────────────────────────────────────────────────────────
 
@@ -249,9 +439,75 @@ const VentaSelector = ({ ventas, value, onChange, loading }) => {
 const FormularioSolicitud = ({
   onSubmit, onCancel, loading,
   ventasInforme, tiposArchivo, terapeutas, modalidadesPago, user,
+  serviciosPaciente, // 👈 Nuevo: para buscar servicio_id por terapeuta
+  onMostrarAlerta, // 👈 Callback para mostrar alertas
 }) => {
   const [form, setForm] = useState({ ...getFormInitial(), especialista_id: user?.id ?? '' });
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  /**
+   * Busca el servicio_id del paciente que está asignado a la terapeuta seleccionada
+   */
+  const buscarServicioPorTerapeuta = (terapeutaId) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 Buscando servicio para terapeuta ID:', terapeutaId);
+    console.log('📦 Total de servicios del paciente:', serviciosPaciente?.length);
+
+    for (const servicio of serviciosPaciente) {
+      console.log('\n🔍 Analizando servicio:', {
+        id: servicio.id,
+        servicio_id: servicio.servicio_id,
+        servicio: servicio.servicio,
+        'servicio.id': servicio.servicio?.id,
+        asignaciones: servicio.asignaciones?.length,
+      });
+
+      const asignacion = (servicio.asignaciones ?? []).find(
+        a => a.terapeuta?.id === Number(terapeutaId) && a.estado === 'ACTIVO' && a.activo
+      );
+
+      if (asignacion) {
+        console.log('✅ ¡MATCH! Asignación encontrada:', {
+          terapeuta: asignacion.terapeuta?.nombres,
+          estado: asignacion.estado,
+          activo: asignacion.activo,
+        });
+
+        // Mostrar todas las opciones posibles de servicio_id
+        const opciones = {
+          'servicio.servicio_id': servicio.servicio_id,
+          'servicio.id': servicio.id,
+          'servicio.servicio?.id': servicio.servicio?.id,
+          'servicio.servicio?.servicio_id': servicio.servicio?.servicio_id,
+          'asignacion.servicio_id': asignacion.servicio_id,
+        };
+        console.log('🎯 Opciones de servicio_id disponibles:', opciones);
+
+        // Intentar múltiples ubicaciones
+        let servicioIdFinal = null;
+
+        if (servicio.servicio?.id) {
+          servicioIdFinal = servicio.servicio.id;
+          console.log('✅ Usando: servicio.servicio.id =', servicioIdFinal);
+        } else if (servicio.servicio_id) {
+          servicioIdFinal = servicio.servicio_id;
+          console.log('✅ Usando: servicio.servicio_id =', servicioIdFinal);
+        } else if (servicio.id) {
+          servicioIdFinal = servicio.id;
+          console.log('⚠️ Usando: servicio.id =', servicioIdFinal, '(puede no ser correcto)');
+        } else {
+          console.error('❌ No se pudo determinar servicio_id');
+        }
+
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        return servicioIdFinal;
+      }
+    }
+
+    console.error('❌ No se encontró servicio asignado para terapeuta:', terapeutaId);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    return null;
+  };
 
   const ventaSeleccionada = ventasInforme.find(v => String(v.id) === String(form.venta_servicio_id));
 
@@ -269,23 +525,26 @@ const FormularioSolicitud = ({
     const venta = ventasInforme.find(v => String(v.id) === String(ventaId));
     if (!venta) { set('venta_servicio_id', ventaId); return; }
 
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('💳 Venta seleccionada:', venta.codigo_comprobante);
+
+    // Calcular monto del informe (ítems de tipo 2)
     const itemsInforme = (venta.detalles ?? []).filter(
       d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2
     );
     const montoInforme = itemsInforme.reduce(
       (acc, d) => acc + Number(d.subtotal ?? d.precio_unitario ?? 0), 0
     );
-    const detalleServicio = (venta.detalles ?? []).find(
-      d => d.tipoItemVenta === 1 || d.tipo_item_venta === 1
-    ) ?? (venta.detalles ?? [])[0];
-    const servicioId =
-      detalleServicio?.servicio_tarifa?.servicio?.id ??
-      detalleServicio?.servicio?.id ?? null;
+
+    console.log('💰 Monto del informe:', montoInforme);
+    console.log('📋 N° Recibo:', venta.codigo_comprobante);
+    console.log('ℹ️ servicio_id se asignará cuando selecciones la terapeuta');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     setForm(p => ({
       ...p,
       venta_servicio_id: ventaId,
-      servicio_id: servicioId,
+      // servicio_id se llenará cuando se seleccione el especialista
       monto: montoInforme > 0 ? montoInforme.toFixed(2) : p.monto,
       nro_recibo: venta.codigo_comprobante ?? p.nro_recibo,
     }));
@@ -293,9 +552,81 @@ const FormularioSolicitud = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.venta_servicio_id || !form.servicio_id || !form.tipo_archivo_id ||
-        !form.especialista_id || !form.monto || Number(form.monto) <= 0 ||
-        !form.nro_recibo.trim()) return;
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📝 Intentando guardar solicitud de informe');
+    console.log('📋 Datos del formulario:', form);
+
+    // Validación con mensajes de error específicos
+    if (!form.venta_servicio_id) {
+      console.error('❌ Error: Falta venta_servicio_id');
+      // Usar prop onMostrarAlerta pasada desde el componente padre
+      if (onMostrarAlerta) {
+        onMostrarAlerta({
+          titulo: 'Campo requerido',
+          mensaje: 'Por favor selecciona una venta de informe',
+          tipo: 'warning'
+        });
+      }
+      return;
+    }
+    if (!form.servicio_id) {
+      console.error('❌ Error: Falta servicio_id (debe auto-llenarse de la venta)');
+      if (onMostrarAlerta) {
+        onMostrarAlerta({
+          titulo: 'Error de configuración',
+          mensaje: 'No se pudo obtener el servicio de la venta seleccionada. Por favor, verifica que la terapeuta esté asignada al paciente.',
+          tipo: 'error'
+        });
+      }
+      return;
+    }
+    if (!form.tipo_archivo_id) {
+      console.error('❌ Error: Falta tipo_archivo_id');
+      if (onMostrarAlerta) {
+        onMostrarAlerta({
+          titulo: 'Campo requerido',
+          mensaje: 'Por favor selecciona el tipo de informe',
+          tipo: 'warning'
+        });
+      }
+      return;
+    }
+    if (!form.especialista_id) {
+      console.error('❌ Error: Falta especialista_id');
+      if (onMostrarAlerta) {
+        onMostrarAlerta({
+          titulo: 'Campo requerido',
+          mensaje: 'Por favor selecciona un especialista',
+          tipo: 'warning'
+        });
+      }
+      return;
+    }
+    if (!form.monto || Number(form.monto) <= 0) {
+      console.error('❌ Error: Monto inválido:', form.monto);
+      if (onMostrarAlerta) {
+        onMostrarAlerta({
+          titulo: 'Monto inválido',
+          mensaje: 'El monto debe ser mayor a 0',
+          tipo: 'error'
+        });
+      }
+      return;
+    }
+    if (!form.nro_recibo || !form.nro_recibo.trim()) {
+      console.error('❌ Error: Falta nro_recibo');
+      if (onMostrarAlerta) {
+        onMostrarAlerta({
+          titulo: 'Campo requerido',
+          mensaje: 'Por favor ingresa el número de recibo',
+          tipo: 'warning'
+        });
+      }
+      return;
+    }
+
+    console.log('✅ Validación exitosa, enviando datos...');
 
     onSubmit({
       ...form,
@@ -344,7 +675,24 @@ const FormularioSolicitud = ({
           <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Especialista {required}</span>
           </label>
-          <select value={form.especialista_id} onChange={e => set('especialista_id', e.target.value)} className={INPUT_CLS} required>
+          <select
+            value={form.especialista_id}
+            onChange={e => {
+              const terapeutaId = e.target.value;
+              set('especialista_id', terapeutaId);
+
+              // Buscar servicio_id automáticamente cuando se selecciona terapeuta
+              if (terapeutaId) {
+                const servicioId = buscarServicioPorTerapeuta(terapeutaId);
+                if (servicioId) {
+                  set('servicio_id', servicioId);
+                  console.log('✅ servicio_id asignado automáticamente:', servicioId);
+                }
+              }
+            }}
+            className={INPUT_CLS}
+            required
+          >
             <option value="">Seleccionar...</option>
             {terapeutas.map(t => <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>)}
           </select>
@@ -581,7 +929,7 @@ const ModalSubirArchivo = ({ solicitud, onClose, onSuccess }) => {
 
 // ─── ModalRevisarInforme ──────────────────────────────────────────────────────
 
-const ModalRevisarInforme = ({ solicitud, onClose, onSuccess }) => {
+const ModalRevisarInforme = ({ solicitud, user, onClose, onSuccess }) => {
   const [accion,    setAccion]    = useState(null); // 'aprobar' | 'rechazar'
   const [comentario, setComentario] = useState('');
   const [guardando,  setGuardando]  = useState(false);
@@ -600,6 +948,7 @@ const ModalRevisarInforme = ({ solicitud, onClose, onSuccess }) => {
       await revisarInforme(solicitud.id, {
         estado_id: accion === 'aprobar' ? ESTADO.APROBADO : ESTADO.RECHAZADO,
         comentario: comentario.trim() || null,
+        revisor_id: user?.id,
       });
       onSuccess();
       onClose();
@@ -750,6 +1099,8 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
   const sp    = estadoPagoStyle(solicitud.estado_pago_id);
   const { Icon } = sw;
   const acciones = resolverAcciones(solicitud, user);
+  const mostrarInfoBancaria = puedeVerInformacionBancaria(user, solicitud);
+  const puedeEliminar = puedeEliminarSolicitud(user);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-sm transition-all">
@@ -763,7 +1114,7 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sw.bg} ${sw.text} ${sw.border}`}>
               <Icon className="w-3 h-3" /> {sw.label}
             </span>
-            {solicitud.estado_pago_id && (
+            {mostrarInfoBancaria && solicitud.estado_pago_id && (
               <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sp.bg} ${sp.text} ${sp.border}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${sp.dot}`} />
                 {solicitud.estado_pago?.nombre ?? sp.label}
@@ -773,10 +1124,12 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
 
           {/* Fila 2: metadatos */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <Receipt className="w-3.5 h-3.5" />
-              {solicitud.venta_servicio?.codigo_comprobante ?? `Venta #${solicitud.venta_servicio_id}`}
-            </span>
+            {mostrarInfoBancaria && (
+              <span className="flex items-center gap-1">
+                <Receipt className="w-3.5 h-3.5" />
+                {solicitud.venta_servicio?.codigo_comprobante ?? `Venta #${solicitud.venta_servicio_id}`}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <User className="w-3.5 h-3.5" />
               {solicitud.especialista?.nombres} {solicitud.especialista?.apellidos}
@@ -785,11 +1138,16 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
               )}
             </span>
             <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" /> {fmtDate(solicitud.fecha_solicitud)}
+              <Calendar className="w-3.5 h-3.5" /> Solicitud: {fmtDate(solicitud.fecha_solicitud)}
             </span>
-            <span className="flex items-center gap-1 font-semibold text-gray-700">
-              <DollarSign className="w-3.5 h-3.5" /> {fmtMoney(solicitud.monto)}
+            <span className="flex items-center gap-1 font-semibold text-purple-700">
+              <Clock className="w-3.5 h-3.5" /> Entrega: {fmtDate(solicitud.fecha_entrega)}
             </span>
+            {mostrarInfoBancaria && (
+              <span className="flex items-center gap-1 font-semibold text-gray-700">
+                <DollarSign className="w-3.5 h-3.5" /> {fmtMoney(solicitud.monto)}
+              </span>
+            )}
           </div>
 
           {/* Botones de workflow */}
@@ -828,9 +1186,11 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
           <button onClick={() => onVer(solicitud)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Ver detalle">
             <Eye className="w-4 h-4" />
           </button>
-          <button onClick={() => onEliminar(solicitud.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Eliminar">
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {puedeEliminar && (
+            <button onClick={() => onEliminar(solicitud.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Eliminar">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -839,7 +1199,7 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
 
 // ─── ModalVer ─────────────────────────────────────────────────────────────────
 
-const ModalVer = ({ solicitud, onClose }) => {
+const ModalVer = ({ solicitud, user, onClose }) => {
   const [revisiones,         setRevisiones]         = useState([]);
   const [cargandoRevisiones, setCargandoRevisiones] = useState(false);
   const [verPDF,             setVerPDF]             = useState(false);
@@ -858,6 +1218,7 @@ const ModalVer = ({ solicitud, onClose }) => {
   const sw = estadoStyle(solicitud.estado_solicitud_id);
   const sp = estadoPagoStyle(solicitud.estado_pago_id);
   const { Icon } = sw;
+  const mostrarInfoBancaria = puedeVerInformacionBancaria(user, solicitud);
 
   return (
     <>
@@ -887,29 +1248,54 @@ const ModalVer = ({ solicitud, onClose }) => {
               <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${sw.bg} ${sw.text} ${sw.border}`}>
                 <Icon className="w-4 h-4" /> {sw.label}
               </span>
-              <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${sp.bg} ${sp.text} ${sp.border}`}>
-                <span className={`w-2 h-2 rounded-full ${sp.dot}`} />
-                {solicitud.estado_pago?.nombre ?? sp.label}
-              </span>
+              {mostrarInfoBancaria && (
+                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${sp.bg} ${sp.text} ${sp.border}`}>
+                  <span className={`w-2 h-2 rounded-full ${sp.dot}`} />
+                  {solicitud.estado_pago?.nombre ?? sp.label}
+                </span>
+              )}
             </div>
 
             {/* Datos principales */}
             <div className="grid grid-cols-2 gap-4 text-sm">
-              {[
-                ['Tipo de informe',   solicitud.tipo_archivo?.nombre],
-                ['Venta asociada',    solicitud.venta_servicio?.codigo_comprobante ?? `#${solicitud.venta_servicio_id}`],
-                ['Especialista',      `${solicitud.especialista?.nombres ?? ''} ${solicitud.especialista?.apellidos ?? ''}`],
-                ['Monto',             fmtMoney(solicitud.monto)],
-                ['N° Recibo',         solicitud.nro_recibo],
-                ['Modalidad de pago', solicitud.modalidad_pago?.nombre ?? '—'],
-                ['Fecha solicitud',   fmtDate(solicitud.fecha_solicitud)],
-                ['Fecha entrega',     fmtDate(solicitud.fecha_entrega)],
-              ].map(([label, val]) => (
-                <div key={label}>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-                  <p className="text-gray-900 font-medium">{val || '—'}</p>
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Tipo de informe</p>
+                <p className="text-gray-900 font-medium">{solicitud.tipo_archivo?.nombre || '—'}</p>
+              </div>
+              {mostrarInfoBancaria && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Venta asociada</p>
+                  <p className="text-gray-900 font-medium">{solicitud.venta_servicio?.codigo_comprobante ?? `#${solicitud.venta_servicio_id}`}</p>
                 </div>
-              ))}
+              )}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Especialista</p>
+                <p className="text-gray-900 font-medium">{`${solicitud.especialista?.nombres ?? ''} ${solicitud.especialista?.apellidos ?? ''}`}</p>
+              </div>
+              {mostrarInfoBancaria && (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Monto</p>
+                    <p className="text-gray-900 font-medium">{fmtMoney(solicitud.monto)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">N° Recibo</p>
+                    <p className="text-gray-900 font-medium">{solicitud.nro_recibo || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Modalidad de pago</p>
+                    <p className="text-gray-900 font-medium">{solicitud.modalidad_pago?.nombre ?? '—'}</p>
+                  </div>
+                </>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Fecha solicitud</p>
+                <p className="text-gray-900 font-medium">{fmtDate(solicitud.fecha_solicitud)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Fecha entrega máxima</p>
+                <p className="text-gray-900 font-medium">{fmtDate(solicitud.fecha_entrega)}</p>
+              </div>
             </div>
 
             {/* Archivo subido */}
@@ -1021,12 +1407,19 @@ const ModalVer = ({ solicitud, onClose }) => {
   const [tiposArchivo,      setTiposArchivo]      = useState([]);
   const [modalidadesPago,   setModalidadesPago]   = useState([]);
   const [terapeutas,        setTerapeutas]        = useState([]);
+  const [serviciosPaciente, setServiciosPaciente] = useState([]); // Para buscar servicio_id por terapeuta
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [modalVer,          setModalVer]          = useState(null);
   const [modalSubir,        setModalSubir]        = useState(null);
   const [modalRevisar,      setModalRevisar]      = useState(null);
   const [loading,           setLoading]           = useState(false);
   const [snack,             setSnack]             = useState(null);
+
+  // Estados para modales de confirmación y alerta
+  const [modalAlerta, setModalAlerta] = useState(null);
+  const [modalConfirmEliminar, setModalConfirmEliminar] = useState(null);
+  const [modalConfirmEntregar, setModalConfirmEntregar] = useState(null);
+  const [loadingConfirm, setLoadingConfirm] = useState(false);
 
   const toast = (msg, tipo = 'success') => {
     setSnack({ msg, tipo });
@@ -1051,9 +1444,11 @@ const ModalVer = ({ solicitud, onClose }) => {
       setSolicitudes(solicitudesData ?? []);
       setTiposArchivo(tiposData ?? []);
       setModalidadesPago(modalidadesData ?? []);
+      setServiciosPaciente(serviciosPaciente ?? []); // Guardar servicios para luego buscar por terapeuta
 
       // 🔍 DEBUG: Log de solicitudes cargadas
       console.log('📋 Solicitudes cargadas:', solicitudesData?.length ?? 0);
+      console.log('📦 Servicios del paciente:', serviciosPaciente);
       if (solicitudesData?.length > 0) {
         console.log('Primera solicitud (muestra):', {
           id: solicitudesData[0].id,
@@ -1107,31 +1502,47 @@ const ModalVer = ({ solicitud, onClose }) => {
     }
   };
 
-  const handleEliminar = async (id) => {
-    if (!window.confirm('¿Eliminar esta solicitud?')) return;
+  const handleEliminar = (id) => {
+    setModalConfirmEliminar(id);
+  };
+
+  const confirmarEliminar = async () => {
+    const id = modalConfirmEliminar;
     try {
+      setLoadingConfirm(true);
       await eliminarSolicitudInforme(id);
       toast('Solicitud eliminada');
+      setModalConfirmEliminar(null);
       cargarDatos();
     } catch {
       toast('Error al eliminar', 'error');
+    } finally {
+      setLoadingConfirm(false);
     }
   };
 
-  const handleAccion = async (accion, solicitud) => {
+  const handleAccion = (accion, solicitud) => {
     if (accion === 'subir') {
       setModalSubir(solicitud);
     } else if (accion === 'revisar') {
       setModalRevisar(solicitud);
     } else if (accion === 'entregar') {
-      if (!window.confirm('¿Marcar este informe como entregado al paciente?')) return;
-      try {
-        await marcarInformeEntregado(solicitud.id);
-        toast('Informe marcado como entregado');
-        cargarDatos();
-      } catch {
-        toast('Error al marcar como entregado', 'error');
-      }
+      setModalConfirmEntregar(solicitud);
+    }
+  };
+
+  const confirmarEntregar = async () => {
+    const solicitud = modalConfirmEntregar;
+    try {
+      setLoadingConfirm(true);
+      await marcarInformeEntregado(solicitud.id);
+      toast('Informe marcado como entregado');
+      setModalConfirmEntregar(null);
+      cargarDatos();
+    } catch {
+      toast('Error al marcar como entregado', 'error');
+    } finally {
+      setLoadingConfirm(false);
     }
   };
 
@@ -1141,9 +1552,46 @@ const ModalVer = ({ solicitud, onClose }) => {
       {snack && <Snackbar msg={snack.msg} tipo={snack.tipo} onClose={() => setSnack(null)} />}
 
       {/* Modales */}
-      {modalVer     && <ModalVer solicitud={modalVer} onClose={() => setModalVer(null)} />}
+      {modalVer     && <ModalVer solicitud={modalVer} user={user} onClose={() => setModalVer(null)} />}
       {modalSubir   && <ModalSubirArchivo solicitud={modalSubir} onClose={() => setModalSubir(null)} onSuccess={cargarDatos} />}
-      {modalRevisar && <ModalRevisarInforme solicitud={modalRevisar} onClose={() => setModalRevisar(null)} onSuccess={cargarDatos} />}
+      {modalRevisar && <ModalRevisarInforme solicitud={modalRevisar} user={user} onClose={() => setModalRevisar(null)} onSuccess={cargarDatos} />}
+
+      {/* Modal de Alerta */}
+      {modalAlerta && (
+        <ModalAlerta
+          isOpen={true}
+          onClose={() => setModalAlerta(null)}
+          titulo={modalAlerta.titulo}
+          mensaje={modalAlerta.mensaje}
+          tipo={modalAlerta.tipo}
+        />
+      )}
+
+      {/* Modal de Confirmación - Eliminar */}
+      {modalConfirmEliminar && (
+        <ModalConfirmacion
+          isOpen={true}
+          onClose={() => setModalConfirmEliminar(null)}
+          onConfirm={confirmarEliminar}
+          titulo="Eliminar solicitud"
+          mensaje="¿Estás seguro de que deseas eliminar esta solicitud de informe? Esta acción no se puede deshacer."
+          tipo="danger"
+          loading={loadingConfirm}
+        />
+      )}
+
+      {/* Modal de Confirmación - Marcar como Entregado */}
+      {modalConfirmEntregar && (
+        <ModalConfirmacion
+          isOpen={true}
+          onClose={() => setModalConfirmEntregar(null)}
+          onConfirm={confirmarEntregar}
+          titulo="Marcar como entregado"
+          mensaje="¿Confirmas que este informe ha sido entregado al paciente?"
+          tipo="success"
+          loading={loadingConfirm}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -1161,7 +1609,7 @@ const ModalVer = ({ solicitud, onClose }) => {
           </div>
         </div>
 
-        {!mostrarFormulario && (
+        {!mostrarFormulario && puedeCrearSolicitud(user) && (
           <button
             onClick={() => setMostrarFormulario(true)}
             disabled={ventasInforme.length === 0 && !loading}
@@ -1174,7 +1622,7 @@ const ModalVer = ({ solicitud, onClose }) => {
       </div>
 
       {/* Formulario */}
-      {mostrarFormulario && (
+      {mostrarFormulario && puedeCrearSolicitud(user) && (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-bold text-gray-800">Nueva solicitud de informe</p>
@@ -1197,6 +1645,8 @@ const ModalVer = ({ solicitud, onClose }) => {
               terapeutas={terapeutas}
               modalidadesPago={modalidadesPago}
               user={user}
+              serviciosPaciente={serviciosPaciente}
+              onMostrarAlerta={setModalAlerta}
             />
           )}
         </div>

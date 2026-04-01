@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Bell, X, TriangleAlert, Info, Calendar, Cake, Trash,
   Clock, PenSquare, FileText, Loader2, PartyPopper,
-  Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown, ClipboardList, FileUp, UserCog
+  Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown, ClipboardList, FileUp, UserCog,
+  FileCheck
 } from 'lucide-react';
 import {
   obtenerNotificacionesRecientes,
@@ -41,6 +42,7 @@ const TIPO_CONFIG = {
   INDICACION_TERAPEUTICA:   { icono: ClipboardList, color: 'text-teal-500',   borde: 'border-teal-400',   label: 'Indicación terapéutica' },
   DOCUMENTO_SUBIDO:         { icono: FileUp,        color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Documento subido'     },
   CAMBIO_ESTADO_PACIENTE:   { icono: UserCog,       color: 'text-amber-600',  borde: 'border-amber-500',  label: 'Cambio de estado'     },
+  SOLICITUD_INFORME:        { icono: FileCheck,     color: 'text-violet-600', borde: 'border-violet-500', label: 'Solicitud de informe' },
   DEFAULT:                  { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
 };
 

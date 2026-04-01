@@ -414,6 +414,8 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
           </div>
         </>
       )}
+
+      
       <hr style={s.hrSolid} />
       <div style={{ ...s.center, ...s.bold, color: '#7B1FA2', marginTop: '4px', fontSize: '9px' }}>¡Gracias por su preferencia!</div>
     </div>
@@ -774,6 +776,12 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
               {venta.nota && (
                 <div className="col-span-2"><p className="text-xs text-gray-500">Nota</p><p className="text-sm text-gray-700">{venta.nota}</p></div>
               )}
+              {venta.modalidad_pago && (
+              <div className="col-span-2">
+                <p className="text-xs text-gray-500">Modalidad de Pago</p>
+                <p className="font-semibold text-gray-900">{venta.modalidad_pago.nombre}</p>
+              </div>
+            )}
             </div>
 
             <div>

@@ -1,10 +1,11 @@
-import api from './api';
+import api, { API_BASE_URL } from './api';
+import axios from 'axios';
 
 // ==================== SOLICITUDES DE INFORME ====================
 
 export const crearSolicitudInforme = async (solicitudData) => {
   try {
-    const response = await api.post('/solicitud-informe', solicitudData);
+    const response = await api.post('/solicitudes-informe', solicitudData);
     return response.data;
   } catch (error) {
     console.error('Error al crear solicitud de informe:', error);
@@ -14,7 +15,7 @@ export const crearSolicitudInforme = async (solicitudData) => {
 
 export const obtenerSolicitudesInforme = async () => {
   try {
-    const response = await api.get('/solicitud-informe');
+    const response = await api.get('/solicitudes-informe');
     return response.data;
   } catch (error) {
     console.error('Error al obtener solicitudes de informe:', error);
@@ -24,7 +25,7 @@ export const obtenerSolicitudesInforme = async () => {
 
 export const obtenerSolicitudInformePorId = async (solicitudId) => {
   try {
-    const response = await api.get(`/solicitud-informe/${solicitudId}`);
+    const response = await api.get(`/solicitudes-informe/${solicitudId}`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener solicitud de informe:', error);
@@ -34,7 +35,7 @@ export const obtenerSolicitudInformePorId = async (solicitudId) => {
 
 export const obtenerSolicitudesInformePorPaciente = async (pacienteId) => {
   try {
-    const response = await api.get(`/solicitud-informe/paciente/${pacienteId}`);
+    const response = await api.get(`/solicitudes-informe/paciente/${pacienteId}`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener solicitudes de informe del paciente:', error);
@@ -44,7 +45,7 @@ export const obtenerSolicitudesInformePorPaciente = async (pacienteId) => {
 
 export const obtenerSolicitudesInformePorEspecialista = async (especialistaId) => {
   try {
-    const response = await api.get(`/solicitud-informe/especialista/${especialistaId}`);
+    const response = await api.get(`/solicitudes-informe/especialista/${especialistaId}`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener solicitudes de informe del especialista:', error);
@@ -54,7 +55,7 @@ export const obtenerSolicitudesInformePorEspecialista = async (especialistaId) =
 
 export const actualizarSolicitudInforme = async (solicitudId, solicitudData) => {
   try {
-    const response = await api.patch(`/solicitud-informe/${solicitudId}`, solicitudData);
+    const response = await api.patch(`/solicitudes-informe/${solicitudId}`, solicitudData);
     return response.data;
   } catch (error) {
     console.error('Error al actualizar solicitud de informe:', error);
@@ -64,7 +65,7 @@ export const actualizarSolicitudInforme = async (solicitudId, solicitudData) => 
 
 export const eliminarSolicitudInforme = async (solicitudId) => {
   try {
-    const response = await api.delete(`/solicitud-informe/${solicitudId}`);
+    const response = await api.delete(`/solicitudes-informe/${solicitudId}`);
     return response.data;
   } catch (error) {
     console.error('Error al eliminar solicitud de informe:', error);
@@ -82,18 +83,35 @@ export const eliminarSolicitudInforme = async (solicitudId) => {
  */
 export const subirArchivoInforme = async (solicitudId, archivo) => {
   try {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📤 Subiendo archivo para solicitud #' + solicitudId);
-    console.log('📎 Archivo:', archivo.name, archivo.type, archivo.size + ' bytes');
+    console.log('📎 Archivo:', archivo);
+    console.log('   - Nombre:', archivo.name);
+    console.log('   - Tipo:', archivo.type);
+    console.log('   - Tamaño:', archivo.size + ' bytes');
+    console.log('   - Es File?:', archivo instanceof File);
 
     const formData = new FormData();
     formData.append('archivo', archivo);
 
-    const response = await api.post(
-      `/solicitud-informe/${solicitudId}/subir-archivo`,
+    // Debug: ver contenido del FormData
+    console.log('📦 FormData entries:');
+    for (let pair of formData.entries()) {
+      console.log('   -', pair[0], ':', pair[1]);
+    }
+
+    // Obtener token manualmente (ya que no usamos api.js que lo agrega automáticamente)
+    const token = localStorage.getItem('access_token');
+
+    // Usar axios directamente sin las configuraciones globales de api.js
+    // que fuerzan 'Content-Type': 'application/json'
+    const response = await axios.post(
+      `${API_BASE_URL}/solicitudes-informe/${solicitudId}/subir-archivo`,
       formData,
       {
         headers: {
-          'Content-Type': undefined,  // ← elimina el json default, axios pone el multipart+boundary solo
+          Authorization: `Bearer ${token}`,
+          // NO definir Content-Type - Axios lo generará automáticamente como multipart/form-data con boundary
         },
       }
     );
@@ -118,7 +136,7 @@ export const subirArchivoInforme = async (solicitudId, archivo) => {
  */
 export const revisarInforme = async (solicitudId, data) => {
   try {
-    const response = await api.post(`/solicitud-informe/${solicitudId}/revisar`, data);
+    const response = await api.patch(`/solicitudes-informe/${solicitudId}/revisar`, data);
     return response.data;
   } catch (error) {
     console.error('Error al revisar el informe:', error);
@@ -133,7 +151,7 @@ export const revisarInforme = async (solicitudId, data) => {
  */
 export const marcarInformeEntregado = async (solicitudId) => {
   try {
-    const response = await api.post(`/solicitud-informe/${solicitudId}/marcar-entregado`, {});
+    const response = await api.patch(`/solicitudes-informe/${solicitudId}/entregar`, {});
     return response.data;
   } catch (error) {
     console.error('Error al marcar informe como entregado:', error);
@@ -149,7 +167,7 @@ export const marcarInformeEntregado = async (solicitudId) => {
  */
 export const obtenerRevisionesInforme = async (solicitudId) => {
   try {
-    const response = await api.get(`/solicitud-informe/${solicitudId}/revisiones`);
+    const response = await api.get(`/solicitudes-informe/${solicitudId}/revisiones`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener revisiones del informe:', error);
@@ -161,7 +179,7 @@ export const obtenerRevisionesInforme = async (solicitudId) => {
 
 export const obtenerModalidadesPago = async () => {
   try {
-    const response = await api.get('/solicitud-informe/catalogos/modalidades-pago');
+    const response = await api.get('/solicitudes-informe/catalogos/modalidades-pago');
     return response.data;
   } catch (error) {
     console.error('Error al obtener modalidades de pago:', error);
@@ -171,7 +189,7 @@ export const obtenerModalidadesPago = async () => {
 
 export const obtenerEstadosPago = async () => {
   try {
-    const response = await api.get('/solicitud-informe/catalogos/estados-pago');
+    const response = await api.get('/solicitudes-informe/catalogos/estados-pago');
     return response.data;
   } catch (error) {
     console.error('Error al obtener estados de pago:', error);
@@ -181,7 +199,7 @@ export const obtenerEstadosPago = async () => {
 
 export const obtenerEstadosSolicitud = async () => {
   try {
-    const response = await api.get('/solicitud-informe/catalogos/estados-solicitud');
+    const response = await api.get('/solicitudes-informe/catalogos/estados-solicitud');
     return response.data;
   } catch (error) {
     console.error('Error al obtener estados de solicitud:', error);

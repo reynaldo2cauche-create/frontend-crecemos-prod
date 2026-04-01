@@ -29,6 +29,7 @@ import {
 } from '../../services/ventasService';
 import { getDocumentosTarifa } from '../../services/documentoTarifaService';
 import { calcularPromociones, registrarPromocionAplicada } from '../../services/promocionesService';
+import { obtenerModalidadesPago } from '../../services/solicitudInformeService';
 import { getTarifasServicios, getPaquetes } from '../../services/serviciosService';
 import {
   getPacientesAll,
@@ -60,6 +61,7 @@ const SearchableCombobox = ({
   const [inputValue, setInputValue] = useState('');
   const wrapperRef = useRef(null);
   const safeItems = Array.isArray(items) ? items : [];
+  
 
   useEffect(() => {
     const handle = (e) => {
@@ -691,6 +693,8 @@ const VenderServiciosTab = () => {
   const [mostrarModalExito, setMostrarModalExito] = useState(false);
   const [ventaGuardada, setVentaGuardada] = useState(null);
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
+  const [modalidadesPago, setModalidadesPago] = useState([]);
+  const [modalidadPagoId, setModalidadPagoId] = useState(null);
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -718,13 +722,14 @@ const VenderServiciosTab = () => {
 
   const cargarDatos = async () => {
     try {
-      const [tarifasData, docData, pacData, respData, compData, tiposComp] = await Promise.all([
+      const [tarifasData, docData, pacData, respData, compData, tiposComp, modalidades] = await Promise.all([
         getTarifasServicios(),
         getDocumentosTarifa(),
         getPacientesAll(),
         getTodosLosResponsables(),
         getCompradoresExternos(),
         getTiposComprobante(),
+        obtenerModalidadesPago()
       ]);
       setTarifas(Array.isArray(tarifasData) ? tarifasData.filter(t => t.flg_activo || t.activo) : []);
       setDocumentosTarifa(Array.isArray(docData) ? docData.filter(d => d.flgActivo || d.flg_activo) : []);
@@ -732,6 +737,7 @@ const VenderServiciosTab = () => {
       setResponsables(respData?.data && Array.isArray(respData.data) ? respData.data : []);
       setCompradoresExternos(Array.isArray(compData) ? compData : []);
       setTiposComprobante(Array.isArray(tiposComp) ? tiposComp : []);
+      setModalidadesPago(Array.isArray(modalidades) ? modalidades : []);
       try {
         const paquetesData = await getPaquetes();
         setPaquetes(Array.isArray(paquetesData) ? paquetesData.filter(p => p.flgActivo) : []);
@@ -976,6 +982,7 @@ const VenderServiciosTab = () => {
     setTipoComprobante(1);
     setPromocionesAplicadas([]);
     setTotalDescuentoPromo(0);
+    setModalidadPagoId(null);
   };
 
   const handleCrearExterno = async (e) => {
@@ -997,6 +1004,7 @@ const VenderServiciosTab = () => {
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
     if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
+    if (!modalidadPagoId) return setError('Selecciona una modalidad de pago');
 
     setLoading(true);
     try {
@@ -1057,6 +1065,7 @@ const VenderServiciosTab = () => {
         payload.descuento_valor = parseFloat(descuentoGlobal.valor);
       }
     if (nota) payload.nota = nota;
+    payload.modalidad_pago_id = modalidadPagoId;
     if (totalDescuentoPromo > 0) {
       payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
     }
@@ -1259,6 +1268,22 @@ const VenderServiciosTab = () => {
                   </div>
                 )}
               </div>
+              {/* Modalidad de Pago */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Modalidad de Pago <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={modalidadPagoId ?? ''}
+                  onChange={(e) => setModalidadPagoId(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700"
+                >
+                  <option value="">Seleccionar modalidad...</option>
+                  {modalidadesPago.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1381,6 +1406,7 @@ const VenderServiciosTab = () => {
                 <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={5}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" placeholder="Notas internas..." />
               </div>
+         
 
               <div className="space-y-3">
                 {/* 🆕 Panel de promociones */}
