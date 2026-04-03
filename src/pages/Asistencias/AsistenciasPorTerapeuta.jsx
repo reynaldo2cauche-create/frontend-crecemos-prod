@@ -21,7 +21,6 @@ const AsistenciasPorTerapeuta = () => {
   useEffect(() => {
     cargarTerapeutas();
 
-    // Establecer fechas por defecto (semana actual: lunes a sábado)
     const hoy = new Date();
     const diaSemana = hoy.getDay();
 
@@ -52,6 +51,16 @@ const AsistenciasPorTerapeuta = () => {
     }
   };
 
+  const calcularEstadisticas = (data) => {
+    const total = data.length;
+    const completadas = data.filter(a => a.terapeuta_estado_id === 7).length;
+    const sesionDictada = data.filter(a => a.terapeuta_estado_id === 6).length;
+    // Pendiente = al menos uno de los dos no marcó
+    const pendientes = data.filter(a => !a.recepcion_marco || !a.terapeuta_marco).length;
+
+    setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
+  };
+
   const cargarAsistencias = async (terapeutaId) => {
     if (!fechaInicio || !fechaFin) {
       alert('Seleccione un rango de fechas');
@@ -61,23 +70,21 @@ const AsistenciasPorTerapeuta = () => {
     setCargando(true);
     try {
       const data = await obtenerAsistenciasPorTerapeuta(terapeutaId, fechaInicio, fechaFin);
-      setAsistencias(data.asistencias || []);
-      calcularEstadisticas(data.asistencias || []);
+
+      // Solo mostrar citas donde al menos uno marcó (recepcion_marco=1 O terapeuta_marco=1)
+      const conRegistro = (data.asistencias || []).filter(
+        a => a.recepcion_marco == 1 || a.terapeuta_marco == 1
+      );
+
+      setAsistencias(conRegistro);
+      calcularEstadisticas(conRegistro);
+      setPage(0);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
       alert('Error al cargar asistencias');
     } finally {
       setCargando(false);
     }
-  };
-
-  const calcularEstadisticas = (data) => {
-    const total = data.length;
-    const completadas = data.filter(a => a.terapeuta_estado_id === 7).length;
-    const sesionDictada = data.filter(a => a.terapeuta_estado_id === 6).length;
-    const pendientes = data.filter(a => !a.terapeuta_marco).length;
-
-    setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
   };
 
   const handleTerapeutaChange = (e) => {
@@ -89,6 +96,7 @@ const AsistenciasPorTerapeuta = () => {
       cargarAsistencias(id);
     } else {
       setAsistencias([]);
+      setEstadisticas({ total: 0, completadas: 0, noAsistio: 0, pendientes: 0 });
     }
   };
 
@@ -113,7 +121,6 @@ const AsistenciasPorTerapeuta = () => {
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Selector de Terapeuta */}
           <div className="md:col-span-2">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Terapeuta
@@ -132,7 +139,6 @@ const AsistenciasPorTerapeuta = () => {
             </select>
           </div>
 
-          {/* Fecha Inicio */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Fecha Inicio
@@ -145,7 +151,6 @@ const AsistenciasPorTerapeuta = () => {
             />
           </div>
 
-          {/* Fecha Fin */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Fecha Fin
@@ -241,51 +246,51 @@ const AsistenciasPorTerapeuta = () => {
                   asistencias
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((asistencia) => (
-                    <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        #{asistencia.cita_id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {asistencia.paciente_nombre || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {asistencia.fecha_cita ? formatearFecha(asistencia.fecha_cita) : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.recepcion_marco ? (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            asistencia.recepcion_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {asistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.terapeuta_marco ? (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            asistencia.terapeuta_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {asistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {asistencia.terapeuta_fecha ? formatearFecha(asistencia.terapeuta_fecha) : '-'}
-                      </td>
-                    </tr>
-                  ))
+                      <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                          #{asistencia.cita_id}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {asistencia.paciente_nombre || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {asistencia.fecha_cita ? formatearFecha(asistencia.fecha_cita) : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.recepcion_marco == 1 ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                              asistencia.recepcion_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {asistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.terapeuta_marco == 1 ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                              asistencia.terapeuta_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {asistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {asistencia.terapeuta_fecha ? formatearFecha(asistencia.terapeuta_fecha) : '-'}
+                        </td>
+                      </tr>
+                    ))
                 )}
               </tbody>
             </table>

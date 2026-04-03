@@ -276,7 +276,7 @@ const VerificarDocumentos = () => {
               ${documento.terapeuta ? `
               <div class="field">
                 <span class="field-label">Terapeuta Responsable</span>
-                <div class="field-value">${documento.terapeuta.nombres} ${documento.terapeuta.apellidos}</div>
+                <div class="field-value">Lic. ${documento.terapeuta.nombres} ${documento.terapeuta.apellidos}</div>
               </div>` : ''}
               <div class="field">
                 <span class="field-label">Fecha de Emisión</span>
@@ -1715,7 +1715,7 @@ const VerificarDocumentos = () => {
                           <div className="info-item">
                             <span className="info-label">Terapeuta</span>
                             <strong className="info-value">
-                              {documento.terapeuta.nombres} {documento.terapeuta.apellidos}
+                              Lic. {documento.terapeuta.nombres} {documento.terapeuta.apellidos}
                             </strong>
                           </div>
                         )}

@@ -249,7 +249,6 @@ const ModalAgendarCita = ({
   const generarMensajeRecordatorio = useCallback(async () => {
     if (modoSoloLectura) return;
 
-    // ---- MODO EDICIÓN: buscar TODAS las citas del paciente en esa fecha via API ----
     if (modoEdicion && citaEditando) {
       if (!citaEditando.fecha || !citaEditando.hora_inicio) {
         console.warn('No hay fecha u hora_inicio disponible para generar el mensaje');
@@ -258,7 +257,6 @@ const ModalAgendarCita = ({
 
       setCargandoRecordatorio(true);
       try {
-        // Traer todas las citas de ese día (sin filtro de terapeuta)
         const response = await api.get('/citas', {
           params: {
             fecha_desde: citaEditando.fecha,
@@ -268,7 +266,6 @@ const ModalAgendarCita = ({
 
         const todasCitasDelDia = Array.isArray(response.data) ? response.data : [];
 
-        // Filtrar por paciente y ordenar por hora
         const citasMismoDia = todasCitasDelDia
           .filter(c => String(c.paciente_id) === String(citaEditando.paciente_id))
           .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
@@ -282,16 +279,9 @@ const ModalAgendarCita = ({
         const dia = fechaObj.getDate();
         const mes = meses[fechaObj.getMonth()];
 
-        // Función para formatear nombre a formato título
-        const formatearNombreTitulo = (nombre) => {
-          return nombre
-            .toLowerCase()
-            .split(' ')
-            .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-            .join(' ');
-        };
+        const formatearNombreTitulo = (nombre) => nombre.toLowerCase().split(' ')
+          .map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 
-        // Obtener nombre del paciente
         const nombrePaciente = citaEditando.paciente
           ? formatearNombreTitulo(`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim())
           : 'Paciente';
@@ -310,12 +300,11 @@ const ModalAgendarCita = ({
 
         let mensaje;
         if (citasMismoDia.length > 1) {
-          // Múltiples citas ese día
           let mensajeCitas = '';
           citasMismoDia.forEach((cita, index) => {
             mensajeCitas += `\n${index + 1}️⃣ *Cita ${index + 1}*
 🕓 *${formatearHora(cita.hora_inicio)}*
-💜 ${getServicioNombre(cita)}
+💜 ${getServicioConMotivo(cita)}
 ✨ ${getTerapeutaNombre(cita)}`;
             if (index < citasMismoDia.length - 1) mensajeCitas += '\n';
           });
@@ -372,7 +361,6 @@ Le hacemos recordar su cita para el día
       }
 
     } else {
-      // ---- MODO CREACIÓN: usar datos del formulario actual ----
       if (!formularioCita.paciente || !formularioCita.fechasHoras?.[0]) {
         alert('No hay suficiente información para generar el mensaje');
         return;
@@ -387,20 +375,12 @@ Le hacemos recordar su cita para el día
       let horas = fechaObj.getHours();
       let minutos = fechaObj.getMinutes();
       const ampm = horas >= 12 ? 'pm' : 'am';
-      horas = horas % 12;
-      horas = horas ? horas : 12;
+      horas = horas % 12 || 12;
       const horaFormateada = `${horas}:${minutos.toString().padStart(2, '0')} ${ampm}`;
 
-      // Función para formatear nombre a formato título
-      const formatearNombreTitulo = (nombre) => {
-        return nombre
-          .toLowerCase()
-          .split(' ')
-          .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-          .join(' ');
-      };
+      const formatearNombreTitulo = (nombre) => nombre.toLowerCase().split(' ')
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 
-      // Obtener nombre del paciente
       const nombrePaciente = formularioCita.paciente?.nombre_completo
         ? formatearNombreTitulo(formularioCita.paciente.nombre_completo)
         : 'Paciente';
@@ -419,7 +399,7 @@ Le hacemos recordar su cita para el día
 
       let servicioNombre = 'Servicio no especificado';
       if (tipoCita === 'NORMAL' && formularioCita.servicio_id) {
-        const servicio = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []))
+        const servicio = (serviciosApi?.length ? serviciosApi : (servicios || []))
           .find(s => s.id === parseInt(formularioCita.servicio_id));
         servicioNombre = servicio?.nombre || 'Servicio no especificado';
       } else if (tipoCita === 'VISITA_ESCOLAR') {
@@ -427,11 +407,16 @@ Le hacemos recordar su cita para el día
       } else if (tipoCita === 'REUNION_CLINICA') {
         servicioNombre = 'Reunión Clínica';
       }
+
+      // Agregar motivo de la cita
+      if (tipoCita === 'NORMAL' && formularioCita.motivo_id && motivos.length) {
+        const motivoObj = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
+        if (motivoObj?.nombre) servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
+      }
+
       let terapeutaNombre = 'Terapeuta no especificado';
-      if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
-        if (terapeutaSeleccionado) {
-          terapeutaNombre = `Lic. ${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim();
-        }
+      if ((tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') && terapeutaSeleccionado) {
+        terapeutaNombre = `Lic. ${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim();
       } else if (tipoCita === 'REUNION_CLINICA' && terapeutasReunion.length > 0) {
         terapeutaNombre = 'Equipo de Terapeutas';
       }
@@ -462,8 +447,7 @@ Le hacemos recordar su cita para el día
       setMensajeRecordatorio(mensaje);
       setCopiado(false);
     }
-  }, [modoEdicion, citaEditando, tipoCita, formularioCita, serviciosApi, servicios, terapeutaSeleccionado, terapeutasReunion, modoSoloLectura]);
-
+  }, [modoEdicion, citaEditando, tipoCita, formularioCita, serviciosApi, servicios, terapeutaSeleccionado, terapeutasReunion, modoSoloLectura, motivos]);
   const copiarAlPortapapeles = async () => {
     if (modoSoloLectura) return;
     try {

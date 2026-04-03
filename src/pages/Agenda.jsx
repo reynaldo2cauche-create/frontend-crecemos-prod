@@ -284,8 +284,6 @@ const Agenda = () => {
     }
 
     const fecha = new Date(fechaActual);
-    const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-    const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
 
     const formatearFecha = (f) => {
       const year = f.getFullYear();
@@ -294,8 +292,21 @@ const Agenda = () => {
       return `${year}-${month}-${day}`;
     };
 
-    params.fecha_desde = formatearFecha(primerDiaMes);
-    params.fecha_hasta = formatearFecha(ultimoDiaMes);
+    // 🔥 USAR LA MISMA LÓGICA DE EXPANSIÓN QUE cargarCitas()
+    // Obtener el primer día del mes
+    const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+    // Retroceder 7 días para incluir semanas completas
+    const primerDiaExpandido = new Date(primerDiaMes);
+    primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
+
+    // Obtener el último día del mes
+    const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+    // Avanzar 7 días para incluir semanas completas
+    const ultimoDiaExpandido = new Date(ultimoDiaMes);
+    ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
+
+    params.fecha_desde = formatearFecha(primerDiaExpandido);
+    params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
 
     return params;
   };
