@@ -793,7 +793,8 @@ const VenderProductosTab = () => {
             <div className="flex flex-wrap gap-3">
               {tiposComprobante.map(tc => (
                 <button key={tc.id} type="button" onClick={() => setTipoComprobante(tc.id)}
-                  className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  disabled={!!ventaGuardada}
+                  className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
                   {tc.nombre}
                 </button>
               ))}
@@ -814,7 +815,8 @@ const VenderProductosTab = () => {
                 const activo = tipoPagador === tipo.id;
                 return (
                   <button key={tipo.id} type="button" onClick={() => setTipoPagador(tipo.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    disabled={!!ventaGuardada}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activo ? 'bg-[#7B1FA2] text-white' : 'bg-gray-100 text-gray-600'}`}>
                       <Icon className="w-5 h-5" />
                     </div>
@@ -832,8 +834,9 @@ const VenderProductosTab = () => {
                   <input type="text" value={busqueda}
                     onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
                     onFocus={() => setMostrarResultados(true)}
+                    disabled={!!ventaGuardada}
                     placeholder="Buscar por nombre o código..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
                 {mostrarResultados && busqueda && productosFiltrados.length > 0 && (
@@ -854,7 +857,8 @@ const VenderProductosTab = () => {
                   Modalidad de Pago <span className="text-red-500">*</span>
                 </label>
                 <select value={modalidadPagoId ?? ''} onChange={(e) => setModalidadPagoId(e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700">
+                  disabled={!!ventaGuardada}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed">
                   <option value="">Seleccionar modalidad...</option>
                   {modalidadesPago.map((m) => (<option key={m.id} value={m.id}>{m.nombre}</option>))}
                 </select>
@@ -868,6 +872,7 @@ const VenderProductosTab = () => {
                     getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
                     getItemValue={(p) => p.id}
                     getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase()}
+                    disabled={!!ventaGuardada}
                   />
                 </div>
               )}
@@ -880,6 +885,7 @@ const VenderProductosTab = () => {
                     getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} - DNI: ${r.numero_documento || 'S/N'}`.trim()}
                     getItemValue={(r) => r.id}
                     getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
+                    disabled={!!ventaGuardada}
                   />
                   {responsableId && pacientesDelResponsable.length > 0 && (
                     <p className="text-xs text-gray-500 mt-2">ℹ️ {pacientesDelResponsable.length} paciente(s) a cargo{pacientesDelResponsable.length === 1 ? ' (autoseleccionado)' : ''}</p>
@@ -896,9 +902,11 @@ const VenderProductosTab = () => {
                       getItemValue={(c) => c.id}
                       getItemSearchText={(c) => `${c.dni} ${c.nombre}`}
                       className="flex-1"
+                      disabled={!!ventaGuardada}
                     />
                     <button type="button" onClick={() => setMostrarModalExterno(true)}
-                      className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap">
+                      disabled={!!ventaGuardada}
+                      className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
                       + Nuevo
                     </button>
                   </div>
@@ -1009,7 +1017,8 @@ const VenderProductosTab = () => {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Nota interna (no visible en comprobante)</label>
                 <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={3}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                  disabled={!!ventaGuardada}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Notas internas..." />
               </div>
               <div className="space-y-3">
@@ -1017,13 +1026,16 @@ const VenderProductosTab = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Descuento Global</span>
                   <div className="flex items-center gap-2">
-                    <select value={descuentoGlobal.tipo} onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })} className="px-3 py-2 text-sm border border-gray-200 rounded-lg">
+                    <select value={descuentoGlobal.tipo} onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })}
+                      disabled={!!ventaGuardada}
+                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed">
                       <option value="%">%</option>
                       <option value="S/">S/</option>
                     </select>
                     <input type="number" step="0.01" min="0" value={descuentoGlobal.valor}
                       onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, valor: e.target.value })}
-                      className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg" placeholder="0" />
+                      disabled={!!ventaGuardada}
+                      className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
                   </div>
                 </div>
                 <div className="border-t border-gray-200 pt-3 space-y-2">

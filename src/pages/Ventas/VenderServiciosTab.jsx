@@ -1142,7 +1142,8 @@ const VenderServiciosTab = () => {
             <div className="flex flex-wrap gap-3">
               {tiposComprobante.map(tc => (
                 <button key={tc.id} type="button" onClick={() => setTipoComprobante(tc.id)}
-                  className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  disabled={!!ventaGuardada}
+                  className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
                   {tc.nombre}
                 </button>
               ))}
@@ -1159,7 +1160,8 @@ const VenderServiciosTab = () => {
                 const activo = tipoPagador === tipo.id;
                 return (
                   <button key={tipo.id} type="button" onClick={() => setTipoPagador(tipo.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    disabled={!!ventaGuardada}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activo ? 'bg-[#7B1FA2] text-white' : 'bg-gray-100 text-gray-600'}`}>
                       <Icon className="w-5 h-5" />
                     </div>
@@ -1179,6 +1181,7 @@ const VenderServiciosTab = () => {
                     getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
                     getItemValue={(p) => p.id}
                     getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase()}
+                    disabled={!!ventaGuardada}
                   />
                 </div>
               )}
@@ -1191,6 +1194,7 @@ const VenderServiciosTab = () => {
                     getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} - DNI: ${r.numero_documento || 'S/N'}`.trim()}
                     getItemValue={(r) => r.id}
                     getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
+                    disabled={!!ventaGuardada}
                   />
                   {responsableSeleccionado && pacientesDelResponsable.length > 0 && (
                     <p className="text-xs text-gray-500 mt-2">ℹ️ Selecciona el paciente en cada línea de servicio ({pacientesDelResponsable.length} paciente(s) a cargo)</p>
@@ -1207,9 +1211,11 @@ const VenderServiciosTab = () => {
                       getItemValue={(c) => c.id}
                       getItemSearchText={(c) => `${c.dni} ${c.nombre}`}
                       className="flex-1"
+                      disabled={!!ventaGuardada}
                     />
                     <button type="button" onClick={() => setMostrarModalExterno(true)}
-                      className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap">+ Nuevo</button>
+                      disabled={!!ventaGuardada}
+                      className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">+ Nuevo</button>
                   </div>
                 </div>
               )}
@@ -1224,8 +1230,9 @@ const VenderServiciosTab = () => {
                   <input type="text" value={busqueda}
                     onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
                     onFocus={() => setMostrarResultados(true)}
+                    disabled={!!ventaGuardada}
                     placeholder="Buscar por servicio, motivo o documento..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
                 {mostrarResultados && busqueda && itemsFiltrados.length > 0 && (
@@ -1276,7 +1283,8 @@ const VenderServiciosTab = () => {
                 <select
                   value={modalidadPagoId ?? ''}
                   onChange={(e) => setModalidadPagoId(e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700"
+                  disabled={!!ventaGuardada}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">Seleccionar modalidad...</option>
                   {modalidadesPago.map((m) => (
@@ -1344,6 +1352,7 @@ const VenderServiciosTab = () => {
                           getItemLabel={(p) => `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno || ''}`.trim()}
                           getItemValue={(p) => p.id}
                           getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres} ${p.apellido_paterno}`.toLowerCase()}
+                          disabled={!!ventaGuardada}
                         />
                       </td>
                       <td className="px-4 py-4">
@@ -1352,17 +1361,17 @@ const VenderServiciosTab = () => {
                         ) : linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
                               <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
-                              <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} className="p-1 hover:bg-gray-200 rounded"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
                             </div>
                             <div className="text-xs text-purple-600 mt-1">Paquete {linea.paquete_nombre} (mín. {linea.sesiones_por_paquete})</div>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} className="p-1 hover:bg-gray-200 rounded"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                            <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
                             <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
-                            <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} className="p-1 hover:bg-gray-200 rounded"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                            <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
                           </div>
                         )}
                       </td>
@@ -1372,21 +1381,24 @@ const VenderServiciosTab = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-1">
-                          <select value={linea.descuento_tipo} onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)} className="px-2 py-1 text-xs border border-gray-200 rounded">
+                          <select value={linea.descuento_tipo} onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)}
+                            disabled={!!ventaGuardada}
+                            className="px-2 py-1 text-xs border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
                             <option value="">-</option>
                             <option value="%">%</option>
                             <option value="S/">S/</option>
                           </select>
                           <input type="number" step="0.01" min="0" value={linea.descuento_valor}
                             onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
-                            className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded" placeholder="0" />
+                            disabled={!!ventaGuardada}
+                            className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right text-sm text-gray-600">S/ {calc.base.toFixed(2)}</td>
                       <td className="px-4 py-4 text-right text-sm text-gray-500">{conIgv ? `S/ ${calc.igv.toFixed(2)}` : <span className="text-gray-300">—</span>}</td>
                       <td className="px-6 py-4 text-right font-bold text-gray-900">S/ {calc.totalLinea.toFixed(2)}</td>
                       <td className="px-4 py-4">
-                        <button onClick={() => eliminarLinea(linea.id)} className="p-1 hover:bg-red-50 rounded text-red-600"><TrashIcon className="w-4 h-4" /></button>
+                        <button onClick={() => eliminarLinea(linea.id)} disabled={!!ventaGuardada} className="p-1 hover:bg-red-50 rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   );
@@ -1404,7 +1416,8 @@ const VenderServiciosTab = () => {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Nota interna (no visible en comprobante)</label>
                 <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={5}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" placeholder="Notas internas..." />
+                  disabled={!!ventaGuardada}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="Notas internas..." />
               </div>
          
 
@@ -1419,13 +1432,16 @@ const VenderServiciosTab = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Descuento Global</span>
                   <div className="flex items-center gap-2">
-                    <select value={descuentoGlobal.tipo} onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })} className="px-3 py-2 text-sm border border-gray-200 rounded-lg">
+                    <select value={descuentoGlobal.tipo} onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })}
+                      disabled={!!ventaGuardada}
+                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed">
                       <option value="%">%</option>
                       <option value="S/">S/</option>
                     </select>
                     <input type="number" step="0.01" min="0" value={descuentoGlobal.valor}
                       onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, valor: e.target.value })}
-                      className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg" placeholder="0" />
+                      disabled={!!ventaGuardada}
+                      className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
                   </div>
                 </div>
 
