@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getTarifas } from '../../services/inventarioService';
 import { getServicios } from '../../services/serviciosService';
 import { getMotivosCita } from '../../services/citaService';
+import { getDocumentosTarifa } from '../../services/documentoTarifaService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n) => (n != null ? `S/ ${parseFloat(n).toFixed(0)}` : null);
@@ -9,6 +10,7 @@ const fmt = (n) => (n != null ? `S/ ${parseFloat(n).toFixed(0)}` : null);
 const esEntrevista = (nombre = '') => nombre.toLowerCase().includes('entrevista');
 const esEvaluacion = (nombre = '') => nombre.toLowerCase().includes('evaluaci');
 const esPagoTotal = (nombre = '') => nombre.toLowerCase().includes('total');
+const esInformeEvolucion = (nombre = '') => nombre.toLowerCase().includes('informe de evolución') || nombre.toLowerCase().includes('informe de evolucion');
 
 // ─── Badge ───────────────────────────────────────────────────────────────────
 const Badge = ({ tipo }) => {
@@ -130,27 +132,25 @@ const PaquetesGrid = ({ paquetes, precioBase }) => {
   );
 };
 
-// ─── Tarjeta de servicio (versión minimalista moderna) ─────────────────────────
+// ─── Tarjeta de servicio ──────────────────────────────────────────────────────
 const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) => {
   const [isHovered, setIsHovered] = useState(false);
-  
-  // Obtener el precio base más bajo (terapia individual)
+
   let precioBase = null;
   let tienePaquetes = false;
-  let tiposServicio = new Set();
-  
+  const tiposServicio = new Set();
+
   tarifas.forEach((t) => {
     const nombre = motivosMap[t.motivo_cita_id] ?? '';
     const precio = parseFloat(t.precio);
-    
+
     if (!esEntrevista(nombre) && !esEvaluacion(nombre)) {
       if (precioBase === null || precio < precioBase) precioBase = precio;
     }
-    
+
     if (esEntrevista(nombre)) tiposServicio.add('Entrevista');
     if (esEvaluacion(nombre)) tiposServicio.add('Evaluación');
     if (!esEntrevista(nombre) && !esEvaluacion(nombre)) tiposServicio.add('Terapia');
-    
     if ((t.precios_paquetes ?? []).length > 0) tienePaquetes = true;
   });
 
@@ -167,39 +167,29 @@ const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) =>
           : 'bg-white border border-gray-100 hover:border-[#7B1FA2]/30 hover:shadow-xl hover:-translate-y-1'
       }`}
     >
-      {/* Nombre del servicio */}
       <h3 className="text-lg font-bold text-gray-800 mb-2 pr-8 group-hover:text-[#7B1FA2] transition-colors">
         {servicio.nombre}
       </h3>
 
-      {/* Tipos de servicio como badges */}
       {tiposArray.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-4">
           {tiposArray.map((tipo, idx) => (
-            <span 
-              key={idx}
-              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium"
-            >
+            <span key={idx} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
               {tipo}
             </span>
           ))}
         </div>
       )}
 
-      {/* Precio */}
       {precioBase && (
         <div className="mt-2 pt-3 border-t border-gray-100 flex items-end justify-between">
           <div>
             <p className="text-xs text-gray-400 font-medium mb-1">Desde</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-[#7B1FA2]">
-                {fmt(precioBase)}
-              </span>
+              <span className="text-2xl font-bold text-[#7B1FA2]">{fmt(precioBase)}</span>
               <span className="text-xs text-gray-400">/ sesión</span>
             </div>
           </div>
-          
-          {/* Indicador de click */}
           <div className={`transform transition-all duration-300 ${isHovered ? 'translate-x-1' : ''}`}>
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
               <svg className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +200,6 @@ const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) =>
         </div>
       )}
 
-      {/* Badge de paquetes */}
       {tienePaquetes && (
         <div className={`absolute top-4 right-4 transition-all duration-300 ${isHovered ? 'scale-110' : ''}`}>
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -225,7 +214,7 @@ const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) =>
   );
 };
 
-// ─── Panel lateral de detalle ────────────────────────────────────────────────
+// ─── Panel lateral de detalle (servicios) ────────────────────────────────────
 const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
   const rowsEval = [];
@@ -265,71 +254,51 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
 
   return (
     <>
-      {/* Overlay */}
-      <div 
+      <div
         className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-all duration-300 ${
           isClosing ? 'opacity-0' : 'opacity-100'
         }`}
         onClick={handleClose}
       />
-      
-      {/* Panel lateral */}
       <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
         isClosing ? 'translate-x-full' : 'translate-x-0'
       }`}>
         <div className="h-full flex flex-col">
-          {/* Header */}
-          <div className="flex-shrink-0 border-b border-gray-200">
-            <div className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-gray-900">{servicio.nombre}</h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {servicio.area?.nombre ?? 'Área no especificada'}
-                  </p>
-                </div>
-                <button
-                  onClick={handleClose}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
-                >
-                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+          <div className="flex-shrink-0 border-b border-gray-200 p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900">{servicio.nombre}</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {servicio.area?.nombre ?? 'Área no especificada'}
+                </p>
               </div>
+              <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200">
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          {/* Contenido */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {rowsEval.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  Evaluación
-                </p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Evaluación</p>
                 <TarifaTable rows={rowsEval} />
               </div>
             )}
-
             {rowsTerapia.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  Terapia
-                </p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Terapia</p>
                 <TarifaTable rows={rowsTerapia} />
               </div>
             )}
-
             {paquetes.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  Paquetes
-                </p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Paquetes</p>
                 <PaquetesGrid paquetes={paquetes} precioBase={precioBase} />
               </div>
             )}
-
-            {/* Nota */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <p className="text-xs text-gray-500">
                 * Aplica el 5% de descuento adicional a partir de 8 sesiones
@@ -342,27 +311,166 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
   );
 };
 
+// ─── Panel lateral de detalle (documentos) ───────────────────────────────────
+const DetallePanelDocumento = ({ doc, onClose }) => {
+  const [isClosing, setIsClosing] = useState(false);
+  const informeEvolucion = esInformeEvolucion(doc.nombre);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 300);
+  };
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-all duration-300 ${
+          isClosing ? 'opacity-0' : 'opacity-100'
+        }`}
+        onClick={handleClose}
+      />
+      <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
+        isClosing ? 'translate-x-full' : 'translate-x-0'
+      }`}>
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b border-gray-200 p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900">{doc.nombre}</h2>
+                {doc.tipoArchivo?.nombre && doc.tipoArchivo.nombre !== doc.nombre && (
+                  <p className="text-sm text-gray-500 mt-1">{doc.tipoArchivo.nombre}</p>
+                )}
+              </div>
+              <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200">
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Contenido */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Precio */}
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Precio</p>
+              <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
+                <div className="px-4 py-4 flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-900">{doc.nombre}</p>
+                  <span className="text-xl font-bold text-gray-900">{fmt(doc.precio)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Descripción */}
+            {doc.descripcion && doc.descripcion !== doc.nombre && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Descripción</p>
+                <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                  <p className="text-sm text-gray-700">{doc.descripcion}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Nota informe de evolución */}
+            {informeEvolucion && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 flex gap-3">
+                <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-blue-700">
+                  Este documento se emite únicamente después de haber completado <span className="font-semibold">16 sesiones</span>.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ─── Tarjeta de documento tarifado ───────────────────────────────────────────
+const DocumentoTarifaCard = ({ doc, onClick, isSelected }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const informeEvolucion = esInformeEvolucion(doc.nombre);
+
+  return (
+    <button
+      onClick={() => onClick(doc)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`group relative p-5 rounded-2xl transition-all duration-300 text-left ${
+        isSelected
+          ? 'bg-purple-50 border-2 border-[#7B1FA2] shadow-xl scale-[1.02]'
+          : 'bg-white border border-gray-100 hover:border-[#7B1FA2]/30 hover:shadow-xl hover:-translate-y-1'
+      }`}
+    >
+      <h3 className="text-lg font-bold text-gray-800 mb-2 pr-8 group-hover:text-[#7B1FA2] transition-colors">
+        {doc.nombre}
+      </h3>
+
+      {informeEvolucion && (
+        <div className="mb-3">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium border border-blue-100">
+            Desde sesión 16
+          </span>
+        </div>
+      )}
+
+      <div className="mt-2 pt-3 border-t border-gray-100 flex items-end justify-between">
+        <div>
+          <p className="text-xs text-gray-400 font-medium mb-1">Precio</p>
+          <span className="text-2xl font-bold text-[#7B1FA2]">{fmt(doc.precio)}</span>
+        </div>
+        <div className={`transform transition-all duration-300 ${isHovered ? 'translate-x-1' : ''}`}>
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+            <svg className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+};
+
+// ─── Sección header ───────────────────────────────────────────────────────────
+const SeccionHeader = ({ titulo, cantidad }) => (
+  <div className="flex items-center gap-2 mb-4">
+    <div className="w-1 h-5 bg-[#7B1FA2] rounded-full" />
+    <h2 className="text-lg font-semibold text-gray-800">{titulo}</h2>
+    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{cantidad}</span>
+  </div>
+);
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 const TarifarioPage = () => {
   const [tarifas, setTarifas] = useState([]);
   const [servicios, setServicios] = useState([]);
   const [motivos, setMotivos] = useState([]);
+  const [documentosTarifa, setDocumentosTarifa] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedServicio, setSelectedServicio] = useState(null);
+  const [selectedDocumento, setSelectedDocumento] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelDocOpen, setPanelDocOpen] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [tarifasRes, serviciosRes, motivosRes] = await Promise.all([
+        const [tarifasRes, serviciosRes, motivosRes, docsRes] = await Promise.all([
           getTarifas(),
           getServicios(),
           getMotivosCita(),
+          getDocumentosTarifa(),
         ]);
         setTarifas(tarifasRes.filter((t) => t.flg_activo === 1 || t.activo));
         setServicios(serviciosRes);
         setMotivos(motivosRes);
+        setDocumentosTarifa(docsRes.filter((d) => d.flgActivo === 1));
       } catch (e) {
         setError('No se pudo cargar el tarifario.');
         console.error(e);
@@ -387,9 +495,10 @@ const TarifarioPage = () => {
     return map;
   }, [tarifas]);
 
-  const serviciosConTarifas = useMemo(() => {
-    return servicios.filter((s) => (tarifasMap[s.id] ?? []).length > 0);
-  }, [servicios, tarifasMap]);
+  const serviciosConTarifas = useMemo(
+    () => servicios.filter((s) => (tarifasMap[s.id] ?? []).length > 0),
+    [servicios, tarifasMap]
+  );
 
   const serviciosAgrupados = useMemo(() => {
     const grupos = {};
@@ -402,13 +511,27 @@ const TarifarioPage = () => {
   }, [serviciosConTarifas]);
 
   const handleServicioClick = (servicio) => {
+    setSelectedDocumento(null);
+    setPanelDocOpen(false);
     setSelectedServicio(servicio);
     setPanelOpen(true);
+  };
+
+  const handleDocumentoClick = (doc) => {
+    setSelectedServicio(null);
+    setPanelOpen(false);
+    setSelectedDocumento(doc);
+    setPanelDocOpen(true);
   };
 
   const handleClosePanel = () => {
     setPanelOpen(false);
     setTimeout(() => setSelectedServicio(null), 300);
+  };
+
+  const handleClosePanelDoc = () => {
+    setPanelDocOpen(false);
+    setTimeout(() => setSelectedDocumento(null), 300);
   };
 
   if (loading) {
@@ -435,6 +558,8 @@ const TarifarioPage = () => {
     );
   }
 
+  const hayContenido = serviciosConTarifas.length > 0 || documentosTarifa.length > 0;
+
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header */}
@@ -453,18 +578,11 @@ const TarifarioPage = () => {
         </div>
       </div>
 
-      {/* Grid de servicios */}
+      {/* Contenido */}
       <div className="p-6">
         {Object.entries(serviciosAgrupados).map(([areaNombre, areaServicios]) => (
           <div key={areaNombre} className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-5 bg-[#7B1FA2] rounded-full" />
-              <h2 className="text-lg font-semibold text-gray-800">{areaNombre}</h2>
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                {areaServicios.length}
-              </span>
-            </div>
-            
+            <SeccionHeader titulo={areaNombre} cantidad={areaServicios.length} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {areaServicios.map((servicio) => (
                 <ServicioCard
@@ -480,7 +598,23 @@ const TarifarioPage = () => {
           </div>
         ))}
 
-        {serviciosConTarifas.length === 0 && (
+        {documentosTarifa.length > 0 && (
+          <div className="mb-8">
+            <SeccionHeader titulo="Documentos" cantidad={documentosTarifa.length} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {documentosTarifa.map((doc) => (
+                <DocumentoTarifaCard
+                  key={doc.id}
+                  doc={doc}
+                  onClick={handleDocumentoClick}
+                  isSelected={selectedDocumento?.id === doc.id && panelDocOpen}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hayContenido && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -493,13 +627,19 @@ const TarifarioPage = () => {
         )}
       </div>
 
-      {/* Panel lateral */}
       {panelOpen && selectedServicio && (
         <DetallePanel
           servicio={selectedServicio}
           tarifas={tarifasMap[selectedServicio.id] ?? []}
           motivosMap={motivosMap}
           onClose={handleClosePanel}
+        />
+      )}
+
+      {panelDocOpen && selectedDocumento && (
+        <DetallePanelDocumento
+          doc={selectedDocumento}
+          onClose={handleClosePanelDoc}
         />
       )}
     </div>
