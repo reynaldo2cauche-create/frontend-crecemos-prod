@@ -221,6 +221,16 @@ const ModalAgendarCita = ({
     return 'Servicio no especificado';
   };
 
+  const getServicioConMotivo = (cita) => {
+    const servicio = getServicioNombre(cita);
+    const motivo = cita.motivo?.nombre || '';
+
+    if (motivo) {
+      return `${servicio} - ${motivo}`;
+    }
+    return servicio;
+  };
+
   const getTerapeutaNombre = (cita) => {
     if ((cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') && cita.doctor) {
       return `Lic. ${cita.doctor.nombres || ''} ${cita.doctor.apellidos || ''}`.trim();
@@ -238,7 +248,7 @@ const ModalAgendarCita = ({
 
     if (hora >= 0 && hora < 12) {
       return 'Buenos días';
-    } else if (hora >= 12 && hora < 19) {
+    } else if (hora >= 12 && hora < 18) {
       return 'Buenas tardes';
     } else {
       return 'Buenas noches';
@@ -334,7 +344,7 @@ ${mensajeCitas}
 Le hacemos recordar la cita de *${nombrePaciente}* para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 🕓 *${formatearHora(citaEditando.hora_inicio)}*
-💜 ${getServicioNombre(citaEditando)}
+💜 ${getServicioConMotivo(citaEditando)}
 ✨ ${getTerapeutaNombre(citaEditando)}
 
 🥳 ¡Los esperamos! ✨`;
@@ -344,7 +354,7 @@ Le hacemos recordar la cita de *${nombrePaciente}* para el día
 Le hacemos recordar su cita para el día
 🗓️ *${diaSemana}, ${dia} de ${mes}*
 🕓 *${formatearHora(citaEditando.hora_inicio)}*
-💜 ${getServicioNombre(citaEditando)}
+💜 ${getServicioConMotivo(citaEditando)}
 ✨ ${getTerapeutaNombre(citaEditando)}
 
 🥳 ¡Lo esperamos! ✨`;
@@ -409,7 +419,7 @@ Le hacemos recordar su cita para el día
       }
 
       // Agregar motivo de la cita
-      if (tipoCita === 'NORMAL' && formularioCita.motivo_id && motivos.length) {
+      if (formularioCita.motivo_id && motivos.length) {
         const motivoObj = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
         if (motivoObj?.nombre) servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
       }

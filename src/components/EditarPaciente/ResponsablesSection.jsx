@@ -22,7 +22,9 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
   // ⛔️ ELIMINAR el estado [alert, setAlert] y todo su código relacionado
 
   useEffect(() => {
-    loadData();
+    if (pacienteId) {
+      loadData();
+    }
   }, [pacienteId]);
 
   const loadData = async () => {
@@ -69,11 +71,17 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
   };
 
   const handleSaveEdit = async () => {
+    if (!pacienteId) {
+      console.error('Error: pacienteId no está definido');
+      if (onError) onError('Error: ID de paciente no disponible');
+      return;
+    }
+
     try {
       setSaving(true);
-      
+
       const responsableId = editingId || 'null';
-      
+
       console.log('Guardando responsable...');
       const response = await api.put(
         `/pacientes/${pacienteId}/responsables/${responsableId}`,
@@ -104,6 +112,12 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
   const handleDelete = async (responsableId) => {
     if (!window.confirm('¿Está seguro de eliminar este responsable?')) return;
 
+    if (!pacienteId) {
+      console.error('Error: pacienteId no está definido');
+      if (onError) onError('Error: ID de paciente no disponible');
+      return;
+    }
+
     try {
       console.log('Eliminando responsable...');
       await api.delete(`/pacientes/${pacienteId}/responsables/${responsableId}`);
@@ -118,6 +132,12 @@ const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSu
   };
 
   const handleAddNew = async () => {
+    if (!pacienteId) {
+      console.error('Error: pacienteId no está definido');
+      if (onError) onError('Error: ID de paciente no disponible');
+      return;
+    }
+
     try {
       setSaving(true);
       console.log('Agregando nuevo responsable...');
@@ -418,7 +438,7 @@ const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, savin
     setFormData({...formData, numero_documento: value});
 
     // ✅ AUTOCOMPLETAR estilo SUNAT: Si es DNI y tiene 8 dígitos, buscar
-    if (tipoDocumento === 1 && value.length === 8) {
+    if (tipoDocumento === 1 && value.length === 8 && pacienteId) {
       setBuscandoDni(true);
       setMensajeBusqueda('Buscando responsable...');
 
