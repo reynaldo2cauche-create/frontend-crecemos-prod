@@ -721,18 +721,43 @@ const VenderServiciosTab = () => {
   }, [lineas]);
 
   const cargarDatos = async () => {
+    console.log('🚀 Iniciando carga de datos de ventas...');
     try {
-      const [tarifasData, docData, pacData, respData, compData, tiposComp, modalidades] = await Promise.all([
-        getTarifasServicios(),
-        getDocumentosTarifa(),
+      console.log('📥 Llamando a getTarifasServicios()...');
+      const tarifasData = await getTarifasServicios();
+      console.log('✅ Tarifas recibidas:', tarifasData?.length || 0);
+
+      console.log('📥 Llamando a getDocumentosTarifa()...');
+      let docData = [];
+      try {
+        docData = await getDocumentosTarifa();
+        console.log('✅ 📦 Documentos de tarifa recibidos del backend:', docData);
+        console.log('✅ 📦 Total documentos:', docData?.length || 0);
+      } catch (docError) {
+        console.error('❌ ERROR al cargar documentos de tarifa:', docError);
+        console.error('❌ Detalle del error:', docError.response || docError.message);
+      }
+
+      console.log('📥 Cargando resto de datos...');
+      const [pacData, respData, compData, tiposComp, modalidades] = await Promise.all([
         getPacientesAll(),
         getTodosLosResponsables(),
         getCompradoresExternos(),
         getTiposComprobante(),
         obtenerModalidadesPago()
       ]);
+
       setTarifas(Array.isArray(tarifasData) ? tarifasData.filter(t => t.flg_activo || t.activo) : []);
-      setDocumentosTarifa(Array.isArray(docData) ? docData.filter(d => d.flgActivo || d.flg_activo) : []);
+
+      const docsActivos = Array.isArray(docData) ? docData.filter(d => {
+        const activo = d.flgActivo === 1 || d.flg_activo === 1 || d.flgActivo === '1' || d.flg_activo === '1';
+        console.log(`  📄 Documento "${d.nombre}" - flgActivo:`, d.flgActivo, 'flg_activo:', d.flg_activo, '-> Activo?', activo);
+        return activo;
+      }) : [];
+
+      console.log('✅ ✅ Documentos activos después del filtro:', docsActivos.length, docsActivos);
+      setDocumentosTarifa(docsActivos);
+
       setPacientes(Array.isArray(pacData) ? pacData : []);
       setResponsables(respData?.data && Array.isArray(respData.data) ? respData.data : []);
       setCompradoresExternos(Array.isArray(compData) ? compData : []);
@@ -742,7 +767,10 @@ const VenderServiciosTab = () => {
         const paquetesData = await getPaquetes();
         setPaquetes(Array.isArray(paquetesData) ? paquetesData.filter(p => p.flgActivo) : []);
       } catch { setPaquetes([]); }
-    } catch (err) { console.error('Error cargando datos:', err); }
+    } catch (err) {
+      console.error('❌ ❌ Error general cargando datos:', err);
+      console.error('❌ Stack:', err.stack);
+    }
   };
 
   const cargarPacientesDelResponsable = async () => {
@@ -802,10 +830,19 @@ const VenderServiciosTab = () => {
         // Agregar documentos con tipo de item
         ...documentosTarifa.filter(d => {
           const q = busqueda.toLowerCase();
-          return (d.nombre || '').toLowerCase().includes(q) || (d.descripcion || '').toLowerCase().includes(q);
+          const match = (d.nombre || '').toLowerCase().includes(q) || (d.descripcion || '').toLowerCase().includes(q);
+          if (busqueda) console.log(`🔍 Buscando "${busqueda}" en documento "${d.nombre}" -> Match:`, match);
+          return match;
         }).map(d => ({ ...d, _tipo: TIPOS_ITEM_VENTA.DOCUMENTO }))
       ]
     : [];
+
+  // Log para ver qué hay en los resultados filtrados
+  if (busqueda && itemsFiltrados.length > 0) {
+    console.log('🔎 Resultados filtrados para búsqueda "' + busqueda + '":', itemsFiltrados);
+    console.log('  - Servicios:', itemsFiltrados.filter(i => i._tipo === TIPOS_ITEM_VENTA.SERVICIO).length);
+    console.log('  - Documentos:', itemsFiltrados.filter(i => i._tipo === TIPOS_ITEM_VENTA.DOCUMENTO).length);
+  }
 
   const seleccionarTarifa = (tarifa) => {
     setTarifaSeleccionada(tarifa);
