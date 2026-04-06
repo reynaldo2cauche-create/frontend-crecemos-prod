@@ -32,7 +32,7 @@ import { calcularPromociones, registrarPromocionAplicada } from '../../services/
 import { obtenerModalidadesPago } from '../../services/solicitudInformeService';
 import { getTarifasServicios, getPaquetes } from '../../services/serviciosService';
 import {
-  getPacientesAll,
+  getPacientes,
   getTodosLosResponsables,
   getPacientesPorResponsable,
 } from '../../services/pacienteService';
@@ -740,7 +740,7 @@ const VenderServiciosTab = () => {
 
       console.log('📥 Cargando resto de datos...');
       const [pacData, respData, compData, tiposComp, modalidades] = await Promise.all([
-        getPacientesAll(),
+        getPacientes(),
         getTodosLosResponsables(),
         getCompradoresExternos(),
         getTiposComprobante(),

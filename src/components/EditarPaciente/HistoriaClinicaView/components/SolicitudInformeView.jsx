@@ -16,7 +16,7 @@ import {
   obtenerRevisionesInforme,
 } from '../../../../services/solicitudInformeService';
 import { getVentasServicios } from '../../../../services/ventasService';
-import { getTiposDocumento } from '../../../../services/tiposArchivoService';
+import { getDocumentosTarifa } from '../../../../services/documentoTarifaService';
 import { getServiciosPorPaciente } from '../../../../services/pacienteService';
 import { SERVER_BASE_URL } from '../../../../services/api';
 import { ROLES } from '../../../../constants/roles';
@@ -85,7 +85,7 @@ const isWord = (url) => /\.(doc|docx)$/i.test(url ?? '');
 const getFormInitial = () => {
   const hoy = new Date().toISOString().split('T')[0];
   return {
-    servicio_id: null, venta_servicio_id: '', tipo_archivo_id: '',
+    servicio_id: null, venta_servicio_id: '', documento_tarifa_id: '',
     especialista_id: '', fecha_solicitud: hoy, fecha_entrega: addDays(hoy, 5),
     monto: '', nro_recibo: '', modalidad_pago_id: '', estado_pago_id: 1, nota: '',
   };
@@ -438,7 +438,7 @@ const VentaSelector = ({ ventas, value, onChange, loading }) => {
 
 const FormularioSolicitud = ({
   onSubmit, onCancel, loading,
-  ventasInforme, tiposArchivo, terapeutas, modalidadesPago, user,
+  ventasInforme, documentosTarifa, terapeutas, modalidadesPago, user,
   serviciosPaciente, // 👈 Nuevo: para buscar servicio_id por terapeuta
   onMostrarAlerta, // 👈 Callback para mostrar alertas
 }) => {
@@ -547,6 +547,12 @@ const FormularioSolicitud = ({
       // servicio_id se llenará cuando se seleccione el especialista
       monto: montoInforme > 0 ? montoInforme.toFixed(2) : p.monto,
       nro_recibo: venta.codigo_comprobante ?? p.nro_recibo,
+      modalidad_pago_id: venta.modalidad_pago_id ?? venta.modalidad_pago?.id ?? p.modalidad_pago_id,
+      documento_tarifa_id: itemsInforme[0]?.documentoTarifaId   // ← camelCase, igual que la API
+                  ?? itemsInforme[0]?.documento_tarifa_id 
+                  ?? itemsInforme[0]?.documento_tarifa?.id 
+                  ?? p.documento_tarifa_id,
+
     }));
   };
 
@@ -581,8 +587,8 @@ const FormularioSolicitud = ({
       }
       return;
     }
-    if (!form.tipo_archivo_id) {
-      console.error('❌ Error: Falta tipo_archivo_id');
+    if (!form.documento_tarifa_id) {
+      console.error('❌ Error: Falta documento_tarifa_id');
       if (onMostrarAlerta) {
         onMostrarAlerta({
           titulo: 'Campo requerido',
@@ -632,7 +638,7 @@ const FormularioSolicitud = ({
       ...form,
       servicio_id:       Number(form.servicio_id),
       venta_servicio_id: Number(form.venta_servicio_id),
-      tipo_archivo_id:   Number(form.tipo_archivo_id),
+      documento_tarifa_id:   Number(form.documento_tarifa_id),
       especialista_id:   Number(form.especialista_id),
       monto:             parseFloat(form.monto),
       modalidad_pago_id: form.modalidad_pago_id ? Number(form.modalidad_pago_id) : null,
@@ -662,14 +668,27 @@ const FormularioSolicitud = ({
 
       {/* Tipo + Especialista */}
       <div className="grid grid-cols-2 gap-4">
-        <div>
+       <div>
           <label className={LABEL_CLS}>
             <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Tipo de informe {required}</span>
           </label>
-          <select value={form.tipo_archivo_id} onChange={e => set('tipo_archivo_id', e.target.value)} className={INPUT_CLS} required>
-            <option value="">Seleccionar...</option>
-            {tiposArchivo.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-          </select>
+          <div className="relative">
+            <select
+              value={form.documento_tarifa_id}
+              onChange={e => set('documento_tarifa_id', e.target.value)}
+              className={`${INPUT_CLS} ${ventaSeleccionada && form.documento_tarifa_id ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              disabled={!!(ventaSeleccionada && form.documento_tarifa_id)}
+              required
+            >
+              <option value="">Seleccionar...</option>
+              {documentosTarifa.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+            </select>
+            {ventaSeleccionada && form.documento_tarifa_id && (
+              <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">
+                auto
+              </span>
+            )}
+          </div>
         </div>
         <div>
           <label className={LABEL_CLS}>
@@ -736,15 +755,27 @@ const FormularioSolicitud = ({
             )}
           </div>
         </div>
-        <div>
-          <label className={LABEL_CLS}>
-            <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Modalidad</span>
-          </label>
-          <select value={form.modalidad_pago_id} onChange={e => set('modalidad_pago_id', e.target.value)} className={INPUT_CLS}>
+     <div>
+        <label className={LABEL_CLS}>
+          <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Modalidad</span>
+        </label>
+        <div className="relative">
+          <select
+            value={form.modalidad_pago_id}
+            onChange={e => set('modalidad_pago_id', e.target.value)}
+            className={`${INPUT_CLS} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            disabled={!!ventaSeleccionada}
+          >
             <option value="">Seleccionar...</option>
             {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
           </select>
+          {ventaSeleccionada && form.modalidad_pago_id && (
+            <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">
+              auto
+            </span>
+          )}
         </div>
+      </div>
       </div>
 
       {/* Fechas */}
@@ -993,7 +1024,7 @@ const ModalRevisarInforme = ({ solicitud, user, onClose, onSuccess }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">Tipo de informe</p>
-                  <p className="text-gray-900 font-medium">{solicitud.tipo_archivo?.nombre ?? '—'}</p>
+                  <p className="text-gray-900 font-medium">{solicitud.documento_tarifa?.nombre ?? '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">Terapeuta</p>
@@ -1109,7 +1140,7 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
           {/* Fila 1: tipo + badges */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-sm font-semibold text-gray-900 truncate">
-              {solicitud.tipo_archivo?.nombre ?? '—'}
+              {solicitud.documento_tarifa?.nombre ?? '—'}
             </span>
             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sw.bg} ${sw.text} ${sw.border}`}>
               <Icon className="w-3 h-3" /> {sw.label}
@@ -1260,7 +1291,7 @@ const ModalVer = ({ solicitud, user, onClose }) => {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Tipo de informe</p>
-                <p className="text-gray-900 font-medium">{solicitud.tipo_archivo?.nombre || '—'}</p>
+                <p className="text-gray-900 font-medium">{solicitud.documento_tarifa?.nombre || '—'}</p>
               </div>
               {mostrarInfoBancaria && (
                 <div>
@@ -1404,7 +1435,7 @@ const ModalVer = ({ solicitud, user, onClose }) => {
 
   const [solicitudes,       setSolicitudes]       = useState([]);
   const [ventasInforme,     setVentasInforme]     = useState([]);
-  const [tiposArchivo,      setTiposArchivo]      = useState([]);
+  const [documentoTarifa,      setDocumentoTarifa]      = useState([]);
   const [modalidadesPago,   setModalidadesPago]   = useState([]);
   const [terapeutas,        setTerapeutas]        = useState([]);
   const [serviciosPaciente, setServiciosPaciente] = useState([]); // Para buscar servicio_id por terapeuta
@@ -1436,13 +1467,13 @@ const ModalVer = ({ solicitud, user, onClose }) => {
       const [solicitudesData, ventasData, tiposData, modalidadesData, serviciosPaciente] = await Promise.all([
         obtenerSolicitudesInformePorPaciente(paciente.id),
         getVentasServicios({ pacienteId: paciente.id }),
-        getTiposDocumento(),
+        getDocumentosTarifa(),
         obtenerModalidadesPago(),
         getServiciosPorPaciente(paciente.id),
       ]);
 
       setSolicitudes(solicitudesData ?? []);
-      setTiposArchivo(tiposData ?? []);
+      setDocumentoTarifa(tiposData ?? []);
       setModalidadesPago(modalidadesData ?? []);
       setServiciosPaciente(serviciosPaciente ?? []); // Guardar servicios para luego buscar por terapeuta
 
@@ -1641,7 +1672,7 @@ const ModalVer = ({ solicitud, user, onClose }) => {
               onCancel={() => setMostrarFormulario(false)}
               loading={loading}
               ventasInforme={ventasInforme}
-              tiposArchivo={tiposArchivo}
+              documentosTarifa={documentoTarifa}
               terapeutas={terapeutas}
               modalidadesPago={modalidadesPago}
               user={user}
