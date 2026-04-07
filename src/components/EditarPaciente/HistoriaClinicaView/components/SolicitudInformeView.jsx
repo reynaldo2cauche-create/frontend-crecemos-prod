@@ -18,7 +18,7 @@ import {
 import { getVentasServicios } from '../../../../services/ventasService';
 import { getDocumentosTarifa } from '../../../../services/documentoTarifaService';
 import { getServiciosPorPaciente } from '../../../../services/pacienteService';
-import { SERVER_BASE_URL } from '../../../../services/api';
+import { SERVER_BASE_URL, API_BASE_URL } from '../../../../services/api';
 import { ROLES } from '../../../../constants/roles';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -81,6 +81,21 @@ const addDays = (dateStr, days) => {
 
 const isPDF  = (url) => url?.toLowerCase().endsWith('.pdf');
 const isWord = (url) => /\.(doc|docx)$/i.test(url ?? '');
+
+/**
+ * Construye la URL completa del archivo usando el endpoint del backend
+ * Similar al patrón usado en GestionPopup
+ */
+const buildArchivoUrl = (archivoUrl) => {
+  if (!archivoUrl) return '';
+  if (archivoUrl.startsWith('http')) return archivoUrl;
+
+  // Extraer solo el nombre del archivo
+  const nombreArchivo = archivoUrl.split('/').pop();
+
+  // Usar el endpoint del backend para servir el archivo
+  return `${API_BASE_URL}/solicitudes-informe/archivo/${nombreArchivo}`;
+};
 
 const getFormInitial = () => {
   const hoy = new Date().toISOString().split('T')[0];
@@ -822,8 +837,8 @@ const FormularioSolicitud = ({
 const VisualizadorPDF = ({ url, onClose }) => {
   const [scale, setScale] = useState(1);
 
-  // La URL puede ser relativa (/uploads/...) — la completamos con la base del servidor (backend)
-  const fullUrl = url?.startsWith('http') ? url : `${SERVER_BASE_URL}${url}`;
+  const nombreArchivo = url?.split('/').pop();
+  const fullUrl = buildArchivoUrl(url);
 
   return (
     <div className="fixed inset-0 z-[90000] flex flex-col bg-black/90 backdrop-blur-sm">
@@ -831,7 +846,7 @@ const VisualizadorPDF = ({ url, onClose }) => {
       <div className="flex items-center justify-between px-5 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-purple-400" />
-          <span className="text-sm font-semibold text-white truncate max-w-[300px]">{url?.split('/').pop()}</span>
+          <span className="text-sm font-semibold text-white truncate max-w-[300px]">{nombreArchivo}</span>
         </div>
         <div className="flex items-center gap-2">
           <a
@@ -1048,7 +1063,7 @@ const ModalRevisarInforme = ({ solicitud, user, onClose, onSuccess }) => {
                     </button>
                   )}
                   <a
-                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${SERVER_BASE_URL}${solicitud.archivo_url}`}
+                    href={buildArchivoUrl(solicitud.archivo_url)}
                     download
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#7B1FA2] border border-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
                   >
@@ -1343,7 +1358,7 @@ const ModalVer = ({ solicitud, user, onClose }) => {
                     </button>
                   )}
                   <a
-                    href={solicitud.archivo_url?.startsWith('http') ? solicitud.archivo_url : `${SERVER_BASE_URL}${solicitud.archivo_url}`}
+                    href={buildArchivoUrl(solicitud.archivo_url)}
                     download
                     className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-green-700 border border-green-400 hover:bg-green-100 rounded-lg transition-all"
                   >

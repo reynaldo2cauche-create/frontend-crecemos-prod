@@ -183,12 +183,12 @@ const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
         <span style={s.bold}>IMPORTE EN LETRAS: </span>
         <span>{getImporteLetras(total)}</span>
       </div>
-      {venta.nota?.trim() && (
+      {venta.observaciones?.trim() && (
         <>
           <hr style={s.hr} />
           <div style={{ fontSize: '8px' }}>
             <div style={s.bold}>OBSERVACIONES:</div>
-            <div style={{ marginTop: '2px', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{venta.nota}</div>
+            <div style={{ marginTop: '2px', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{venta.observaciones}</div>
           </div>
         </>
       )}
@@ -521,6 +521,7 @@ const VenderProductosTab = () => {
   const [mostrarResultados, setMostrarResultados] = useState(false);
   const [descuentoGlobal, setDescuentoGlobal] = useState({ tipo: '%', valor: '' });
   const [nota, setNota] = useState('');
+  const [observaciones, setObservaciones] = useState('');
 
   const [tipoPagador, setTipoPagador] = useState(TIPOS_PAGADOR.PACIENTE);
   const [pacienteId, setPacienteId] = useState('');
@@ -732,6 +733,7 @@ const VenderProductosTab = () => {
         payload.descuento_valor   = parseFloat(descuentoGlobal.valor);
       }
       if (nota) payload.nota = nota;
+      if (observaciones) payload.observaciones = observaciones;
 
       const ventaCreada = await crearVentaProducto(payload);
 
@@ -761,6 +763,7 @@ const VenderProductosTab = () => {
     setPacientesDelResponsable([]);
     setDescuentoGlobal({ tipo: '%', valor: '' });
     setNota('');
+    setObservaciones('');
     setPromocionesAplicadas([]);
     setTotalDescuentoPromo(0);
     setProductosRegalo([]);
@@ -1015,11 +1018,17 @@ const VenderProductosTab = () => {
           <div className="p-6 border-t border-gray-100">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Nota interna (no visible en comprobante)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Nota interna (solo visible en sistema)</label>
                 <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={3}
                   disabled={!!ventaGuardada}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Notas internas..." />
+
+                <label className="block text-xs font-semibold text-gray-600 mb-2 mt-4">Observaciones (visible en comprobante)</label>
+                <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={3}
+                  disabled={!!ventaGuardada}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="Observaciones para el comprobante..." />
               </div>
               <div className="space-y-3">
                 <PanelPromociones promocionesAplicadas={promocionesAplicadas} totalDescuento={totalDescuentoPromo} calculando={calculandoPromos} />

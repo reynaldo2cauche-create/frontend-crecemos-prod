@@ -436,9 +436,9 @@ export const generarPDFA4 = async (venta, tipo) => {
   doc.text(getImporteLetras(total), M + 42, y + 6);
 
   // Observaciones
-  if (venta.nota?.trim()) {
+  if (venta.observaciones?.trim()) {
     y += 15;
-    const obsLines = doc.splitTextToSize(venta.nota, pageW - M * 2 - 4);
+    const obsLines = doc.splitTextToSize(venta.observaciones, pageW - M * 2 - 4);
     const obsH = Math.max(20, obsLines.length * 4 + 10);
     doc.setDrawColor(...COLOR_LINEA);
     doc.rect(M, y, pageW - M * 2, obsH);

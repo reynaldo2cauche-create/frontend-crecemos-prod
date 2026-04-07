@@ -405,12 +405,12 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
         <span style={s.bold}>IMPORTE EN LETRAS: </span>
         <span>{getImporteLetras(total)}</span>
       </div>
-      {venta.nota?.trim() && (
+      {venta.observaciones?.trim() && (
         <>
           <hr style={s.hr} />
           <div style={{ fontSize: '8px' }}>
             <div style={s.bold}>OBSERVACIONES:</div>
-            <div style={{ marginTop: '2px', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{venta.nota}</div>
+            <div style={{ marginTop: '2px', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{venta.observaciones}</div>
           </div>
         </>
       )}
@@ -547,7 +547,7 @@ const buildTicketHTML = (venta, tipo) => {
   <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px"><span>TOTAL</span><span>S/ ${fm(total)}</span></div>
   <hr class="s">
   <div style="font-size:9px;margin-bottom:4px;line-height:1.3"><strong>IMPORTE EN LETRAS: </strong>${importeLetras}</div>
-  ${venta.nota?.trim() ? `<hr class="d"><div style="font-size:9px"><strong>OBSERVACIONES:</strong><div style="margin-top:2px;white-space:pre-wrap">${venta.nota}</div></div>` : ''}
+  ${venta.observaciones?.trim() ? `<hr class="d"><div style="font-size:9px"><strong>OBSERVACIONES:</strong><div style="margin-top:2px;white-space:pre-wrap">${venta.observaciones}</div></div>` : ''}
   <hr class="s">
   <div class="center bold purple" style="margin-top:4px;font-size:10px">¡Gracias por su preferencia!</div>
   <script>window.onload=function(){window.focus();window.print();}<\/script>
@@ -773,9 +773,6 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                 <div className="col-span-2"><p className="text-xs text-gray-500">Comprador Externo</p>
                   <p className="font-semibold text-gray-900">{venta.comprador_externo.nombre} - DNI: {venta.comprador_externo.dni}</p></div>
               )}
-              {venta.nota && (
-                <div className="col-span-2"><p className="text-xs text-gray-500">Nota</p><p className="text-sm text-gray-700">{venta.nota}</p></div>
-              )}
               {venta.modalidad_pago && (
               <div className="col-span-2">
                 <p className="text-xs text-gray-500">Modalidad de Pago</p>
@@ -856,6 +853,35 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                 <span>TOTAL:</span><span>{formatMonto(venta.total)}</span>
               </div>
             </div>
+
+            {/* Nota interna y Observaciones */}
+            {(venta.nota || venta.observaciones) && (
+              <div className="space-y-3 pt-4 border-t border-gray-200">
+                {venta.nota && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-yellow-800 mb-1.5 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Nota Interna (solo visible en sistema)
+                    </p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{venta.nota}</p>
+                  </div>
+                )}
+                {venta.observaciones && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-purple-800 mb-1.5 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Observaciones (visible en comprobante impreso)
+                    </p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{venta.observaciones}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
