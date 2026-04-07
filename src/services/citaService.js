@@ -123,3 +123,29 @@ export const getTiposCita = async () => {
 
 // Alias para compatibilidad
 export const getMotivoCita = getMotivosCita;
+
+// 🛒 OBTENER VENTAS/SESIONES DISPONIBLES DEL PACIENTE
+export const getVentasDisponibles = async (pacienteId, servicioId = null, motivoCitaId = null) => {
+  const params = new URLSearchParams();
+  if (servicioId) params.append('servicio_id', servicioId);
+  if (motivoCitaId) params.append('motivo_cita_id', motivoCitaId);
+
+  const url = params.toString()
+    ? `/citas/ventas-disponibles/${pacienteId}?${params.toString()}`
+    : `/citas/ventas-disponibles/${pacienteId}`;
+
+  const response = await api.get(url);
+  return response.data;
+};
+
+// 📋 OBTENER LISTADO DETALLADO DE CITAS POR PACIENTE
+export const getListadoCitasPorPaciente = async (pacienteId) => {
+  const response = await api.get(`/citas/listado-citas/${pacienteId}`);
+  return response.data;
+};
+
+// 📊 OBTENER RESUMEN DE TERAPIAS POR PACIENTE
+export const getResumenTerapiasPorPaciente = async (pacienteId) => {
+  const response = await api.get(`/citas/resumen-terapias/${pacienteId}`);
+  return response.data;
+};

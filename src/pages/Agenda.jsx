@@ -555,6 +555,11 @@ const guardarCita = async (datosFormulario = null) => {
       }
       if (datos.doctor_id) datosBase.doctor_id = parseInt(datos.doctor_id);
       if (datos.servicio_id) datosBase.servicio_id = parseInt(datos.servicio_id);
+
+      // 🛒 INCLUIR VENTA_SERVICIO_DETALLE_ID
+      if (datos.venta_servicio_detalle_id) {
+        datosBase.venta_servicio_detalle_id = parseInt(datos.venta_servicio_detalle_id);
+      }
     }
     else if (tipoCita === 'REUNION_CLINICA') {
       // 🔥 Solo validar cuando se CREA

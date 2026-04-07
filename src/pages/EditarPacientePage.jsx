@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
 import FiliacionView from '../components/EditarPaciente/FiliacionView';
 import HistoriaClinicaView from '../components/EditarPaciente/HistoriaClinicaView';
 import ArchivosDigitales from '../components/EditarPaciente/ArchivosDigitales';
+import ResumenTerapiasView from '../components/EditarPaciente/ResumenTerapiasView';
 import NotasEvolucion from '../components/EditarPaciente/NotasEvolucion';
 import AsignarServicioModal from '../components/EditarPaciente/AsignarServicioModal';
 import EditarTerapeutaModal from '../components/EditarPaciente/EditarTerapeutaModal';
@@ -848,6 +849,18 @@ const handleEliminarConvenio = async () => {
           <HardDrive className="w-4 h-4" />
           Archivos
         </button>
+
+        <button
+          onClick={() => setTabSeleccionado('terapias')}
+          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            tabSeleccionado === 'terapias'
+              ? 'bg-[#7B1FA2] text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          Terapias
+        </button>
       </div>
     </div>
 
@@ -963,6 +976,24 @@ const handleEliminarConvenio = async () => {
             )}
             {tabSeleccionado === 'historia' && <HistoriaClinicaView paciente={paciente} user={user} />}
             {tabSeleccionado === 'archivos' && <ArchivosDigitales paciente={paciente} />}
+            {tabSeleccionado === 'terapias' && (
+              loadingData ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2.5 pb-3 border-b border-gray-100">
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 animate-pulse flex-shrink-0"></div>
+                    <div className="h-4 w-40 bg-gray-100 rounded animate-pulse"></div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse"></div>
+                    ))}
+                  </div>
+                  <div className="h-12 bg-gray-50 rounded-xl animate-pulse mt-1.5"></div>
+                </div>
+              ) : (
+                <ResumenTerapiasView pacienteId={paciente?.id} />
+              )
+            )}
           </div>
 
           <div className="lg:col-span-5">

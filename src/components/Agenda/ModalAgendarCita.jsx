@@ -29,6 +29,7 @@ import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
 import { useGeofencing } from '../../hooks/useGeofencing';
 import { esFeriado, getNombreFeriado } from '../../constants/feriados';
+import { getVentasDisponibles } from '../../services/citaService';
 
 const ModalAgendarCita = ({
   open,
@@ -79,6 +80,11 @@ const ModalAgendarCita = ({
   const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [copiado, setCopiado] = useState(false);
   const [cargandoRecordatorio, setCargandoRecordatorio] = useState(false);
+
+  // 🛒 VENTAS DISPONIBLES
+  const [ventasDisponibles, setVentasDisponibles] = useState([]);
+  const [cargandoVentas, setCargandoVentas] = useState(false);
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
 
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
@@ -718,6 +724,59 @@ Le hacemos recordar su cita para el día
     }
   }, [formularioCita.motivo_id, motivos]);
 
+  // 🛒 CARGAR VENTAS DISPONIBLES CUANDO CAMBIA PACIENTE O SERVICIO
+  useEffect(() => {
+    const cargarVentasDisponibles = async () => {
+      // Solo cargar para citas NORMALES
+      if (tipoCita !== 'NORMAL') {
+        setVentasDisponibles([]);
+        return;
+      }
+
+      const pacienteId = formularioCita.paciente_id;
+      const servicioId = formularioCita.servicio_id;
+      const motivoCitaId = formularioCita.motivo_id;
+
+      if (!pacienteId || !servicioId || !motivoCitaId) {
+        setVentasDisponibles([]);
+        return;
+      }
+
+      setCargandoVentas(true);
+      try {
+        const ventas = await getVentasDisponibles(pacienteId, servicioId, motivoCitaId);
+        setVentasDisponibles(ventas || []);
+
+        // Si solo hay una venta disponible, seleccionarla automáticamente
+        if (ventas && ventas.length === 1 && !modoEdicion) {
+          onFormularioChange('venta_servicio_detalle_id', ventas[0].id);
+          setVentaSeleccionada(ventas[0]); // 🛒 IMPORTANTE: Actualizar estado
+        }
+      } catch (error) {
+        console.error('Error al cargar ventas disponibles:', error);
+        setVentasDisponibles([]);
+        mostrarAlerta('Error', 'No se pudieron cargar las ventas disponibles del paciente.', 'error');
+      } finally {
+        setCargandoVentas(false);
+      }
+    };
+
+    cargarVentasDisponibles();
+  }, [formularioCita.paciente_id, formularioCita.servicio_id, formularioCita.motivo_id, tipoCita, modoEdicion]);
+
+  // 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
+  useEffect(() => {
+    if (tipoCita === 'NORMAL' && formularioCita.venta_servicio_detalle_id && ventasDisponibles.length > 0) {
+      const venta = ventasDisponibles.find(v => v.id === parseInt(formularioCita.venta_servicio_detalle_id));
+      if (venta) {
+        setVentaSeleccionada(venta);
+        console.log('🛒 Venta seleccionada sincronizada:', venta.descripcion, `(${venta.sesiones_disponibles} disponibles)`);
+      }
+    } else if (tipoCita !== 'NORMAL') {
+      setVentaSeleccionada(null);
+    }
+  }, [formularioCita.venta_servicio_detalle_id, ventasDisponibles, tipoCita]);
+
   // ========== FUNCIONES PARA REUNIÓN CLÍNICA ==========
   const agregarTerapeuta = () => {
     if (modoSoloLectura) return;
@@ -754,9 +813,53 @@ Le hacemos recordar su cita para el día
     onFormularioChange('motivo_accion', e.target.value);
   }, [onFormularioChange, modoSoloLectura]);
 
+  // 🛒 CALCULAR SESIONES DISPONIBLES DE LA VENTA SELECCIONADA
+  const sesionesDisponiblesVenta = ventaSeleccionada?.sesiones_disponibles || 0;
+  const slotsActuales = formularioCita.fechasHoras?.length || 0;
+  // Para citas NORMALES: solo permitir si hay venta Y tiene sesiones disponibles
+  // Para otros tipos: siempre permitir
+  const puedeAgregarMasSlots = tipoCita === 'NORMAL'
+    ? (ventaSeleccionada && slotsActuales < sesionesDisponiblesVenta)
+    : true;
+
   // ========== 🚀 FUNCIONES MEJORADAS PARA FECHAS Y HORAS ==========
   const agregarFechaHora = () => {
     if (modoSoloLectura) return;
+
+    // 🛒 VALIDAR QUE EXISTA VENTA PARA CITAS NORMALES
+    if (tipoCita === 'NORMAL' && !ventaSeleccionada) {
+      mostrarAlerta(
+        'Compra Requerida',
+        'Primero selecciona una compra de sesiones antes de agregar fechas/horas.',
+        'error'
+      );
+      return;
+    }
+
+    // 🛒 VALIDAR LÍMITE DE SESIONES PARA CITAS NORMALES
+    if (tipoCita === 'NORMAL' && ventaSeleccionada && !puedeAgregarMasSlots) {
+      console.log('🛒 DEBUG: Bloqueando agregar slot', {
+        ventaSeleccionada,
+        sesionesDisponiblesVenta,
+        slotsActuales,
+        puedeAgregarMasSlots
+      });
+      mostrarAlerta(
+        'Límite de Sesiones Alcanzado',
+        `Esta compra solo tiene ${sesionesDisponiblesVenta} sesión(es) disponible(s). Ya tienes ${slotsActuales} slot(s) agregado(s).`,
+        'warning'
+      );
+      return;
+    }
+
+    console.log('🛒 DEBUG: Permitiendo agregar slot', {
+      tipoCita,
+      ventaSeleccionada: ventaSeleccionada?.descripcion,
+      sesionesDisponiblesVenta,
+      slotsActuales,
+      puedeAgregarMasSlots
+    });
+
     onFormularioChange('agregarFechaHora', null);
   };
 
@@ -1233,6 +1336,60 @@ const handleGuardar = useCallback(async () => {
                           })()}
                         </select>
                       </div>
+
+                      {/* 🛒 SELECTOR DE VENTA (SESIONES DISPONIBLES) */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Compra de Sesiones <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formularioCita.venta_servicio_detalle_id || ''}
+                          onChange={(e) => {
+                            const ventaId = e.target.value;
+                            onFormularioChange('venta_servicio_detalle_id', ventaId);
+
+                            // 🛒 GUARDAR VENTA SELECCIONADA PARA LÍMITES
+                            const venta = ventasDisponibles.find(v => v.id === parseInt(ventaId));
+                            setVentaSeleccionada(venta || null);
+
+                            // 🛒 AJUSTAR SLOTS SI EXCEDE SESIONES DISPONIBLES
+                            if (venta && formularioCita.fechasHoras) {
+                              const sesionesDisp = venta.sesiones_disponibles;
+                              if (formularioCita.fechasHoras.length > sesionesDisp) {
+                                onFormularioChange('fechasHoras', formularioCita.fechasHoras.slice(0, sesionesDisp));
+                                mostrarAlerta(
+                                  'Slots Ajustados',
+                                  `Se redujeron los slots a ${sesionesDisp} porque es el máximo de sesiones disponibles en esta compra.`,
+                                  'warning'
+                                );
+                              }
+                            }
+                          }}
+                          disabled={cargandoVentas || !formularioCita.paciente_id || !formularioCita.servicio_id || esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                        >
+                          <option value="">
+                            {cargandoVentas
+                              ? 'Cargando ventas...'
+                              : !formularioCita.paciente_id || !formularioCita.servicio_id
+                                ? 'Primero selecciona paciente y servicio'
+                                : ventasDisponibles.length === 0
+                                  ? 'No hay sesiones disponibles'
+                                  : 'Seleccionar compra...'}
+                          </option>
+                          {ventasDisponibles.map((venta) => (
+                            <option key={venta.id} value={venta.id}>
+                              {venta.descripcion}
+                            </option>
+                          ))}
+                        </select>
+                        {formularioCita.paciente_id && formularioCita.servicio_id && !cargandoVentas && ventasDisponibles.length === 0 && (
+                          <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            El paciente no tiene sesiones disponibles de este servicio. Debe realizar una compra primero.
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Duración */}
@@ -1266,11 +1423,19 @@ const handleGuardar = useCallback(async () => {
                         {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
                             onClick={agregarFechaHora}
-                            className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-all text-[#7B1FA2] hover:bg-purple-50"
+                            disabled={tipoCita === 'NORMAL' && ventaSeleccionada && !puedeAgregarMasSlots}
+                            className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-all text-[#7B1FA2] hover:bg-purple-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={tipoCita === 'NORMAL' && ventaSeleccionada && !puedeAgregarMasSlots ? `Límite alcanzado: ${sesionesDisponiblesVenta} sesiones disponibles` : 'Agregar más fechas/horas'}
                           >
                             <Plus className="w-4 h-4" />
                             Agregar
                           </button>
+                        )}
+                        {/* 🛒 CONTADOR DE SESIONES */}
+                        {tipoCita === 'NORMAL' && ventaSeleccionada && !modoEdicion && (
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${slotsActuales >= sesionesDisponiblesVenta ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                            {slotsActuales} de {sesionesDisponiblesVenta} sesiones
+                          </span>
                         )}
                       </div>
 
