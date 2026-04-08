@@ -302,13 +302,14 @@ const ModalAgendarCita = ({
           ? formatearNombreTitulo(`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim())
           : 'Paciente';
 
-        // Verificar si tiene responsable activo (principal)
+        // Verificar si tiene responsable activo
         let tieneResponsable = false;
         if (citaEditando.paciente?.responsables && Array.isArray(citaEditando.paciente.responsables)) {
-          const responsablePrincipal = citaEditando.paciente.responsables.find(
-            r => r.activo && (r.orden === 1 || r.orden === '1')
+          // Buscar cualquier responsable activo (activo puede ser true, 1, "1")
+          const responsableActivo = citaEditando.paciente.responsables.find(
+            r => r.activo === true || r.activo === 1 || r.activo === '1'
           );
-          tieneResponsable = !!responsablePrincipal;
+          tieneResponsable = !!responsableActivo;
         }
 
         // Obtener saludo dinámico según la hora actual
@@ -401,13 +402,14 @@ Le hacemos recordar su cita para el día
         ? formatearNombreTitulo(formularioCita.paciente.nombre_completo)
         : 'Paciente';
 
-      // Verificar si tiene responsable activo (principal)
+      // Verificar si tiene responsable activo
       let tieneResponsable = false;
       if (formularioCita.paciente?.responsables && Array.isArray(formularioCita.paciente.responsables)) {
-        const responsablePrincipal = formularioCita.paciente.responsables.find(
-          r => r.activo && (r.orden === 1 || r.orden === '1')
+        // Buscar cualquier responsable activo (activo puede ser true, 1, "1")
+        const responsableActivo = formularioCita.paciente.responsables.find(
+          r => r.activo === true || r.activo === 1 || r.activo === '1'
         );
-        tieneResponsable = !!responsablePrincipal;
+        tieneResponsable = !!responsableActivo;
       }
 
       // Obtener saludo dinámico según la hora actual

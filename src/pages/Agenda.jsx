@@ -385,7 +385,8 @@ const Agenda = () => {
       // Formatear datos para el formulario
       const paciente = citaCompleta.paciente ? {
         id: citaCompleta.paciente_id,
-        nombre_completo: `${citaCompleta.paciente.nombres || ''} ${citaCompleta.paciente.apellido_paterno || ''} ${citaCompleta.paciente.apellido_materno || ''}`.trim() || 'Paciente'
+        nombre_completo: `${citaCompleta.paciente.nombres || ''} ${citaCompleta.paciente.apellido_paterno || ''} ${citaCompleta.paciente.apellido_materno || ''}`.trim() || 'Paciente',
+        responsables: citaCompleta.paciente.responsables || [] // ✅ Incluir responsables para el recordatorio
       } : null;
 
       let fechasHoras = [];

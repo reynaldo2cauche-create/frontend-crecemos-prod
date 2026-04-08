@@ -61,6 +61,30 @@ export const crearVentaServicio = (dto) =>
 export const marcarSesionUsada = (detalleId, body) =>
   api.patch(`/ventas/servicios/detalle/${detalleId}/sesion-usada`, body).then(r => r.data);
 
+/**
+ * Actualizar una venta de servicio
+ * @param {number} id - ID de la venta
+ * @param {Object} dto - UpdateVentaServicioDto
+ * {
+ *   fecha_venta?: string,
+ *   descuento_tipo_id?: number,
+ *   descuento_valor?: number,
+ *   nota?: string,
+ *   observaciones?: string,
+ *   modalidad_pago_id?: number,
+ *   user_actua_id?: number
+ * }
+ */
+export const actualizarVentaServicio = (id, dto) =>
+  api.patch(`/ventas/servicios/${id}`, dto).then(r => r.data);
+
+/**
+ * Eliminar una venta de servicio
+ * @param {number} id - ID de la venta
+ */
+export const eliminarVentaServicio = (id) =>
+  api.delete(`/ventas/servicios/${id}`).then(r => r.data);
+
 // ============================================================
 // VENTAS — PRODUCTOS
 // ============================================================
@@ -103,6 +127,30 @@ export const getVentaProductoById = (id) =>
  */
 export const crearVentaProducto = (dto) =>
   api.post('/ventas/productos', dto).then(r => r.data);
+
+/**
+ * Actualizar una venta de producto
+ * @param {number} id - ID de la venta
+ * @param {Object} dto - UpdateVentaProductoDto
+ * {
+ *   fecha_venta?: string,
+ *   descuento_tipo_id?: number,
+ *   descuento_valor?: number,
+ *   nota?: string,
+ *   observaciones?: string,
+ *   modalidad_pago_id?: number,
+ *   user_actua_id?: number
+ * }
+ */
+export const actualizarVentaProducto = (id, dto) =>
+  api.patch(`/ventas/productos/${id}`, dto).then(r => r.data);
+
+/**
+ * Eliminar una venta de producto
+ * @param {number} id - ID de la venta
+ */
+export const eliminarVentaProducto = (id) =>
+  api.delete(`/ventas/productos/${id}`).then(r => r.data);
 
 // ============================================================
 // COMPRADORES EXTERNOS
