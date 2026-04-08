@@ -903,6 +903,10 @@ const HistorialVentasTab = () => {
   const [page, setPage]                     = useState(0);
   const [rowsPerPage, setRowsPerPage]       = useState(12);
 
+  // Obtener el rol del usuario
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const esAdmision = user?.rol?.id === 2; // ROLES.ADMISION = 2
+
   useEffect(() => { cargarVentas(); }, []);
   useEffect(() => { setPage(0); }, [filtros.tipo, filtros.fechaDesde, filtros.fechaHasta]);
 
@@ -946,21 +950,24 @@ const HistorialVentasTab = () => {
           <p className="text-sm text-gray-500">Consulta todas las ventas de servicios y productos</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: 'Total Ventas',   value: ventasFiltradas.length,  icon: <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" />, bg: 'bg-[#7B1FA2]/10' },
-            { label: 'Total Ingresos', value: formatMonto(totalMonto), icon: <span className="text-lg font-bold text-green-600">S/</span>, bg: 'bg-green-50' },
-            { label: 'Servicios',      value: ventasServicios.length,  icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
-            { label: 'Productos',      value: ventasProductos.length,  icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
-          ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center`}>{s.icon}</div>
-                <div><div className="text-xl font-bold text-gray-900">{s.value}</div><div className="text-xs text-gray-500 font-medium">{s.label}</div></div>
+        {/* Cards de estadísticas - Solo visible para administradores */}
+        {!esAdmision && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Ventas',   value: ventasFiltradas.length,  icon: <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" />, bg: 'bg-[#7B1FA2]/10' },
+              { label: 'Total Ingresos', value: formatMonto(totalMonto), icon: <span className="text-lg font-bold text-green-600">S/</span>, bg: 'bg-green-50' },
+              { label: 'Servicios',      value: ventasServicios.length,  icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+              { label: 'Productos',      value: ventasProductos.length,  icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center`}>{s.icon}</div>
+                  <div><div className="text-xl font-bold text-gray-900">{s.value}</div><div className="text-xs text-gray-500 font-medium">{s.label}</div></div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">

@@ -967,6 +967,19 @@ const handleGuardar = useCallback(async () => {
     }
   }
 
+  // Validar que para citas NORMALES haya una venta seleccionada
+  if (tipoCita === 'NORMAL' && !modoEdicion) {
+    if (!formularioCita.venta_servicio_detalle_id) {
+      setTituloAlerta('Venta Requerida');
+      setMensajeAlerta(
+        'Debes seleccionar un detalle de venta para poder agendar la cita. Si el paciente no tiene compras disponibles, primero debe realizar una venta.'
+      );
+      setAlertaAbierta(true);
+      setGuardandoLocal(false);
+      return;
+    }
+  }
+
   let datosGuardar = { ...formularioCita };
 
   if (modoEdicion && !esTerapeuta) {

@@ -97,7 +97,7 @@ const menuItems = [
     text: 'Inventario',
     icon: CubeIcon,
     isDropdown: true,
-    adminOnly: true,
+    adminAdmisionOnly: true,
     subItems: [
       { text: 'Productos', path: '/intranet/inventario/productos', icon: CubeIcon },
       { text: 'Categorías', path: '/intranet/inventario/categorias', icon: TagIcon },
@@ -106,16 +106,16 @@ const menuItems = [
       { text: 'Servicios', path: '/intranet/inventario/servicios', icon: BanknotesIcon },
     ]
   },
-  { text: 'Promociones', path: '/intranet/promociones', icon: SparklesIcon, adminOnly: true },
   {
     text: 'Ventas',
     icon: ShoppingCartIcon,
     isDropdown: true,
-    adminOnly: true,
+    adminAdmisionOnly: true,
     subItems: [
       { text: 'Vender Servicios', path: '/intranet/ventas/servicios', icon: ShoppingCartIcon },
       { text: 'Vender Productos', path: '/intranet/ventas/productos', icon: CubeIcon },
       { text: 'Historial de Ventas', path: '/intranet/ventas/historial', icon: ClipboardDocumentCheckIcon },
+      { text: 'Promociones', path: '/intranet/promociones', icon: SparklesIcon },
     ]
   },
 
@@ -182,7 +182,7 @@ const Sidebar = () => {
 
     if (userRole === ROLES.ADMISION) {
       return menuItems.filter(item =>
-        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Sorteo' || item.text === 'Certificaciones' || item.text === 'Tarifario' || item.text === 'Webmail' || item.text === 'Izipay'
+        item.text === 'Agenda' || item.text === 'Pacientes' || item.text === 'Sorteo' || item.text === 'Certificaciones' || item.text === 'Tarifario' || item.text === 'Webmail' || item.text === 'Izipay' || item.text === 'Ventas' || item.text === 'Inventario'
       );
     }
 

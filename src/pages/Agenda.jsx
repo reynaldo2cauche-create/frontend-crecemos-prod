@@ -75,7 +75,8 @@ const Agenda = () => {
     encargado: null,
     firma_documento: false,
     user_id_crea: null,
-    motivo_accion: '' // ✅ CAMPO PARA MOTIVO DE MODIFICACIÓN
+    motivo_accion: '', // ✅ CAMPO PARA MOTIVO DE MODIFICACIÓN
+    venta_servicio_detalle_id: null // ✅ CAMPO PARA VENTA ASOCIADA
   });
   
   // Estados para datos
@@ -338,7 +339,8 @@ const Agenda = () => {
       servicios_ids: [],
       encargado: null,
       firma_documento: false,
-      user_id_crea: currentUser?.id || null
+      user_id_crea: currentUser?.id || null,
+      venta_servicio_detalle_id: null
     });
 
     setCitaEditando(null);
@@ -365,7 +367,8 @@ const Agenda = () => {
       servicios_ids: [],
       encargado: null,
       firma_documento: false,
-      user_id_crea: currentUser?.id || null
+      user_id_crea: currentUser?.id || null,
+      venta_servicio_detalle_id: null
     });
     setCitaEditando(null);
     setModalAbierto(true);
@@ -425,7 +428,8 @@ const Agenda = () => {
         servicios_ids,
         encargado,
         firma_documento,
-        user_id_crea: citaCompleta.user_id_crea || currentUser?.id
+        user_id_crea: citaCompleta.user_id_crea || currentUser?.id,
+        venta_servicio_detalle_id: citaCompleta.compra_id || null
       });
 
       setModalAbierto(true);
@@ -458,7 +462,8 @@ const Agenda = () => {
       encargado: null,
       firma_documento: false,
       user_id_crea: null,
-      motivo_accion: '' // ✅ RESETEAR MOTIVO
+      motivo_accion: '', // ✅ RESETEAR MOTIVO
+      venta_servicio_detalle_id: null // ✅ RESETEAR VENTA
     });
   };
 
