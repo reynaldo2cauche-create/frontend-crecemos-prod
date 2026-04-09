@@ -850,17 +850,20 @@ const handleEliminarConvenio = async () => {
           Archivos
         </button>
 
-        <button
-          onClick={() => setTabSeleccionado('terapias')}
-          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-            tabSeleccionado === 'terapias'
-              ? 'bg-[#7B1FA2] text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          Terapias
-        </button>
+              {/* Después */}
+        {user?.rol?.id !== ROLES.TERAPEUTA && (
+          <button
+            onClick={() => setTabSeleccionado('terapias')}
+            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              tabSeleccionado === 'terapias'
+                ? 'bg-[#7B1FA2] text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            Terapias
+          </button>
+        )}
       </div>
     </div>
 
@@ -991,7 +994,7 @@ const handleEliminarConvenio = async () => {
                   <div className="h-12 bg-gray-50 rounded-xl animate-pulse mt-1.5"></div>
                 </div>
               ) : (
-                <ResumenTerapiasView pacienteId={paciente?.id} />
+                <ResumenTerapiasView pacienteId={paciente?.id} user={user} />
               )
             )}
           </div>

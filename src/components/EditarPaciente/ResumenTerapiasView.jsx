@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { getResumenTerapiasPorPaciente } from '../../services/citaService';
 import ListadoCitasPorServicio from './ListadoCitasPorServicio';
+import { ROLES } from '../../constants/roles'; // ajusta la ruta según tu estructura
 
-const ResumenTerapiasView = ({ pacienteId }) => {
+const ResumenTerapiasView = ({ pacienteId, user }) => {
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Solo Administrador y Admisión ven el listado detallado de citas
+  const puedeVerHistorial = user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION;
 
   useEffect(() => {
     if (!pacienteId) return;
@@ -96,8 +100,10 @@ const ResumenTerapiasView = ({ pacienteId }) => {
         />
       </div>
 
-      {/* Listado detallado de citas */}
-      <ListadoCitasPorServicio pacienteId={pacienteId} />
+      {/* Listado detallado — solo Administrador y Admisión */}
+      {puedeVerHistorial && (
+        <ListadoCitasPorServicio pacienteId={pacienteId} />
+      )}
     </div>
   );
 };
