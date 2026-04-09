@@ -13,13 +13,24 @@ import {
   ReceiptPercentIcon,
   SparklesIcon,
   GiftIcon,
+  PencilIcon,
+  TrashIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   getVentasServicios,
   getVentasProductos,
+  eliminarVentaServicio,
+  eliminarVentaProducto,
+  getVentaServicioById,
+  getVentaProductoById,
+  actualizarVentaServicio,  
+  actualizarVentaProducto,   
   TIPOS_PAGADOR,
 } from '../../services/ventasService';
+import VenderServiciosTab from './VenderServiciosTab';
+import VenderProductosTab from './VenderProductosTab';
 import {
   generarTicketPDF,
   generarTicketTermico,
@@ -707,6 +718,177 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
   );
 };
 
+// ─── Modal Confirmar Eliminación ──────────────────────────────────────────────
+
+const ConfirmarEliminarModal = ({ venta, tipo, onConfirm, onClose, loading }) => {
+  const tieneSesionesUsadas = tipo === 'servicio' && venta?.detalles?.some(d => d.sesiones_usadas > 0);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-bold text-gray-900">Confirmar Eliminación</h2>
+            <p className="text-xs text-gray-500">Esta acción no se puede deshacer</p>
+          </div>
+          <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-50">
+            <XMarkIcon className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {tieneSesionesUsadas ? (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-800 font-medium mb-2">❌ No se puede eliminar esta venta</p>
+              <p className="text-sm text-red-700">
+                Esta venta tiene sesiones ya utilizadas en citas registradas.
+                Solo se pueden eliminar ventas que no hayan sido usadas.
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-gray-700">
+                ¿Estás seguro de eliminar la venta {tipo === 'servicio' ? 'de servicio' : 'de producto'}
+                {venta.codigo_comprobante && <span className="font-semibold"> {venta.codigo_comprobante}</span>}?
+              </p>
+
+              <div className="p-4 bg-gray-50 rounded-xl space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tipo:</span>
+                  <span className="font-semibold">{tipo === 'servicio' ? 'Servicio' : 'Producto'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Fecha:</span>
+                  <span className="font-semibold">{formatFecha(venta.fecha_venta)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total:</span>
+                  <span className="font-semibold text-red-600">{formatMonto(venta.total)}</span>
+                </div>
+              </div>
+
+              {tipo === 'producto' && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    ℹ️ El stock de los productos será devuelto automáticamente.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50">
+          <button onClick={onClose} disabled={loading}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50">
+            Cancelar
+          </button>
+          {!tieneSesionesUsadas && (
+            <button onClick={onConfirm} disabled={loading}
+              className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50">
+              {loading ? 'Eliminando...' : 'Eliminar Venta'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// ─── Modal Editar Venta (Llama a VenderServiciosTab/VenderProductosTab) ───────
+
+const EditarVentaModal = ({ venta, tipo, onGuardar, onClose, loading }) => {
+  const tieneSesionesUsadas = tipo === 'servicio' && venta?.detalles?.some(d => d.sesiones_usadas > 0);
+
+  // Si tiene sesiones usadas, bloqueamos la edición completa
+  if (tieneSesionesUsadas) {
+    return createPortal(
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+              <ExclamationTriangleIcon className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-bold text-gray-900">No se puede editar</h2>
+              <p className="text-xs text-gray-500">La venta tiene sesiones usadas</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100">
+              <XMarkIcon className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          <div className="px-6 py-5">
+            <p className="text-sm text-gray-700 mb-3">
+              Esta venta tiene sesiones ya utilizadas en citas registradas.
+            </p>
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-800 font-medium">
+                ⚠️ Solo se pueden editar ventas que no hayan sido usadas en ninguna cita.
+              </p>
+            </div>
+          </div>
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+            <button onClick={onClose}
+              className="w-full px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  // Modal que envuelve VenderServiciosTab o VenderProductosTab
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <PencilIcon className="w-5 h-5 text-[#7B1FA2]" />
+            <h2 className="font-bold text-gray-900">Editar Venta de {tipo === 'servicio' ? 'Servicio' : 'Producto'}</h2>
+            {venta.codigo_comprobante && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                {venta.codigo_comprobante}
+              </span>
+            )}
+          </div>
+          <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-50">
+            <XMarkIcon className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {tipo === 'servicio' ? (
+            <VenderServiciosTab
+              modoEdicion={true}
+              ventaExistente={venta}
+              onGuardarEdicion={(datosActualizados) => {
+                onGuardar(datosActualizados);
+              }}
+              onCancelarEdicion={onClose}
+            />
+          ) : (
+            <VenderProductosTab
+              modoEdicion={true}
+              ventaExistente={venta}
+              onGuardarEdicion={(datosActualizados) => {
+                onGuardar(datosActualizados);
+              }}
+              onCancelarEdicion={onClose}
+            />
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ─── Modal Detalle Venta ──────────────────────────────────────────────────────
 
 const DetalleVentaModal = ({ venta, tipo, onClose }) => {
@@ -900,8 +1082,12 @@ const HistorialVentasTab = () => {
   const [ventaDetalle, setVentaDetalle]     = useState(null);
   const [tipoDetalle, setTipoDetalle]       = useState(null);
   const [ventaImprimir, setVentaImprimir]   = useState(null);
+  const [ventaEliminar, setVentaEliminar]   = useState(null);
+  const [ventaEditar, setVentaEditar]       = useState(null);
+  const [procesando, setProcesando]         = useState(false);
   const [page, setPage]                     = useState(0);
   const [rowsPerPage, setRowsPerPage]       = useState(12);
+  const [feedback, setFeedback] = useState(null);
 
   // Obtener el rol del usuario
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -924,6 +1110,48 @@ const HistorialVentasTab = () => {
       setVentasProductos(prodsData || []);
     } catch (err) { console.error('Error cargando ventas:', err); }
     finally { setLoading(false); }
+  };
+
+  const handleEliminarVenta = async () => {
+    if (!ventaEliminar) return;
+    setProcesando(true);
+    try {
+      if (ventaEliminar.tipo === 'servicio') {
+        await eliminarVentaServicio(ventaEliminar.id);
+      } else {
+        await eliminarVentaProducto(ventaEliminar.id);
+      }
+      setFeedback({ tipo: 'exito', mensaje: 'Venta eliminada correctamente' });
+      setVentaEliminar(null);
+      await cargarVentas();
+    } catch (err) {
+      console.error('Error eliminando venta:', err);
+      setFeedback({ tipo: 'error', mensaje: err.response?.data?.message || 'Error al eliminar la venta' });
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const handleEditarVenta = async (payload) => {
+    if (!ventaEditar) return;
+     console.log('ventaEditar:', ventaEditar);
+  console.log('payload:', JSON.stringify(payload, null, 2));
+    setProcesando(true);
+    try {
+      if (ventaEditar.tipo === 'servicio') {
+        await actualizarVentaServicio(ventaEditar.id, payload);
+      } else {
+        await actualizarVentaProducto(ventaEditar.id, payload);
+      }
+      setFeedback({ tipo: 'exito', mensaje: 'Venta actualizada correctamente' });
+      setVentaEditar(null);
+      await cargarVentas();
+    } catch (err) {
+      console.error('Error actualizando venta:', err);
+      setFeedback({ tipo: 'error', mensaje: err.response?.data?.message || 'Error al actualizar la venta' });
+    } finally {
+      setProcesando(false);
+    }
   };
 
   const ventasCombinadas = [
@@ -1070,6 +1298,23 @@ const HistorialVentasTab = () => {
                               className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
                               <PrinterIcon className="w-4 h-4" />
                             </button>
+                            <button  onClick={async () => {
+                              try {
+                                const ventaCompleta = v.tipo === 'servicio'
+                                  ? await getVentaServicioById(v.id)
+                                  : await getVentaProductoById(v.id);
+                                setVentaEditar({ ...ventaCompleta, tipo: v.tipo });
+                              } catch {
+                                setVentaEditar(v); // fallback
+                              }
+                            }} title="Editar venta"
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setVentaEliminar(v)} title="Eliminar venta"
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1131,8 +1376,72 @@ const HistorialVentasTab = () => {
       {ventaImprimir && (
         <PrintPreviewModal venta={ventaImprimir} tipo={ventaImprimir.tipo} onClose={() => setVentaImprimir(null)} />
       )}
+      {ventaEliminar && (
+        <ConfirmarEliminarModal
+          venta={ventaEliminar}
+          tipo={ventaEliminar.tipo}
+          onConfirm={handleEliminarVenta}
+          onClose={() => setVentaEliminar(null)}
+          loading={procesando}
+        />
+      )}
+      {ventaEditar && (
+        <EditarVentaModal
+          venta={ventaEditar}
+          tipo={ventaEditar.tipo}
+          onGuardar={handleEditarVenta}
+          onClose={() => setVentaEditar(null)}
+          loading={procesando}
+        />
+
+        
+      )}
+      {feedback && (
+      <FeedbackModal
+        tipo={feedback.tipo}
+        mensaje={feedback.mensaje}
+        onClose={() => setFeedback(null)}
+      />
+    )}
     </div>
   );
+
 };
 
+
+// 4. Agrega el componente FeedbackModal antes del export default
+const FeedbackModal = ({ tipo, mensaje, onClose }) => createPortal(
+  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className={`px-6 py-8 flex flex-col items-center text-center`}>
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          tipo === 'exito' ? 'bg-green-100' : 'bg-red-100'
+        }`}>
+          {tipo === 'exito' ? (
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <ExclamationTriangleIcon className="w-8 h-8 text-red-600" />
+          )}
+        </div>
+        <h3 className={`text-lg font-bold mb-2 ${tipo === 'exito' ? 'text-gray-900' : 'text-red-700'}`}>
+          {tipo === 'exito' ? '¡Listo!' : 'Ocurrió un error'}
+        </h3>
+        <p className="text-sm text-gray-600">{mensaje}</p>
+      </div>
+      <div className="px-6 pb-6">
+        <button
+          onClick={onClose}
+          className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl transition-colors ${
+            tipo === 'exito' ? 'bg-[#7B1FA2] hover:bg-[#6A1B9A]' : 'bg-red-600 hover:bg-red-700'
+          }`}
+        >
+          Aceptar
+        </button>
+      </div>
+    </div>
+  </div>,
+  document.body
+);
 export default HistorialVentasTab;
