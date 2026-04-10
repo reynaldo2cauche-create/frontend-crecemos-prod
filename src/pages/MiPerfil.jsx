@@ -660,13 +660,21 @@ const MiPerfil = () => {
     return modoEdicion && camposBloqueados[campo];
   };
 
+  // Función helper para formatear fechas sin problema de zona horaria
+  const formatearFecha = (fechaStr) => {
+    if (!fechaStr) return '-';
+    // Si ya viene en formato YYYY-MM-DD, parsearlo correctamente
+    const [year, month, day] = fechaStr.split('T')[0].split('-');
+    return new Date(year, month - 1, day).toLocaleDateString('es-ES');
+  };
+
   // Función para renderizar un campo con bloqueo
   const renderCampo = (campo, label, tipo = 'text', opciones = null, multiline = false) => {
     const bloqueado = isCampoBloqueado(campo);
-    
+
     // Obtener el valor correcto según el tipo de campo
     let valor = '';
-    
+
     if (tipo === 'select' && opciones) {
       // Para selects, obtener el ID del objeto relacionado
       if (campo === 'sexo_id') {
@@ -679,6 +687,14 @@ const MiPerfil = () => {
         valor = perfil.nivel_educacion?.id || perfil.nivel_educacion_id || '';
       } else {
         valor = perfil[campo] || '';
+      }
+    } else if (tipo === 'date') {
+      // Para fechas, asegurar formato YYYY-MM-DD sin conversión de zona horaria
+      const fechaRaw = perfil[campo];
+      if (fechaRaw) {
+        valor = fechaRaw.split('T')[0]; // Obtener solo la parte de fecha
+      } else {
+        valor = '';
       }
     } else {
       valor = perfil[campo] || '';
@@ -710,7 +726,7 @@ const MiPerfil = () => {
       } else if (tipo === 'date' && valor) {
         return (
           <div className="py-2.5 px-3 text-sm text-gray-900 font-medium bg-gray-50 rounded-lg border border-gray-100">
-            {new Date(valor).toLocaleDateString('es-ES')}
+            {formatearFecha(valor)}
           </div>
         );
       } else {

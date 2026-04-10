@@ -225,6 +225,12 @@ const GestorCampanas = () => {
     }
   };
 
+  const formatearFecha = (fechaString) => {
+    if (!fechaString) return '';
+    const [year, month, day] = fechaString.split('-');
+    return new Date(year, month - 1, day).toLocaleDateString('es-ES');
+  };
+
   const getEstadoBadge = (estadoId) => {
     return estadoId === 1 ? (
       <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">
@@ -425,8 +431,7 @@ const GestorCampanas = () => {
                         <div className="flex items-center gap-1 text-sm text-gray-600">
                           <CalendarIcon className="w-4 h-4" />
                           <span>
-                            {new Date(campana.fecha_inicio).toLocaleDateString('es-ES')} -{' '}
-                            {new Date(campana.fecha_fin).toLocaleDateString('es-ES')}
+                            {formatearFecha(campana.fecha_inicio)} - {formatearFecha(campana.fecha_fin)}
                           </span>
                         </div>
                       </td>

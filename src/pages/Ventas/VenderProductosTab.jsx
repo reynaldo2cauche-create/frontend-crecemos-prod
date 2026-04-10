@@ -1,16 +1,5 @@
-import ModalExito from '../../components/Ventas/ModalExito';
-import {
-  generarTicketPDF,
-  generarTicketTermico,
-  generarPDFA4,
-  obtenerPreviewURL,
-  getImporteLetras,
-  getNombreComprador,
-  getDniComprador,
-  formatMoney,
-} from '../../utils/pdfGenerator';
-import logoUrl from '/logo-text-short.png';
-import { ReceiptPercentIcon, PrinterIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+// VenderProductosTab.jsx - Agregar soporte para modoEdicion
+
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -43,24 +32,38 @@ import {
   getPacientesPorResponsable,
 } from '../../services/pacienteService';
 import { obtenerModalidadesPago } from '../../services/solicitudInformeService';
+import ModalExito from '../../components/Ventas/ModalExito';
+import {
+  generarTicketPDF,
+  generarTicketTermico,
+  generarPDFA4,
+  obtenerPreviewURL,
+  getImporteLetras,
+  getNombreComprador,
+  getDniComprador,
+  formatMoney,
+} from '../../utils/pdfGenerator';
+import logoUrl from '/logo-text-short.png';
+import { ReceiptPercentIcon, PrinterIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 const TIPO_VENTA_PRODUCTO = 1;
 
 // ─── Helpers ticket ───────────────────────────────────────────────────────────
 const getInfoBeneficio = (promoAplicada) => {
   const reglas = promoAplicada.promocion?.reglas || [];
-  const reglaRegalo     = reglas.find((r) => r.beneficio_tipo_id === 4);
+  const reglaRegalo = reglas.find((r) => r.beneficio_tipo_id === 4);
   const reglaItemGratis = reglas.find((r) => r.beneficio_tipo_id === 3);
-  if (reglaRegalo)     return { esProductoGratis: true,  esItemGratis: false, nombreProducto: reglaRegalo.beneficio_producto?.nombre || 'Producto de regalo' };
-  if (reglaItemGratis) return { esProductoGratis: false, esItemGratis: true,  nombreProducto: null };
+  if (reglaRegalo) return { esProductoGratis: true, esItemGratis: false, nombreProducto: reglaRegalo.beneficio_producto?.nombre || 'Producto de regalo' };
+  if (reglaItemGratis) return { esProductoGratis: false, esItemGratis: true, nombreProducto: null };
   return { esProductoGratis: false, esItemGratis: false, nombreProducto: null };
 };
 
 // ─── TicketPreviewHTML ────────────────────────────────────────────────────────
 const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
+  // ... (mismo código que ya tienes, sin cambios)
   const promociones = venta.promociones_aplicadas || [];
   const toFloat = (v) => parseFloat(v || 0);
-  const total    = toFloat(venta.total);
+  const total = toFloat(venta.total);
   const descuento = toFloat(venta.descuento_monto);
   const fm = (v) => formatMoney(toFloat(v));
 
@@ -84,12 +87,12 @@ const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
   })();
 
   const s = {
-    wrap:    { fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif', fontSize: '12px', lineHeight: '1.4', color: '#111', background: '#fff', width: '270px', margin: '0 auto', padding: '12px 10px', boxShadow: '0 2px 16px rgba(0,0,0,0.13)', borderRadius: '4px', fontWeight: '500' },
-    center:  { textAlign: 'center', display: 'block' },
-    bold:    { fontWeight: '600' },
-    hr:      { border: 'none', borderTop: '1px dashed #aaa', margin: '6px 0' },
+    wrap: { fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif', fontSize: '12px', lineHeight: '1.4', color: '#111', background: '#fff', width: '270px', margin: '0 auto', padding: '12px 10px', boxShadow: '0 2px 16px rgba(0,0,0,0.13)', borderRadius: '4px', fontWeight: '500' },
+    center: { textAlign: 'center', display: 'block' },
+    bold: { fontWeight: '600' },
+    hr: { border: 'none', borderTop: '1px dashed #aaa', margin: '6px 0' },
     hrSolid: { border: 'none', borderTop: '1px solid #ccc', margin: '6px 0' },
-    row:     { display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px' },
+    row: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px' },
   };
 
   const tipoNombre = (venta.tipo_comprobante?.nombre || '').toUpperCase();
@@ -158,7 +161,7 @@ const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
                   {!esProductoGratis && !esItemGratis && <span style={{ fontWeight: '700', flexShrink: 0 }}>-S/ {fm(p.monto_ahorrado)}</span>}
                 </div>
                 {esProductoGratis && <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>🎁 Incluye gratis: <strong>{nombreProducto}</strong></div>}
-                {esItemGratis     && <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>🎁 El ítem más barato va <strong>gratis</strong></div>}
+                {esItemGratis && <div style={{ fontSize: '8px', color: '#15803d', paddingLeft: '8px' }}>🎁 El ítem más barato va <strong>gratis</strong></div>}
               </div>
             );
           })}
@@ -200,14 +203,15 @@ const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
 
 // ─── PrintPreviewModal ────────────────────────────────────────────────────────
 const FORMATOS_IMPRESION = [
-  { id: 'a4',     label: 'A4',          desc: 'Carta / Oficio',    Icon: DocumentTextIcon },
+  { id: 'a4', label: 'A4', desc: 'Carta / Oficio', Icon: DocumentTextIcon },
   { id: 'ticket', label: 'Ticket 72mm', desc: 'Impresora térmica', Icon: ReceiptPercentIcon },
 ];
 
 const PrintPreviewModal = ({ venta, tipo, onClose }) => {
-  const [formato, setFormato]         = useState('a4');
-  const [a4Url, setA4Url]             = useState(null);
-  const [loadingA4, setLoadingA4]     = useState(false);
+  // ... (mismo código que ya tienes, sin cambios)
+  const [formato, setFormato] = useState('a4');
+  const [a4Url, setA4Url] = useState(null);
+  const [loadingA4, setLoadingA4] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const ticketRef = useRef(null);
 
@@ -322,7 +326,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
             <PrinterIcon className="w-5 h-5 text-[#7B1FA2]" />
@@ -333,7 +336,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><XMarkIcon className="w-5 h-5 text-gray-500" /></button>
         </div>
-        {/* Selector formato */}
         <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Formato:</span>
           {FORMATOS_IMPRESION.map(({ id, label, desc, Icon }) => (
@@ -344,7 +346,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
             </button>
           ))}
         </div>
-        {/* Vista previa */}
         <div className="flex-1 overflow-auto bg-gray-100 relative min-h-0">
           {formato === 'a4' && (
             <>
@@ -370,7 +371,6 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
             </div>
           )}
         </div>
-        {/* Footer */}
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
           <p className="text-xs text-gray-400">
             {formato === 'ticket' ? 'Descarga o imprime el ticket térmico de 72mm' : 'Descarga o imprime en formato A4 (210 × 297 mm)'}
@@ -507,15 +507,23 @@ const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) 
   );
 };
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-const VenderProductosTab = () => {
+// ─── Componente principal VenderProductosTab ─────────────────────────────────────
+const VenderProductosTab = ({ 
+  modoEdicion = false, 
+  ventaExistente = null, 
+  onGuardarEdicion = null, 
+  onCancelarEdicion = null 
+}) => {
+  // Estados para datos maestros
   const [productos, setProductos] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [responsables, setResponsables] = useState([]);
   const [pacientesDelResponsable, setPacientesDelResponsable] = useState([]);
   const [compradoresExternos, setCompradoresExternos] = useState([]);
   const [tiposComprobante, setTiposComprobante] = useState([]);
+  const [modalidadesPago, setModalidadesPago] = useState([]);
 
+  // Estados para la venta
   const [lineas, setLineas] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [mostrarResultados, setMostrarResultados] = useState(false);
@@ -528,6 +536,7 @@ const VenderProductosTab = () => {
   const [responsableId, setResponsableId] = useState('');
   const [compradorExternoId, setCompradorExternoId] = useState('');
   const [tipoComprobante, setTipoComprobante] = useState(1);
+  const [modalidadPagoId, setModalidadPagoId] = useState(null);
 
   const [promocionesAplicadas, setPromocionesAplicadas] = useState([]);
   const [totalDescuentoPromo, setTotalDescuentoPromo] = useState(0);
@@ -540,24 +549,36 @@ const VenderProductosTab = () => {
   const [mostrarModalExterno, setMostrarModalExterno] = useState(false);
   const [formExterno, setFormExterno] = useState({ dni: '', nombre: '', telefono: '', email: '' });
 
-  const [modalidadesPago, setModalidadesPago] = useState([]);
-  const [modalidadPagoId, setModalidadPagoId] = useState(null);
   const [mostrarModalExito, setMostrarModalExito] = useState(false);
-  const [ventaGuardada, setVentaGuardada]         = useState(null);
+  const [ventaGuardada, setVentaGuardada] = useState(null);
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const conIgv = tipoComprobante === 2 || tipoComprobante === 3;
 
+  // Determinar si está en modo edición y bloqueado
+  const esModoEdicion = modoEdicion && ventaExistente;
+  const bloqueado = !!ventaGuardada && !modoEdicion;
+
+  // Cargar datos maestros al montar
   useEffect(() => { cargarDatos(); }, []);
 
+  // Cargar datos de la venta existente si está en modo edición
+  useEffect(() => {
+    if (esModoEdicion && ventaExistente) {
+      cargarVentaExistente();
+    }
+  }, [esModoEdicion, ventaExistente]);
+
+  // Cargar pacientes del responsable cuando cambia responsableId
   useEffect(() => {
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && responsableId) {
       cargarPacientesDelResponsable();
     }
   }, [responsableId]);
 
+  // Recalcular promociones cuando cambian las líneas
   useEffect(() => {
     if (lineas.length === 0) {
       setPromocionesAplicadas([]);
@@ -587,6 +608,65 @@ const VenderProductosTab = () => {
       setTiposComprobante(Array.isArray(tiposComp) ? tiposComp : []);
       setModalidadesPago(Array.isArray(modalidades) ? modalidades : []);
     } catch (err) { console.error('Error cargando datos:', err); }
+  };
+
+  const cargarVentaExistente = () => {
+    const v = ventaExistente;
+    
+    // Tipo de comprobante
+    if (v.tipo_comprobante?.id) setTipoComprobante(v.tipo_comprobante.id);
+    
+    // Tipo de pagador
+    const pagadorId = v.tipo_pagador_id || v.tipo_comprador_id;
+    if (pagadorId) setTipoPagador(pagadorId);
+    
+    // Según tipo de pagador
+    if (pagadorId === TIPOS_PAGADOR.PACIENTE && v.paciente_id) {
+      setPacienteId(v.paciente_id);
+    }
+    if (pagadorId === TIPOS_PAGADOR.RESPONSABLE && v.responsable_id) {
+      setResponsableId(v.responsable_id);
+      if (v.paciente_id) setPacienteId(v.paciente_id);
+    }
+    if (pagadorId === TIPOS_PAGADOR.EXTERNO && v.comprador_externo_id) {
+      setCompradorExternoId(v.comprador_externo_id);
+    }
+    
+    // Modalidad de pago
+    if (v.modalidad_pago_id) setModalidadPagoId(v.modalidad_pago_id);
+    
+    // Nota y observaciones
+    if (v.nota) setNota(v.nota);
+    if (v.observaciones) setObservaciones(v.observaciones);
+    
+    // Descuento global
+    if (v.descuento_tipo) {
+      const tipoDescuento = v.descuento_tipo.id === 1 ? '%' : 'S/';
+      setDescuentoGlobal({ tipo: tipoDescuento, valor: v.descuento_valor?.toString() || '' });
+    }
+    
+    // Líneas de productos
+    if (v.detalles && Array.isArray(v.detalles)) {
+      const lineasCargadas = v.detalles.map(d => ({
+        id: d.id || Date.now() + Math.random(),
+        producto_id: d.producto_id,
+        categoria_id: d.producto?.categoria_id || null,
+        nombre: d.producto?.nombre || '-',
+        cantidad: parseFloat(d.cantidad) || 1,
+        precio_unitario: parseFloat(d.precio_unitario) || 0,
+        descuento_tipo: d.descuento_tipo ? (d.descuento_tipo.id === 1 ? '%' : 'S/') : '',
+        descuento_valor: d.descuento_valor?.toString() || '',
+        stock_disponible: d.producto?.stock_actual || 999,
+      }));
+      setLineas(lineasCargadas);
+    }
+    
+    // Promociones aplicadas (si existen)
+    if (v.promociones_aplicadas) {
+      setPromocionesAplicadas(v.promociones_aplicadas);
+      const totalPromo = v.promociones_aplicadas.reduce((s, p) => s + parseFloat(p.monto_ahorrado || 0), 0);
+      setTotalDescuentoPromo(totalPromo);
+    }
   };
 
   const cargarPacientesDelResponsable = async () => {
@@ -645,7 +725,7 @@ const VenderProductosTab = () => {
   }));
 
   const setDescuentoLinea = (id, tipo, valor) => setLineas(prev => prev.map(l => l.id === id ? { ...l, descuento_tipo: tipo, descuento_valor: valor } : l));
-  const eliminarLinea     = (id) => setLineas(prev => prev.filter(l => l.id !== id));
+  const eliminarLinea = (id) => setLineas(prev => prev.filter(l => l.id !== id));
 
   const calcularLinea = (linea) => {
     const subtotal = linea.cantidad * linea.precio_unitario;
@@ -656,7 +736,7 @@ const VenderProductosTab = () => {
         : parseFloat(linea.descuento_valor);
     }
     const totalLinea = subtotal - descuento;
-    const igv  = conIgv ? totalLinea - totalLinea / 1.18 : 0;
+    const igv = conIgv ? totalLinea - totalLinea / 1.18 : 0;
     const base = conIgv ? totalLinea / 1.18 : totalLinea;
     return { subtotal, descuento, totalLinea, igv, base };
   };
@@ -672,7 +752,7 @@ const VenderProductosTab = () => {
         : parseFloat(descuentoGlobal.valor);
     }
     const totalConDesc = subtotalDespuesDescuentosLineas - descuentoGlobalMonto - totalDescuentoPromo;
-    const igv  = conIgv ? totalConDesc - totalConDesc / 1.18 : 0;
+    const igv = conIgv ? totalConDesc - totalConDesc / 1.18 : 0;
     const base = conIgv ? totalConDesc / 1.18 : totalConDesc;
     return { subtotalBruto, descuentosLineas, descuentoGlobalMonto, base, igv, total: Math.max(0, totalConDesc) };
   };
@@ -688,53 +768,106 @@ const VenderProductosTab = () => {
     } catch (err) { alert(err?.response?.data?.message || 'Error al crear comprador externo'); }
   };
 
+  const construirPayload = () => {
+    const detallesNormales = lineas.map(l => {
+      const det = { producto_id: l.producto_id, cantidad: l.cantidad, precio_unitario: l.precio_unitario };
+      if (l.descuento_tipo && l.descuento_valor) {
+        det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
+        det.descuento_valor = parseFloat(l.descuento_valor);
+      }
+      return det;
+    });
+
+    const detallesRegalo = productosRegalo.map(regalo => ({
+      producto_id: regalo.producto_id,
+      cantidad: 1,
+      precio_unitario: regalo.precio_unitario,
+      descuento_tipo_id: TIPOS_DESCUENTO.MONTO_FIJO,
+      descuento_valor: regalo.precio_unitario,
+    }));
+
+    const payload = {
+      tipo_pagador_id: tipoPagador,
+      tipo_comprobante_id: tipoComprobante,
+      fecha_venta: new Date().toISOString().slice(0, 10),
+      detalles: [...detallesNormales, ...detallesRegalo],
+      modalidad_pago_id: modalidadPagoId,
+    };
+
+    // user_crea_id solo para crear, user_actua_id solo para actualizar
+    if (esModoEdicion) {
+      payload.user_actua_id = user?.id;
+    } else {
+      payload.user_crea_id = user?.id;
+    }
+
+    if (totalDescuentoPromo > 0) payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
+
+    // Manejar comprador según tipo de pagador
+    if (tipoPagador === TIPOS_PAGADOR.PACIENTE) {
+      payload.paciente_id = parseInt(pacienteId);
+      if (esModoEdicion) {
+        payload.responsable_id = null;
+        payload.comprador_externo_id = null;
+      }
+    } else if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE) {
+      payload.responsable_id = parseInt(responsableId);
+      if (pacienteId) payload.paciente_id = parseInt(pacienteId);
+      if (esModoEdicion) {
+        payload.comprador_externo_id = null;
+      }
+    } else if (tipoPagador === TIPOS_PAGADOR.EXTERNO) {
+      payload.comprador_externo_id = parseInt(compradorExternoId);
+      if (esModoEdicion) {
+        payload.paciente_id = null;
+        payload.responsable_id = null;
+      }
+    }
+
+    if (descuentoGlobal.tipo && descuentoGlobal.valor) {
+      payload.descuento_tipo_id = descuentoGlobal.tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
+      payload.descuento_valor = parseFloat(descuentoGlobal.valor);
+    } else if (esModoEdicion) {
+      // Si se eliminó el descuento global en edición, enviarlo como null
+      payload.descuento_tipo_id = null;
+      payload.descuento_valor = null;
+    }
+
+    if (nota) payload.nota = nota;
+    if (observaciones) payload.observaciones = observaciones;
+
+    return payload;
+  };
+
   const handleSubmit = async () => {
     setError('');
+    
     if (lineas.length === 0) return setError('Agrega al menos un producto');
-    if (tipoPagador === TIPOS_PAGADOR.PACIENTE    && !pacienteId)          return setError('Selecciona un paciente');
-    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableId)       return setError('Selecciona un responsable');
-    if (tipoPagador === TIPOS_PAGADOR.EXTERNO     && !compradorExternoId)  return setError('Selecciona o crea un comprador externo');
+    if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteId) return setError('Selecciona un paciente');
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableId) return setError('Selecciona un responsable');
+    if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoId) return setError('Selecciona o crea un comprador externo');
     if (!modalidadPagoId) return setError('Selecciona una modalidad de pago');
 
+    const payload = construirPayload();
+
+    // Si está en modo edición, llamar al callback onGuardarEdicion
+    if (esModoEdicion && onGuardarEdicion) {
+      setLoading(true);
+      try {
+        await onGuardarEdicion(payload);
+        // El cierre del modal lo maneja el padre
+      } catch (err) {
+        const msg = err?.response?.data?.message;
+        setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Error al actualizar la venta');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Modo normal: crear nueva venta
     setLoading(true);
     try {
-      const detallesNormales = lineas.map(l => {
-        const det = { producto_id: l.producto_id, cantidad: l.cantidad, precio_unitario: l.precio_unitario };
-        if (l.descuento_tipo && l.descuento_valor) {
-          det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
-          det.descuento_valor   = parseFloat(l.descuento_valor);
-        }
-        return det;
-      });
-
-      const detallesRegalo = productosRegalo.map(regalo => ({
-        producto_id:       regalo.producto_id,
-        cantidad:          1,
-        precio_unitario:   regalo.precio_unitario,
-        descuento_tipo_id: TIPOS_DESCUENTO.MONTO_FIJO,
-        descuento_valor:   regalo.precio_unitario,
-      }));
-
-      const payload = {
-        tipo_comprador_id:   tipoPagador,
-        tipo_comprobante_id: tipoComprobante,
-        fecha_venta:         new Date().toISOString().slice(0, 10),
-        user_crea_id:        user?.id,
-        detalles:            [...detallesNormales, ...detallesRegalo],
-        modalidad_pago_id:   modalidadPagoId,
-      };
-
-      if (totalDescuentoPromo > 0)                  payload.descuento_promocion    = parseFloat(totalDescuentoPromo.toFixed(2));
-      if (tipoPagador === TIPOS_PAGADOR.PACIENTE)   payload.paciente_id            = parseInt(pacienteId);
-      if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE){ payload.responsable_id       = parseInt(responsableId); if (pacienteId) payload.paciente_id = parseInt(pacienteId); }
-      if (tipoPagador === TIPOS_PAGADOR.EXTERNO)    payload.comprador_externo_id   = parseInt(compradorExternoId);
-      if (descuentoGlobal.tipo && descuentoGlobal.valor) {
-        payload.descuento_tipo_id = descuentoGlobal.tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
-        payload.descuento_valor   = parseFloat(descuentoGlobal.valor);
-      }
-      if (nota) payload.nota = nota;
-      if (observaciones) payload.observaciones = observaciones;
-
       const ventaCreada = await crearVentaProducto(payload);
 
       if (ventaCreada?.id && promocionesAplicadas.length > 0) {
@@ -768,22 +901,39 @@ const VenderProductosTab = () => {
     setTotalDescuentoPromo(0);
     setProductosRegalo([]);
     setModalidadPagoId(null);
+    setTipoPagador(TIPOS_PAGADOR.PACIENTE);
+    setTipoComprobante(1);
   };
 
   const handleNuevaVenta = () => { resetForm(); setVentaGuardada(null); };
+  
+  const handleCancelar = () => {
+    if (esModoEdicion && onCancelarEdicion) {
+      onCancelarEdicion();
+    } else {
+      resetForm();
+    }
+  };
 
   const totales = calcularTotales();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={esModoEdicion ? '' : 'min-h-screen bg-gray-50'}>
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1.5">
-            <ShoppingCartIcon className="w-8 h-8 text-[#7B1FA2]" />
-            <h1 className="text-3xl font-bold text-gray-900">Venta de Productos</h1>
+        {/* Encabezado - Solo mostrar cuando NO está en modo edición */}
+        {!esModoEdicion && (
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-1.5">
+              <ShoppingCartIcon className="w-8 h-8 text-[#7B1FA2]" />
+              <h1 className="text-3xl font-bold text-gray-900">
+                Venta de Productos
+              </h1>
+            </div>
+            <p className="text-sm text-gray-500">
+              Registra ventas de productos del inventario
+            </p>
           </div>
-          <p className="text-sm text-gray-500">Registra ventas de productos del inventario</p>
-        </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           {error && <div className="mx-6 mt-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
@@ -796,7 +946,7 @@ const VenderProductosTab = () => {
             <div className="flex flex-wrap gap-3">
               {tiposComprobante.map(tc => (
                 <button key={tc.id} type="button" onClick={() => setTipoComprobante(tc.id)}
-                  disabled={!!ventaGuardada}
+                  disabled={bloqueado}
                   className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
                   {tc.nombre}
                 </button>
@@ -810,15 +960,15 @@ const VenderProductosTab = () => {
             <label className="block text-xs font-semibold text-gray-600 mb-3">¿Quién paga?</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {[
-                { id: TIPOS_PAGADOR.PACIENTE,    nombre: 'Paciente',           icon: UserIcon      },
-                { id: TIPOS_PAGADOR.RESPONSABLE, nombre: 'Responsable',        icon: UserGroupIcon },
-                { id: TIPOS_PAGADOR.EXTERNO,     nombre: 'Comprador Externo',  icon: UserPlusIcon  },
+                { id: TIPOS_PAGADOR.PACIENTE, nombre: 'Paciente', icon: UserIcon },
+                { id: TIPOS_PAGADOR.RESPONSABLE, nombre: 'Responsable', icon: UserGroupIcon },
+                { id: TIPOS_PAGADOR.EXTERNO, nombre: 'Comprador Externo', icon: UserPlusIcon },
               ].map(tipo => {
-                const Icon   = tipo.icon;
+                const Icon = tipo.icon;
                 const activo = tipoPagador === tipo.id;
                 return (
                   <button key={tipo.id} type="button" onClick={() => setTipoPagador(tipo.id)}
-                    disabled={!!ventaGuardada}
+                    disabled={bloqueado}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${activo ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activo ? 'bg-[#7B1FA2] text-white' : 'bg-gray-100 text-gray-600'}`}>
                       <Icon className="w-5 h-5" />
@@ -837,12 +987,12 @@ const VenderProductosTab = () => {
                   <input type="text" value={busqueda}
                     onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
                     onFocus={() => setMostrarResultados(true)}
-                    disabled={!!ventaGuardada}
+                    disabled={bloqueado}
                     placeholder="Buscar por nombre o código..."
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
-                {mostrarResultados && busqueda && productosFiltrados.length > 0 && (
+                {mostrarResultados && busqueda && productosFiltrados.length > 0 && !bloqueado && (
                   <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                     {productosFiltrados.slice(0, 10).map(producto => (
                       <button key={producto.id} onClick={() => agregarProducto(producto)}
@@ -860,7 +1010,7 @@ const VenderProductosTab = () => {
                   Modalidad de Pago <span className="text-red-500">*</span>
                 </label>
                 <select value={modalidadPagoId ?? ''} onChange={(e) => setModalidadPagoId(e.target.value ? parseInt(e.target.value) : null)}
-                  disabled={!!ventaGuardada}
+                  disabled={bloqueado}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed">
                   <option value="">Seleccionar modalidad...</option>
                   {modalidadesPago.map((m) => (<option key={m.id} value={m.id}>{m.nombre}</option>))}
@@ -875,7 +1025,7 @@ const VenderProductosTab = () => {
                     getItemLabel={(p) => `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''} - DNI: ${p.numero_documento || 'S/N'}`.trim()}
                     getItemValue={(p) => p.id}
                     getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase()}
-                    disabled={!!ventaGuardada}
+                    disabled={bloqueado}
                   />
                 </div>
               )}
@@ -888,7 +1038,7 @@ const VenderProductosTab = () => {
                     getItemLabel={(r) => `${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''} - DNI: ${r.numero_documento || 'S/N'}`.trim()}
                     getItemValue={(r) => r.id}
                     getItemSearchText={(r) => `${r.numero_documento || ''} ${r.nombres || ''} ${r.apellido_paterno || ''} ${r.apellido_materno || ''}`.toLowerCase()}
-                    disabled={!!ventaGuardada}
+                    disabled={bloqueado}
                   />
                   {responsableId && pacientesDelResponsable.length > 0 && (
                     <p className="text-xs text-gray-500 mt-2">ℹ️ {pacientesDelResponsable.length} paciente(s) a cargo{pacientesDelResponsable.length === 1 ? ' (autoseleccionado)' : ''}</p>
@@ -905,13 +1055,14 @@ const VenderProductosTab = () => {
                       getItemValue={(c) => c.id}
                       getItemSearchText={(c) => `${c.dni} ${c.nombre}`}
                       className="flex-1"
-                      disabled={!!ventaGuardada}
+                      disabled={bloqueado}
                     />
-                    <button type="button" onClick={() => setMostrarModalExterno(true)}
-                      disabled={!!ventaGuardada}
-                      className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
-                      + Nuevo
-                    </button>
+                    {!bloqueado && (
+                      <button type="button" onClick={() => setMostrarModalExterno(true)}
+                        className="px-4 py-3 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] whitespace-nowrap">
+                        + Nuevo
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -944,12 +1095,12 @@ const VenderProductosTab = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => setCantidad(linea.id, linea.cantidad - 1)} disabled={!!ventaGuardada}
+                          <button onClick={() => setCantidad(linea.id, linea.cantidad - 1)} disabled={bloqueado}
                             className="p-1 hover:bg-gray-200 rounded disabled:opacity-40 disabled:cursor-not-allowed">
                             <MinusIcon className="w-4 h-4 text-gray-600" />
                           </button>
                           <span className="w-12 text-center font-semibold">{linea.cantidad}</span>
-                          <button onClick={() => setCantidad(linea.id, linea.cantidad + 1)} disabled={!!ventaGuardada}
+                          <button onClick={() => setCantidad(linea.id, linea.cantidad + 1)} disabled={bloqueado}
                             className="p-1 hover:bg-gray-200 rounded disabled:opacity-40 disabled:cursor-not-allowed">
                             <PlusIcon className="w-4 h-4 text-gray-600" />
                           </button>
@@ -960,7 +1111,7 @@ const VenderProductosTab = () => {
                         <div className="flex items-center justify-end gap-1">
                           <select value={linea.descuento_tipo}
                             onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)}
-                            disabled={!!ventaGuardada}
+                            disabled={bloqueado}
                             className="px-2 py-1 text-xs border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
                             <option value="">-</option>
                             <option value="%">%</option>
@@ -968,7 +1119,7 @@ const VenderProductosTab = () => {
                           </select>
                           <input type="number" step="0.01" min="0" value={linea.descuento_valor}
                             onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
-                            disabled={!!ventaGuardada}
+                            disabled={bloqueado}
                             className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed"
                             placeholder="0" />
                         </div>
@@ -977,7 +1128,7 @@ const VenderProductosTab = () => {
                       <td className="px-4 py-4 text-right text-gray-600">{conIgv ? `S/ ${calc.igv.toFixed(2)}` : <span className="text-gray-300">—</span>}</td>
                       <td className="px-6 py-4 text-right font-bold text-gray-900">S/ {calc.totalLinea.toFixed(2)}</td>
                       <td className="px-4 py-4">
-                        <button onClick={() => eliminarLinea(linea.id)} disabled={!!ventaGuardada}
+                        <button onClick={() => eliminarLinea(linea.id)} disabled={bloqueado}
                           className="p-1 hover:bg-red-50 rounded text-red-600 disabled:opacity-40 disabled:cursor-not-allowed">
                           <TrashIcon className="w-4 h-4" />
                         </button>
@@ -1020,13 +1171,13 @@ const VenderProductosTab = () => {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Nota interna (solo visible en sistema)</label>
                 <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={3}
-                  disabled={!!ventaGuardada}
+                  disabled={bloqueado}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Notas internas..." />
 
                 <label className="block text-xs font-semibold text-gray-600 mb-2 mt-4">Observaciones (visible en comprobante)</label>
                 <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={3}
-                  disabled={!!ventaGuardada}
+                  disabled={bloqueado}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Observaciones para el comprobante..." />
               </div>
@@ -1036,14 +1187,14 @@ const VenderProductosTab = () => {
                   <span className="text-sm text-gray-600">Descuento Global</span>
                   <div className="flex items-center gap-2">
                     <select value={descuentoGlobal.tipo} onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, tipo: e.target.value })}
-                      disabled={!!ventaGuardada}
+                      disabled={bloqueado}
                       className="px-3 py-2 text-sm border border-gray-200 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed">
                       <option value="%">%</option>
                       <option value="S/">S/</option>
                     </select>
                     <input type="number" step="0.01" min="0" value={descuentoGlobal.valor}
                       onChange={(e) => setDescuentoGlobal({ ...descuentoGlobal, valor: e.target.value })}
-                      disabled={!!ventaGuardada}
+                      disabled={bloqueado}
                       className="w-24 px-3 py-2 text-sm text-right border border-gray-200 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
                   </div>
                 </div>
@@ -1073,9 +1224,22 @@ const VenderProductosTab = () => {
             </div>
           </div>
 
-          {/* ─── Acciones — mismo patrón que VenderServiciosTab ─────────────── */}
+          {/* Acciones */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-            {ventaGuardada ? (
+            {esModoEdicion ? (
+              // Botones para modo edición
+              <>
+                <button onClick={handleCancelar}
+                  className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button onClick={handleSubmit} disabled={loading || lineas.length === 0}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed">
+                  {loading ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </>
+            ) : ventaGuardada ? (
+              // Botones después de guardar una venta nueva
               <>
                 <button onClick={handleNuevaVenta}
                   className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2">
@@ -1089,6 +1253,7 @@ const VenderProductosTab = () => {
                 </button>
               </>
             ) : (
+              // Botones para nueva venta
               <>
                 <button onClick={resetForm}
                   className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
@@ -1116,10 +1281,10 @@ const VenderProductosTab = () => {
             </div>
             <form onSubmit={handleCrearExterno} className="p-6 space-y-4">
               {[
-                { key: 'dni',      label: 'DNI *',             required: true,  placeholder: 'Ej: 12345678',          type: 'text',  maxLength: 8 },
-                { key: 'nombre',   label: 'Nombre Completo *', required: true,  placeholder: 'Ej: Juan Pérez García',  type: 'text' },
-                { key: 'telefono', label: 'Teléfono',          required: false, placeholder: 'Ej: 987654321',         type: 'text',  maxLength: 9 },
-                { key: 'email',    label: 'Email',             required: false, placeholder: 'Ej: ejemplo@correo.com', type: 'email' },
+                { key: 'dni', label: 'DNI *', required: true, placeholder: 'Ej: 12345678', type: 'text', maxLength: 8 },
+                { key: 'nombre', label: 'Nombre Completo *', required: true, placeholder: 'Ej: Juan Pérez García', type: 'text' },
+                { key: 'telefono', label: 'Teléfono', required: false, placeholder: 'Ej: 987654321', type: 'text', maxLength: 9 },
+                { key: 'email', label: 'Email', required: false, placeholder: 'Ej: ejemplo@correo.com', type: 'email' },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-xs font-semibold text-gray-600 mb-2">{f.label}</label>

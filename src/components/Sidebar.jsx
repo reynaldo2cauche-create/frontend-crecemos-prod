@@ -34,6 +34,7 @@ import {
   IdentificationIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { Campaign } from '@mui/icons-material';
 
 // Contexto para compartir el estado del sidebar
 export const SidebarContext = createContext();
@@ -120,6 +121,7 @@ const menuItems = [
   },
 
   { text: 'Tarifario', path: '/intranet/tarifario', icon: CurrencyDollarIcon, adminAdmisionOnly: true },
+  { text: 'Campañas', path: '/intranet/campanas', icon: Campaign, adminAdmisionOnly: true },
    { 
   text: 'Reclamaciones', 
   path: '/intranet/libro-reclamaciones', 

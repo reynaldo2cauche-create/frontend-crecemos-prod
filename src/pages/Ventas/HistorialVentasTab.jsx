@@ -873,7 +873,7 @@ const EditarVentaModal = ({ venta, tipo, onGuardar, onClose, loading }) => {
               onCancelarEdicion={onClose}
             />
           ) : (
-            <VenderProductosTab
+          <VenderProductosTab
               modoEdicion={true}
               ventaExistente={venta}
               onGuardarEdicion={(datosActualizados) => {
