@@ -144,6 +144,11 @@ export const getListadoCitasPorPaciente = async (pacienteId) => {
   return response.data;
 };
 
+export const getInfoVentaDeCita = async (citaId) => {
+  const response = await api.get(`/citas/${citaId}/info-venta`);
+  return response.data;
+};
+
 // 📊 OBTENER RESUMEN DE TERAPIAS POR PACIENTE
 export const getResumenTerapiasPorPaciente = async (pacienteId) => {
   const response = await api.get(`/citas/resumen-terapias/${pacienteId}`);

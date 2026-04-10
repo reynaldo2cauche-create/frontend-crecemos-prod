@@ -1298,23 +1298,27 @@ const HistorialVentasTab = () => {
                               className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
                               <PrinterIcon className="w-4 h-4" />
                             </button>
-                            <button  onClick={async () => {
-                              try {
-                                const ventaCompleta = v.tipo === 'servicio'
-                                  ? await getVentaServicioById(v.id)
-                                  : await getVentaProductoById(v.id);
-                                setVentaEditar({ ...ventaCompleta, tipo: v.tipo });
-                              } catch {
-                                setVentaEditar(v); // fallback
-                              }
-                            }} title="Editar venta"
-                              className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                              <PencilIcon className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setVentaEliminar(v)} title="Eliminar venta"
-                              className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
+                            {!esAdmision && (
+                              <>
+                                <button  onClick={async () => {
+                                  try {
+                                    const ventaCompleta = v.tipo === 'servicio'
+                                      ? await getVentaServicioById(v.id)
+                                      : await getVentaProductoById(v.id);
+                                    setVentaEditar({ ...ventaCompleta, tipo: v.tipo });
+                                  } catch {
+                                    setVentaEditar(v); // fallback
+                                  }
+                                }} title="Editar venta"
+                                  className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                                  <PencilIcon className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setVentaEliminar(v)} title="Eliminar venta"
+                                  className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

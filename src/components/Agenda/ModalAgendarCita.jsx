@@ -18,7 +18,8 @@ import {
   AlertCircle,
   MessageCircle,
   Copy,
-  Check
+  Check,
+  Package
 } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
 import { useServicios } from '../../hooks/useServicios';
@@ -29,7 +30,7 @@ import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
 import { useGeofencing } from '../../hooks/useGeofencing';
 import { esFeriado, getNombreFeriado } from '../../constants/feriados';
-import { getVentasDisponibles } from '../../services/citaService';
+import { getVentasDisponibles, getListadoCitasPorPaciente, getInfoVentaDeCita } from '../../services/citaService';
 
 const ModalAgendarCita = ({
   open,
@@ -86,6 +87,10 @@ const ModalAgendarCita = ({
   const [cargandoVentas, setCargandoVentas] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
 
+  // 📦 PAQUETE DE LA CITA
+  const [infoPaquete, setInfoPaquete] = useState(null);
+  const [cargandoPaquete, setCargandoPaquete] = useState(false);
+
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
   const requiereGeofencing = esTerapeuta || esRecepcionista;
@@ -109,6 +114,7 @@ const ModalAgendarCita = ({
   const { historial, loading: loadingHistorial, error: errorHistorial } = useHistorialCita(
     modoEdicion && citaEditando?.id ? citaEditando.id : null
   );
+  
 
   // ========== PERMISOS ==========
   const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR ||
@@ -198,6 +204,59 @@ const ModalAgendarCita = ({
     }
   };
 
+  // 📦 CARGAR INFORMACIÓN DEL PAQUETE
+  const cargarInfoPaquete = useCallback(async () => {
+    console.log('🔍 DEBUG cargarInfoPaquete:', {
+      paciente_id: citaEditando?.paciente_id,
+      venta_servicio_detalle_id: citaEditando?.venta_servicio_detalle_id,
+      citaEditando: citaEditando
+    });
+
+    if (!citaEditando?.paciente_id || !citaEditando?.venta_servicio_detalle_id) {
+      console.log('❌ No hay paciente_id o venta_servicio_detalle_id');
+      setInfoPaquete(null);
+      return;
+    }
+
+    setCargandoPaquete(true);
+    try {
+      const listado = await getListadoCitasPorPaciente(citaEditando.paciente_id);
+      console.log('📦 Listado recibido:', listado);
+
+      // Buscar el paquete que contiene esta cita
+      let paqueteEncontrado = null;
+      for (const servicio of listado.servicios) {
+        console.log('🔍 Buscando en servicio:', servicio.servicio_nombre);
+        // Los paquetes son un objeto, no array
+        const paquetesArray = Object.values(servicio.paquetes);
+        console.log('📦 Paquetes del servicio:', paquetesArray);
+
+        for (const paquete of paquetesArray) {
+          console.log('🔍 Comparando paquete_id:', paquete.paquete_id, 'con venta_servicio_detalle_id:', citaEditando.venta_servicio_detalle_id);
+          // Comparar como string porque puede venir como string o número
+          if (String(paquete.paquete_id) === String(citaEditando.venta_servicio_detalle_id)) {
+            console.log('✅ PAQUETE ENCONTRADO!');
+            paqueteEncontrado = {
+              ...paquete,
+              servicio_nombre: servicio.servicio_nombre,
+              servicio_id: servicio.servicio_id
+            };
+            break;
+          }
+        }
+        if (paqueteEncontrado) break;
+      }
+
+      console.log('📦 Paquete encontrado final:', paqueteEncontrado);
+      setInfoPaquete(paqueteEncontrado);
+    } catch (error) {
+      console.error('❌ Error al cargar info del paquete:', error);
+      setInfoPaquete(null);
+    } finally {
+      setCargandoPaquete(false);
+    }
+  }, [citaEditando?.paciente_id, citaEditando?.venta_servicio_detalle_id]);
+
   // 🔒 Cargar seguimiento apenas se abre el modal en edición (para validar bloqueo)
   useEffect(() => {
     if (open && modoEdicion && citaEditando?.id) {
@@ -211,6 +270,13 @@ const ModalAgendarCita = ({
       cargarSeguimientoAsistencia();
     }
   }, [tabValue, modoEdicion, citaEditando?.id, cargarSeguimientoAsistencia]);
+
+  // 📦 Cargar info del paquete cuando se cambia a la pestaña de paquete
+  useEffect(() => {
+    if (tabValue === 4 && modoEdicion && citaEditando?.id) {
+      cargarInfoPaquete();
+    }
+  }, [tabValue, modoEdicion, citaEditando?.id, cargarInfoPaquete]);
 
   // ========== HELPERS PARA FORMATEAR DATOS DE CITA ==========
   const formatearHora = (horaStr) => {
@@ -302,69 +368,79 @@ const ModalAgendarCita = ({
           ? formatearNombreTitulo(`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim())
           : 'Paciente';
 
-        // Verificar si tiene responsable activo
         let tieneResponsable = false;
         if (citaEditando.paciente?.responsables && Array.isArray(citaEditando.paciente.responsables)) {
-          // Buscar cualquier responsable activo (activo puede ser true, 1, "1")
           const responsableActivo = citaEditando.paciente.responsables.find(
             r => r.activo === true || r.activo === 1 || r.activo === '1'
           );
           tieneResponsable = !!responsableActivo;
         }
 
-        // Obtener saludo dinámico según la hora actual
         const saludo = obtenerSaludo();
+
+        // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
+        let mensajeUltimaSesion = '';
+        try {
+          if (citaEditando.venta_servicio_detalle_id) {
+            const infoVenta = await getInfoVentaDeCita(citaEditando.id);
+            if (infoVenta) {
+              const { sesiones_restantes, sesiones_totales } = infoVenta;
+              if (infoVenta.es_ultima_cita) {
+                mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* Esta es la *última sesión* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Le recomendamos coordinar la renovación.`;
+              } else if (infoVenta.es_penultima_cita) {
+                mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* del paquete.`;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('No se pudo obtener info de la venta:', err);
+        }
 
         let mensaje;
         if (citasMismoDia.length > 1) {
           let mensajeCitas = '';
           citasMismoDia.forEach((cita, index) => {
             mensajeCitas += `\n${index + 1}️⃣ *Cita ${index + 1}*
-🕓 *${formatearHora(cita.hora_inicio)}*
-💜 ${getServicioConMotivo(cita)}
-✨ ${getTerapeutaNombre(cita)}`;
+  🕓 *${formatearHora(cita.hora_inicio)}*
+  💜 ${getServicioConMotivo(cita)}
+  ✨ ${getTerapeutaNombre(cita)}`;
             if (index < citasMismoDia.length - 1) mensajeCitas += '\n';
           });
 
           if (tieneResponsable) {
-            // Mensaje para responsable (si el paciente tiene responsable)
             mensaje = `${saludo}, Sr(a).
-Le hacemos recordar las citas de *${nombrePaciente}* para el día
-🗓️ *${diaSemana}, ${dia} de ${mes}*
-${mensajeCitas}
+  Le hacemos recordar las citas de *${nombrePaciente}* para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  ${mensajeCitas}${mensajeUltimaSesion}
 
-🥳 ¡Los esperamos! ✨`;
+  🥳 ¡Los esperamos! ✨`;
           } else {
-            // Mensaje directo al paciente (si no tiene responsable)
             mensaje = `${saludo}, *${nombrePaciente}*
-Le hacemos recordar sus citas para el día
-🗓️ *${diaSemana}, ${dia} de ${mes}*
-${mensajeCitas}
+  Le hacemos recordar sus citas para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  ${mensajeCitas}${mensajeUltimaSesion}
 
-🥳 ¡Lo esperamos! ✨`;
+  🥳 ¡Lo esperamos! ✨`;
           }
         } else {
-          // Una sola cita (usa la cita que se está editando para tener los datos completos)
           if (tieneResponsable) {
-            // Mensaje para responsable (si el paciente tiene responsable)
             mensaje = `${saludo}, Sr(a).
-Le hacemos recordar la cita de *${nombrePaciente}* para el día
-🗓️ *${diaSemana}, ${dia} de ${mes}*
-🕓 *${formatearHora(citaEditando.hora_inicio)}*
-💜 ${getServicioConMotivo(citaEditando)}
-✨ ${getTerapeutaNombre(citaEditando)}
+  Le hacemos recordar la cita de *${nombrePaciente}* para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${formatearHora(citaEditando.hora_inicio)}*
+  💜 ${getServicioConMotivo(citaEditando)}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}
 
-🥳 ¡Los esperamos! ✨`;
+  🥳 ¡Los esperamos! ✨`;
           } else {
-            // Mensaje directo al paciente (si no tiene responsable)
             mensaje = `${saludo}, *${nombrePaciente}*
-Le hacemos recordar su cita para el día
-🗓️ *${diaSemana}, ${dia} de ${mes}*
-🕓 *${formatearHora(citaEditando.hora_inicio)}*
-💜 ${getServicioConMotivo(citaEditando)}
-✨ ${getTerapeutaNombre(citaEditando)}
+  Le hacemos recordar su cita para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${formatearHora(citaEditando.hora_inicio)}*
+  💜 ${getServicioConMotivo(citaEditando)}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}
 
-🥳 ¡Lo esperamos! ✨`;
+  🥳 ¡Lo esperamos! ✨`;
           }
         }
 
@@ -402,17 +478,14 @@ Le hacemos recordar su cita para el día
         ? formatearNombreTitulo(formularioCita.paciente.nombre_completo)
         : 'Paciente';
 
-      // Verificar si tiene responsable activo
       let tieneResponsable = false;
       if (formularioCita.paciente?.responsables && Array.isArray(formularioCita.paciente.responsables)) {
-        // Buscar cualquier responsable activo (activo puede ser true, 1, "1")
         const responsableActivo = formularioCita.paciente.responsables.find(
           r => r.activo === true || r.activo === 1 || r.activo === '1'
         );
         tieneResponsable = !!responsableActivo;
       }
 
-      // Obtener saludo dinámico según la hora actual
       const saludo = obtenerSaludo();
 
       let servicioNombre = 'Servicio no especificado';
@@ -426,7 +499,6 @@ Le hacemos recordar su cita para el día
         servicioNombre = 'Reunión Clínica';
       }
 
-      // Agregar motivo de la cita
       if (formularioCita.motivo_id && motivos.length) {
         const motivoObj = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
         if (motivoObj?.nombre) servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
@@ -441,31 +513,30 @@ Le hacemos recordar su cita para el día
 
       let mensaje;
       if (tieneResponsable) {
-        // Mensaje para responsable (si el paciente tiene responsable)
         mensaje = `${saludo}, Sr(a).
-Le hacemos recordar la cita de *${nombrePaciente}* para el día
-🗓️ *${diaSemana}, ${dia} de ${mes}*
-🕓 *${horaFormateada}*
-💜 ${servicioNombre}
-✨ ${terapeutaNombre}
+  Le hacemos recordar la cita de *${nombrePaciente}* para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${horaFormateada}*
+  💜 ${servicioNombre}
+  ✨ ${terapeutaNombre}
 
-🥳 ¡Los esperamos! ✨`;
+  🥳 ¡Los esperamos! ✨`;
       } else {
-        // Mensaje directo al paciente (si no tiene responsable)
         mensaje = `${saludo}, *${nombrePaciente}*
-Le hacemos recordar su cita para el día
-🗓️ *${diaSemana}, ${dia} de ${mes}*
-🕓 *${horaFormateada}*
-💜 ${servicioNombre}
-✨ ${terapeutaNombre}
+  Le hacemos recordar su cita para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${horaFormateada}*
+  💜 ${servicioNombre}
+  ✨ ${terapeutaNombre}
 
-🥳 ¡Lo esperamos! ✨`;
+  🥳 ¡Lo esperamos! ✨`;
       }
 
       setMensajeRecordatorio(mensaje);
       setCopiado(false);
     }
   }, [modoEdicion, citaEditando, tipoCita, formularioCita, serviciosApi, servicios, terapeutaSeleccionado, terapeutasReunion, modoSoloLectura, motivos]);
+
   const copiarAlPortapapeles = async () => {
     if (modoSoloLectura) return;
     try {
@@ -767,18 +838,19 @@ Le hacemos recordar su cita para el día
   }, [formularioCita.paciente_id, formularioCita.servicio_id, formularioCita.motivo_id, tipoCita, modoEdicion]);
 
   // 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
-  useEffect(() => {
-    if (tipoCita === 'NORMAL' && formularioCita.venta_servicio_detalle_id && ventasDisponibles.length > 0) {
-      const venta = ventasDisponibles.find(v => v.id === parseInt(formularioCita.venta_servicio_detalle_id));
-      if (venta) {
-        setVentaSeleccionada(venta);
-        console.log('🛒 Venta seleccionada sincronizada:', venta.descripcion, `(${venta.sesiones_disponibles} disponibles)`);
-      }
-    } else if (tipoCita !== 'NORMAL') {
-      setVentaSeleccionada(null);
+// 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
+useEffect(() => {
+  if (tipoCita === 'NORMAL' && formularioCita.venta_servicio_detalle_id && ventasDisponibles.length > 0) {
+    const venta = ventasDisponibles.find(
+      v => String(v.id) === String(formularioCita.venta_servicio_detalle_id)
+    );
+    if (venta) {
+      setVentaSeleccionada(venta);
     }
-  }, [formularioCita.venta_servicio_detalle_id, ventasDisponibles, tipoCita]);
-
+  } else if (tipoCita !== 'NORMAL') {
+    setVentaSeleccionada(null);
+  }
+}, [formularioCita.venta_servicio_detalle_id, ventasDisponibles, tipoCita]);
   // ========== FUNCIONES PARA REUNIÓN CLÍNICA ==========
   const agregarTerapeuta = () => {
     if (modoSoloLectura) return;
@@ -1181,6 +1253,23 @@ const handleGuardar = useCallback(async () => {
                     )}
                   </button>
                 )}
+                {citaEditando?.venta_servicio_detalle_id && (
+                  <button
+                    onClick={() => setTabValue(4)}
+                    className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
+                      tabValue === 4
+                        ? 'text-[#7B1FA2]'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    <span className="hidden sm:inline">Paquete</span>
+                    <span className="sm:hidden">Paq.</span>
+                    {tabValue === 4 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1393,7 +1482,7 @@ const handleGuardar = useCallback(async () => {
                                   : 'Seleccionar compra...'}
                           </option>
                           {ventasDisponibles.map((venta) => (
-                            <option key={venta.id} value={venta.id}>
+                            <option key={venta.id} value={String(venta.id)}>
                               {venta.descripcion}
                             </option>
                           ))}
@@ -3030,6 +3119,170 @@ const handleGuardar = useCallback(async () => {
                       El mensaje aparecerá aquí una vez generado
                     </p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* 📦 TAB PAQUETE */}
+            {modoEdicion && puedeVerHistorial && tabValue === 4 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-gray-900">Información del Paquete</h3>
+                  <Package className="w-5 h-5 text-[#7B1FA2]" />
+                </div>
+
+                {cargandoPaquete && (
+                  <div className="h-40 bg-gray-50 rounded-xl animate-pulse flex items-center justify-center">
+                    <div className="text-gray-400 text-sm">Cargando información del paquete...</div>
+                  </div>
+                )}
+
+                {!cargandoPaquete && !infoPaquete && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
+                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">Esta cita no pertenece a ningún paquete</p>
+                  </div>
+                )}
+
+                {!cargandoPaquete && infoPaquete && (
+                  <>
+                    {/* Info del Paquete */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 bg-[#7B1FA2]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Package className="w-5 h-5 text-[#7B1FA2]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-gray-900">{infoPaquete.servicio_nombre}</h4>
+                          <p className="text-xs text-gray-600 mt-0.5">{infoPaquete.paquete_nombre || 'Paquete de sesiones'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="bg-white/60 rounded-lg p-2">
+                          <span className="font-semibold text-gray-600">Comprobante:</span>
+                          <p className="text-[#7B1FA2] font-bold mt-0.5">{infoPaquete.citas[0]?.comprobante || 'Sin código'}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2">
+                          <span className="font-semibold text-gray-600">Modalidad Pago:</span>
+                          <p className="text-gray-900 font-medium mt-0.5">{infoPaquete.citas[0]?.modalidad_pago || '-'}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2">
+                          <span className="font-semibold text-gray-600">Monto Total:</span>
+                          <p className="text-gray-900 font-bold mt-0.5">S/. {infoPaquete.citas[0]?.monto?.toFixed(2) || '0.00'}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2">
+                          <span className="font-semibold text-gray-600">Fecha Compra:</span>
+                          <p className="text-gray-900 font-medium mt-0.5">
+                            {infoPaquete.citas[0]?.fecha_pago ? (() => {
+                              const fecha = new Date(infoPaquete.citas[0].fecha_pago);
+                              return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            })() : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Estadísticas */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-[#7B1FA2]">{infoPaquete.citas.length}</div>
+                        <div className="text-xs text-gray-500 mt-1">Total Citas</div>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {infoPaquete.citas.filter(c => c.asistencia === 1).length}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Asistidas</div>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-red-600">
+                          {infoPaquete.citas.filter(c => c.asistencia === 0).length}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Faltas</div>
+                      </div>
+                    </div>
+
+                    {/* Lista de Citas del Paquete */}
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <h4 className="text-xs font-bold text-gray-700 uppercase">Citas del Paquete</h4>
+                      </div>
+                      <div className="divide-y divide-gray-100 max-h-60 overflow-y-auto">
+                        {infoPaquete.citas.map((cita, idx) => {
+                          const esCitaActual = cita.id === citaEditando?.id;
+                          return (
+                            <div
+                              key={cita.id}
+                              className={`px-4 py-2.5 transition-colors ${
+                                esCitaActual
+                                  ? 'bg-[#7B1FA2]/5 border-l-4 border-[#7B1FA2]'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="flex-shrink-0">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                      esCitaActual
+                                        ? 'bg-[#7B1FA2] text-white'
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {idx + 1}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-sm font-medium text-gray-900">
+                                        {(() => {
+                                          const fecha = new Date(cita.fecha);
+                                          return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                                        })()}
+                                      </span>
+                                      <span className="text-gray-300">·</span>
+                                      <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-sm text-gray-600">{cita.hora?.substring(0, 5) || '-'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-xs text-gray-500 truncate">{cita.especialista || 'No asignado'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {cita.asistencia === 1 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-100">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                      Asistió
+                                    </span>
+                                  ) : cita.asistencia === 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold border border-red-100">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                      No asistió
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 text-[10px] font-medium border border-gray-100">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                      Pendiente
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {esCitaActual && (
+                                <div className="mt-2 flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] animate-pulse" />
+                                  <span className="text-[10px] font-semibold text-[#7B1FA2] uppercase tracking-wide">
+                                    Cita Actual
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
