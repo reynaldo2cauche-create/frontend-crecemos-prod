@@ -83,6 +83,7 @@ import RegistrarReclamo from '../pages/LibroReclamaciones/RegistrarReclamo';
 import ConsultarReclamo from '../pages/LibroReclamaciones/ConsultarReclamo';
 import PanelAdmin from '../pages/LibroReclamaciones/PanelAdmin';
 import Pagos from '../pages/Pagos';
+import GestorCampanas from '../pages/Campanas/GestorCampanas';
 
 export const AppRouter = () => {
   return (
@@ -450,6 +451,17 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <PanelAdmin />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/campanas" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestorCampanas />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
