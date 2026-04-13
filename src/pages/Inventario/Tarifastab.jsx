@@ -21,9 +21,15 @@ import {
   crearPrecioPaquete,
   actualizarPrecioPaquete,
   eliminarPrecioPaquete,
+  getPaquetesCombo,
+  crearPaqueteCombo,
+  actualizarPaqueteCombo,
+  eliminarPaqueteCombo,
+  toggleActivoPaqueteCombo,
 } from '../../services/inventarioService';
 import { getServicios, getPaquetes } from '../../services/serviciosService';
 import { getMotivosCita } from '../../services/citaService';
+import { getDocumentosTarifa } from '../../services/documentoTarifaService';
 import ModalPreciosPaquetes from './ModalPreciosPaquetes';
 
 const EMPTY_FORM = {
@@ -233,37 +239,420 @@ const TarifaModal = ({ tarifa, servicios, motivos, onClose, onSaved }) => {
   );
 };
 
+// ─── Modal Paquete Combo ─────────────────────────────────────────────────────
+
+const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => {
+  const [form, setForm] = useState(
+    combo
+      ? {
+          nombre: combo.nombre ?? '',
+          descripcion: combo.descripcion ?? '',
+          precio_total: combo.precioTotal ?? '',
+          precio_tachado: combo.precioTachado ?? '',
+          items: (combo.items ?? []).map(it => ({
+            ...it,
+            tipo: it.servicio_tarifa_id ? 'servicio' : it.documento_tarifa_id ? 'documento' : null,
+            servicio_tarifa_id: it.servicioTarifaId ?? it.servicio_tarifa_id ?? null,
+            documento_tarifa_id: it.documentoTarifaId ?? it.documento_tarifa_id ?? null,
+            cantidad: it.cantidad ?? 1,
+            descripcion_linea: it.descripcionLinea ?? it.descripcion_linea ?? ''
+          })),
+        }
+      : { nombre: '', descripcion: '', precio_total: '', precio_tachado: '', items: [] }
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const isEdit = !!combo;
+
+  const agregarItem = () => {
+    setForm(f => ({
+      ...f,
+      items: [...f.items, {
+        tipo: null,
+        servicio_tarifa_id: null,
+        documento_tarifa_id: null,
+        cantidad: 1,
+        descripcion_linea: ''
+      }]
+    }));
+  };
+
+  const eliminarItem = (idx) => {
+    setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
+  };
+
+  const actualizarItem = (idx, campo, valor) => {
+    setForm(f => ({
+      ...f,
+      items: f.items.map((it, i) => {
+        if (i !== idx) return it;
+        const nuevoItem = { ...it, [campo]: valor };
+        if (campo === 'servicio_tarifa_id' && valor) nuevoItem.documento_tarifa_id = null;
+        if (campo === 'documento_tarifa_id' && valor) nuevoItem.servicio_tarifa_id = null;
+        return nuevoItem;
+      })
+    }));
+  };
+
+  const cambiarTipoItem = (idx, tipo) => {
+    setForm(f => ({
+      ...f,
+      items: f.items.map((it, i) =>
+        i !== idx ? it : { ...it, tipo, servicio_tarifa_id: null, documento_tarifa_id: null }
+      )
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (form.items.length === 0) {
+      setError('Debes agregar al menos un ítem al combo');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const payload = {
+        nombre: form.nombre,
+        descripcion: form.descripcion || null,
+        precio_total: parseFloat(form.precio_total),
+        precio_tachado: form.precio_tachado ? parseFloat(form.precio_tachado) : null,
+        items: form.items.map(it => ({
+          servicio_tarifa_id: it.servicio_tarifa_id || null,
+          documento_tarifa_id: it.documento_tarifa_id || null,
+          cantidad: parseInt(it.cantidad, 10),
+          descripcion_linea: it.descripcion_linea || null,
+        })),
+      };
+      if (isEdit) {
+        await actualizarPaqueteCombo(combo.id, { ...payload, user_actua_id: user?.id });
+      } else {
+        await crearPaqueteCombo({ ...payload, user_crea_id: user?.id });
+      }
+      onSaved();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Error al guardar el combo';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputClass = 'w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30';
+  const labelClass = 'block text-xs font-semibold text-gray-600 mb-1';
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 overflow-y-auto py-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-auto">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gradient-to-r from-[#7B1FA2]/5 to-transparent rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center">
+              <TagIcon className="w-4 h-4 text-[#7B1FA2]" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">
+                {isEdit ? 'Editar Paquete Combo' : 'Nuevo Paquete Combo'}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {isEdit ? 'Modifica los datos del combo' : 'Crea un paquete con múltiples servicios/documentos'}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
+            <XMarkIcon className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[75vh] rounded-b-2xl overflow-hidden">
+          <div className="px-6 py-3 space-y-3 overflow-y-auto">
+
+            {error && (
+              <div className="flex items-center gap-3 p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                <ExclamationTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span className="text-sm text-red-700">{error}</span>
+              </div>
+            )}
+
+            {/* Información básica */}
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-gray-700 flex items-center gap-2">
+                <div className="w-1 h-3.5 bg-[#7B1FA2] rounded-full" />
+                Información del Combo
+              </h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Nombre del Combo *</label>
+                  <input
+                    type="text"
+                    value={form.nombre}
+                    onChange={(e) => setForm(f => ({ ...f, nombre: e.target.value }))}
+                    required
+                    className={inputClass}
+                    placeholder="Ej: Paquete Integral"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Descripción (Opcional)</label>
+                  <input
+                    type="text"
+                    value={form.descripcion}
+                    onChange={(e) => setForm(f => ({ ...f, descripcion: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Breve descripción del combo"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Precio Total *</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.precio_total}
+                      onChange={(e) => setForm(f => ({ ...f, precio_total: e.target.value }))}
+                      required
+                      className={`${inputClass} pl-8`}
+                      placeholder="320.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Precio Tachado (Opcional)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.precio_tachado}
+                      onChange={(e) => setForm(f => ({ ...f, precio_tachado: e.target.value }))}
+                      className={`${inputClass} pl-8`}
+                      placeholder="360.00"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ítems del combo */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-gray-700 flex items-center gap-2">
+                  <div className="w-1 h-3.5 bg-[#7B1FA2] rounded-full" />
+                  Ítems del Combo *
+                  <span className="text-xs font-normal text-gray-400">
+                    ({form.items.length} ítem{form.items.length !== 1 ? 's' : ''})
+                  </span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={agregarItem}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] transition-colors"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  Agregar Ítem
+                </button>
+              </div>
+
+              {form.items.length === 0 ? (
+                <div className="text-center py-6 text-sm text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+                  <TagIcon className="w-7 h-7 mx-auto mb-1.5 text-gray-300" />
+                  <p>No hay ítems. Agrega servicios o documentos al combo.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {form.items.map((item, idx) => {
+                    const tipoItem = item.tipo;
+                    return (
+                      <div key={idx} className="p-3 bg-white rounded-xl border-2 border-gray-200 hover:border-[#7B1FA2]/30 transition-colors">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 space-y-2">
+
+                            {/* Selector tipo */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-gray-600">Tipo:</span>
+                              <div className="inline-flex gap-0.5 p-0.5 bg-gray-100 rounded-lg">
+                                <button
+                                  type="button"
+                                  onClick={() => cambiarTipoItem(idx, 'servicio')}
+                                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                    tipoItem === 'servicio'
+                                      ? 'bg-[#7B1FA2] text-white shadow-sm'
+                                      : 'text-gray-600 hover:text-gray-900'
+                                  }`}
+                                >
+                                  Servicio
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => cambiarTipoItem(idx, 'documento')}
+                                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                    tipoItem === 'documento'
+                                      ? 'bg-[#7B1FA2] text-white shadow-sm'
+                                      : 'text-gray-600 hover:text-gray-900'
+                                  }`}
+                                >
+                                  Documento
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Select + cantidad */}
+                            <div className="grid grid-cols-[1fr_auto] gap-2">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                  {tipoItem === 'servicio' ? 'Servicio' : tipoItem === 'documento' ? 'Documento' : 'Selecciona un tipo primero'}
+                                </label>
+                                {tipoItem === 'servicio' ? (
+                                  <select
+                                    value={item.servicio_tarifa_id || ''}
+                                    onChange={(e) => actualizarItem(idx, 'servicio_tarifa_id', e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30"
+                                    required
+                                  >
+                                    <option value="">Seleccionar servicio...</option>
+                                    {tarifas.map(t => (
+                                      <option key={t.id} value={t.id}>
+                                        {t._servicio?.nombre} - {t._motivo?.nombre} (S/ {t.precio})
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : tipoItem === 'documento' ? (
+                                  <select
+                                    value={item.documento_tarifa_id || ''}
+                                    onChange={(e) => actualizarItem(idx, 'documento_tarifa_id', e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30"
+                                    required
+                                  >
+                                    <option value="">Seleccionar documento...</option>
+                                    {documentos.map(d => (
+                                      <option key={d.id} value={d.id}>
+                                        {d.nombre} (S/ {d.precio})
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-400">
+                                    Selecciona un tipo arriba
+                                  </div>
+                                )}
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Cantidad</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.cantidad}
+                                  onChange={(e) => actualizarItem(idx, 'cantidad', e.target.value)}
+                                  className="w-16 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 text-center font-semibold"
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                          </div>
+
+                          {/* Botón eliminar */}
+                          <button
+                            type="button"
+                            onClick={() => eliminarItem(idx)}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-0.5"
+                            title="Eliminar ítem"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+            <p className="text-xs text-gray-400">* Campos obligatorios</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Guardando...
+                  </span>
+                ) : (
+                  isEdit ? 'Guardar Cambios' : 'Crear Combo'
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 const TarifasTab = () => {
+  const [vistaActiva, setVistaActiva] = useState('tarifas'); // 'tarifas' | 'combos'
   const [tarifas, setTarifas]           = useState([]);
   const [servicios, setServicios]       = useState([]);
   const [motivos, setMotivos]           = useState([]);
+  const [documentos, setDocumentos]     = useState([]);
+  const [combos, setCombos]             = useState([]);
   const [loading, setLoading]           = useState(true);
   const [mostrarTodos, setMostrarTodos] = useState(false);
   const [busqueda, setBusqueda]         = useState('');
   const [filtroServicio, setFiltroServicio] = useState('');
   const [modal, setModal]               = useState(null); // null | 'crear' | tarifa
   const [modalPaquetes, setModalPaquetes] = useState(null); // null | tarifa
+  const [modalCombo, setModalCombo]     = useState(null); // null | 'crear' | combo
   const [confirmToggle, setConfirmToggle]   = useState(null);
+  const [confirmToggleCombo, setConfirmToggleCombo] = useState(null);
   const [accionLoading, setAccionLoading]   = useState(false);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const normalizar = (items) =>
-    items.map((t) => ({ ...t, activo: t.activo ?? Boolean(t.flg_activo) }));
+    items.map((t) => ({ ...t, activo: t.activo ?? Boolean(t.flg_activo ?? t.flgActivo) }));
 
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [tarifasData, serviciosData, motivosData] = await Promise.all([
+      const [tarifasData, serviciosData, motivosData, docsData, combosData] = await Promise.all([
         getTarifas(mostrarTodos),
         getServicios(),
         getMotivosCita(),
+        getDocumentosTarifa(),
+        getPaquetesCombo(mostrarTodos),
       ]);
       setTarifas(normalizar(tarifasData));
       setServicios(serviciosData);
       setMotivos(motivosData);
+      setDocumentos(normalizar(docsData));
+      setCombos(normalizar(combosData));
     } catch (err) {
       console.error('Error cargando datos:', err);
     } finally {
@@ -309,6 +698,33 @@ const TarifasTab = () => {
     }
   };
 
+  const handleToggleCombo = async () => {
+    if (!confirmToggleCombo) return;
+    setAccionLoading(true);
+    try {
+      await toggleActivoPaqueteCombo(confirmToggleCombo.id);
+      setConfirmToggleCombo(null);
+      cargarDatos();
+    } catch {
+      alert('Error al cambiar el estado del combo');
+    } finally {
+      setAccionLoading(false);
+    }
+  };
+
+  const handleEliminarCombo = async (id) => {
+    if (!confirm('¿Seguro que deseas eliminar este combo?')) return;
+    setAccionLoading(true);
+    try {
+      await eliminarPaqueteCombo(id);
+      cargarDatos();
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Error al eliminar el combo');
+    } finally {
+      setAccionLoading(false);
+    }
+  };
+
   // Stats
   const activas   = tarifas.filter((t) => t.activo).length;
   const inactivas = tarifas.filter((t) => !t.activo).length;
@@ -320,10 +736,37 @@ const TarifasTab = () => {
       {/* Título */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Tarifas de Servicios</h2>
-        <p className="text-sm text-gray-500 mt-1">Precios por servicio y motivo de cita</p>
+        <p className="text-sm text-gray-500 mt-1">Gestión de tarifas y paquetes combo</p>
       </div>
 
-      {/* Estadísticas */}
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setVistaActiva('tarifas')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+            vistaActiva === 'tarifas'
+              ? 'border-[#7B1FA2] text-[#7B1FA2]'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Tarifas
+        </button>
+        <button
+          onClick={() => setVistaActiva('combos')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+            vistaActiva === 'combos'
+              ? 'border-[#7B1FA2] text-[#7B1FA2]'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Paquetes Combo
+        </button>
+      </div>
+
+      {/* Vista de Tarifas */}
+      {vistaActiva === 'tarifas' && (
+        <>
+          {/* Estadísticas */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
           <div className="flex items-center gap-3">
@@ -524,6 +967,156 @@ const TarifasTab = () => {
           {tarifasFiltradas.length} tarifa{tarifasFiltradas.length !== 1 ? 's' : ''}
         </p>
       )}
+        </>
+      )}
+
+      {/* Vista de Paquetes Combo */}
+      {vistaActiva === 'combos' && (
+        <>
+          {/* Header con botón crear */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Paquetes Combo</h3>
+              <p className="text-sm text-gray-500">Agrupa múltiples servicios/documentos con precio fijo</p>
+            </div>
+            <button
+              onClick={() => setModalCombo('crear')}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors shadow-sm"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Crear Combo
+            </button>
+          </div>
+
+          {/* Toggle mostrar todos */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="mostrarTodosCombos"
+              checked={mostrarTodos}
+              onChange={(e) => setMostrarTodos(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-[#7B1FA2] focus:ring-[#7B1FA2]/30"
+            />
+            <label htmlFor="mostrarTodosCombos" className="text-sm text-gray-600 cursor-pointer select-none">
+              Mostrar combos inactivos
+            </label>
+          </div>
+
+          {/* Tabla de combos */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin" />
+              </div>
+            ) : combos.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                  <TagIcon className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 text-sm">No hay combos registrados</p>
+                <button
+                  onClick={() => setModalCombo('crear')}
+                  className="mt-4 text-sm text-[#7B1FA2] hover:underline font-medium"
+                >
+                  Crear primer combo
+                </button>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Combo</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ítems</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Precio</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {combos.map((combo) => (
+                    <tr key={combo.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div>
+                          <div className="font-semibold text-gray-900">{combo.nombre}</div>
+                          {combo.descripcion && (
+                            <div className="text-xs text-gray-500 mt-0.5">{combo.descripcion}</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-semibold text-gray-700">
+                            {combo.items?.length || 0} ítem{combo.items?.length !== 1 ? 's' : ''}
+                          </div>
+                          {combo.items && combo.items.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {combo.items.map((item, idx) => {
+                                const tarifa = tarifasEnriquecidas.find(t => t.id === (item.servicioTarifaId ?? item.servicio_tarifa_id));
+                                const doc = documentos.find(d => d.id === (item.documentoTarifaId ?? item.documento_tarifa_id));
+                                const nombre = tarifa ? tarifa._servicio?.nombre : doc ? doc.nombre : '?';
+                                const cantidad = item.cantidad;
+                                return (
+                                  <div key={idx} className="truncate">
+                                    {cantidad > 1 ? `${cantidad}x ` : ''}{nombre}
+                                  </div>
+                                );
+                              }).slice(0, 3)}
+                              {combo.items.length > 3 && (
+                                <div className="text-gray-400 italic">+{combo.items.length - 3} más</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          {combo.precioTachado && (
+                            <span className="text-xs text-gray-400 line-through">
+                              S/ {parseFloat(combo.precioTachado).toFixed(2)}
+                            </span>
+                          )}
+                          <span className="font-semibold text-gray-900">
+                            S/ {parseFloat(combo.precioTotal).toFixed(2)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <Badge activo={combo.activo} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setModalCombo(combo)}
+                            title="Editar"
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          >
+                            <PencilSquareIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmToggleCombo(combo)}
+                            title={combo.activo ? 'Desactivar' : 'Activar'}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              combo.activo
+                                ? 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                                : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
+                            }`}
+                          >
+                            {combo.activo ? <XCircleIcon className="w-4 h-4" /> : <CheckCircleIcon className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 text-right">
+            {combos.length} combo{combos.length !== 1 ? 's' : ''}
+          </p>
+        </>
+      )}
 
       {/* Modal crear / editar */}
       {modal && (
@@ -542,6 +1135,17 @@ const TarifasTab = () => {
           tarifa={modalPaquetes}
           onClose={() => setModalPaquetes(null)}
           onSaved={() => { cargarDatos(); }}
+        />
+      )}
+
+      {/* Modal crear / editar combo */}
+      {modalCombo && (
+        <ModalPaqueteCombo
+          combo={modalCombo === 'crear' ? null : modalCombo}
+          tarifas={tarifasEnriquecidas}
+          documentos={documentos}
+          onClose={() => setModalCombo(null)}
+          onSaved={() => { setModalCombo(null); cargarDatos(); }}
         />
       )}
 
@@ -581,6 +1185,46 @@ const TarifasTab = () => {
                 disabled={accionLoading}
                 className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-colors ${
                   confirmToggle.activo ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {accionLoading ? '...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* Confirm toggle combo */}
+      {confirmToggleCombo && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 ${
+              confirmToggleCombo.activo ? 'bg-red-100' : 'bg-green-100'
+            }`}>
+              {confirmToggleCombo.activo
+                ? <XCircleIcon className="w-6 h-6 text-red-600" />
+                : <CheckCircleIcon className="w-6 h-6 text-green-600" />}
+            </div>
+            <h3 className="text-center font-bold text-gray-900 mb-2">
+              {confirmToggleCombo.activo ? 'Desactivar combo' : 'Activar combo'}
+            </h3>
+            <p className="text-center text-sm text-gray-500 mb-6">
+              ¿Confirmas {confirmToggleCombo.activo ? 'desactivar' : 'activar'} el combo{' '}
+              <strong>{confirmToggleCombo.nombre}</strong>?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmToggleCombo(null)}
+                className="flex-1 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleToggleCombo}
+                disabled={accionLoading}
+                className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-colors ${
+                  confirmToggleCombo.activo ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
                 {accionLoading ? '...' : 'Confirmar'}

@@ -8,7 +8,8 @@ import logoUrl from '/logo-text-short.png';
 const toFloat = (v) => parseFloat(v || 0);
 
 const formatMoney = (num) => {
-  return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const n = Number(num);
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 };
 
 const getNombreCliente = (venta) => {
@@ -135,76 +136,147 @@ const getImporteLetras = (total) => {
   return `${letras} CON ${centavos.toString().padStart(2, '0')}/100 SOLES`;
 };
 
-const buildTableRows = (venta, tipo) =>
-  (venta.detalles || []).map((d) => {
-    if (tipo === 'servicio') {
-      // Usar descripcion_linea si está disponible (nuevo sistema)
-      if (d.descripcionLinea || d.descripcion_linea) {
-        const descripcion = d.descripcionLinea || d.descripcion_linea;
-        const esDocumento = d.tipoItemVenta === 2 || d.tipo_item_venta === 2;
-        const cantidad = esDocumento ? 1 : (d.sesiones_totales || 0);
-        const precioUnitario = toFloat(d.precio_unitario);
-        const subtotal = (precioUnitario * (d.sesiones_totales || 1)) - toFloat(d.descuento_monto);
-        const pacienteNombre = d.paciente
-          ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
-          : '-';
-        return {
-          descripcion,
-          codigo: String(d.servicio?.id || d.servicio_tarifa?.servicio?.id || 0).padStart(4, '0'),
-          cantidad,
-          precioUnitario,
-          subtotal,
-          paciente: pacienteNombre
+const buildTableRows = (venta, tipo) => {
+  const detalles = venta.detalles || [];
+
+if (tipo !== 'servicio') {
+  return detalles.map(d => {
+
+const nombreItem =
+  d.descripcion_linea ||
+  d.servicio_tarifa?.servicio?.nombre ||
+  d.documento_tarifa?.nombre ||
+  (d.documento_tarifa_id ? `Documento #${d.documento_tarifa_id}` : null) ||
+  'Item';
+
+    return {
+      descripcion: '• ' + nombreItem,
+      codigo: String(
+        d.producto?.id ||
+        d.servicio_tarifa?.servicio?.id ||
+        d.documento_tarifa?.id ||
+        0
+      ).padStart(4, '0'),
+      cantidad: Number(d.cantidad) || 0,
+      precioUnitario: Number(d.precio_unitario) || 0,
+      subtotal: Number(d.subtotal) || 0,
+      paciente: null,
+      esSubitem: false
+    };
+  });
+}
+
+  // 🔵 AGRUPAR COMBOS
+  const combos = {};
+  const normales = [];
+
+  detalles.forEach(d => {
+    if (d.paquete_combo_id) {
+      if (!combos[d.paquete_combo_id]) {
+        // Obtener el nombre del combo
+        const nombreCombo = d.paqueteCombo?.nombre ||
+                           d.descripcionLinea?.split(' - ')[0] ||
+                           d.descripcion_linea?.split(' - ')[0] ||
+                           'Paquete Combo';
+
+        combos[d.paquete_combo_id] = {
+          nombre: nombreCombo,
+          descripcion: nombreCombo,
+          subtotal: 0,  // Se calculará sumando los items
+          detalles: [],
         };
       }
 
-      // Sistema antiguo: construir desde las relaciones
-      const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
-      let descripcion;
-      let cantidad;
-      const motivoCita = d.servicio_tarifa?.motivo_cita?.nombre || '';
+      // Sumar el subtotal de cada ítem para obtener el precio histórico
+      combos[d.paquete_combo_id].subtotal += Number(d.subtotal || 0);
+      combos[d.paquete_combo_id].detalles.push(d);
 
+    } else {
+      normales.push(d);
+    }
+  });
 
+  const rows = [];
 
-      if (esPaquete && d.paquete) {
-        const sesionesPorPaquete = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
-        const sesionesTotales = d.sesiones_totales || 0;
-        cantidad = Math.round(sesionesTotales / sesionesPorPaquete);
+  // 🔷 COMBOS
+  Object.values(combos).forEach(c => {
+    const totalItems = c.detalles.length;
 
-        const nombreServicio = d.servicio_tarifa.servicio?.nombre || '';
-        const baseDesc = nombreServicio
-          ? `${d.paquete.nombre} (${sesionesPorPaquete} SES.) - ${nombreServicio}`
-          : `${d.paquete.nombre} (${sesionesPorPaquete} SES.)`;
-        descripcion = motivoCita ? `${baseDesc} [${motivoCita}]` : baseDesc;
+    c.detalles.forEach((d, index) => {
+      const esPrimerItem = index === 0;
+
+      // Obtener servicio y motivo
+      let servicioNombre = '';
+      let motivoNombre = '';
+
+      // Detectar si es documento (usar camelCase del backend)
+      const esDocumento = d.tipoItemVenta === 2 || d.tipo_item_venta === 2 || d.documentoTarifaId || d.documento_tarifa_id;
+
+      if (esDocumento) {
+        // Es un documento
+        servicioNombre = d.documento_tarifa?.nombre ||
+                        d.descripcionLinea?.split(' - ').pop() ||
+                        d.descripcion_linea?.split(' - ').pop() ||
+                        'Documento';
       } else {
-        cantidad = d.sesiones_totales || 0;
-        const baseDesc = d.servicio_tarifa?.servicio?.nombre || '-';
-        descripcion =   motivoCita ? `${baseDesc} - [${motivoCita}]` : baseDesc;
+        // Es un servicio
+        servicioNombre = d.servicio_tarifa?.servicio?.nombre ||
+                        d.descripcionLinea?.split(' - ')[1]?.split(' [')[0] ||
+                        d.descripcion_linea?.split(' - ')[1]?.split(' [')[0] ||
+                        'Servicio';
+        motivoNombre = d.servicio_tarifa?.motivo_cita?.nombre || '';
       }
 
-      const precioUnitario = toFloat(d.precio_unitario);
-      const subtotal       = (precioUnitario * (d.sesiones_totales || 1)) - toFloat(d.descuento_monto);
+      // Formato: "Nombre del Combo - Servicio [Motivo]" o "Nombre del Combo - Documento"
+      const descripcionCompleta = motivoNombre
+        ? `${c.nombre} - ${servicioNombre} [${motivoNombre}]`
+        : `${c.nombre} - ${servicioNombre}`;
+
       const pacienteNombre = d.paciente
         ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
-        : '-';
-      return {
-        descripcion,
-        codigo: String(d.servicio?.id || 0).padStart(4, '0'),
-        cantidad,
-        precioUnitario,
-        subtotal,
-        paciente: pacienteNombre
-      };
-    }
-    return {
-      descripcion:    d.producto?.nombre || '-',
-      codigo:         String(d.producto?.id || 0).padStart(4, '0'),
-      cantidad:       toFloat(d.cantidad),
-      precioUnitario: toFloat(d.precio_unitario),
-      subtotal:       toFloat(d.subtotal),
-      paciente:       null
-    };
+        : '';
+
+      rows.push({
+        descripcion: descripcionCompleta,
+        cantidad: Number(d.sesiones_totales) || 1,
+        precioUnitario: esPrimerItem ? c.subtotal : null,
+        subtotal: esPrimerItem ? c.subtotal : null,
+        paciente: pacienteNombre,
+        esCombo: true,
+        esPrimerItemCombo: esPrimerItem,
+        rowspan: esPrimerItem ? totalItems : 0,
+        nombreCombo: c.nombre
+      });
+    });
   });
+
+  // 🔷 ITEMS NORMALES (SERVICIOS SUELTOS)
+  normales.forEach(d => {
+    const servicioNombre = d.servicio_tarifa?.servicio?.nombre ||
+                          d.documento_tarifa?.nombre ||
+                          d.descripcion_linea ||
+                          'Servicio';
+    const motivoNombre = d.servicio_tarifa?.motivo_cita?.nombre || '';
+    const descripcionCompleta = motivoNombre
+      ? `${servicioNombre} [${motivoNombre}]`
+      : servicioNombre;
+
+    const pacienteNombre = d.paciente
+      ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+      : '-';
+
+    rows.push({
+      descripcion: descripcionCompleta,
+      cantidad: Number(d.sesiones_totales) || 1,
+      precioUnitario: Number(d.precio_unitario) || 0,
+      subtotal: (Number(d.precio_unitario) || 0) * (Number(d.sesiones_totales) || 1),
+      paciente: pacienteNombre,
+      esCombo: false
+    });
+  });
+
+  return rows;
+};
 
 // ─── Cargar logo como base64 ──────────────────────────────────────────────────
 
@@ -305,42 +377,83 @@ export const generarPDFA4 = async (venta, tipo) => {
   y = cy + ch + 10;
 
   // Tabla de ítems
-  if (tipo === 'servicio') {
-    doc.autoTable({
-      startY: y,
-      head: [['Cant.', 'Código', 'Descripción', 'Paciente', 'P.U.', 'Total']],
-      body: rows.map((r) => [
-        r.cantidad.toFixed(2),
-        r.codigo,
-        r.descripcion,
-        r.paciente || '-',
+ if (tipo === 'servicio') {
+  // Generar body de la tabla con soporte para combos
+  const tableBody = [];
+
+  rows.forEach((r, index) => {
+    if (r.esCombo) {
+      if (r.esPrimerItemCombo) {
+        // Primera fila del combo con rowspan en precio y total
+        tableBody.push([
+          typeof r.cantidad === 'number' ? r.cantidad.toFixed(0) : '',
+          r.descripcion || '',
+          r.paciente || '',
+          { content: formatMoney(r.precioUnitario), rowSpan: r.rowspan, styles: { halign: 'right', valign: 'middle' } },
+          { content: formatMoney(r.subtotal), rowSpan: r.rowspan, styles: { halign: 'right', valign: 'middle' } }
+        ]);
+      } else {
+        // Resto de filas del combo (sin precio/total por rowspan)
+        tableBody.push([
+          typeof r.cantidad === 'number' ? r.cantidad.toFixed(0) : '',
+          r.descripcion || '',
+          r.paciente || ''
+        ]);
+      }
+    } else {
+      // Item normal (con precio/total)
+      tableBody.push([
+        typeof r.cantidad === 'number' ? r.cantidad.toFixed(0) : '',
+        r.descripcion || '',
+        r.paciente || '',
         formatMoney(r.precioUnitario),
         formatMoney(r.subtotal)
-      ]),
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2.5, textColor: COLOR_TEXTO },
-      headStyles: { fillColor: [245, 245, 245], textColor: COLOR_TEXTO, fontStyle: 'bold', halign: 'center' },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 12 },
-        1: { halign: 'center', cellWidth: 15 },
-        2: { halign: 'left',   cellWidth: 'auto' },
-        3: { halign: 'left',   cellWidth: 40 },
-        4: { halign: 'right',  cellWidth: 22 },
-        5: { halign: 'right',  cellWidth: 22 },
-      },
-      margin: { left: M, right: M },
-    });
-  } else {
+      ]);
+    }
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['Cantidad', 'Descripción', 'Paciente', 'P.Unitario', 'Total']],
+
+    body: tableBody,
+
+    theme: 'grid',
+
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.5,
+      textColor: [51, 51, 51]
+    },
+
+    headStyles: {
+      fillColor: [245, 245, 245],
+      textColor: [51, 51, 51],
+      fontStyle: 'bold',
+      halign: 'center'
+    },
+
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 20 },
+      1: { halign: 'left',   cellWidth: 'auto' },
+      2: { halign: 'left',   cellWidth: 45 },
+      3: { halign: 'right',  cellWidth: 25 },
+      4: { halign: 'right',  cellWidth: 25 },
+    },
+
+    margin: { left: M, right: M }
+  });
+} else {
     doc.autoTable({
       startY: y,
       head: [['Cant.', 'Unidad', 'Código', 'Descripción', 'P.U.', 'Total']],
       body: rows.map((r) => [
-        r.cantidad.toFixed(2),
-        'UNIDAD',
-        r.codigo,
+        r.cantidad !== '' ? Number(r.cantidad).toFixed(2) : '',
+        r.codigo || '',
         r.descripcion,
-        formatMoney(r.precioUnitario),
-        formatMoney(r.subtotal)
+        r.paciente || '',
+        r.precioUnitario !== '' ? formatMoney(r.precioUnitario) : '',
+        r.subtotal !== '' ? formatMoney(r.subtotal) : ''
       ]),
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 3, textColor: COLOR_TEXTO },
@@ -354,6 +467,7 @@ export const generarPDFA4 = async (venta, tipo) => {
         5: { halign: 'right',  cellWidth: 25 },
       },
       margin: { left: M, right: M },
+      
     });
   }
 

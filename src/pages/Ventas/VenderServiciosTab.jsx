@@ -31,6 +31,7 @@ import { getDocumentosTarifa } from '../../services/documentoTarifaService';
 import { calcularPromociones, registrarPromocionAplicada } from '../../services/promocionesService';
 import { obtenerModalidadesPago } from '../../services/solicitudInformeService';
 import { getTarifasServicios, getPaquetes } from '../../services/serviciosService';
+import { getPaquetesCombo } from '../../services/inventarioService';
 import {
   getPacientes,
   getTodosLosResponsables,
@@ -169,37 +170,128 @@ const getInfoBeneficio = (promoAplicada) => {
 
 const buildDetalleRows = (detalles, tipo, fm) => {
   const toFloat = (v) => parseFloat(v || 0);
-  return (detalles || []).map((d) => {
-    if (tipo === 'servicio') {
-      if (d.descripcionLinea || d.descripcion_linea) {
-        return {
-          desc: d.descripcionLinea || d.descripcion_linea,
-          cantidad: (d.sesiones_totales || 1).toFixed(2),
-          precio: fm(toFloat(d.precio_unitario)),
-          subtotal: fm(toFloat(d.subtotal)),
-          paciente: d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null,
+
+  if (tipo !== 'servicio') {
+    return (detalles || []).map((d) => ({
+      desc: d.producto?.nombre || '-',
+      cantidad: toFloat(d.cantidad).toFixed(2),
+      precio: fm(toFloat(d.precio_unitario)),
+      subtotal: fm(toFloat(d.subtotal)),
+      paciente: null
+    }));
+  }
+
+  // 🔵 AGRUPAR COMBOS
+  const combos = {};
+  const normales = [];
+
+  (detalles || []).forEach(d => {
+    if (d.paquete_combo_id || d.paqueteComboId) {
+      const comboId = d.paquete_combo_id || d.paqueteComboId;
+      if (!combos[comboId]) {
+        // Obtener el nombre del combo
+        const nombreCombo = d.paqueteCombo?.nombre ||
+                           d.descripcionLinea?.split(' - ')[0] ||
+                           d.descripcion_linea?.split(' - ')[0] ||
+                           'Paquete Combo';
+
+        combos[comboId] = {
+          nombre: nombreCombo,
+          subtotal: 0,  // Se calculará sumando los items
+          detalles: [],
         };
       }
-      const esPaquete = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
-      const motivoCita = getMotivoCita(d);
-      const srvNombre = getServicioNombre(d);
-      let desc, cantidad;
-      if (esPaquete && d.paquete) {
-        const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
-        cantidad = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
-        const base = srvNombre !== '-' ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}` : `${d.paquete.nombre} (${spp} SES.)`;
-        desc = motivoCita ? `${base} [${motivoCita}]` : base;
-      } else {
-        cantidad = (d.sesiones_totales || 0).toFixed(2);
-        desc = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
-      }
-      const precioUnitario = toFloat(d.precio_unitario);
-      const subtotal = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
-      const paciente = d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null;
-      return { desc, cantidad, precio: fm(precioUnitario), subtotal: fm(subtotal), paciente };
+      // Sumar el subtotal de cada ítem para obtener el precio histórico
+      combos[comboId].subtotal += Number(d.subtotal || 0);
+      combos[comboId].detalles.push(d);
+    } else {
+      normales.push(d);
     }
-    return { desc: d.producto?.nombre || '-', cantidad: toFloat(d.cantidad).toFixed(2), precio: fm(toFloat(d.precio_unitario)), subtotal: fm(toFloat(d.subtotal)), paciente: null };
   });
+
+  const rows = [];
+
+  // 🔷 COMBOS
+  Object.values(combos).forEach(c => {
+    c.detalles.forEach((d, index) => {
+      const esPrimerItem = index === 0;
+
+      // Detectar si es documento
+      const esDocumento = d.tipoItemVenta === 2 || d.tipo_item_venta === 2 || d.documentoTarifaId || d.documento_tarifa_id;
+
+      let servicioNombre = '';
+      let motivoNombre = '';
+
+      if (esDocumento) {
+        servicioNombre = d.documento_tarifa?.nombre ||
+                        d.descripcionLinea?.split(' - ').pop() ||
+                        d.descripcion_linea?.split(' - ').pop() ||
+                        'Documento';
+      } else {
+        servicioNombre = d.servicio_tarifa?.servicio?.nombre ||
+                        d.descripcionLinea?.split(' - ')[1]?.split(' [')[0] ||
+                        d.descripcion_linea?.split(' - ')[1]?.split(' [')[0] ||
+                        'Servicio';
+        motivoNombre = d.servicio_tarifa?.motivo_cita?.nombre || '';
+      }
+
+      // Formato: "Nombre del Combo - Servicio [Motivo]"
+      const descripcionCompleta = motivoNombre
+        ? `${c.nombre} - ${servicioNombre} [${motivoNombre}]`
+        : `${c.nombre} - ${servicioNombre}`;
+
+      const paciente = d.paciente
+        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        : null;
+
+      rows.push({
+        desc: descripcionCompleta,
+        cantidad: (d.sesiones_totales || 1).toFixed(2),
+        precio: esPrimerItem ? fm(c.subtotal) : null,
+        subtotal: esPrimerItem ? fm(c.subtotal) : null,
+        paciente,
+        esCombo: true,
+        esPrimerItemCombo: esPrimerItem,
+      });
+    });
+  });
+
+  // 🔷 ITEMS NORMALES
+  normales.forEach(d => {
+    if (d.descripcionLinea || d.descripcion_linea) {
+      rows.push({
+        desc: d.descripcionLinea || d.descripcion_linea,
+        cantidad: (d.sesiones_totales || 1).toFixed(2),
+        precio: fm(toFloat(d.precio_unitario)),
+        subtotal: fm(toFloat(d.subtotal)),
+        paciente: d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null,
+      });
+      return;
+    }
+
+    const esPaquete = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
+    const motivoCita = getMotivoCita(d);
+    const srvNombre = getServicioNombre(d);
+    let desc, cantidad;
+
+    if (esPaquete && d.paquete) {
+      const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
+      cantidad = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
+      const base = srvNombre !== '-' ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}` : `${d.paquete.nombre} (${spp} SES.)`;
+      desc = motivoCita ? `${base} [${motivoCita}]` : base;
+    } else {
+      cantidad = (d.sesiones_totales || 0).toFixed(2);
+      desc = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
+    }
+
+    const precioUnitario = toFloat(d.precio_unitario);
+    const subtotal = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
+    const paciente = d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null;
+
+    rows.push({ desc, cantidad, precio: fm(precioUnitario), subtotal: fm(subtotal), paciente });
+  });
+
+  return rows;
 };
 
 // ─── TicketPreviewHTML ────────────────────────────────────────────────────────
@@ -262,28 +354,87 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
         ))}
       </div>
       <hr style={s.hr} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', ...s.bold, borderBottom: '1px dashed #aaa', paddingBottom: '2px', marginBottom: '3px' }}>
-        <span style={{ width: '25px' }}>Cant.</span>
-        <span style={{ flex: 1, paddingLeft: '3px' }}>Descripción</span>
-        <span style={{ width: '42px', textAlign: 'right' }}>P.Unit</span>
-        <span style={{ width: '42px', textAlign: 'right' }}>Total</span>
-      </div>
-      {rows.map((r, i) => (
-        <div key={i} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
-          <div style={{ fontSize: '10px', marginBottom: '2px', wordBreak: 'break-word' }}>
-            <span style={s.bold}>{r.cantidad} NIU</span> — {r.desc}
-          </div>
-          {tipo === 'servicio' && r.paciente && r.paciente !== '-' && (
-            <div style={{ fontSize: '9px', marginBottom: '2px', color: '#7B1FA2' }}>
-              <span style={s.bold}>Paciente:</span> {r.paciente}
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
-            <span style={{ color: '#555' }}>P.Unit: S/ {r.precio}</span>
-            <span style={s.bold}>S/ {r.subtotal}</span>
-          </div>
-        </div>
-      ))}
+      {(() => {
+        // Renderizar los rows agrupando los combos
+        const elementos = [];
+        let i = 0;
+
+        while (i < rows.length) {
+          const r = rows[i];
+
+          // Si es un combo, agrupar todos sus ítems
+          if (r.esCombo && r.esPrimerItemCombo) {
+            const comboRows = [];
+            let j = i;
+
+            // Recolectar todos los ítems del mismo combo
+            while (j < rows.length && rows[j].esCombo && rows[j].desc?.startsWith(r.desc.split(' - ')[0])) {
+              comboRows.push(rows[j]);
+              j++;
+            }
+
+            // Renderizar el combo agrupado
+            elementos.push(
+              <div key={`combo-${i}`} style={{ marginBottom: '6px', borderBottom: '2px solid #7B1FA2', paddingBottom: '4px', background: '#faf5ff', padding: '6px', borderRadius: '3px' }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', color: '#7B1FA2', marginBottom: '3px' }}>
+                  📦 PAQUETE COMBO
+                </div>
+                <div style={{ fontSize: '10px', fontWeight: '700', marginBottom: '4px', color: '#6b21a8' }}>
+                  {r.desc.split(' - ')[0]}
+                </div>
+                {comboRows.map((cr, idx) => {
+                  // Extraer solo el nombre del servicio/documento (sin el nombre del combo)
+                  const partes = cr.desc.split(' - ');
+                  const servicioDesc = partes.slice(1).join(' - ') || partes[0];
+
+                  return (
+                    <div key={idx} style={{ marginBottom: '3px', paddingLeft: '8px', borderLeft: '2px solid #c084fc' }}>
+                      <div style={{ fontSize: '9px', marginBottom: '1px' }}>
+                        <span style={{ color: '#555' }}>• {cr.cantidad} NIU —</span> {servicioDesc}
+                      </div>
+                      {tipo === 'servicio' && cr.paciente && cr.paciente !== '-' && (
+                        <div style={{ fontSize: '8px', color: '#7B1FA2', paddingLeft: '10px' }}>
+                          Paciente: {cr.paciente}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '700', marginTop: '4px', paddingTop: '3px', borderTop: '1px dashed #c084fc' }}>
+                  <span style={{ color: '#6b21a8' }}>Total del paquete:</span>
+                  <span style={{ color: '#6b21a8' }}>S/ {r.subtotal}</span>
+                </div>
+              </div>
+            );
+
+            i = j;
+          } else if (!r.esCombo) {
+            // Item normal (no es parte de un combo)
+            elementos.push(
+              <div key={i} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
+                <div style={{ fontSize: '10px', marginBottom: '2px', wordBreak: 'break-word' }}>
+                  <span style={s.bold}>{r.cantidad} NIU</span> — {r.desc}
+                </div>
+                {tipo === 'servicio' && r.paciente && r.paciente !== '-' && (
+                  <div style={{ fontSize: '9px', marginBottom: '2px', color: '#7B1FA2' }}>
+                    <span style={s.bold}>Paciente:</span> {r.paciente}
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+                  <span style={{ color: '#555' }}>P.Unit: S/ {r.precio}</span>
+                  <span style={s.bold}>S/ {r.subtotal}</span>
+                </div>
+              </div>
+            );
+            i++;
+          } else {
+            // Saltar ítems de combo que no son el primero (ya fueron procesados)
+            i++;
+          }
+        }
+
+        return elementos;
+      })()}
       <hr style={s.hr} />
       {descuento > 0 && <div style={{ ...s.row, color: '#b45309' }}><span>DESCUENTOS(-)</span><span>S/ {fm(descuento)}</span></div>}
       {promociones.length > 0 && (
@@ -508,6 +659,7 @@ const VenderServiciosTab = ({
   const [tarifas, setTarifas] = useState([]);
   const [documentosTarifa, setDocumentosTarifa] = useState([]);
   const [paquetes, setPaquetes] = useState([]);
+  const [paquetesCombo, setPaquetesCombo] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [responsables, setResponsables] = useState([]);
   const [compradoresExternos, setCompradoresExternos] = useState([]);
@@ -526,7 +678,6 @@ const VenderServiciosTab = ({
   const [compradorExternoSeleccionado, setCompradorExternoSeleccionado] = useState('');
   const [tipoComprobante, setTipoComprobante] = useState(1);
 
-  // ── FIX: z-index del modal tipoVenta se pasa como prop para que sea dinámico
   const [mostrarModalTipoVenta, setMostrarModalTipoVenta] = useState(false);
   const [tarifaSeleccionada, setTarifaSeleccionada] = useState(null);
   const [paqueteSeleccionado, setPaqueteSeleccionado] = useState('');
@@ -537,7 +688,6 @@ const VenderServiciosTab = ({
   const timerPromo = useRef(null);
 
   const [loading, setLoading] = useState(false);
-  // ── FIX: estado de carga inicial de datos
   const [loadingDatos, setLoadingDatos] = useState(true);
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
@@ -614,7 +764,11 @@ const VenderServiciosTab = ({
         setPaquetes(Array.isArray(paquetesData) ? paquetesData.filter(p => p.flgActivo) : []);
       } catch { setPaquetes([]); }
 
-      // ── FIX: precargar DESPUÉS de tener los datos listos
+      try {
+        const combosData = await getPaquetesCombo(false);
+        setPaquetesCombo(Array.isArray(combosData) ? combosData.filter(c => c.flgActivo || c.activo) : []);
+      } catch { setPaquetesCombo([]); }
+
       if (modoEdicion && ventaExistente) {
         precargarVentaExistente(pacientesArr, responsablesArr);
       }
@@ -677,6 +831,11 @@ const VenderServiciosTab = ({
           paciente_obj: d.paciente,
           tarifa_obj: d.servicio_tarifa,
           paquete_obj: d.paquete,
+          // Si viene con paquete_combo_id del backend, preservarlo
+          paquete_combo_id: d.paquete_combo_id || null,
+          _combo_nombre: d.paquete_combo_id ? (d.descripcionLinea || d.descripcion_linea || '').split(' - ')[0] : null,
+          _combo_precio_total: 0,
+          _combo_id: d.paquete_combo_id || null,
         };
       });
       setLineas(lineasPrecargadas);
@@ -717,6 +876,10 @@ const VenderServiciosTab = ({
       const q = busqueda.toLowerCase();
       return (d.nombre || '').toLowerCase().includes(q) || (d.descripcion || '').toLowerCase().includes(q);
     }).map(d => ({ ...d, _tipo: TIPOS_ITEM_VENTA.DOCUMENTO })),
+    ...paquetesCombo.filter(c => {
+      const q = busqueda.toLowerCase();
+      return (c.nombre || '').toLowerCase().includes(q) || (c.descripcion || '').toLowerCase().includes(q);
+    }).map(c => ({ ...c, _tipo: 'COMBO' })),
   ] : [];
 
   const seleccionarTarifa = (tarifa) => {
@@ -744,7 +907,102 @@ const VenderServiciosTab = ({
       descuento_tipo: '',
       descuento_valor: '',
       paciente_linea_id: pacienteLineaId,
+      paquete_combo_id: null,
+      _combo_precio_total: 0,
+      _combo_id: null,
     }]);
+    setBusqueda('');
+    setMostrarResultados(false);
+  };
+
+  // ─── FIX PRINCIPAL: seleccionarCombo ─────────────────────────────────────
+  // Los ítems se muestran individualmente (para enviar IDs al backend),
+  // pero precio_unitario = 0 en todos. El precio total del combo se guarda
+  // en _combo_precio_total y se suma UNA SOLA VEZ en calcularTotales.
+  const seleccionarCombo = (combo) => {
+    let pacienteLineaId = pacienteSeleccionado;
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length === 1) {
+      pacienteLineaId = pacientesDelResponsable[0].id;
+    }
+
+    if (!combo.items || combo.items.length === 0) {
+      alert('Este combo no tiene items configurados');
+      return;
+    }
+
+    const precioTotalCombo = parseFloat(combo.precioTotal || combo.precio_total || 0);
+    const nuevasLineas = [];
+    const timestamp = Date.now();
+
+    combo.items.forEach((item, index) => {
+      const cantidad = item.cantidad || 1;
+
+      if (item.servicioTarifaId || item.servicio_tarifa_id) {
+        const tarifaId = item.servicioTarifaId || item.servicio_tarifa_id;
+        const tarifa = tarifas.find(t => t.id === tarifaId);
+
+        if (tarifa) {
+          const servicioNombre = tarifa.servicio?.nombre || `Servicio #${tarifaId}`;
+          const motivoNombre = tarifa.motivo_cita?.nombre || '';
+          const descripcion = `${combo.nombre} - ${servicioNombre}${motivoNombre ? ` [${motivoNombre}]` : ''}`;
+
+          nuevasLineas.push({
+            id: timestamp + index,
+            tipo_item_venta: TIPOS_ITEM_VENTA.SERVICIO,
+            tipo_venta_servicio_id: TIPOS_VENTA_SERVICIO.SESION,
+            servicio_tarifa_id: tarifaId,
+            servicio_id: tarifa.servicio_id,
+            motivo_cita_id: tarifa.motivo_cita_id || null,
+            servicio_nombre: servicioNombre,
+            motivo_nombre: motivoNombre,
+            descripcion_linea: descripcion,
+            sesiones: cantidad,
+            precio_unitario: 0,         // siempre 0 en ítems de combo
+            precio_base: parseFloat(tarifa.precio || 0),
+            descuento_tipo: '',
+            descuento_valor: '',
+            paciente_linea_id: pacienteLineaId,
+            paquete_combo_id: combo.id,
+            _combo_nombre: combo.nombre,
+            _combo_precio_total: precioTotalCombo, // precio total del combo completo
+            _combo_id: combo.id,
+          });
+        }
+      } else if (item.documentoTarifaId || item.documento_tarifa_id) {
+        const docId = item.documentoTarifaId || item.documento_tarifa_id;
+        const doc = documentosTarifa.find(d => d.id === docId);
+
+        if (doc) {
+          const descripcion = `${combo.nombre} - ${doc.nombre}`;
+
+          nuevasLineas.push({
+            id: timestamp + index,
+            tipo_item_venta: TIPOS_ITEM_VENTA.DOCUMENTO,
+            tipo_venta_servicio_id: TIPOS_VENTA_SERVICIO.SESION,
+            documento_tarifa_id: docId,
+            documento_nombre: doc.nombre,
+            descripcion_linea: descripcion,
+            sesiones: cantidad,
+            precio_unitario: 0,         // siempre 0 en ítems de combo
+            precio_base: parseFloat(doc.precio || 0),
+            descuento_tipo: '',
+            descuento_valor: '',
+            paciente_linea_id: pacienteLineaId,
+            paquete_combo_id: combo.id,
+            _combo_nombre: combo.nombre,
+            _combo_precio_total: precioTotalCombo, // precio total del combo completo
+            _combo_id: combo.id,
+          });
+        }
+      }
+    });
+
+    if (nuevasLineas.length === 0) {
+      alert('No se pudo agregar ningún item del combo');
+      return;
+    }
+
+    setLineas(prev => [...prev, ...nuevasLineas]);
     setBusqueda('');
     setMostrarResultados(false);
   };
@@ -799,6 +1057,9 @@ const VenderServiciosTab = ({
       descuento_tipo: '',
       descuento_valor: '',
       paciente_linea_id: pacienteLineaId,
+      paquete_combo_id: null,
+      _combo_precio_total: 0,
+      _combo_id: null,
     }]);
 
     setBusqueda('');
@@ -816,7 +1077,11 @@ const VenderServiciosTab = ({
   const setPacienteLinea = (id, pacId) => setLineas(prev => prev.map(l => l.id === id ? { ...l, paciente_linea_id: pacId } : l));
   const eliminarLinea = (id) => setLineas(prev => prev.filter(l => l.id !== id));
 
+  // ─── calcularLinea: ítems de combo devuelven 0 (el precio se suma aparte) ──
   const calcularLinea = (linea) => {
+    if (linea.paquete_combo_id) {
+      return { subtotalBruto: 0, descuento: 0, totalLinea: 0, igv: 0, base: 0, sesionesTotales: linea.sesiones };
+    }
     const sesionesTotales = linea.sesiones;
     const subtotalBruto = sesionesTotales * linea.precio_unitario;
     let descuento = 0;
@@ -831,9 +1096,28 @@ const VenderServiciosTab = ({
     return { subtotalBruto, descuento, totalLinea, igv, base, sesionesTotales };
   };
 
+  // ─── calcularTotales: precio de combo se suma UNA SOLA VEZ por combo_id ───
   const calcularTotales = () => {
     let subtotalBruto = 0, descuentosLineas = 0;
-    lineas.forEach(l => { const c = calcularLinea(l); subtotalBruto += c.subtotalBruto; descuentosLineas += c.descuento; });
+
+    // Sumar ítems normales (no combo)
+    lineas.forEach(l => {
+      if (!l.paquete_combo_id) {
+        const c = calcularLinea(l);
+        subtotalBruto += c.subtotalBruto;
+        descuentosLineas += c.descuento;
+      }
+    });
+
+    // Sumar precio total de cada combo UNA SOLA VEZ (por _combo_id único)
+    const combosVistos = new Set();
+    lineas.forEach(l => {
+      if (l.paquete_combo_id && !combosVistos.has(l.paquete_combo_id)) {
+        combosVistos.add(l.paquete_combo_id);
+        subtotalBruto += parseFloat(l._combo_precio_total || 0);
+      }
+    });
+
     const subtotalDespuesDesc = subtotalBruto - descuentosLineas;
     let descuentoGlobalMonto = 0;
     if (descuentoGlobal.tipo && descuentoGlobal.valor) {
@@ -881,7 +1165,6 @@ const VenderServiciosTab = ({
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
     if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
-    // ── FIX: en modo edición la modalidad puede no ser obligatoria si ya existe
     if (!modalidadPagoId && !modoEdicion) return setError('Selecciona una modalidad de pago');
 
     setLoading(true);
@@ -901,18 +1184,52 @@ const VenderServiciosTab = ({
             tipo_venta_id: l.tipo_venta_servicio_id,
             paciente_id: parseInt(l.paciente_linea_id),
             sesiones_totales: sesionesTotales,
-            precio_unitario: parseFloat(l.precio_unitario),
+           precio_unitario: (() => {
+              let valor = l.precio_unitario;
+
+              if (l.paquete_combo_id) {
+                // Solo el primer ítem del combo lleva el precio total
+                // Los demás ítems llevan precio 0 para evitar errores de redondeo
+                const lineasDelCombo = lineas.filter(x => x.paquete_combo_id === l.paquete_combo_id);
+                const esPrimerItem = lineasDelCombo[0]?.id === l.id;
+
+                if (esPrimerItem) {
+                  valor = Number(l._combo_precio_total); // Precio total del combo
+                } else {
+                  valor = 0; // Resto de ítems con precio 0
+                }
+              }
+
+              const numero = Number(valor);
+
+              return Number.isFinite(numero) ? numero : 0;
+            })(),// siempre 0 para ítems de combo
           };
           if (tipoItem === TIPOS_ITEM_VENTA.SERVICIO) {
             det.servicio_tarifa_id = parseInt(l.servicio_tarifa_id);
             if (l.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && l.paquete_id) det.paquete_id = parseInt(l.paquete_id);
           }
-          if (tipoItem === TIPOS_ITEM_VENTA.DOCUMENTO) det.documento_tarifa_id = parseInt(l.documento_tarifa_id);
+         if (tipoItem === TIPOS_ITEM_VENTA.DOCUMENTO) {
+          det.documento_tarifa_id = parseInt(l.documento_tarifa_id);
+
+          // 🔥 ESTO ES LO QUE TE FALTA
+          det.descripcion_linea =
+            l.descripcion_linea ||
+            l.documento_tarifa_nombre ||
+            l.nombre ||
+            'Documento';
+        }
+          if (l.paquete_combo_id) det.paquete_combo_id = parseInt(l.paquete_combo_id);
           if (l.descripcion_linea) det.descripcion_linea = l.descripcion_linea;
           if (l.descuento_tipo && l.descuento_valor) {
             det.descuento_tipo_id = l.descuento_tipo === '%' ? TIPOS_DESCUENTO.PORCENTAJE : TIPOS_DESCUENTO.MONTO_FIJO;
             det.descuento_valor = parseFloat(l.descuento_valor);
           }
+          if (isNaN(det.precio_unitario)) det.precio_unitario = 0;
+          if (isNaN(det.sesiones_totales) || det.sesiones_totales < 1) det.sesiones_totales = 1;
+          if (det.paciente_id && isNaN(det.paciente_id)) delete det.paciente_id;
+  
+
           return det;
         }),
       };
@@ -934,6 +1251,7 @@ const VenderServiciosTab = ({
         onGuardarEdicion(payload);
         return;
       }
+      
 
       const venta = await crearVentaServicio(payload);
 
@@ -972,11 +1290,8 @@ const VenderServiciosTab = ({
     { id: TIPOS_PAGADOR.EXTERNO, nombre: 'Comprador Externo', icon: UserPlusIcon },
   ].filter(tipo => tipo.id !== 3);
 
-  // ── FIX: z-index dinámico — cuando viene del modal de edición (z-[70]), el modal
-  // de tipo venta debe ser z-[90] para quedar encima. En uso normal, z-[80] alcanza.
   const zIndexModalTipoVenta = modoEdicion ? 'z-[90]' : 'z-[80]';
 
-  // ── Pantalla de carga inicial
   if (loadingDatos) {
     return (
       <div className={modoEdicion ? '' : 'min-h-screen bg-gray-50'}>
@@ -987,6 +1302,13 @@ const VenderServiciosTab = ({
       </div>
     );
   }
+
+  // ─── Helper: primer ítem de cada combo (para mostrar precio total ahí) ────
+  const esPrimerItemDeCombo = (linea) => {
+    if (!linea.paquete_combo_id) return false;
+    const primerItem = lineas.find(l => l.paquete_combo_id === linea.paquete_combo_id);
+    return primerItem?.id === linea.id;
+  };
 
   return (
     <div className={modoEdicion ? '' : 'min-h-screen bg-gray-50'}>
@@ -1091,7 +1413,7 @@ const VenderServiciosTab = ({
                 </div>
               )}
 
-              {/* Búsqueda tarifa/documento — ── FIX: disabled correcto en modo edición */}
+              {/* Búsqueda */}
               <div className="relative" ref={searchRef}>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Buscar Servicio o Documento</label>
                 <div className="relative">
@@ -1100,7 +1422,7 @@ const VenderServiciosTab = ({
                     onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
                     onFocus={() => setMostrarResultados(true)}
                     disabled={!!ventaGuardada && !modoEdicion}
-                    placeholder="Buscar por servicio, motivo o documento..."
+                    placeholder="Buscar servicio, documento o paquete combo..."
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -1108,13 +1430,30 @@ const VenderServiciosTab = ({
                   <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                     {itemsFiltrados.slice(0, 10).map((item, idx) => {
                       const esServicio = item._tipo === TIPOS_ITEM_VENTA.SERVICIO;
+                      const esDocumento = item._tipo === TIPOS_ITEM_VENTA.DOCUMENTO;
+                      const esCombo = item._tipo === 'COMBO';
+
+                      let badgeClass = 'bg-blue-100 text-blue-700';
+                      let badgeText = 'Servicio';
+                      let handleClick = () => seleccionarTarifa(item);
+
+                      if (esDocumento) {
+                        badgeClass = 'bg-green-100 text-green-700';
+                        badgeText = 'Documento';
+                        handleClick = () => seleccionarDocumento(item);
+                      } else if (esCombo) {
+                        badgeClass = 'bg-purple-100 text-purple-700';
+                        badgeText = 'Paquete Combo';
+                        handleClick = () => seleccionarCombo(item);
+                      }
+
                       return (
                         <button key={`${item._tipo}-${item.id}-${idx}`}
-                          onClick={() => esServicio ? seleccionarTarifa(item) : seleccionarDocumento(item)}
+                          onClick={handleClick}
                           className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0">
                           <div className="flex items-start gap-2">
-                            <span className={`px-2 py-0.5 text-xs font-semibold rounded whitespace-nowrap ${esServicio ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                              {esServicio ? 'Servicio' : 'Documento'}
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded whitespace-nowrap ${badgeClass}`}>
+                              {badgeText}
                             </span>
                             <div className="flex-1">
                               {esServicio ? (
@@ -1122,12 +1461,23 @@ const VenderServiciosTab = ({
                                   <div className="font-semibold text-gray-900">{item.servicio?.nombre || `Servicio #${item.servicio_id}`} - {item.motivo_cita?.nombre || `#${item.motivo_cita_id}`}</div>
                                   <div className="text-xs text-gray-500 mt-1">{item.servicio?.area?.nombre || 'Sin área'} | S/ {parseFloat(item.precio || 0).toFixed(2)}</div>
                                 </>
-                              ) : (
+                              ) : esDocumento ? (
                                 <>
                                   <div className="font-semibold text-gray-900">{item.nombre}</div>
                                   <div className="text-xs text-gray-500 mt-1">{item.descripcion || 'Sin descripción'} | S/ {parseFloat(item.precio || 0).toFixed(2)}</div>
                                 </>
-                              )}
+                              ) : esCombo ? (
+                                <>
+                                  <div className="font-semibold text-gray-900">{item.nombre}</div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {item.descripcion || 'Paquete combo'} • {item.items?.length || 0} ítems |
+                                    {item.precioTachado && (
+                                      <span className="line-through text-gray-400 ml-1">S/ {parseFloat(item.precioTachado).toFixed(2)}</span>
+                                    )}
+                                    <span className="font-semibold text-purple-600 ml-1">S/ {parseFloat(item.precioTotal || item.precio_total || 0).toFixed(2)}</span>
+                                  </div>
+                                </>
+                              ) : null}
                             </div>
                           </div>
                         </button>
@@ -1152,7 +1502,7 @@ const VenderServiciosTab = ({
             </div>
           </div>
 
-          {/* Tabla */}
+          {/* Tabla de líneas */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -1171,11 +1521,17 @@ const VenderServiciosTab = ({
               <tbody className="divide-y divide-gray-100">
                 {lineas.map(linea => {
                   const calc = calcularLinea(linea);
+                  const esCombo = !!linea.paquete_combo_id;
+                  const esPrimeroDelCombo = esPrimerItemDeCombo(linea);
+
                   return (
-                    <tr key={linea.id} className="hover:bg-gray-50">
+                    <tr key={linea.id} className={`hover:bg-gray-50 ${esCombo ? 'bg-purple-50/30' : ''}`}>
+                      {/* Columna Servicio */}
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {esCombo ? (
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-700">Combo</span>
+                          ) : linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
                             <span className="px-2 py-0.5 text-xs font-semibold rounded bg-green-100 text-green-700">Documento</span>
                           ) : (
                             <span className={`px-2 py-0.5 text-xs font-semibold rounded ${linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -1183,21 +1539,29 @@ const VenderServiciosTab = ({
                             </span>
                           )}
                         </div>
+
                         {linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
                           <>
-                            <div className="font-semibold text-gray-900 mt-1">{linea.documento_nombre || linea.descripcion_linea}</div>
-                            <div className="text-xs text-gray-500">Sin cita requerida</div>
+                            <div className="font-semibold text-gray-900">{linea.documento_nombre || linea.descripcion_linea}</div>
+                            {esCombo && linea._combo_nombre && (
+                              <div className="text-xs text-purple-600 font-semibold mt-0.5">→ {linea._combo_nombre}</div>
+                            )}
                           </>
                         ) : (
                           <>
-                            <div className="font-semibold text-gray-900 mt-1">{linea.servicio_nombre}</div>
-                            <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>
-                            {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
+                            <div className="font-semibold text-gray-900">{linea.servicio_nombre}</div>
+                            {!esCombo && <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>}
+                            {!esCombo && linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
                               <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
+                            )}
+                            {esCombo && linea._combo_nombre && (
+                              <div className="text-xs text-purple-600 font-semibold mt-0.5">→ {linea._combo_nombre}</div>
                             )}
                           </>
                         )}
                       </td>
+
+                      {/* Columna Paciente */}
                       <td className="px-4 py-4 min-w-[200px]">
                         <SearchableCombobox
                           items={tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0 ? pacientesDelResponsable : pacientes}
@@ -1210,9 +1574,11 @@ const VenderServiciosTab = ({
                           disabled={!!ventaGuardada && !modoEdicion}
                         />
                       </td>
+
+                      {/* Columna Cantidad */}
                       <td className="px-4 py-4">
-                        {linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
-                          <div className="text-center font-semibold text-gray-600">1</div>
+                        {esCombo || linea.tipo_item_venta === TIPOS_ITEM_VENTA.DOCUMENTO ? (
+                          <div className="text-center font-semibold text-gray-600">{linea.sesiones}</div>
                         ) : linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -1230,26 +1596,73 @@ const VenderServiciosTab = ({
                           </div>
                         )}
                       </td>
+
+                      {/* Columna Precio U. — oculto en ítems de combo */}
                       <td className="px-4 py-4">
-                        <input type="number" step="0.01" min="0" value={linea.precio_unitario} readOnly
-                          className="w-20 px-2 py-1 text-xs text-right border border-gray-200 rounded bg-gray-100 text-gray-600 cursor-not-allowed" />
+                        {esCombo ? (
+                          <span className="text-xs text-gray-400 italic block text-right">— combo</span>
+                        ) : (
+                          <input type="number" step="0.01" min="0" value={linea.precio_unitario} readOnly
+                            className="w-20 px-2 py-1 text-xs text-right border border-gray-200 rounded bg-gray-100 text-gray-600 cursor-not-allowed" />
+                        )}
                       </td>
+
+                      {/* Columna Descuento — deshabilitado en combo */}
                       <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-1">
-                          <select value={linea.descuento_tipo} onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)}
-                            disabled={!!ventaGuardada}
-                            className="px-2 py-1 text-xs border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
-                            <option value="">-</option><option value="%">%</option><option value="S/">S/</option>
-                          </select>
-                          <input type="number" step="0.01" min="0" value={linea.descuento_valor}
-                            onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
-                            disabled={!!ventaGuardada}
-                            className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
-                        </div>
+                        {esCombo ? (
+                          <span className="text-xs text-gray-300 block text-right">—</span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <select value={linea.descuento_tipo} onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)}
+                              disabled={!!ventaGuardada}
+                              className="px-2 py-1 text-xs border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
+                              <option value="">-</option><option value="%">%</option><option value="S/">S/</option>
+                            </select>
+                            <input type="number" step="0.01" min="0" value={linea.descuento_valor}
+                              onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
+                              disabled={!!ventaGuardada}
+                              className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-4 text-right text-sm text-gray-600">S/ {calc.base.toFixed(2)}</td>
-                      <td className="px-4 py-4 text-right text-sm text-gray-500">{conIgv ? `S/ ${calc.igv.toFixed(2)}` : <span className="text-gray-300">—</span>}</td>
-                      <td className="px-6 py-4 text-right font-bold text-gray-900">S/ {calc.totalLinea.toFixed(2)}</td>
+
+                      {/* Columna Base/Subtotal */}
+                      <td className="px-4 py-4 text-right text-sm text-gray-600">
+                        {esCombo ? (
+                          <span className="text-gray-300">—</span>
+                        ) : (
+                          `S/ ${calc.base.toFixed(2)}`
+                        )}
+                      </td>
+
+                      {/* Columna IGV */}
+                      <td className="px-4 py-4 text-right text-sm text-gray-500">
+                        {esCombo ? (
+                          <span className="text-gray-300">—</span>
+                        ) : conIgv ? (
+                          `S/ ${calc.igv.toFixed(2)}`
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Columna Total: solo en el primer ítem del combo muestra el precio total */}
+                      <td className="px-6 py-4 text-right font-bold text-gray-900">
+                        {esCombo ? (
+                          esPrimeroDelCombo ? (
+                            <div className="text-right">
+                              <div className="text-purple-700 font-bold text-sm">S/ {(linea._combo_precio_total || 0).toFixed(2)}</div>
+                              <div className="text-xs text-purple-400 font-normal">precio combo</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )
+                        ) : (
+                          `S/ ${calc.totalLinea.toFixed(2)}`
+                        )}
+                      </td>
+
+                      {/* Columna Eliminar */}
                       <td className="px-4 py-4">
                         <button onClick={() => eliminarLinea(linea.id)} disabled={!!ventaGuardada} className="p-1 hover:bg-red-50 rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /></button>
                       </td>
@@ -1345,7 +1758,7 @@ const VenderServiciosTab = ({
         </div>
       </div>
 
-      {/* ── FIX: Modal Tipo de Venta con z-index dinámico para quedar sobre el modal de edición */}
+      {/* Modal Tipo de Venta */}
       {mostrarModalTipoVenta && tarifaSeleccionada && createPortal(
         <div className={`fixed inset-0 ${zIndexModalTipoVenta} flex items-center justify-center bg-black/60 px-4`}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">

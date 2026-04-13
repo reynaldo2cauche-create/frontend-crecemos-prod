@@ -155,3 +155,32 @@ export const actualizarPrecioPaquete = (id, dto) =>
 
 export const eliminarPrecioPaquete = (id) =>
   api.delete(`/servicio-paquete-precio/${id}`).then(r => r.data);
+
+// ============================================================
+// INVENTARIO — PAQUETES COMBO
+// ============================================================
+
+export const getPaquetesCombo = (todos = false) =>
+  api.get('/inventario/paquete-combo', { params: todos ? { todos: 'true' } : {} }).then(r => r.data);
+
+export const getPaqueteComboById = (id) =>
+  api.get(`/inventario/paquete-combo/${id}`).then(r => r.data);
+
+/**
+ * dto: {
+ *   nombre, descripcion?, precio_total, precio_tachado?,
+ *   flg_activo?,
+ *   items: [{ servicio_tarifa_id?, documento_tarifa_id?, cantidad, descripcion_linea? }]
+ * }
+ */
+export const crearPaqueteCombo = (dto) =>
+  api.post('/inventario/paquete-combo', dto).then(r => r.data);
+
+export const actualizarPaqueteCombo = (id, dto) =>
+  api.patch(`/inventario/paquete-combo/${id}`, dto).then(r => r.data);
+
+export const eliminarPaqueteCombo = (id) =>
+  api.delete(`/inventario/paquete-combo/${id}`).then(r => r.data);
+
+export const toggleActivoPaqueteCombo = (id) =>
+  api.patch(`/inventario/paquete-combo/${id}/toggle-activo`).then(r => r.data);
