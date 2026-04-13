@@ -252,6 +252,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
         paciente,
         esCombo: true,
         esPrimerItemCombo: esPrimerItem,
+        nombreCombo: c.nombre,
       });
     });
   });
@@ -354,6 +355,14 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
         ))}
       </div>
       <hr style={s.hr} />
+     
+{/* Header columnas */}
+<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: '600', borderBottom: '1px dashed #aaa', paddingBottom: '2px', marginBottom: '3px' }}>
+  <span style={{ width: '25px' }}>Cant.</span>
+  <span style={{ flex: 1, paddingLeft: '3px' }}>Descripción</span>
+  <span style={{ width: '42px', textAlign: 'right' }}>P.Unit</span>
+  <span style={{ width: '42px', textAlign: 'right' }}>Total</span>
+</div>
       {(() => {
         // Renderizar los rows agrupando los combos
         const elementos = [];
@@ -365,47 +374,37 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
           // Si es un combo, agrupar todos sus ítems
           if (r.esCombo && r.esPrimerItemCombo) {
             const comboRows = [];
+            const nombreCombo = r.nombreCombo;
             let j = i;
 
             // Recolectar todos los ítems del mismo combo
-            while (j < rows.length && rows[j].esCombo && rows[j].desc?.startsWith(r.desc.split(' - ')[0])) {
+            while (j < rows.length && rows[j].esCombo && rows[j].nombreCombo === nombreCombo) {
               comboRows.push(rows[j]);
               j++;
             }
 
             // Renderizar el combo agrupado
-            elementos.push(
-              <div key={`combo-${i}`} style={{ marginBottom: '6px', borderBottom: '2px solid #7B1FA2', paddingBottom: '4px', background: '#faf5ff', padding: '6px', borderRadius: '3px' }}>
-                <div style={{ fontSize: '9px', fontWeight: '700', color: '#7B1FA2', marginBottom: '3px' }}>
-                  📦 PAQUETE COMBO
-                </div>
-                <div style={{ fontSize: '10px', fontWeight: '700', marginBottom: '4px', color: '#6b21a8' }}>
-                  {r.desc.split(' - ')[0]}
-                </div>
-                {comboRows.map((cr, idx) => {
-                  // Extraer solo el nombre del servicio/documento (sin el nombre del combo)
-                  const partes = cr.desc.split(' - ');
-                  const servicioDesc = partes.slice(1).join(' - ') || partes[0];
-
-                  return (
-                    <div key={idx} style={{ marginBottom: '3px', paddingLeft: '8px', borderLeft: '2px solid #c084fc' }}>
-                      <div style={{ fontSize: '9px', marginBottom: '1px' }}>
-                        <span style={{ color: '#555' }}>• {cr.cantidad} NIU —</span> {servicioDesc}
-                      </div>
-                      {tipo === 'servicio' && cr.paciente && cr.paciente !== '-' && (
-                        <div style={{ fontSize: '8px', color: '#7B1FA2', paddingLeft: '10px' }}>
-                          Paciente: {cr.paciente}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '700', marginTop: '4px', paddingTop: '3px', borderTop: '1px dashed #c084fc' }}>
-                  <span style={{ color: '#6b21a8' }}>Total del paquete:</span>
-                  <span style={{ color: '#6b21a8' }}>S/ {r.subtotal}</span>
-                </div>
-              </div>
-            );
+          // POR ESTE (minimalista, igual al doc 11):
+elementos.push(
+  <div key={`combo-${i}`} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '2px' }}>
+      <span style={{ fontWeight: '600' }}>{r.nombreCombo}</span>
+      <span style={{ fontWeight: '600' }}>S/ {r.subtotal}</span>
+    </div>
+    {comboRows.map((cr, idx) => {
+      const partes = cr.desc.split(' - ');
+      const servicioDesc = partes.slice(1).join(' - ') || partes[0];
+      return (
+        <div key={idx} style={{ paddingLeft: '8px', fontSize: '9px', color: '#444', marginBottom: '1px' }}>
+          <div>• {cr.cantidad} NIU — {servicioDesc}</div>
+          {tipo === 'servicio' && cr.paciente && cr.paciente !== '-' && (
+            <div style={{ color: '#7B1FA2' }}>Paciente: {cr.paciente}</div>
+          )}
+        </div>
+      );
+    })}
+  </div>
+);
 
             i = j;
           } else if (!r.esCombo) {
@@ -556,12 +555,73 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
   <div style="display:flex;gap:3px;margin-bottom:2px"><span class="bold" style="min-width:75px">Comprador:</span><span>${nombreCliente}</span></div>
   <div style="display:flex;gap:3px;margin-bottom:2px"><span class="bold" style="min-width:75px">DNI:</span><span>${dni}</span></div>
 </div><hr class="d">
-${(venta.detalles || []).map(det => {
-  const nombreServicio = det.servicio_tarifa?.servicio?.nombre || '-';
-  const motivoCita = det.servicio_tarifa?.motivo_cita?.nombre || '';
-  const tituloServicio = motivoCita ? `${nombreServicio} - ${motivoCita}` : nombreServicio;
-  return `<div class="item"><div style="font-size:10px;margin-bottom:2px;word-break:break-word;font-weight:700"><strong>${det.sesiones_totales || 0} SES.</strong> — ${tituloServicio}</div>${det.paciente ? `<div style="font-size:9px;color:#7B1FA2;margin-bottom:2px"><strong>Paciente:</strong> ${det.paciente.nombres} ${det.paciente.apellidos || det.paciente.apellido_paterno || ''}</div>` : ''}<div style="display:flex;justify-content:space-between;font-size:10px"><span style="color:#555">P.Unit: S/ ${fm(det.precio_unitario)}</span><strong>S/ ${fm(parseFloat(det.precio_unitario || 0) * parseFloat(det.sesiones_totales || 0) - parseFloat(det.descuento_monto || 0))}</strong></div></div>`;
-}).join('')}
+
+<div style="display:flex;justify-content:space-between;font-size:9px;font-weight:600;border-bottom:1px dashed #aaa;padding-bottom:2px;margin-bottom:3px">
+  <span style="width:25px">Cant.</span>
+  <span style="flex:1;padding-left:3px">Descripción</span>
+  <span style="width:42px;text-align:right">P.Unit</span>
+  <span style="width:42px;text-align:right">Total</span>
+</div>
+
+
+${(() => {
+  const rows = buildDetalleRows(venta.detalles, tipo, fm);
+  let html = '';
+  let i = 0;
+
+  while (i < rows.length) {
+    const r = rows[i];
+
+    if (r.esCombo && r.esPrimerItemCombo) {
+      // Recolectar ítems del combo
+      const comboRows = [];
+      let j = i;
+      while (j < rows.length && rows[j].esCombo && rows[j].nombreCombo === r.nombreCombo) {
+        comboRows.push(rows[j]);
+        j++;
+      }
+
+      html += `
+        <div class="item">
+          <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+            <span class="bold"> ${r.nombreCombo}</span>
+            <span class="bold">S/ ${r.subtotal}</span>
+          </div>
+          ${comboRows.map(cr => {
+            const partes = cr.desc.split(' - ');
+            const servicioDesc = partes.slice(1).join(' - ') || partes[0];
+            return `
+              <div style="padding-left:8px;font-size:9px;color:#444;margin-bottom:1px">
+                <div>• ${cr.cantidad} NIU — ${servicioDesc}</div>
+                ${cr.paciente ? `<div style="color:#7B1FA2">Paciente: ${cr.paciente}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>`;
+
+      i = j;
+
+    } else if (!r.esCombo) {
+      html += `
+        <div class="item">
+          <div style="font-size:10px;margin-bottom:2px;word-break:break-word">
+            <strong>${r.cantidad} NIU</strong> — ${r.desc}
+          </div>
+          ${r.paciente ? `<div style="font-size:9px;color:#7B1FA2;margin-bottom:2px"><strong>Paciente:</strong> ${r.paciente}</div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:10px">
+            <span style="color:#555">P.Unit: S/ ${r.precio}</span>
+            <strong>S/ ${r.subtotal}</strong>
+          </div>
+        </div>`;
+      i++;
+
+    } else {
+      i++;
+    }
+  }
+
+  return html;
+})()}
 <hr class="d">
 ${requiereIGV ? `<div class="row"><span>BASE IMPONIBLE</span><span>S/ ${fm(total / 1.18)}</span></div><div class="row"><span>IGV (18%)</span><span>S/ ${fm(total - total / 1.18)}</span></div>` : ''}
 <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px"><span>TOTAL</span><span>S/ ${fm(total)}</span></div>
@@ -1790,7 +1850,7 @@ const VenderServiciosTab = ({
               <div className="border-2 border-gray-200 rounded-xl p-3 hover:border-purple-400 transition-all flex flex-col justify-between">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                    <span className="text-sm">📦</span>
+                    <span className="text-sm"></span>
                   </div>
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">Paquete de Sesiones</div>

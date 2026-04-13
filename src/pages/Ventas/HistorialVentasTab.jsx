@@ -199,62 +199,132 @@ const PanelPromocionesDetalle = ({ promociones = [] }) => {
 const buildDetalleRows = (detalles, tipo, fm) => {
   const toFloat = (v) => parseFloat(v || 0);
 
-  return (detalles || []).map((d) => {
-    if (tipo === 'servicio') {
-      // Si hay descripcionLinea, usarla directamente (para documentos o descripción personalizada)
-      if (d.descripcionLinea) {
-        return {
-          desc: d.descripcionLinea,
-          cantidad: (d.sesiones_totales || 1).toFixed(2),
-          precio: fm(toFloat(d.precio_unitario)),
-          subtotal: fm(toFloat(d.subtotal)),
-          paciente: d.paciente
-            ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
-            : null,
-        };
-      }
-
-      const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
-      const motivoCita = getMotivoCita(d);
-      const srvNombre  = getServicioNombre(d);
-
-      let desc, cantidad;
-      if (esPaquete && d.paquete) {
-        const spp  = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
-        cantidad   = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
-        const base = srvNombre !== '-'
-          ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}`
-          : `${d.paquete.nombre} (${spp} SES.)`;
-        desc = motivoCita ? `${base} [${motivoCita}]` : base;
-      } else {
-        cantidad   = (d.sesiones_totales || 0).toFixed(2);
-        desc       = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
-      }
-
-      const precioUnitario = toFloat(d.precio_unitario);
-      const subtotal       = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
-      const paciente       = d.paciente
-        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
-        : null;
-
-      return {
-        desc,
-        cantidad,
-        precio:   fm(precioUnitario),
-        subtotal: fm(subtotal),
-        paciente,
-      };
-    }
-
-    // Producto
-    return {
+  if (tipo !== 'servicio') {
+    return (detalles || []).map((d) => ({
       desc:     d.producto?.nombre || '-',
       cantidad: toFloat(d.cantidad).toFixed(2),
       precio:   fm(toFloat(d.precio_unitario)),
       subtotal: fm(toFloat(d.subtotal)),
       paciente: null,
-    };
+      esCombo:  false,
+    }));
+  }
+
+  // ── Separar combos de ítems normales ──────────────────────────────────────
+  const combosMap = {};
+  const normales  = [];
+
+  (detalles || []).forEach((d) => {
+    if (d.paquete_combo_id) {
+      if (!combosMap[d.paquete_combo_id]) {
+        combosMap[d.paquete_combo_id] = {
+          nombre:   d.paqueteCombo?.nombre
+                 || d.descripcion_linea?.split(' - ')[0]
+                 || d.descripcionLinea?.split(' - ')[0]
+                 || 'Paquete Combo',
+          subtotal: 0,
+          items:    [],
+        };
+      }
+      combosMap[d.paquete_combo_id].subtotal += toFloat(d.subtotal);
+      combosMap[d.paquete_combo_id].items.push(d);
+    } else {
+      normales.push(d);
+    }
   });
+
+  const rows = [];
+
+  // ── Combos ────────────────────────────────────────────────────────────────
+  Object.values(combosMap).forEach((combo) => {
+    combo.items.forEach((d, idx) => {
+      const esPrimero = idx === 0;
+
+      // Descripción del servicio/documento dentro del combo
+      let servicioNombre;
+      const esDocumento = d.tipoItemVenta === 2 || d.tipo_item_venta === 2
+                       || d.documentoTarifaId || d.documento_tarifa_id;
+
+      if (d.descripcionLinea) {
+        // Quitar el prefijo "NombreCombo - " si viene incluido
+        const partes = d.descripcionLinea.split(' - ');
+        servicioNombre = partes.length > 1 ? partes.slice(1).join(' - ') : partes[0];
+      } else if (esDocumento) {
+        servicioNombre = d.documento_tarifa?.nombre || 'Documento';
+      } else {
+        const motivoCita = getMotivoCita(d);
+        const srvNombre  = getServicioNombre(d);
+        servicioNombre   = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
+      }
+
+      const paciente = d.paciente
+        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        : null;
+
+      rows.push({
+        desc:             `${combo.nombre} - ${servicioNombre}`,
+        cantidad:         (d.sesiones_totales || 1).toFixed(2),
+        // Precio y subtotal SOLO en el primer ítem; los demás en null
+        precio:           esPrimero ? fm(combo.subtotal) : null,
+        subtotal:         esPrimero ? fm(combo.subtotal) : null,
+        paciente,
+        esCombo:          true,
+        esPrimerItemCombo: esPrimero,
+        nombreCombo:      combo.nombre,
+      });
+    });
+  });
+
+  // ── Ítems normales ────────────────────────────────────────────────────────
+  normales.forEach((d) => {
+    if (d.descripcionLinea) {
+      rows.push({
+        desc:     d.descripcionLinea,
+        cantidad: (d.sesiones_totales || 1).toFixed(2),
+        precio:   fm(toFloat(d.precio_unitario)),
+        subtotal: fm(toFloat(d.subtotal)),
+        paciente: d.paciente
+          ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+          : null,
+        esCombo: false,
+      });
+      return;
+    }
+
+    const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
+    const motivoCita = getMotivoCita(d);
+    const srvNombre  = getServicioNombre(d);
+
+    let desc, cantidad;
+    if (esPaquete && d.paquete) {
+      const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
+      cantidad  = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
+      const base = srvNombre !== '-'
+        ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}`
+        : `${d.paquete.nombre} (${spp} SES.)`;
+      desc = motivoCita ? `${base} [${motivoCita}]` : base;
+    } else {
+      cantidad = (d.sesiones_totales || 0).toFixed(2);
+      desc     = motivoCita ? `${srvNombre} [${motivoCita}]` : srvNombre;
+    }
+
+    const precioUnitario = toFloat(d.precio_unitario);
+    const subtotal       = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
+    const paciente       = d.paciente
+      ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+      : null;
+
+    rows.push({
+      desc,
+      cantidad,
+      precio:   fm(precioUnitario),
+      subtotal: fm(subtotal),
+      paciente,
+      esCombo:  false,
+    });
+  });
+
+  return rows;
 };
 
 // ─── TicketPreviewHTML ────────────────────────────────────────────────────────
@@ -344,7 +414,48 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
         <span style={{ width: '42px', textAlign: 'right' }}>P.Unit</span>
         <span style={{ width: '42px', textAlign: 'right' }}>Total</span>
       </div>
-      {rows.map((r, i) => (
+{(() => {
+  const elementos = [];
+  let i = 0;
+
+  while (i < rows.length) {
+    const r = rows[i];
+
+    if (r.esCombo && r.esPrimerItemCombo) {
+      const comboRows = [];
+      let j = i;
+      while (j < rows.length && rows[j].esCombo && rows[j].nombreCombo === r.nombreCombo) {
+        comboRows.push(rows[j]);
+        j++;
+      }
+
+      elementos.push(
+        <div key={`combo-${i}`} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
+          {/* Nombre del combo + precio total en la misma línea */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '2px' }}>
+            <span style={s.bold}> {r.nombreCombo}</span>
+            <span style={s.bold}>S/ {r.subtotal}</span>
+          </div>
+          {/* Servicios incluidos, indentados */}
+          {comboRows.map((cr, idx) => {
+            const partes = cr.desc.split(' - ');
+            const servicioDesc = partes.slice(1).join(' - ') || partes[0];
+            return (
+              <div key={idx} style={{ paddingLeft: '8px', fontSize: '9px', color: '#444', marginBottom: '1px' }}>
+                <div>• {cr.cantidad} NIU — {servicioDesc}</div>
+                {tipo === 'servicio' && cr.paciente && (
+                  <div style={{ color: '#7B1FA2' }}>Paciente: {cr.paciente}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+
+      i = j;
+
+    } else if (!r.esCombo) {
+      elementos.push(
         <div key={i} style={{ marginBottom: '4px', borderBottom: '1px dotted #ddd', paddingBottom: '3px' }}>
           <div style={{ fontSize: '10px', marginBottom: '2px', wordBreak: 'break-word' }}>
             <span style={s.bold}>{r.cantidad} NIU</span> — {r.desc}
@@ -359,7 +470,16 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
             <span style={s.bold}>S/ {r.subtotal}</span>
           </div>
         </div>
-      ))}
+      );
+      i++;
+
+    } else {
+      i++;
+    }
+  }
+
+  return elementos;
+})()}
       <hr style={s.hr} />
       {descuento > 0 && (
         <div style={{ ...s.row, color: '#b45309' }}>
@@ -544,13 +664,64 @@ const buildTicketHTML = (venta, tipo) => {
   <div style="margin-bottom:6px">${campos.map(([l, v]) => `<div class="campo"><span class="campo-label">${l}:</span><span style="word-break:break-word">${v}</span></div>`).join('')}</div>
   <hr class="d">
   <div class="thead"><span style="width:25px">Cant.</span><span style="flex:1;padding-left:3px">Descripción</span><span style="width:42px;text-align:right">P.Unit</span><span style="width:42px;text-align:right">Total</span></div>
-  ${rows.map(r => `
-    <div class="item">
-      <div style="font-size:10px;margin-bottom:2px;word-break:break-word"><strong>${r.cantidad} NIU</strong> — ${r.desc}</div>
-      ${r.paciente ? `<div style="font-size:9px;color:#7B1FA2;margin-bottom:2px"><strong>Paciente:</strong> ${r.paciente}</div>` : ''}
-      <div style="display:flex;justify-content:space-between;font-size:10px"><span style="color:#555">P.Unit: S/ ${r.precio}</span><strong>S/ ${r.subtotal}</strong></div>
-    </div>
-  `).join('')}
+${(() => {
+  const rows = buildDetalleRows(venta.detalles, tipo, fm);
+  let html = '';
+  let i = 0;
+
+  while (i < rows.length) {
+    const r = rows[i];
+
+    if (r.esCombo && r.esPrimerItemCombo) {
+      // Recolectar ítems del combo
+      const comboRows = [];
+      let j = i;
+      while (j < rows.length && rows[j].esCombo && rows[j].nombreCombo === r.nombreCombo) {
+        comboRows.push(rows[j]);
+        j++;
+      }
+
+      html += `
+        <div class="item">
+          <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+            <span class="bold"> ${r.nombreCombo}</span>
+            <span class="bold">S/ ${r.subtotal}</span>
+          </div>
+          ${comboRows.map(cr => {
+            const partes = cr.desc.split(' - ');
+            const servicioDesc = partes.slice(1).join(' - ') || partes[0];
+            return `
+              <div style="padding-left:8px;font-size:9px;color:#444;margin-bottom:1px">
+                <div>• ${cr.cantidad} NIU — ${servicioDesc}</div>
+                ${cr.paciente ? `<div style="color:#7B1FA2">Paciente: ${cr.paciente}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>`;
+
+      i = j;
+
+    } else if (!r.esCombo) {
+      html += `
+        <div class="item">
+          <div style="font-size:10px;margin-bottom:2px;word-break:break-word">
+            <strong>${r.cantidad} NIU</strong> — ${r.desc}
+          </div>
+          ${r.paciente ? `<div style="font-size:9px;color:#7B1FA2;margin-bottom:2px"><strong>Paciente:</strong> ${r.paciente}</div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:10px">
+            <span style="color:#555">P.Unit: S/ ${r.precio}</span>
+            <strong>S/ ${r.subtotal}</strong>
+          </div>
+        </div>`;
+      i++;
+
+    } else {
+      i++;
+    }
+  }
+
+  return html;
+})()}
   <hr class="d">
   ${desc > 0 ? `<div class="row" style="color:#b45309"><span>DESCUENTOS(-)</span><span>S/ ${fm(desc)}</span></div>` : ''}
   ${promosHTML}
@@ -968,45 +1139,132 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                 {tipo === 'servicio' ? 'Servicios vendidos' : 'Productos vendidos'}
               </p>
               <div className="space-y-2">
-                {(venta.detalles || []).map((d, i) => (
-                  <div key={i} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-sm text-gray-900">
-                            {tipo === 'servicio'
-                              ? (d.descripcionLinea || getServicioNombre(d) || d.paquete?.nombre || '—')
-                              : (d.producto?.nombre || '—')}
-                          </p>
-                          {tipo === 'servicio' && d.tipo_venta?.nombre && (
-                            <span className={`px-2 py-0.5 text-xs font-semibold rounded ${d.tipo_venta.nombre.toLowerCase().includes('paquete') ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                              {d.tipo_venta.nombre}
-                            </span>
-                          )}
-                          {tipo === 'servicio' && getMotivoCita(d) && (
-                            <span className="px-2 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 rounded">
-                              {getMotivoCita(d)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          {tipo === 'servicio' ? (
-                            <>{d.sesiones_totales} sesión(es) × {formatMonto(d.precio_unitario)} = {formatMonto(d.sesiones_totales * d.precio_unitario)}
-                              {d.paciente && <span className="block mt-1 text-purple-600 font-medium">Para: {d.paciente.nombres} {d.paciente.apellido_paterno} {d.paciente.apellido_materno || ''}</span>}
-                            </>
-                          ) : (
-                            <>{d.cantidad} unid. × {formatMonto(d.precio_unitario)} = {formatMonto(d.cantidad * d.precio_unitario)}</>
-                          )}
-                        </p>
-                        <DescuentoLabel tipoDescuento={d.descuento_tipo} valor={d.descuento_valor} monto={d.descuento_monto} className="mt-1" />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                      <span className="text-xs text-gray-500 font-medium">Subtotal de línea:</span>
-                      <span className="font-bold text-gray-900">{formatMonto(d.subtotal)}</span>
-                    </div>
-                  </div>
-                ))}
+               {(() => {
+  const detalles = venta.detalles || [];
+
+  // Separar combos de normales
+  const combosMap = {};
+  const normales = [];
+
+  detalles.forEach((d) => {
+    if (d.paquete_combo_id) {
+      if (!combosMap[d.paquete_combo_id]) {
+        combosMap[d.paquete_combo_id] = {
+          nombre: d.paqueteCombo?.nombre
+               || d.descripcion_linea?.split(' - ')[0]
+               || d.descripcionLinea?.split(' - ')[0]
+               || 'Paquete Combo',
+          subtotal: 0,
+          items: [],
+        };
+      }
+      combosMap[d.paquete_combo_id].subtotal += parseFloat(d.subtotal || 0);
+      combosMap[d.paquete_combo_id].items.push(d);
+    } else {
+      normales.push(d);
+    }
+  });
+
+  const elementos = [];
+
+  // Renderizar combos
+  Object.values(combosMap).forEach((combo, ci) => {
+    elementos.push(
+      <div key={`combo-${ci}`} className="p-3 bg-gray-50 rounded-lg">
+        {/* Header combo */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-gray-900"> {combo.nombre}</span>
+            <span className="px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-700">
+              Paquete Combo
+            </span>
+          </div>
+      
+        </div>
+        {/* Items del combo */}
+        <div className="space-y-1 pl-4 border-l-2 border-purple-200">
+          {combo.items.map((d, idx) => {
+            const srvNombre = d.descripcionLinea
+              ? d.descripcionLinea.split(' - ').slice(1).join(' - ') || d.descripcionLinea
+              : getServicioNombre(d);
+        
+            return (
+              <div key={idx} className="text-xs text-gray-600">
+                <span className="font-medium">• {d.sesiones_totales || 1} ses.</span>
+                {' — '}
+                {srvNombre}
+             
+                {d.paciente && (
+                  <span className="block pl-3 text-purple-600 font-medium">
+                    Para: {d.paciente.nombres} {d.paciente.apellido_paterno} {d.paciente.apellido_materno || ''}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-200">
+          <span className="text-xs text-gray-500 font-medium">Total del paquete:</span>
+          <span className="font-bold text-gray-900">{formatMonto(combo.subtotal)}</span>
+        </div>
+      </div>
+    );
+  });
+
+  // Renderizar ítems normales
+  normales.forEach((d, i) => {
+    elementos.push(
+      <div key={`normal-${i}`} className="p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="font-semibold text-sm text-gray-900">
+                {tipo === 'servicio'
+                  ? (d.descripcionLinea || getServicioNombre(d) || d.paquete?.nombre || '—')
+                  : (d.producto?.nombre || '—')}
+              </p>
+              {tipo === 'servicio' && d.tipo_venta?.nombre && (
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded ${
+                  d.tipo_venta.nombre.toLowerCase().includes('paquete')
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {d.tipo_venta.nombre}
+                </span>
+              )}
+              {tipo === 'servicio' && getMotivoCita(d) && (
+                <span className="px-2 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 rounded">
+                  {getMotivoCita(d)}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              {tipo === 'servicio' ? (
+                <>
+                  {d.sesiones_totales} sesión(es) × {formatMonto(d.precio_unitario)} = {formatMonto(d.sesiones_totales * d.precio_unitario)}
+                  {d.paciente && (
+                    <span className="block mt-1 text-purple-600 font-medium">
+                      Para: {d.paciente.nombres} {d.paciente.apellido_paterno} {d.paciente.apellido_materno || ''}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>{d.cantidad} unid. × {formatMonto(d.precio_unitario)} = {formatMonto(d.cantidad * d.precio_unitario)}</>
+              )}
+            </p>
+            <DescuentoLabel tipoDescuento={d.descuento_tipo} valor={d.descuento_valor} monto={d.descuento_monto} className="mt-1" />
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+          <span className="text-xs text-gray-500 font-medium">Subtotal de línea:</span>
+          <span className="font-bold text-gray-900">{formatMonto(d.subtotal)}</span>
+        </div>
+      </div>
+    );
+  });
+
+  return elementos;
+})()}
               </div>
             </div>
 

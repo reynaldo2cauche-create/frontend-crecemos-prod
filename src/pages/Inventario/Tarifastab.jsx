@@ -242,24 +242,27 @@ const TarifaModal = ({ tarifa, servicios, motivos, onClose, onSaved }) => {
 // ─── Modal Paquete Combo ─────────────────────────────────────────────────────
 
 const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => {
-  const [form, setForm] = useState(
-    combo
-      ? {
-          nombre: combo.nombre ?? '',
-          descripcion: combo.descripcion ?? '',
-          precio_total: combo.precioTotal ?? '',
-          precio_tachado: combo.precioTachado ?? '',
-          items: (combo.items ?? []).map(it => ({
-            ...it,
-            tipo: it.servicio_tarifa_id ? 'servicio' : it.documento_tarifa_id ? 'documento' : null,
-            servicio_tarifa_id: it.servicioTarifaId ?? it.servicio_tarifa_id ?? null,
-            documento_tarifa_id: it.documentoTarifaId ?? it.documento_tarifa_id ?? null,
-            cantidad: it.cantidad ?? 1,
-            descripcion_linea: it.descripcionLinea ?? it.descripcion_linea ?? ''
-          })),
-        }
-      : { nombre: '', descripcion: '', precio_total: '', precio_tachado: '', items: [] }
-  );
+ const [form, setForm] = useState(
+  combo
+    ? {
+        nombre:         combo.nombre       ?? '',
+        descripcion:    combo.descripcion  ?? '',
+        precio_total:   combo.precioTotal  ?? combo.precio_total  ?? '',
+        precio_tachado: combo.precioTachado ?? combo.precio_tachado ?? '',
+        items: (combo.items ?? []).map(it => {
+          const servicioTarifaId  = it.servicioTarifaId  ?? it.servicio_tarifa_id  ?? null;
+          const documentoTarifaId = it.documentoTarifaId ?? it.documento_tarifa_id ?? null;
+          return {
+            tipo:                servicioTarifaId ? 'servicio' : documentoTarifaId ? 'documento' : null,
+            servicio_tarifa_id:  servicioTarifaId,
+            documento_tarifa_id: documentoTarifaId,
+            cantidad:            it.cantidad ?? 1,
+            descripcion_linea:   it.descripcionLinea ?? it.descripcion_linea ?? '',
+          };
+        }),
+      }
+    : { nombre: '', descripcion: '', precio_total: '', precio_tachado: '', items: [] }
+);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const isEdit = !!combo;
