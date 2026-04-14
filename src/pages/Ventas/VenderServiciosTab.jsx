@@ -241,7 +241,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
         : `${c.nombre} - ${servicioNombre}`;
 
       const paciente = d.paciente
-        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
         : null;
 
       rows.push({
@@ -265,7 +265,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
         cantidad: (d.sesiones_totales || 1).toFixed(2),
         precio: fm(toFloat(d.precio_unitario)),
         subtotal: fm(toFloat(d.subtotal)),
-        paciente: d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null,
+        paciente: d.paciente ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim() : null,
       });
       return;
     }
@@ -287,7 +287,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
 
     const precioUnitario = toFloat(d.precio_unitario);
     const subtotal = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
-    const paciente = d.paciente ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim() : null;
+    const paciente = d.paciente ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim() : null;
 
     rows.push({ desc, cantidad, precio: fm(precioUnitario), subtotal: fm(subtotal), paciente });
   });

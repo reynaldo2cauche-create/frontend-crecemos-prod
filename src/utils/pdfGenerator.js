@@ -14,9 +14,9 @@ const formatMoney = (num) => {
 
 const getNombreCliente = (venta) => {
   if (venta.paciente)
-    return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
+    return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
   if (venta.responsable)
-    return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
   if (venta.comprador_externo)
     return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '';
   return '-';
@@ -25,11 +25,11 @@ const getNombreCliente = (venta) => {
 // Para ventas de servicios: obtener el nombre del comprador/pagador
 const getNombreComprador = (venta) => {
   if (venta.responsable)
-    return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
   if (venta.comprador_externo)
     return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '';
   if (venta.paciente)
-    return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
+    return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
   return '-';
 };
 
@@ -40,7 +40,7 @@ const getPacientesServicio = (venta) => {
 
   detalles.forEach(d => {
     if (d.paciente && d.paciente.id) {
-      const nombre = `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim();
+      const nombre = `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim();
       const dni = d.paciente.dni || d.paciente.numero_documento || '-';
       pacientesMap.set(d.paciente.id, { nombre, dni });
     }
@@ -233,7 +233,7 @@ const nombreItem =
         : `${c.nombre} - ${servicioNombre}`;
 
       const pacienteNombre = d.paciente
-        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
         : '';
 
       rows.push({
@@ -262,7 +262,7 @@ const nombreItem =
       : servicioNombre;
 
     const pacienteNombre = d.paciente
-      ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+      ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
       : '-';
 
     rows.push({

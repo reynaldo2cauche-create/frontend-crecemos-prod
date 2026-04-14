@@ -258,7 +258,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
       }
 
       const paciente = d.paciente
-        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
         : null;
 
       rows.push({
@@ -284,7 +284,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
         precio:   fm(toFloat(d.precio_unitario)),
         subtotal: fm(toFloat(d.subtotal)),
         paciente: d.paciente
-          ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+          ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
           : null,
         esCombo: false,
       });
@@ -311,7 +311,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
     const precioUnitario = toFloat(d.precio_unitario);
     const subtotal       = precioUnitario * (d.sesiones_totales || 1) - toFloat(d.descuento_monto);
     const paciente       = d.paciente
-      ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+      ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
       : null;
 
     rows.push({
@@ -341,8 +341,8 @@ const TicketPreviewHTML = React.forwardRef(({ venta, tipo }, ref) => {
   }, 0);
 
   const nombreCliente = (() => {
-    if (venta.paciente)          return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
-    if (venta.responsable)       return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    if (venta.paciente)          return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
+    if (venta.responsable)       return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
     if (venta.comprador_externo) return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '-';
     return '-';
   })();
@@ -580,15 +580,15 @@ const buildTicketHTML = (venta, tipo) => {
   })();
 
   const nombreCliente = (() => {
-    if (venta.paciente)          return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
-    if (venta.responsable)       return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    if (venta.paciente)          return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
+    if (venta.responsable)       return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
     if (venta.comprador_externo) return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '-';
     return '-';
   })();
   const nombreComprador = (() => {
-    if (venta.responsable)       return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    if (venta.responsable)       return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
     if (venta.comprador_externo) return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '-';
-    if (venta.paciente)          return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
+    if (venta.paciente)          return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
     return '-';
   })();
   const dni          = venta.paciente?.dni || venta.paciente?.numero_documento || venta.responsable?.dni || venta.responsable?.numero_documento || venta.comprador_externo?.dni || '-';

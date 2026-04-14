@@ -52,16 +52,16 @@ const buildTicketHTML = (venta, tipo, promociones = []) => {
   })();
 
   const nombreCliente = (() => {
-    if (venta.paciente)          return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
-    if (venta.responsable)       return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    if (venta.paciente)          return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
+    if (venta.responsable)       return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
     if (venta.comprador_externo) return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '-';
     return '-';
   })();
 
   const nombreComprador = (() => {
-    if (venta.responsable)       return `${venta.responsable.nombres} ${venta.responsable.apellidos || venta.responsable.apellido_paterno || ''}`.trim();
+    if (venta.responsable)       return `${venta.responsable.nombres || ''} ${venta.responsable.apellido_paterno || ''} ${venta.responsable.apellido_materno || ''}`.trim();
     if (venta.comprador_externo) return venta.comprador_externo.nombre_completo || venta.comprador_externo.nombre || '-';
-    if (venta.paciente)          return `${venta.paciente.nombres} ${venta.paciente.apellidos || venta.paciente.apellido_paterno || ''}`.trim();
+    if (venta.paciente)          return `${venta.paciente.nombres || ''} ${venta.paciente.apellido_paterno || ''} ${venta.paciente.apellido_materno || ''}`.trim();
     return '-';
   })();
 
@@ -92,7 +92,7 @@ const buildTicketHTML = (venta, tipo, promociones = []) => {
       const precio = toFloat(d.precio_unitario) * (d.sesiones_totales || 1);
       const sub    = precio - toFloat(d.descuento_monto);
       const pac    = d.paciente
-        ? `${d.paciente.nombres} ${d.paciente.apellidos || d.paciente.apellido_paterno || ''}`.trim()
+        ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim() || '-'
         : null;
       return { desc: dsc, cantidad: cant, precio: fm(precio), subtotal: fm(sub), paciente: pac };
     }
