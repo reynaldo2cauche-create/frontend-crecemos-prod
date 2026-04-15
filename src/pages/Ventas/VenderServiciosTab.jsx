@@ -1610,7 +1610,7 @@ const VenderServiciosTab = ({
                         ) : (
                           <>
                             <div className="font-semibold text-gray-900">{linea.servicio_nombre}</div>
-                            {!esCombo && <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>}
+                            <div className="text-xs text-gray-500">{linea.motivo_nombre}</div>
                             {!esCombo && linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE && linea.paquete_nombre && (
                               <div className="text-xs text-purple-600 font-semibold mt-1">{linea.paquete_nombre}</div>
                             )}

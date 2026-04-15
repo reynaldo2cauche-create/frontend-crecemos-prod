@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronUp, CreditCard, User, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, CreditCard, User, Package, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import { getListadoCitasPorPaciente } from '../../services/citaService';
+import { getVentaServicioById } from '../../services/ventasService';
+import { DetalleVentaModal } from '../../pages/Ventas/HistorialVentasTab';
 
 const PAQUETES_POR_PAGINA = 5;
 
@@ -11,32 +13,54 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
   const [servicioSeleccionado, setServicioSeleccionado] = useState(0);
   const [paquetesAbiertos, setPaquetesAbiertos] = useState({});
   const [paginaActual, setPaginaActual] = useState(1);
+  const [ventaDetalle, setVentaDetalle] = useState(null);
+  const [loadingVenta, setLoadingVenta] = useState(false);
 
-  useEffect(() => {
-    if (!pacienteId) return;
-    const cargarListado = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getListadoCitasPorPaciente(pacienteId);
-        setListado(data);
-        // Abrir el primer paquete del primer servicio por defecto
-        if (data?.servicios?.[0]?.paquetes?.[0]) {
-          setPaquetesAbiertos({ [data.servicios[0].paquetes[0].paquete_id]: true });
-        }
-      } catch (err) {
-        console.error('Error al cargar listado de citas:', err);
-        setError('No se pudo cargar el listado de citas');
-      } finally {
+useEffect(() => {
+  let isMounted = true; // Flag para evitar actualizar estado si el componente se desmontó
+  
+  if (!pacienteId) return;
+  
+  const cargarListado = async () => {
+    if (!isMounted) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const data = await getListadoCitasPorPaciente(pacienteId);
+      
+      if (!isMounted) return; // No actualizar estado si el componente ya no existe
+      
+      console.log('📦 Datos recibidos:', data);
+      setListado(data);
+      
+      if (data?.servicios?.length > 0 && data.servicios[0]?.paquetes?.length > 0) {
+        const primerPaqueteId = data.servicios[0].paquetes[0].paquete_id;
+        setPaquetesAbiertos({ [primerPaqueteId]: true });
+      }
+    } catch (err) {
+      if (!isMounted) return;
+      console.error('Error:', err);
+      setError('No se pudo cargar el listado de citas');
+    } finally {
+      if (isMounted) {
         setLoading(false);
       }
-    };
-    cargarListado();
-  }, [pacienteId]);
+    }
+  };
+  
+  cargarListado();
+  
+  // Cleanup function
+  return () => {
+    isMounted = false;
+  };
+}, [pacienteId]);
 
   useEffect(() => {
     if (!listado) return;
-    setPaginaActual(1); // Resetear a primera página al cambiar de servicio
+    setPaginaActual(1);
     const primerPaquete = listado.servicios[servicioSeleccionado]?.paquetes?.[0];
     if (primerPaquete) {
       setPaquetesAbiertos({ [primerPaquete.paquete_id]: true });
@@ -47,10 +71,40 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
     setPaquetesAbiertos(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const abrirDetalleVenta = async (cita) => {
+    if (!cita) return;
+
+    // Intentar obtener venta_id desde la cita, sino buscar por venta_servicio_detalle_id
+    let ventaId = cita.venta_id;
+
+    // Si no tiene venta_id, mostrar error
+    if (!ventaId) {
+      console.error('⚠️ No se encontró venta_id en la cita:', cita);
+    }
+
+    if (!ventaId) {
+      alert('No se puede obtener el detalle de esta venta');
+      return;
+    }
+
+    setLoadingVenta(true);
+    try {
+      const venta = await getVentaServicioById(ventaId);
+      setVentaDetalle(venta);
+    } catch (err) {
+      console.error('Error al cargar detalle de venta:', err);
+      alert('No se pudo cargar el detalle de la venta');
+    } finally {
+      setLoadingVenta(false);
+    }
+  };
+
   const formatearFecha = (fecha) => {
     if (!fecha) return '-';
     const d = new Date(fecha);
-    return d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${diasSemana[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
   };
 
   const formatearHora = (hora) => {
@@ -58,7 +112,14 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
     return hora.substring(0, 5);
   };
 
-  const AsistenciaBadge = ({ valor }) => {
+  // ── NUEVO: badge actualizado con estado "Por agendar" ──────────────────────
+  const AsistenciaBadge = ({ valor, programada }) => {
+    if (programada === false) return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-semibold border border-blue-100">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+        Por agendar
+      </span>
+    );
     if (valor === 1) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-100">
         <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
@@ -93,7 +154,7 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
     </div>
   );
 
-  if (!listado || listado.servicios.length === 0) return (
+  if (!listado?.servicios?.length) return (
     <div className="bg-gray-50 border border-gray-100 rounded-xl p-8 text-center mt-6">
       <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
       <p className="text-gray-400 text-sm">No hay citas registradas</p>
@@ -102,31 +163,80 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
 
   const servicioActual = listado.servicios[servicioSeleccionado];
 
-  // Ordenar paquetes del más reciente al más antiguo (por fecha de compra)
-  const paquetesOrdenados = [...servicioActual.paquetes].sort((a, b) => {
-    const primeraCitaA = a.citas[0];
-    const primeraCitaB = b.citas[0];
+  // ── NUEVO: Agrupar paquetes-combo por paquete_combo_id ────────────────
+  const agruparPaquetesCombo = (paquetes) => {
+    const combos = {};
+    const individuales = [];
 
-    // Primero ordenar por fecha de pago/fecha
-    const fechaA = new Date(primeraCitaA?.fecha_pago || primeraCitaA?.fecha || 0).getTime();
-    const fechaB = new Date(primeraCitaB?.fecha_pago || primeraCitaB?.fecha || 0).getTime();
+    paquetes.forEach(paquete => {
+      if (paquete.paquete_combo_id) {
+        // Es parte de un paquete-combo - agrupar por paquete_combo_id
+        const comboKey = `${paquete.paquete_combo_id}`;
 
-    if (fechaB !== fechaA) {
-      return fechaB - fechaA; // Más reciente primero
-    }
+        if (!combos[comboKey]) {
+          combos[comboKey] = {
+            esGrupoCombo: true,
+            paquete_combo_id: paquete.paquete_combo_id,
+            paquete_combo_nombre: paquete.paquete_nombre || `Paquete Combo ${paquete.paquete_combo_id}`,
+            venta_id: paquete.venta_id,
+            subpaquetes: [],
+            primeraFechaPago: null,
+            primeraCita: null
+          };
+        }
+        combos[comboKey].subpaquetes.push(paquete);
+      } else {
+        // Es un paquete individual
+        individuales.push(paquete);
+      }
+    });
 
-    // Si las fechas son iguales, usar el ID de la cita como desempate (mayor ID = más reciente)
-    const idA = primeraCitaA?.id || 0;
-    const idB = primeraCitaB?.id || 0;
-    return idB - idA;
-  });
+    // Convertir combos a array y calcular metadatos
+    const combosArray = Object.values(combos).map(combo => {
+      // Ordenar subpaquetes por servicio/motivo
+      combo.subpaquetes.sort((a, b) => {
+        // Primero por servicio, luego por motivo
+        const servA = a.servicio_nombre || '';
+        const servB = b.servicio_nombre || '';
+        if (servA !== servB) return servA.localeCompare(servB);
 
-  // Paginación
-  const totalPaquetes = paquetesOrdenados.length;
+        const motA = a.citas[0]?.motivo_nombre || '';
+        const motB = b.citas[0]?.motivo_nombre || '';
+        return motA.localeCompare(motB);
+      });
+
+      // Usar primera cita programada del primer subpaquete para metadatos
+      const todasCitas = combo.subpaquetes.flatMap(sp => sp.citas);
+      combo.primeraCita = todasCitas.find(c => c.programada !== false) || todasCitas[0];
+      combo.primeraFechaPago = combo.primeraCita?.fecha_pago || combo.primeraCita?.fecha;
+
+      return combo;
+    });
+
+    // Combinar combos e individuales y ordenar por fecha
+    return [...combosArray, ...individuales].sort((a, b) => {
+      const fechaA = a.esGrupoCombo
+        ? new Date(a.primeraFechaPago || 0).getTime()
+        : new Date(a.citas[0]?.fecha_pago || a.citas[0]?.fecha || 0).getTime();
+      const fechaB = b.esGrupoCombo
+        ? new Date(b.primeraFechaPago || 0).getTime()
+        : new Date(b.citas[0]?.fecha_pago || b.citas[0]?.fecha || 0).getTime();
+
+      if (fechaB !== fechaA) return fechaB - fechaA;
+
+      const idA = a.esGrupoCombo ? a.paquete_combo_id : (a.citas[0]?.id || 0);
+      const idB = b.esGrupoCombo ? b.paquete_combo_id : (b.citas[0]?.id || 0);
+      return idB - idA;
+    });
+  };
+
+  const paquetesAgrupados = agruparPaquetesCombo(servicioActual.paquetes);
+
+  const totalPaquetes = paquetesAgrupados.length;
   const totalPaginas = Math.ceil(totalPaquetes / PAQUETES_POR_PAGINA);
   const inicio = (paginaActual - 1) * PAQUETES_POR_PAGINA;
   const fin = inicio + PAQUETES_POR_PAGINA;
-  const paquetesPaginados = paquetesOrdenados.slice(inicio, fin);
+  const paquetesPaginados = paquetesAgrupados.slice(inicio, fin);
 
   return (
     <div className="mt-8">
@@ -142,7 +252,11 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
       {/* Tabs de servicios */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5">
         {listado.servicios.map((servicio, index) => {
-          const totalCitas = servicio.paquetes.reduce((sum, paq) => sum + paq.citas.length, 0);
+          // ── NUEVO: contar solo citas programadas para el badge del tab ──
+          const totalCitas = servicio.paquetes.reduce(
+            (sum, paq) => sum + paq.citas.filter(c => c.programada !== false).length,
+            0
+          );
           const activo = servicioSeleccionado === index;
           return (
             <button
@@ -167,22 +281,236 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
 
       {/* Paquetes */}
       <div className="flex flex-col gap-3">
-        {paquetesPaginados.map((paquete, paqIdx) => {
-          const indiceReal = inicio + paqIdx;
+        {paquetesPaginados.map((item, itemIdx) => {
+          const indiceReal = inicio + itemIdx;
+
+          // ── NUEVO: Renderizar paquete-combo agrupado ──────────────────
+          if (item.esGrupoCombo) {
+            const comboAbierto = !!paquetesAbiertos[`combo-${item.paquete_combo_id}`];
+
+            // Combinar TODAS las citas de todos los subpaquetes
+            const todasCitasCombo = item.subpaquetes.flatMap(sp => sp.citas);
+
+            // Ordenar citas: primero programadas por fecha, luego pendientes
+            const citasOrdenadasCombo = [...todasCitasCombo].sort((a, b) => {
+              if (a.programada === false) return 1;
+              if (b.programada === false) return -1;
+              return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+            });
+
+            const citasProgramadasCombo = citasOrdenadasCombo.filter(c => c.programada !== false);
+            const citasPendientesCombo = citasOrdenadasCombo.filter(c => c.programada === false);
+
+            const asistidasCombo = citasProgramadasCombo.filter(c => c.asistencia === 1).length;
+            const noAsistidasCombo = citasProgramadasCombo.filter(c => c.asistencia === 0).length;
+            const pendientesCombo = citasProgramadasCombo.filter(c => c.asistencia === null || c.asistencia === undefined).length;
+
+            const sesionesTotalesCombo = item.subpaquetes.reduce((sum, sp) => sum + (sp.sesiones_totales || sp.citas.length), 0);
+            const sesionesUsadasCombo = citasProgramadasCombo.length;
+            const porcentajeCombo = sesionesTotalesCombo > 0
+              ? Math.round((sesionesUsadasCombo / sesionesTotalesCombo) * 100)
+              : 0;
+
+            return (
+              <div key={`combo-${item.paquete_combo_id}`} className={`rounded-xl border transition-all ${
+                comboAbierto ? 'border-purple-500/30 shadow-lg' : 'border-purple-200'
+              }`}>
+                {/* Header del paquete-combo */}
+                <button
+                  onClick={() => togglePaquete(`combo-${item.paquete_combo_id}`)}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
+                    comboAbierto ? 'bg-purple-50 rounded-b-none' : 'bg-white hover:bg-purple-50/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      comboAbierto ? 'bg-purple-500/20' : 'bg-purple-100'
+                    }`}>
+                      <Package className={`w-4 h-4 ${comboAbierto ? 'text-purple-700' : 'text-purple-500'}`} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700">
+                          Paquete Combo
+                        </span>
+                        <span className={`text-sm font-semibold ${comboAbierto ? 'text-purple-700' : 'text-gray-800'}`}>
+                          {item.paquete_combo_nombre}
+                        </span>
+
+                        {item.primeraCita?.fecha_pago && (
+                          <>
+                            <span className="text-gray-300">·</span>
+                            <span className="text-xs text-gray-500">{formatearFecha(item.primeraCita.fecha_pago)}</span>
+                          </>
+                        )}
+
+                        {item.primeraCita?.comprobante && (
+                          <>
+                            <span className="text-gray-300">·</span>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                abrirDetalleVenta(item.primeraCita);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  abrirDetalleVenta(item.primeraCita);
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-purple-600 hover:text-white hover:bg-purple-600 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              {item.primeraCita.comprobante}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+               
+
+                      {/* Mini stats del combo */}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="text-[10px] text-gray-400">
+                          {sesionesUsadasCombo}/{sesionesTotalesCombo} sesiones
+                        </span>
+                        {asistidasCombo > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-green-600 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                            {asistidasCombo} asistió
+                          </span>
+                        )}
+                        {noAsistidasCombo > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-red-500 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            {noAsistidasCombo} no asistió
+                          </span>
+                        )}
+                        {pendientesCombo > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                            {pendientesCombo} pendiente{pendientesCombo > 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {citasPendientesCombo.length > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            {citasPendientesCombo.length} por agendar
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Barra de progreso del combo */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-purple-500 rounded-full transition-all"
+                            style={{ width: `${porcentajeCombo}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 flex-shrink-0">{porcentajeCombo}%</span>
+                      </div>
+                    </div>
+
+                    <div className={`flex-shrink-0 mt-1 ${comboAbierto ? 'text-purple-600' : 'text-gray-400'}`}>
+                      {comboAbierto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Tabla única con TODAS las citas del combo */}
+                {comboAbierto && (
+                  <div className="border-t border-purple-200">
+                    <div className="grid px-4 py-2 bg-purple-50 border-b border-purple-100"
+                      style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">#</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Fecha</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Hora</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Especialista</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Motivo</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Asistencia</span>
+                    </div>
+
+                    {citasOrdenadasCombo.map((cita, citaIdx) => {
+                      const esPendiente = cita.programada === false;
+                      return (
+                        <div
+                          key={cita.id ?? `pending-${citaIdx}`}
+                          className={`grid items-center px-4 py-2.5 border-b border-purple-50 last:border-b-0 transition-colors ${
+                            esPendiente
+                              ? 'bg-blue-50/30 border-dashed'
+                              : citaIdx % 2 === 0
+                                ? 'bg-white hover:bg-purple-50/20'
+                                : 'bg-purple-50/20 hover:bg-purple-50/30'
+                          }`}
+                          style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
+                        >
+                          <span className={`text-xs font-semibold ${esPendiente ? 'text-blue-300' : 'text-gray-400'}`}>
+                            {citaIdx + 1}
+                          </span>
+                          <span className={`text-xs font-medium ${esPendiente ? 'text-blue-300 italic' : 'text-gray-700'}`}>
+                            {esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
+                          </span>
+                          <span className={`text-xs ${esPendiente ? 'text-blue-300' : 'text-gray-500'}`}>
+                            {esPendiente ? '-' : formatearHora(cita.hora)}
+                          </span>
+                          <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
+                            {cita.especialista || '-'}
+                          </span>
+                          <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
+                            {cita.motivo_nombre}
+                          </span>
+                          <AsistenciaBadge valor={cita.asistencia} programada={cita.programada} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // ── Renderizar paquete individual (código original) ──────────
+          const paquete = item;
           const abierto = !!paquetesAbiertos[paquete.paquete_id];
-          const citasOrdenadas = paquete.citas; // Ya vienen ordenadas del backend (más recientes primero)
-          const asistidas = citasOrdenadas.filter(c => c.asistencia === 1).length;
-          const noAsistidas = citasOrdenadas.filter(c => c.asistencia === 0).length;
-          const pendientes = citasOrdenadas.filter(c => c.asistencia === null || c.asistencia === undefined).length;
-          const primeraCita = citasOrdenadas[0];
-          const esCitaIndividual = citasOrdenadas.length === 1; // Si solo hay 1 cita, es compra individual
+          const citasOrdenadas = [...paquete.citas].sort((a, b) => {
+            if (a.programada === false) return 1;
+            if (b.programada === false) return -1;
+            return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+          });
+
+          // ── NUEVO: separar programadas vs pendientes ──────────────────
+          const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
+          const citasPendientes  = citasOrdenadas.filter(c => c.programada === false);
+
+          const asistidas   = citasProgramadas.filter(c => c.asistencia === 1).length;
+          const noAsistidas = citasProgramadas.filter(c => c.asistencia === 0).length;
+          const pendientes  = citasProgramadas.filter(c => c.asistencia === null || c.asistencia === undefined).length;
+
+          // Primera cita programada para mostrar metadata del paquete
+          const primeraCita = citasProgramadas[0] ?? citasPendientes[0];
+
+          const esCitaIndividual = citasOrdenadas.length === 1 && citasPendientes.length === 0;
+          const esPaqueteCombo = false; // Los combos ya se renderizaron antes
+          const nombrePaquete = esCitaIndividual ? 'Cita individual' : `Paquete ${indiceReal + 1}`;
+
+          // ── NUEVO: barra de progreso sesiones ─────────────────────────
+          const sesionesTotales  = paquete.sesiones_totales || citasOrdenadas.length;
+          const sesionesUsadas   = citasProgramadas.length;
+          const porcentaje       = sesionesTotales > 0
+            ? Math.round((sesionesUsadas / sesionesTotales) * 100)
+            : 0;
 
           return (
             <div key={paquete.paquete_id} className={`rounded-xl border transition-all ${
               abierto ? 'border-[#7B1FA2]/20 shadow-sm' : 'border-gray-100'
             }`}>
 
-              {/* Header del paquete — clickeable */}
+              {/* Header del paquete */}
               <button
                 onClick={() => togglePaquete(paquete.paquete_id)}
                 className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
@@ -191,62 +519,70 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
               >
                 <div className="flex items-start gap-3">
 
-                  {/* Ícono paquete */}
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
                     abierto ? 'bg-[#7B1FA2]/10' : 'bg-gray-100'
                   }`}>
                     <Package className={`w-4 h-4 ${abierto ? 'text-[#7B1FA2]' : 'text-gray-400'}`} />
                   </div>
 
-                  {/* Info principal */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Badge tipo */}
+                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
+                        esPaqueteCombo
+                          ? 'bg-purple-100 text-purple-700'
+                          : esCitaIndividual
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {esPaqueteCombo ? 'Paquete Combo' : esCitaIndividual ? 'Cita Individual' : 'Paquete'}
+                      </span>
+
                       <span className={`text-sm font-semibold ${abierto ? 'text-[#7B1FA2]' : 'text-gray-800'}`}>
-                        {esCitaIndividual ? 'Cita individual' : `Paquete ${indiceReal + 1}`}
+                        {nombrePaquete}
                       </span>
-                      <span className="text-gray-300">·</span>
-                      <span className="text-sm font-bold text-gray-900">
-                        S/. {primeraCita?.monto?.toFixed(2) ?? '0.00'}
-                      </span>
-                      {primeraCita?.modalidad_pago && (
-                        <>
-                          <span className="text-gray-300">·</span>
-                          <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                            <CreditCard className="w-3 h-3" />
-                            {primeraCita.modalidad_pago}
-                          </span>
-                        </>
-                      )}
+
                       {primeraCita?.fecha_pago && (
                         <>
                           <span className="text-gray-300">·</span>
                           <span className="text-xs text-gray-500">{formatearFecha(primeraCita.fecha_pago)}</span>
                         </>
                       )}
-                      {primeraCita?.comprobante && (
-                        <>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-[#7B1FA2] font-medium">{primeraCita.comprobante}</span>
-                        </>
-                      )}
+
+              {primeraCita?.comprobante && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirDetalleVenta(primeraCita);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        abrirDetalleVenta(primeraCita);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-[#7B1FA2] hover:text-white hover:bg-[#7B1FA2] rounded-md transition-colors cursor-pointer"
+                    title={!primeraCita.venta_id ? 'Información de venta no disponible' : 'Ver detalle de venta'}
+                  >
+                    <Receipt className="w-3 h-3" />
+                    {primeraCita.comprobante}
+                  </span>
+                </>
+              )}
                     </div>
 
-                    {/* Especialista + tipo */}
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 truncate">{primeraCita?.especialista ?? '-'}</span>
-                      {primeraCita?.tipo_servicio && (
-                        <>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-gray-400">{primeraCita.tipo_servicio}</span>
-                        </>
-                      )}
-                    </div>
 
                     {/* Mini stats */}
-                    <div className="flex items-center gap-2 mt-1.5">
-                      {!esCitaIndividual && (
-                        <span className="text-[10px] text-gray-400">{citasOrdenadas.length} citas</span>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {sesionesTotales > 1 && (
+                        <span className="text-[10px] text-gray-400">
+                          {sesionesUsadas}/{sesionesTotales} sesiones
+                        </span>
                       )}
                       {asistidas > 0 && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-green-600 font-medium">
@@ -266,10 +602,29 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
                           {pendientes} pendiente{pendientes > 1 ? 's' : ''}
                         </span>
                       )}
+                      {/* ── NUEVO: contador sesiones por agendar ── */}
+                      {citasPendientes.length > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          {citasPendientes.length} por agendar
+                        </span>
+                      )}
                     </div>
+
+                    {/* ── NUEVO: barra de progreso ───────────────────────── */}
+                    {sesionesTotales > 1 && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#7B1FA2] rounded-full transition-all"
+                            style={{ width: `${porcentaje}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 flex-shrink-0">{porcentaje}%</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Chevron */}
                   <div className={`flex-shrink-0 mt-1 ${abierto ? 'text-[#7B1FA2]' : 'text-gray-400'}`}>
                     {abierto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
@@ -279,30 +634,50 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
               {/* Lista de citas */}
               {abierto && (
                 <div className="border-t border-[#7B1FA2]/10">
-                  {/* Cabecera columnas */}
                   <div className="grid px-4 py-2 bg-gray-50 border-b border-gray-100"
-                    style={{ gridTemplateColumns: '28px 1fr 60px 1fr' }}>
+                    style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}>
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">#</span>
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Fecha</span>
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Hora</span>
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Especialista</span>
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Motivo</span>
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Asistencia</span>
                   </div>
 
-                  {/* Filas de citas */}
-                  {citasOrdenadas.map((cita, citaIdx) => (
-                    <div
-                      key={cita.id}
-                      className={`grid items-center px-4 py-2.5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/60 transition-colors ${
-                        citaIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                      }`}
-                      style={{ gridTemplateColumns: '28px 1fr 60px 1fr' }}
-                    >
-                      <span className="text-xs font-semibold text-gray-400">{citaIdx + 1}</span>
-                      <span className="text-xs text-gray-700 font-medium">{formatearFecha(cita.fecha)}</span>
-                      <span className="text-xs text-gray-500">{formatearHora(cita.hora)}</span>
-                      <AsistenciaBadge valor={cita.asistencia} />
-                    </div>
-                  ))}
+                  {citasOrdenadas.map((cita, citaIdx) => {
+                    const esPendiente = cita.programada === false;
+                    return (
+                      <div
+                        key={cita.id ?? `pending-${citaIdx}`}
+                        className={`grid items-center px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${
+                          esPendiente
+                            // ── NUEVO: fila punteada para slots por agendar ──
+                            ? 'bg-blue-50/30 border-dashed'
+                            : citaIdx % 2 === 0
+                              ? 'bg-white hover:bg-gray-50/60'
+                              : 'bg-gray-50/30 hover:bg-gray-50/60'
+                        }`}
+                        style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
+                      >
+                        <span className={`text-xs font-semibold ${esPendiente ? 'text-blue-300' : 'text-gray-400'}`}>
+                          {citaIdx + 1}
+                        </span>
+                        <span className={`text-xs font-medium ${esPendiente ? 'text-blue-300 italic' : 'text-gray-700'}`}>
+                          {esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
+                        </span>
+                        <span className={`text-xs ${esPendiente ? 'text-blue-300' : 'text-gray-500'}`}>
+                          {esPendiente ? '-' : formatearHora(cita.hora)}
+                        </span>
+                        <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
+                          {cita.especialista || '-'}
+                        </span>
+                        <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
+                          {cita.motivo_nombre}
+                        </span>
+                        <AsistenciaBadge valor={cita.asistencia} programada={cita.programada} />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -310,7 +685,7 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
         })}
       </div>
 
-      {/* Controles de paginación */}
+      {/* Paginación */}
       {totalPaginas > 1 && (
         <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
           <div className="text-xs text-gray-500">
@@ -360,6 +735,15 @@ const ListadoCitasPorServicio = ({ pacienteId }) => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal de detalle de venta */}
+      {ventaDetalle && (
+        <DetalleVentaModal
+          venta={ventaDetalle}
+          tipo="servicio"
+          onClose={() => setVentaDetalle(null)}
+        />
       )}
     </div>
   );

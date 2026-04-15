@@ -8,7 +8,7 @@ import {
   ReceiptPercentIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { obtenerPreviewURL, generarTicketPDF, generarTicketTermico, generarPDFA4 } from '../../utils/pdfGenerator';
+import { obtenerPreviewURL, generarTicketPDF, generarTicketTermico, generarPDFA4 } from '../utils/pdfGenerator';
 
 const fetchPromocionesAplicadas = async (tipoVentaId, ventaId) => {
   try {

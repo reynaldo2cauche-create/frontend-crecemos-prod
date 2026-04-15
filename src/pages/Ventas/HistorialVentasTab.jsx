@@ -1392,8 +1392,6 @@ const HistorialVentasTab = () => {
 
   const handleEditarVenta = async (payload) => {
     if (!ventaEditar) return;
-     console.log('ventaEditar:', ventaEditar);
-  console.log('payload:', JSON.stringify(payload, null, 2));
     setProcesando(true);
     try {
       if (ventaEditar.tipo === 'servicio') {
@@ -1706,4 +1704,6 @@ const FeedbackModal = ({ tipo, mensaje, onClose }) => createPortal(
   </div>,
   document.body
 );
+
+export { DetalleVentaModal, formatFecha, formatMonto, tipoPagadorNombre, calcularIgv, getServicioNombre, getMotivoCita, ComprobanteLabel, DescuentoLabel, PanelPromocionesDetalle };
 export default HistorialVentasTab;

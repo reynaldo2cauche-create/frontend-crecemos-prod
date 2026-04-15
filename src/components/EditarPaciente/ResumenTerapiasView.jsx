@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { getResumenTerapiasPorPaciente } from '../../services/citaService';
 import ListadoCitasPorServicio from './ListadoCitasPorServicio';
 import { ROLES } from '../../constants/roles'; // ajusta la ruta según tu estructura
-
 const ResumenTerapiasView = ({ pacienteId, user }) => {
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,12 +36,6 @@ const ResumenTerapiasView = ({ pacienteId, user }) => {
     </div>
   );
 
-  if (!resumen || resumen.servicios.length === 0) return (
-    <div className="bg-gray-50 border border-gray-100 rounded-xl p-8 text-center">
-      <p className="text-gray-400 text-sm">No hay terapias registradas</p>
-    </div>
-  );
-
   const ColColumnas = ({ asistencias, faltas, colorAsist = 'text-[#7B1FA2]', colorFaltas = 'text-red-700', labelAsist = 'text-gray-400', labelFaltas = 'text-gray-400', divisor = 'bg-gray-100' }) => (
     <div className="flex items-center justify-between" style={{ width: '148px' }}>
       <div className="flex flex-col items-center" style={{ width: '60px' }}>
@@ -70,42 +63,51 @@ const ResumenTerapiasView = ({ pacienteId, user }) => {
         <h3 className="text-sm font-bold text-gray-900">Resumen de terapias</h3>
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-col gap-2">
-        {resumen.servicios.map((servicio) => (
-          <div key={servicio.servicio_id} className="flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 hover:border-gray-200 transition-colors">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{servicio.servicio_nombre}</p>
-              <p className="text-xs text-gray-400">Servicio activo</p>
-            </div>
+      {/* Cards - SOLO si hay resumen */}
+      {resumen && resumen.servicios && resumen.servicios.length > 0 ? (
+        <>
+          <div className="flex flex-col gap-2">
+            {resumen.servicios.map((servicio) => (
+              <div key={servicio.servicio_id} className="flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 hover:border-gray-200 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{servicio.servicio_nombre}</p>
+                  <p className="text-xs text-gray-400">Servicio activo</p>
+                </div>
+                <ColColumnas
+                  asistencias={servicio.asistencias}
+                  faltas={servicio.faltas}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Pie — totales */}
+          <div className="flex items-center mt-1.5 rounded-xl px-4 py-2.5 border border-[#7B1FA2]/15 bg-[#7B1FA2]/5">
+            <span className="flex-1 text-xs font-medium text-[#7B1FA2]">Total general</span>
             <ColColumnas
-              asistencias={servicio.asistencias}
-              faltas={servicio.faltas}
+              asistencias={resumen.totales.asistencias}
+              faltas={resumen.totales.faltas}
+              colorAsist="text-[#7B1FA2]"
+              colorFaltas="text-red-700"
+              labelAsist="text-[#7B1FA2]/60"
+              labelFaltas="text-red-400"
+              divisor="bg-[#7B1FA2]/20"
             />
           </div>
-        ))}
-      </div>
+        </>
+      ) : (
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 text-center mb-4">
+          <p className="text-gray-400 text-sm">No hay terapias registradas aún</p>
+        </div>
+      )}
 
-      {/* Pie — totales */}
-      <div className="flex items-center mt-1.5 rounded-xl px-4 py-2.5 border border-[#7B1FA2]/15 bg-[#7B1FA2]/5">
-        <span className="flex-1 text-xs font-medium text-[#7B1FA2]">Total general</span>
-        <ColColumnas
-          asistencias={resumen.totales.asistencias}
-          faltas={resumen.totales.faltas}
-          colorAsist="text-[#7B1FA2]"
-          colorFaltas="text-red-700"
-          labelAsist="text-[#7B1FA2]/60"
-          labelFaltas="text-red-400"
-          divisor="bg-[#7B1FA2]/20"
-        />
-      </div>
-
-      {/* Listado detallado — solo Administrador y Admisión */}
-      {puedeVerHistorial && (
-        <ListadoCitasPorServicio pacienteId={pacienteId} />
+      {/* 🔥 LISTADO DE CITAS - SIEMPRE VISIBLE */}
+      {pacienteId && puedeVerHistorial && (
+        <div className="mt-6">
+          <ListadoCitasPorServicio pacienteId={pacienteId} />
+        </div>
       )}
     </div>
   );
 };
-
 export default ResumenTerapiasView;
