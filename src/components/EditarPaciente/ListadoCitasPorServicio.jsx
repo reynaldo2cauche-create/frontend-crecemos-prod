@@ -164,71 +164,44 @@ useEffect(() => {
   const servicioActual = listado.servicios[servicioSeleccionado];
 
   // ── NUEVO: Agrupar paquetes-combo por paquete_combo_id ────────────────
-  const agruparPaquetesCombo = (paquetes) => {
-    const combos = {};
-    const individuales = [];
+const agruparPaquetesCombo = (paquetes) => {
+  const combos = {};
+  const individuales = [];
+  let sinVenta = [];
 
-    paquetes.forEach(paquete => {
-      if (paquete.paquete_combo_id) {
-        // Es parte de un paquete-combo - agrupar por paquete_combo_id
-        const comboKey = `${paquete.paquete_combo_id}`;
+  paquetes.forEach(paquete => {
+    if (!paquete.venta_id) {
+      sinVenta.push(paquete);
+      return;
+    }
 
-        if (!combos[comboKey]) {
-          combos[comboKey] = {
-            esGrupoCombo: true,
-            paquete_combo_id: paquete.paquete_combo_id,
-            paquete_combo_nombre: paquete.paquete_nombre || `Paquete Combo ${paquete.paquete_combo_id}`,
-            venta_id: paquete.venta_id,
-            subpaquetes: [],
-            primeraFechaPago: null,
-            primeraCita: null
-          };
-        }
-        combos[comboKey].subpaquetes.push(paquete);
-      } else {
-        // Es un paquete individual
-        individuales.push(paquete);
+    if (paquete.paquete_combo_id) {
+      const key = paquete.paquete_combo_id;
+
+      if (!combos[key]) {
+        combos[key] = {
+          esGrupoCombo: true,
+          paquete_combo_id: key,
+          paquete_combo_nombre: paquete.paquete_nombre,
+          subpaquetes: [],
+        };
       }
-    });
 
-    // Convertir combos a array y calcular metadatos
-    const combosArray = Object.values(combos).map(combo => {
-      // Ordenar subpaquetes por servicio/motivo
-      combo.subpaquetes.sort((a, b) => {
-        // Primero por servicio, luego por motivo
-        const servA = a.servicio_nombre || '';
-        const servB = b.servicio_nombre || '';
-        if (servA !== servB) return servA.localeCompare(servB);
+      combos[key].subpaquetes.push(paquete);
+    } else {
+      individuales.push(paquete);
+    }
+  });
 
-        const motA = a.citas[0]?.motivo_nombre || '';
-        const motB = b.citas[0]?.motivo_nombre || '';
-        return motA.localeCompare(motB);
-      });
+  const combosArray = Object.values(combos);
 
-      // Usar primera cita programada del primer subpaquete para metadatos
-      const todasCitas = combo.subpaquetes.flatMap(sp => sp.citas);
-      combo.primeraCita = todasCitas.find(c => c.programada !== false) || todasCitas[0];
-      combo.primeraFechaPago = combo.primeraCita?.fecha_pago || combo.primeraCita?.fecha;
+  const grupoSinVenta = sinVenta.length > 0 ? [{
+    esGrupoSinVenta: true,
+    paquetes: sinVenta
+  }] : [];
 
-      return combo;
-    });
-
-    // Combinar combos e individuales y ordenar por fecha
-    return [...combosArray, ...individuales].sort((a, b) => {
-      const fechaA = a.esGrupoCombo
-        ? new Date(a.primeraFechaPago || 0).getTime()
-        : new Date(a.citas[0]?.fecha_pago || a.citas[0]?.fecha || 0).getTime();
-      const fechaB = b.esGrupoCombo
-        ? new Date(b.primeraFechaPago || 0).getTime()
-        : new Date(b.citas[0]?.fecha_pago || b.citas[0]?.fecha || 0).getTime();
-
-      if (fechaB !== fechaA) return fechaB - fechaA;
-
-      const idA = a.esGrupoCombo ? a.paquete_combo_id : (a.citas[0]?.id || 0);
-      const idB = b.esGrupoCombo ? b.paquete_combo_id : (b.citas[0]?.id || 0);
-      return idB - idA;
-    });
-  };
+  return [...combosArray, ...grupoSinVenta, ...individuales];
+};
 
   const paquetesAgrupados = agruparPaquetesCombo(servicioActual.paquetes);
 
@@ -284,12 +257,150 @@ useEffect(() => {
         {paquetesPaginados.map((item, itemIdx) => {
           const indiceReal = inicio + itemIdx;
 
+
+
+                // 🔥 NUEVO: GRUPO SIN VENTA
+if (item.esGrupoSinVenta) {
+  const abierto = !!paquetesAbiertos['sin-venta'];
+
+  const todasCitas = item.paquetes.flatMap(p => p.citas);
+
+  const citasOrdenadas = [...todasCitas].sort((a, b) => {
+    if (a.programada === false) return 1;
+    if (b.programada === false) return -1;
+    return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+  });
+
+  const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
+  const citasPendientes = citasOrdenadas.filter(c => c.programada === false);
+
+  const asistidas = citasProgramadas.filter(c => c.asistencia === 1).length;
+  const noAsistidas = citasProgramadas.filter(c => c.asistencia === 0).length;
+  const pendientes = citasProgramadas.filter(c => c.asistencia == null).length;
+
+  return (
+    <div className={`rounded-xl border transition-all ${
+      abierto ? 'border-gray-400 shadow-sm' : 'border-gray-200'
+    }`}>
+
+      {/* HEADER — MISMO DISEÑO */}
+      <button
+        onClick={() => togglePaquete('sin-venta')}
+        className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
+          abierto ? 'bg-gray-100 rounded-b-none' : 'bg-white hover:bg-gray-50'
+        }`}
+      >
+        <div className="flex items-start gap-3">
+
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-200">
+            <Package className="w-4 h-4 text-gray-600" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+
+              <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-gray-200 text-gray-700">
+                Sin venta
+              </span>
+
+              <span className="text-sm font-semibold text-gray-800">
+                Atenciones directas
+              </span>
+            </div>
+
+            {/* stats IGUAL que tu diseño */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {asistidas > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-green-600 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  {asistidas} asistió
+                </span>
+              )}
+              {noAsistidas > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-red-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  {noAsistidas} no asistió
+                </span>
+              )}
+              {pendientes > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                  {pendientes} pendiente
+                </span>
+              )}
+              {citasPendientes.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  {citasPendientes.length} por agendar
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="text-gray-500 mt-1">
+            {abierto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        </div>
+      </button>
+
+      {/* TABLA — MISMA QUE YA TIENES */}
+      {abierto && (
+        <div className="border-t border-gray-200">
+
+          <div
+            className="grid px-4 py-2 bg-gray-50 border-b border-gray-100"
+            style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
+          >
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">#</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">Fecha</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">Hora</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">Especialista</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">Motivo</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase">Asistencia</span>
+          </div>
+
+          {citasOrdenadas.map((cita, i) => {
+            const esPendiente = cita.programada === false;
+
+            return (
+              <div
+                key={i}
+                className={`grid items-center px-4 py-2.5 border-b border-gray-50 ${
+                  esPendiente
+                    ? 'bg-blue-50/30 border-dashed'
+                    : i % 2 === 0
+                      ? 'bg-white'
+                      : 'bg-gray-50/30'
+                }`}
+                style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
+              >
+                <span className="text-xs text-gray-400">{i + 1}</span>
+                <span className="text-xs">
+                  {esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
+                </span>
+                <span className="text-xs">
+                  {esPendiente ? '-' : formatearHora(cita.hora)}
+                </span>
+                <span className="text-xs">{cita.especialista || '-'}</span>
+                <span className="text-xs">{cita.motivo_nombre}</span>
+                <AsistenciaBadge valor={cita.asistencia} programada={cita.programada} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
           // ── NUEVO: Renderizar paquete-combo agrupado ──────────────────
           if (item.esGrupoCombo) {
             const comboAbierto = !!paquetesAbiertos[`combo-${item.paquete_combo_id}`];
 
             // Combinar TODAS las citas de todos los subpaquetes
             const todasCitasCombo = item.subpaquetes.flatMap(sp => sp.citas);
+            const primeraCitaCombo = item.subpaquetes
+            .flatMap(sp => sp.citas)
+            .find(c => c.venta_id);
 
             // Ordenar citas: primero programadas por fecha, luego pendientes
             const citasOrdenadasCombo = [...todasCitasCombo].sort((a, b) => {
@@ -338,14 +449,16 @@ useEffect(() => {
                           {item.paquete_combo_nombre}
                         </span>
 
-                        {item.primeraCita?.fecha_pago && (
+                      {primeraCitaCombo?.fecha_pago && (
                           <>
                             <span className="text-gray-300">·</span>
-                            <span className="text-xs text-gray-500">{formatearFecha(item.primeraCita.fecha_pago)}</span>
+                            <span className="text-xs text-gray-500">
+                              {formatearFecha(primeraCitaCombo.fecha_pago)}
+                            </span>
                           </>
                         )}
 
-                        {item.primeraCita?.comprobante && (
+                        {primeraCitaCombo?.comprobante && (
                           <>
                             <span className="text-gray-300">·</span>
                             <span
@@ -353,19 +466,19 @@ useEffect(() => {
                               tabIndex={0}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                abrirDetalleVenta(item.primeraCita);
+                                abrirDetalleVenta(primeraCitaCombo);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  abrirDetalleVenta(item.primeraCita);
+                                  abrirDetalleVenta(primeraCitaCombo);
                                 }
                               }}
                               className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-purple-600 hover:text-white hover:bg-purple-600 rounded-md transition-colors cursor-pointer"
                             >
                               <Receipt className="w-3 h-3" />
-                              {item.primeraCita.comprobante}
+                              {primeraCitaCombo.comprobante}
                             </span>
                           </>
                         )}
@@ -477,6 +590,8 @@ useEffect(() => {
           // ── Renderizar paquete individual (código original) ──────────
           const paquete = item;
           const abierto = !!paquetesAbiertos[paquete.paquete_id];
+          const esSinVenta = false;
+
           const citasOrdenadas = [...paquete.citas].sort((a, b) => {
             if (a.programada === false) return 1;
             if (b.programada === false) return -1;
@@ -496,7 +611,12 @@ useEffect(() => {
 
           const esCitaIndividual = citasOrdenadas.length === 1 && citasPendientes.length === 0;
           const esPaqueteCombo = false; // Los combos ya se renderizaron antes
-          const nombrePaquete = esCitaIndividual ? 'Cita individual' : `Paquete ${indiceReal + 1}`;
+      // 🔥 CAMBIO AQUÍ
+        const nombrePaquete = esSinVenta
+          ? 'Atención directa'
+          : esCitaIndividual
+            ? 'Cita individual'
+            : `Paquete ${indiceReal + 1}`;
 
           // ── NUEVO: barra de progreso sesiones ─────────────────────────
           const sesionesTotales  = paquete.sesiones_totales || citasOrdenadas.length;
@@ -528,15 +648,20 @@ useEffect(() => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Badge tipo */}
-                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
-                        esPaqueteCombo
-                          ? 'bg-purple-100 text-purple-700'
-                          : esCitaIndividual
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {esPaqueteCombo ? 'Paquete Combo' : esCitaIndividual ? 'Cita Individual' : 'Paquete'}
-                      </span>
+                          <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
+                      esSinVenta
+                        ? 'bg-gray-200 text-gray-700'
+                        : esCitaIndividual
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {esSinVenta
+                        ? 'Sin venta'
+                        : esCitaIndividual
+                          ? 'Cita Individual'
+                          : 'Paquete'}
+                    </span>
+
 
                       <span className={`text-sm font-semibold ${abierto ? 'text-[#7B1FA2]' : 'text-gray-800'}`}>
                         {nombrePaquete}
