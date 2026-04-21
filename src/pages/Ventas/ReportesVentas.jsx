@@ -236,17 +236,15 @@ const ReportesVentas = () => {
       {/* 5 Tarjetas métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {metricCards.map(({ label, value, sub, gradient, border, text, num, iconBg, iconColor, Icon }) => (
-          <div key={label} className={`bg-gradient-to-br ${gradient} rounded-2xl p-5 border ${border}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className={`text-xs font-semibold ${text} mb-1`}>{label}</p>
-                <p className={`text-xl font-bold ${num} leading-tight break-words`}>{value}</p>
-                <p className={`text-xs ${text} mt-2 leading-snug`}>{sub}</p>
+          <div key={label} className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 border ${border}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`${iconBg} p-1.5 rounded-lg shrink-0`}>
+                <Icon className={`w-4 h-4 ${iconColor}`} />
               </div>
-              <div className={`${iconBg} p-2.5 rounded-xl shrink-0`}>
-                <Icon className={`w-5 h-5 ${iconColor}`} />
-              </div>
+              <p className={`text-xs font-semibold ${text} truncate`}>{label}</p>
             </div>
+            <p className={`text-xl font-bold ${num} leading-tight whitespace-nowrap overflow-hidden text-ellipsis`}>{value}</p>
+            <p className={`text-xs ${text} mt-1 leading-snug`}>{sub}</p>
           </div>
         ))}
       </div>

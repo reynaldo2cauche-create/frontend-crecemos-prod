@@ -190,10 +190,10 @@ export const generarHorasDelDia = (fechaString) => {
   const diaSemana = fecha.getDay();
   const horas = [];
 
-  // Sábado (6): 8:00 AM a 2:00 PM
+  // Sábado (6): 8:00 AM a 8:00 PM
   if (diaSemana === 6) {
     let minutos = 8 * 60;
-    const finMinutos = 14 * 60;
+    const finMinutos = 20 * 60;
 
     while (minutos < finMinutos) {
       const h = Math.floor(minutos / 60);

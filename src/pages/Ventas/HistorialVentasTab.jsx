@@ -17,7 +17,8 @@ import {
   TrashIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
 import {
   getVentasServicios,
   getVentasProductos,
@@ -52,7 +53,7 @@ const formatFecha = (f) => {
   });
 };
 
-const formatMonto = (n) => `S/ ${parseFloat(n || 0).toFixed(2)}`;
+const formatMonto = (n) => `S/ ${parseFloat(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 const formatMoney = (num) => parseFloat(num || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 const tipoPagadorNombre = (id) => {
@@ -1298,6 +1299,10 @@ const HistorialVentasTab = () => {
   const [ventasProductos, setVentasProductos] = useState([]);
   const [loading, setLoading]               = useState(true);
   const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '' });
+  const [queryPaciente, setQueryPaciente]   = useState('');
+  const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
+  const [showDropdownPaciente, setShowDropdownPaciente] = useState(false);
+  const { pacientes: resultadosPaciente, loading: loadingPaciente } = useBusquedaPacientes(queryPaciente);
   const [ventaDetalle, setVentaDetalle]     = useState(null);
   const [tipoDetalle, setTipoDetalle]       = useState(null);
   const [ventaImprimir, setVentaImprimir]   = useState(null);
@@ -1313,7 +1318,7 @@ const HistorialVentasTab = () => {
   const esAdmision = user?.rol?.id === 2; // ROLES.ADMISION = 2
 
   useEffect(() => { cargarVentas(); }, []);
-  useEffect(() => { setPage(0); }, [filtros.tipo, filtros.fechaDesde, filtros.fechaHasta]);
+  useEffect(() => { setPage(0); }, [filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, pacienteSeleccionado]);
 
   const cargarVentas = async () => {
     setLoading(true);
@@ -1430,9 +1435,12 @@ const HistorialVentasTab = () => {
     ...ventasProductos.map(v => ({ ...v, tipo: 'producto' })),
   ].sort((a, b) => new Date(b.created_at || b.fecha_venta) - new Date(a.created_at || a.fecha_venta));
 
-  const ventasFiltradas = filtros.tipo === 'todos'
-    ? ventasCombinadas
-    : ventasCombinadas.filter(v => filtros.tipo === 'servicios' ? v.tipo === 'servicio' : v.tipo === 'producto');
+  const ventasFiltradas = ventasCombinadas
+    .filter(v => filtros.tipo === 'todos' || (filtros.tipo === 'servicios' ? v.tipo === 'servicio' : v.tipo === 'producto'))
+    .filter(v => {
+      if (!pacienteSeleccionado) return true;
+      return v.paciente?.id === pacienteSeleccionado.id;
+    });
 
   const totalMonto      = ventasFiltradas.reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
   const ventasPaginadas = ventasFiltradas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -1469,7 +1477,44 @@ const HistorialVentasTab = () => {
         )}
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+            {/* Paciente combobox */}
+            <div className="relative sm:col-span-2">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Paciente</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={pacienteSeleccionado ? pacienteSeleccionado.nombre_completo : queryPaciente}
+                  onChange={e => { setQueryPaciente(e.target.value); setPacienteSeleccionado(null); setShowDropdownPaciente(true); }}
+                  onFocus={() => setShowDropdownPaciente(true)}
+                  onBlur={() => setTimeout(() => setShowDropdownPaciente(false), 150)}
+                  placeholder="Buscar paciente..."
+                  className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                />
+                {(pacienteSeleccionado || queryPaciente) && (
+                  <button onClick={() => { setPacienteSeleccionado(null); setQueryPaciente(''); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {showDropdownPaciente && (queryPaciente.length >= 2) && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                  {loadingPaciente ? (
+                    <div className="px-4 py-3 text-sm text-gray-400">Buscando...</div>
+                  ) : resultadosPaciente.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-400">Sin resultados</div>
+                  ) : resultadosPaciente.map(p => (
+                    <button key={p.id} onMouseDown={() => { setPacienteSeleccionado(p); setQueryPaciente(''); setShowDropdownPaciente(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#7B1FA2]/5 transition-colors border-b border-gray-50 last:border-0">
+                      <span className="font-medium text-gray-900">{p.nombre_completo}</span>
+                      <span className="text-xs text-gray-400 ml-2">{p.numero_documento}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo de Venta</label>
               <select value={filtros.tipo} onChange={e => setFiltros(f => ({ ...f, tipo: e.target.value }))}
@@ -1489,9 +1534,9 @@ const HistorialVentasTab = () => {
               <input type="date" value={filtros.fechaHasta} onChange={e => setFiltros(f => ({ ...f, fechaHasta: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end sm:col-span-5">
               <button onClick={cargarVentas}
-                className="w-full px-4 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] transition-colors">Filtrar</button>
+                className="px-6 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] transition-colors">Filtrar</button>
             </div>
           </div>
         </div>

@@ -31,6 +31,8 @@ import api from '../../services/api';
 import { useGeofencing } from '../../hooks/useGeofencing';
 import { esFeriado, getNombreFeriado } from '../../constants/feriados';
 import { getVentasDisponibles, getListadoCitasPorPaciente, getInfoVentaDeCita } from '../../services/citaService';
+import { getVentaServicioById } from '../../services/ventasService';
+import { DetalleVentaModal } from '../../pages/Ventas/HistorialVentasTab';
 
 const ModalAgendarCita = ({
   open,
@@ -90,6 +92,8 @@ const ModalAgendarCita = ({
   // 📦 PAQUETE DE LA CITA
   const [infoPaquete, setInfoPaquete] = useState(null);
   const [cargandoPaquete, setCargandoPaquete] = useState(false);
+  const [ventaDetallePaquete, setVentaDetallePaquete] = useState(null);
+  const [cargandoVentaDetalle, setCargandoVentaDetalle] = useState(false);
 
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
@@ -223,19 +227,15 @@ const ModalAgendarCita = ({
       const listado = await getListadoCitasPorPaciente(citaEditando.paciente_id);
       console.log('📦 Listado recibido:', listado);
 
-      // Buscar el paquete que contiene esta cita
+      // Buscar el paquete usando venta_servicio_detalle_id (campo numérico confiable)
       let paqueteEncontrado = null;
       for (const servicio of listado.servicios) {
-        console.log('🔍 Buscando en servicio:', servicio.servicio_nombre);
-        // Los paquetes son un objeto, no array
-        const paquetesArray = Object.values(servicio.paquetes);
-        console.log('📦 Paquetes del servicio:', paquetesArray);
+        const paquetesArray = Array.isArray(servicio.paquetes)
+          ? servicio.paquetes
+          : Object.values(servicio.paquetes);
 
         for (const paquete of paquetesArray) {
-          console.log('🔍 Comparando paquete_id:', paquete.paquete_id, 'con venta_servicio_detalle_id:', citaEditando.venta_servicio_detalle_id);
-          // Comparar como string porque puede venir como string o número
-          if (String(paquete.paquete_id) === String(citaEditando.venta_servicio_detalle_id)) {
-            console.log('✅ PAQUETE ENCONTRADO!');
+          if (Number(paquete.venta_servicio_detalle_id) === Number(citaEditando.venta_servicio_detalle_id)) {
             paqueteEncontrado = {
               ...paquete,
               servicio_nombre: servicio.servicio_nombre,
@@ -247,7 +247,39 @@ const ModalAgendarCita = ({
         if (paqueteEncontrado) break;
       }
 
-      console.log('📦 Paquete encontrado final:', paqueteEncontrado);
+      // Si es un combo, recopilar citas de TODAS las líneas del combo (distintos motivos)
+      if (paqueteEncontrado?.paquete_combo_id) {
+        const comboId = paqueteEncontrado.paquete_combo_id;
+        let citasCombo = [];
+        let sesionesTotalesCombo = 0;
+
+        for (const servicio of listado.servicios) {
+          const paquetesArray = Array.isArray(servicio.paquetes)
+            ? servicio.paquetes
+            : Object.values(servicio.paquetes);
+
+          for (const paquete of paquetesArray) {
+            if (paquete.paquete_combo_id === comboId) {
+              // Agregar motivo_nombre de contexto a cada cita de esta línea
+              const citasConMotivo = paquete.citas.map(c => ({
+                ...c,
+                linea_servicio: servicio.servicio_nombre,
+              }));
+              citasCombo = [...citasCombo, ...citasConMotivo];
+              sesionesTotalesCombo += (paquete.sesiones_totales || 0);
+            }
+          }
+        }
+
+        paqueteEncontrado = {
+          ...paqueteEncontrado,
+          paquete_nombre: paqueteEncontrado.paquete_combo_nombre || paqueteEncontrado.paquete_nombre,
+          citas: citasCombo,
+          sesiones_totales: sesionesTotalesCombo,
+          es_combo: true,
+        };
+      }
+
       setInfoPaquete(paqueteEncontrado);
     } catch (error) {
       console.error('❌ Error al cargar info del paquete:', error);
@@ -256,6 +288,19 @@ const ModalAgendarCita = ({
       setCargandoPaquete(false);
     }
   }, [citaEditando?.paciente_id, citaEditando?.venta_servicio_detalle_id]);
+
+  const abrirDetalleVenta = async (ventaId) => {
+    if (!ventaId) return;
+    setCargandoVentaDetalle(true);
+    try {
+      const venta = await getVentaServicioById(ventaId);
+      setVentaDetallePaquete(venta);
+    } catch (err) {
+      console.error('Error al cargar detalle de venta:', err);
+    } finally {
+      setCargandoVentaDetalle(false);
+    }
+  };
 
   // 🔒 Cargar seguimiento apenas se abre el modal en edición (para validar bloqueo)
   useEffect(() => {
@@ -710,7 +755,7 @@ const ModalAgendarCita = ({
     const horas = [];
     if (diaSemana === 6) {
       let minutos = 8 * 60;
-      const finMinutos = 14 * 60;
+      const finMinutos = 20 * 60;
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
@@ -3148,60 +3193,113 @@ const handleGuardar = useCallback(async () => {
                   <>
                     {/* Info del Paquete */}
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 bg-[#7B1FA2]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Package className="w-5 h-5 text-[#7B1FA2]" />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-[#7B1FA2]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Package className="w-5 h-5 text-[#7B1FA2]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-gray-900">{infoPaquete.servicio_nombre}</h4>
+                            <p className="text-xs text-gray-600 mt-0.5">{infoPaquete.paquete_nombre || 'Paquete de sesiones'}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-bold text-gray-900">{infoPaquete.servicio_nombre}</h4>
-                          <p className="text-xs text-gray-600 mt-0.5">{infoPaquete.paquete_nombre || 'Paquete de sesiones'}</p>
-                        </div>
+                        {infoPaquete.citas[0]?.comprobante && (
+                          <button
+                            onClick={() => abrirDetalleVenta(infoPaquete.citas.find(c => c.venta_id)?.venta_id || infoPaquete.venta_id)}
+                            disabled={cargandoVentaDetalle}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#7B1FA2]/30 rounded-lg hover:bg-[#7B1FA2]/5 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#7B1FA2]" />
+                            <span className="text-xs font-bold text-[#7B1FA2] font-mono">
+                              {cargandoVentaDetalle ? '...' : infoPaquete.citas[0].comprobante}
+                            </span>
+                          </button>
+                        )}
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div className="bg-white/60 rounded-lg p-2">
-                          <span className="font-semibold text-gray-600">Comprobante:</span>
-                          <p className="text-[#7B1FA2] font-bold mt-0.5">{infoPaquete.citas[0]?.comprobante || 'Sin código'}</p>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-2">
-                          <span className="font-semibold text-gray-600">Modalidad Pago:</span>
-                          <p className="text-gray-900 font-medium mt-0.5">{infoPaquete.citas[0]?.modalidad_pago || '-'}</p>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-2">
-                          <span className="font-semibold text-gray-600">Monto Total:</span>
-                          <p className="text-gray-900 font-bold mt-0.5">S/. {infoPaquete.citas[0]?.monto?.toFixed(2) || '0.00'}</p>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-2">
-                          <span className="font-semibold text-gray-600">Fecha Compra:</span>
-                          <p className="text-gray-900 font-medium mt-0.5">
-                            {infoPaquete.citas[0]?.fecha_pago ? (() => {
-                              const fecha = new Date(infoPaquete.citas[0].fecha_pago);
-                              return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                            })() : '-'}
+                    {/* Aviso sesión individual */}
+                    {infoPaquete.paquete_nombre === 'Cita individual' && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-purple-800">Sesión individual</p>
+                          <p className="text-xs text-purple-700 mt-0.5">
+                            Para continuar el tratamiento, recuerda coordinar la compra de la próxima sesión o un paquete de sesiones.
                           </p>
                         </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Indicador de última/penúltima sesión */}
+                    {(() => {
+                      const programadas = infoPaquete.citas
+                        .filter(c => c.programada && c.id !== null)
+                        .sort((a, b) => new Date(`${a.fecha}T${a.hora}`) - new Date(`${b.fecha}T${b.hora}`));
+                      const totalSesiones = infoPaquete.sesiones_totales || programadas.length;
+                      const esUltima = programadas.length > 0 && programadas[programadas.length - 1].id === citaEditando?.id;
+                      const esPenultima = programadas.length >= 2 && programadas[programadas.length - 2].id === citaEditando?.id;
+                      const restantes = Math.max(0, totalSesiones - programadas.length);
+
+                      if (esUltima) return (
+                        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-amber-800">Última sesión del paquete</p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                              {totalSesiones > 1
+                                ? `Se han agendado las ${totalSesiones} sesiones contratadas.`
+                                : 'Sesión individual completada.'}
+                              {restantes === 0 ? ' Se recomienda coordinar la renovación.' : ''}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                      if (esPenultima) return (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-blue-800">Penúltima sesión del paquete</p>
+                            <p className="text-xs text-blue-700 mt-0.5">Luego de esta cita quedará solo 1 sesión más.</p>
+                          </div>
+                        </div>
+                      );
+                      if (restantes > 0) return (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
+                          <Package className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <p className="text-sm text-green-800">
+                            <span className="font-bold">{restantes}</span> {restantes === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de agendar
+                          </p>
+                        </div>
+                      );
+                      return null;
+                    })()}
 
                     {/* Estadísticas */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-[#7B1FA2]">{infoPaquete.citas.length}</div>
-                        <div className="text-xs text-gray-500 mt-1">Total Citas</div>
-                      </div>
-                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          {infoPaquete.citas.filter(c => c.asistencia === 1).length}
+                    {(() => {
+                      // Asistencia real: ambos (terapeuta + recepcion) en estado 7 = asistió, estado 6 = no asistió
+                      const asistio = (c) =>
+                        (c.terapeuta_estado_id == 7 && c.recepcion_estado_id == 7) || c.asistencia == 1;
+                      const noAsistio = (c) =>
+                        (c.terapeuta_estado_id == 6 && c.recepcion_estado_id == 6) || c.asistencia == 0;
+                      const citasReales = infoPaquete.citas.filter(c => c.programada && c.id !== null);
+                      return (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                            <div className="text-2xl font-bold text-[#7B1FA2]">{infoPaquete.sesiones_totales || citasReales.length}</div>
+                            <div className="text-xs text-gray-500 mt-1">Total Sesiones</div>
+                          </div>
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                            <div className="text-2xl font-bold text-green-600">{citasReales.filter(asistio).length}</div>
+                            <div className="text-xs text-gray-500 mt-1">Asistidas</div>
+                          </div>
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                            <div className="text-2xl font-bold text-red-600">{citasReales.filter(noAsistio).length}</div>
+                            <div className="text-xs text-gray-500 mt-1">Faltas</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">Asistidas</div>
-                      </div>
-                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-red-600">
-                          {infoPaquete.citas.filter(c => c.asistencia === 0).length}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">Faltas</div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* Lista de Citas del Paquete */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -3209,11 +3307,17 @@ const handleGuardar = useCallback(async () => {
                         <h4 className="text-xs font-bold text-gray-700 uppercase">Citas del Paquete</h4>
                       </div>
                       <div className="divide-y divide-gray-100 max-h-60 overflow-y-auto">
-                        {infoPaquete.citas.map((cita, idx) => {
+                        {[...infoPaquete.citas]
+                          .sort((a, b) => {
+                            if (!a.programada) return 1;
+                            if (!b.programada) return -1;
+                            return new Date(`${a.fecha}T${a.hora}`) - new Date(`${b.fecha}T${b.hora}`);
+                          })
+                          .map((cita, idx) => {
                           const esCitaActual = cita.id === citaEditando?.id;
                           return (
                             <div
-                              key={cita.id}
+                              key={cita.id ?? `slot-${idx}`}
                               className={`px-4 py-2.5 transition-colors ${
                                 esCitaActual
                                   ? 'bg-[#7B1FA2]/5 border-l-4 border-[#7B1FA2]'
@@ -3232,17 +3336,27 @@ const handleGuardar = useCallback(async () => {
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0">
+                                    {infoPaquete.es_combo && cita.linea_servicio && (
+                                      <div className="text-[10px] font-semibold text-[#7B1FA2] uppercase tracking-wide mb-0.5">
+                                        {cita.linea_servicio}{cita.motivo_nombre ? ` · ${cita.motivo_nombre}` : ''}
+                                      </div>
+                                    )}
                                     <div className="flex items-center gap-2">
                                       <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                      <span className="text-sm font-medium text-gray-900">
-                                        {(() => {
-                                          const fecha = new Date(cita.fecha);
-                                          return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-                                        })()}
-                                      </span>
-                                      <span className="text-gray-300">·</span>
-                                      <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                      <span className="text-sm text-gray-600">{cita.hora?.substring(0, 5) || '-'}</span>
+                                      {cita.fecha ? (
+                                        <span className="text-sm font-medium text-gray-900">
+                                          {new Date(cita.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-gray-400 italic">Por agendar</span>
+                                      )}
+                                      {cita.hora && (
+                                        <>
+                                          <span className="text-gray-300">·</span>
+                                          <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                          <span className="text-sm text-gray-600">{cita.hora?.substring(0, 5)}</span>
+                                        </>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
@@ -3251,22 +3365,34 @@ const handleGuardar = useCallback(async () => {
                                   </div>
                                 </div>
                                 <div className="flex-shrink-0">
-                                  {cita.asistencia === 1 ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-100">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                      Asistió
-                                    </span>
-                                  ) : cita.asistencia === 0 ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold border border-red-100">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                      No asistió
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 text-[10px] font-medium border border-gray-100">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                                      Pendiente
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const asistio = (cita.terapeuta_estado_id == 7 && cita.recepcion_estado_id == 7) || cita.asistencia == 1;
+                                    const noAsistio = (cita.terapeuta_estado_id == 6 && cita.recepcion_estado_id == 6) || cita.asistencia == 0;
+                                    if (!cita.programada || !cita.id) return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 text-[10px] font-medium border border-gray-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                        Por agendar
+                                      </span>
+                                    );
+                                    if (asistio) return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                        Asistió
+                                      </span>
+                                    );
+                                    if (noAsistio) return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold border border-red-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                        No asistió
+                                      </span>
+                                    );
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-[10px] font-medium border border-yellow-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                        Pendiente
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               {esCitaActual && (
@@ -3449,6 +3575,15 @@ const handleGuardar = useCallback(async () => {
           </div>
         );
       })()}
+
+      {/* Modal detalle de venta desde tab Paquete */}
+      {ventaDetallePaquete && (
+        <DetalleVentaModal
+          venta={ventaDetallePaquete}
+          tipo="servicio"
+          onClose={() => setVentaDetallePaquete(null)}
+        />
+      )}
     </>
   );
 };
