@@ -30,8 +30,12 @@ const buildTicketHTML = (venta, tipo, promociones = []) => {
   const toFloat = (v) => parseFloat(v || 0);
   const fm      = (n)  => parseFloat(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const total   = toFloat(venta.total);
-  const desc    = toFloat(venta.descuento_monto);
   const promos  = Array.isArray(promociones) ? promociones : [];
+
+  // 🔥 Calcular descuento total: descuento global + descuentos por línea
+  const descuentoGlobal = toFloat(venta.descuento_monto);
+  const descuentosLinea = (venta.detalles || []).reduce((sum, d) => sum + toFloat(d.descuento_monto), 0);
+  const desc = descuentoGlobal + descuentosLinea;
 
   // Solo suma descuentos monetarios reales (los regalos tienen monto_ahorrado = 0)
   const totalPromos = promos.reduce((s, p) => s + toFloat(p.monto_ahorrado), 0);
@@ -84,24 +88,40 @@ const buildTicketHTML = (venta, tipo, promociones = []) => {
         const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
         cant = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
         const srv = d.servicio?.nombre || '';
-        dsc = srv ? `${d.paquete.nombre} (${spp} SES.) - ${srv}` : `${d.paquete.nombre} (${spp} SES.)`;
+        dsc = srv ? `${d.paquete.nombre}  - ${srv}` : `${d.paquete.nombre}`;
       } else {
         cant = (d.sesiones_totales || 0).toFixed(2);
         dsc = d.servicio?.nombre || '-';
       }
       const precio = toFloat(d.precio_unitario) * (d.sesiones_totales || 1);
-      const sub    = precio - toFloat(d.descuento_monto);
+      const descLinea = toFloat(d.descuento_monto);
+      const sub    = precio - descLinea;
       const pac    = d.paciente
         ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim() || '-'
         : null;
-      return { desc: dsc, cantidad: cant, precio: fm(precio), subtotal: fm(sub), paciente: pac };
+      return {
+        desc: dsc,
+        cantidad: cant,
+        precio: fm(precio),
+        subtotal: fm(sub),
+        paciente: pac,
+        descuento_linea: descLinea,
+        descuento_tipo_id: d.descuento_tipo_id,
+        descuento_valor: d.descuento_valor
+      };
     }
+    const precioTotal = toFloat(d.precio_unitario) * toFloat(d.cantidad);
+    const descLinea = toFloat(d.descuento_monto);
+    const subtotalFinal = precioTotal - descLinea;
     return {
       desc:     d.producto?.nombre || '-',
       cantidad: toFloat(d.cantidad).toFixed(2),
       precio:   fm(toFloat(d.precio_unitario)),
-      subtotal: fm(toFloat(d.subtotal)),
+      subtotal: fm(subtotalFinal),
       paciente: null,
+      descuento_linea: descLinea,
+      descuento_tipo_id: d.descuento_tipo_id,
+      descuento_valor: d.descuento_valor
     };
   });
 

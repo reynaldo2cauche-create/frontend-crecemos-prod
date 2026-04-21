@@ -551,10 +551,7 @@ const FormularioSolicitud = ({
       (acc, d) => acc + Number(d.subtotal ?? d.precio_unitario ?? 0), 0
     );
 
-    console.log('💰 Monto del informe:', montoInforme);
-    console.log('📋 N° Recibo:', venta.codigo_comprobante);
-    console.log('ℹ️ servicio_id se asignará cuando selecciones la terapeuta');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
 
     setForm(p => ({
       ...p,
@@ -1160,12 +1157,7 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sw.bg} ${sw.text} ${sw.border}`}>
               <Icon className="w-3 h-3" /> {sw.label}
             </span>
-            {mostrarInfoBancaria && solicitud.estado_pago_id && (
-              <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sp.bg} ${sp.text} ${sp.border}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${sp.dot}`} />
-                {solicitud.estado_pago?.nombre ?? sp.label}
-              </span>
-            )}
+           
           </div>
 
           {/* Fila 2: metadatos */}

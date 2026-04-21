@@ -104,13 +104,14 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
         }
         
         const data = await getPacientes(url);
+
         if (data && Array.isArray(data)) {
         // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
         let pacientesFiltrados = data;
         if (user?.rol?.id === ROLES.TERAPEUTA) {
           pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
         }
-        
+
         setPacientes(pacientesFiltrados);
         setFilteredPacientes(pacientesFiltrados);
         setError(null);
@@ -225,50 +226,19 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
   const ejecutarBusqueda = async () => {
     setSearching(true);
-    
+
     try {
       const nuevosSearchParams = {
         numeroDocumento: numeroDocumentoInput || '',
         nombreCompleto: nombreCompletoInput || '',
         distritoId: filters.distritoId || '',
         estadoId: filters.estadoId || '',
-        terapeutaId: filters.terapeutaId || '', // ✅ AGREGADO
+        terapeutaId: filters.terapeutaId || '',
         ...(canViewServiceInfo(user) && { servicioId: filters.servicioId || '' })
       };
-      
-      setSearchParams(nuevosSearchParams);
-      
-      let filtered = [...pacientes];
-      
-      if (nuevosSearchParams.distritoId) {
-        filtered = filtered.filter(p => p.distrito?.id === parseInt(nuevosSearchParams.distritoId));
-      }
-      
-      if (nuevosSearchParams.estadoId) {
-        filtered = filtered.filter(p => p.estado?.id === parseInt(nuevosSearchParams.estadoId));
-      }
-      
-      if (canViewServiceInfo(user) && nuevosSearchParams.servicioId) {
-        filtered = filtered.filter(p => p.servicio?.id === parseInt(nuevosSearchParams.servicioId));
-      }
-      
-      if (nuevosSearchParams.numeroDocumento) {
-        filtered = filtered.filter(p => 
-          p.numero_documento && p.numero_documento.includes(nuevosSearchParams.numeroDocumento)
-        );
-      }
-      
-      if (nuevosSearchParams.nombreCompleto && nuevosSearchParams.nombreCompleto.trim() !== '') {
-        const nombreLower = nuevosSearchParams.nombreCompleto.toLowerCase().trim();
-        const terminos = nombreLower.split(/\s+/); // ["lucero", "margarita"]
 
-        filtered = filtered.filter(p => {
-          const nombreCompleto = `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.toLowerCase();
-          return terminos.every(termino => nombreCompleto.includes(termino));
-        });
-      }
-      
-      setFilteredPacientes(filtered);
+      // Solo actualizar searchParams, el useEffect se encargará de hacer la búsqueda en el backend
+      setSearchParams(nuevosSearchParams);
       setPage(0);
     } finally {
       setSearching(false);

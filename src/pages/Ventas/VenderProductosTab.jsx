@@ -64,7 +64,16 @@ const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
   const promociones = venta.promociones_aplicadas || [];
   const toFloat = (v) => parseFloat(v || 0);
   const total = toFloat(venta.total);
-  const descuento = toFloat(venta.descuento_monto);
+const descuentoLineas = (venta.detalles || []).reduce(
+  (s, d) => s + toFloat(d.descuento_monto), 0
+);
+const descuentoGlobal = toFloat(venta.descuento_monto) || (() => {
+  if (!venta.descuento_valor || venta.descuento_valor === '0.00') return 0;
+  return venta.descuento_tipo?.id === 1
+    ? subtotalBruto * (toFloat(venta.descuento_valor) / 100)  // ← subtotalBruto no existe aquí
+    : toFloat(venta.descuento_valor);
+})();
+const descuentoMonto = descuentoLineas + descuentoGlobal;
   const fm = (v) => formatMoney(toFloat(v));
 
   const totalPromos = promociones.reduce((s, p) => {
@@ -146,8 +155,8 @@ const TicketPreviewHTML = React.forwardRef(({ venta }, ref) => {
         </div>
       ))}
       <hr style={s.hr} />
-      {descuento > 0 && (
-        <div style={{ ...s.row, color: '#b45309' }}><span>DESCUENTOS(-)</span><span>S/ {fm(descuento)}</span></div>
+      {descuentoMonto > 0 && (
+        <div style={{ ...s.row, color: '#b45309' }}><span>DESCUENTOS(-)</span><span>S/ {fm(descuentoMonto)}</span></div>
       )}
       {promociones.length > 0 && (
         <div style={{ borderTop: '1px dashed #bbf7d0', marginTop: '3px', paddingTop: '3px' }}>
@@ -242,39 +251,139 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
     } finally { setDownloading(false); }
   };
 
-  const handleImprimir = async () => {
-    if (formato === 'ticket') {
-      const ventana = window.open('', '_blank');
-      const toFloat = (v) => parseFloat(v || 0);
-      const total = toFloat(venta.total);
-      const fm = (n) => toFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      const nombreCliente = getNombreComprador(venta);
-      const dni = getDniComprador(venta);
-      const fechaStr = String(venta.fecha_venta || '');
-      const [datePart, timePart] = fechaStr.split('T');
-      const [y, m, d] = datePart.split('-').map(Number);
-      const fechaEmision = timePart
-        ? new Date(y, m - 1, d, ...timePart.split(':').map(Number)).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-        : new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const tipoNombre = (venta.tipo_comprobante?.nombre || 'TICKET DE VENTA').toUpperCase();
-      const requiereIGV = tipoNombre.includes('BOLETA') || tipoNombre.includes('FACTURA');
+const handleImprimir = async () => {
+  if (formato === 'ticket') {
+    const ventana = window.open('', '_blank');
+    const toFloat = (v) => parseFloat(v || 0);
+    const total = toFloat(venta.total);
+    const fm = (n) => toFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const nombreCliente = getNombreComprador(venta);
+    const dni = getDniComprador(venta);
+    const fechaStr = String(venta.fecha_venta || '');
+    const [datePart, timePart] = fechaStr.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const fechaEmision = timePart
+      ? new Date(y, m - 1, d, ...timePart.split(':').map(Number)).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const tipoNombre = (venta.tipo_comprobante?.nombre || 'TICKET DE VENTA').toUpperCase();
+    const requiereIGV = tipoNombre.includes('BOLETA') || tipoNombre.includes('FACTURA');
 
-      const html = `<!DOCTYPE html>
+    const subtotalBruto = (venta.detalles || []).reduce(
+      (s, d) => s + toFloat(d.precio_unitario) * toFloat(d.cantidad), 0
+    );
+    const descuentoLineas = (venta.detalles || []).reduce(
+      (s, d) => s + toFloat(d.descuento_monto), 0
+    );
+    const descuentoGlobalMonto = (() => {
+      const directo = parseFloat(venta.descuento_monto || 0);
+      if (directo > 0) return directo;
+      if (!venta.descuento_valor || parseFloat(venta.descuento_valor) === 0) return 0;
+      return venta.descuento_tipo?.id === 1
+        ? subtotalBruto * (toFloat(venta.descuento_valor) / 100)
+        : toFloat(venta.descuento_valor);
+    })();
+    const descuentoMonto = descuentoLineas + descuentoGlobalMonto;
+
+    const promociones = venta.promociones_aplicadas || [];
+    const totalPromos = promociones.reduce((s, p) => {
+      const reglas = p.promocion?.reglas || [];
+      const esGratis = reglas.some(r => r.beneficio_tipo_id === 3 || r.beneficio_tipo_id === 4);
+      return esGratis ? s : s + parseFloat(p.monto_ahorrado || 0);
+    }, 0);
+
+    const itemsHTML = (venta.detalles || []).map(det => {
+      const cant = parseFloat(det.cantidad || 0).toFixed(2);
+      const pUnit = toFloat(det.precio_unitario);
+      const subtotal = toFloat(det.subtotal) || (pUnit * toFloat(det.cantidad));
+      return `
+        <div class="item">
+          <div style="font-size:10px;margin-bottom:2px;word-break:break-word">
+            <span class="bold">${cant} NIU</span> — ${det.producto?.nombre || '-'}
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px">
+            <span style="color:#555">P.Unit: S/ ${fm(pUnit)}</span>
+            <span class="bold">S/ ${fm(subtotal)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    let descuentosHTML = '';
+    if (descuentoMonto > 0) {
+      descuentosHTML += `
+        <div class="row" style="color:#b45309">
+          <span>DESCUENTOS(-)</span>
+          <span>S/ ${fm(descuentoMonto)}</span>
+        </div>
+      `;
+    }
+
+    let promocionesHTML = '';
+    if (promociones.length > 0) {
+      promocionesHTML += `<div style="border-top:1px dashed #bbf7d0;margin-top:3px;padding-top:3px">
+        <div style="font-size:9px;font-weight:700;color:#15803d;margin-bottom:2px">✦ PROMOCIONES APLICADAS</div>`;
+
+      promociones.forEach(p => {
+        const reglas = p.promocion?.reglas || [];
+        const reglaRegalo = reglas.find(r => r.beneficio_tipo_id === 4);
+        const reglaItemGratis = reglas.find(r => r.beneficio_tipo_id === 3);
+        const nombreProducto = reglaRegalo?.beneficio_producto?.nombre || 'Producto de regalo';
+
+        promocionesHTML += `
+          <div style="margin-bottom:3px">
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#16a34a">
+              <span style="flex:1;padding-right:4px">• ${p.promocion?.nombre || `Promo #${p.promocion_id}`}</span>
+              ${!reglaRegalo && !reglaItemGratis
+                ? `<span style="font-weight:700;flex-shrink:0">-S/ ${fm(p.monto_ahorrado)}</span>`
+                : ''}
+            </div>
+            ${reglaRegalo
+              ? `<div style="font-size:8px;color:#15803d;padding-left:8px">🎁 Incluye gratis: <strong>${nombreProducto}</strong></div>`
+              : ''}
+            ${reglaItemGratis
+              ? `<div style="font-size:8px;color:#15803d;padding-left:8px">🎁 El ítem más barato va <strong>gratis</strong></div>`
+              : ''}
+          </div>
+        `;
+      });
+
+      if (totalPromos > 0) {
+        promocionesHTML += `
+          <div style="display:flex;justify-content:space-between;font-weight:700;font-size:10px;color:#15803d;background:#f0fdf4;border-radius:2px;padding:2px 3px;margin:2px 0 4px">
+            <span>AHORRO TOTAL PROMOCIONES</span>
+            <span>-S/ ${fm(totalPromos)}</span>
+          </div>
+        `;
+      }
+      promocionesHTML += `</div>`;
+    }
+
+    const igvHTML = requiereIGV ? `
+      <div class="row"><span>BASE IMPONIBLE</span><span>S/ ${fm(total / 1.18)}</span></div>
+      <div class="row"><span>IGV (18%)</span><span>S/ ${fm(total - total / 1.18)}</span></div>
+    ` : '';
+
+    const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;color:#111;width:72mm;padding:10px 8px;font-weight:500}
   @media print{@page{size:72mm auto;margin:0}body{width:72mm}}
   .center{text-align:center}.bold{font-weight:700}.purple{color:#7B1FA2}
-  hr.d{border:none;border-top:1px dashed #aaa;margin:6px 0}hr.s{border:none;border-top:1px solid #ccc;margin:6px 0}
+  hr.d{border:none;border-top:1px dashed #aaa;margin:6px 0}
+  hr.s{border:none;border-top:1px solid #ccc;margin:6px 0}
   .row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px}
   .item{margin-bottom:4px;border-bottom:1px dotted #ddd;padding-bottom:3px}
 </style></head><body>
-  <div class="center" style="margin-bottom:6px"><img src="${window.location.origin}/logo-text-short.png" style="width:130px;height:auto;display:block;margin:0 auto"></div>
+  <div class="center" style="margin-bottom:6px">
+    <img src="${window.location.origin}/logo-text-short.png" style="width:130px;height:auto;display:block;margin:0 auto">
+  </div>
   <div class="center" style="font-size:10px;line-height:1.4">
     <div class="bold" style="font-size:12px">CONTIGO CRECEMOS E.I.R.L.</div>
-    <div>Centro de terapias Crecemos</div><div>LT. 5 MZ. W1 URB. EL PINAR PARCELA H</div>
-    <div>LIMA LIMA COMAS — Telf.: 957 064 401</div><div>info@crecemos.com.pe</div>
+    <div>Centro de terapias Crecemos</div>
+    <div>LT. 5 MZ. W1 URB. EL PINAR PARCELA H</div>
+    <div>LIMA LIMA COMAS — Telf.: 957 064 401</div>
+    <div>info@crecemos.com.pe</div>
     <div class="bold" style="margin-top:2px">R.U.C. N° 20601074380</div>
   </div>
   <hr class="s">
@@ -287,41 +396,46 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
     <div style="display:flex;gap:3px;margin-bottom:2px"><span class="bold" style="min-width:75px">DNI:</span><span>${dni}</span></div>
   </div>
   <hr class="d">
-  <div class="bold" style="margin-bottom:4px;font-size:10px">PRODUCTOS:</div>
-  ${(venta.detalles || []).map(det => `
-    <div class="item">
-      <div style="font-size:10px;margin-bottom:2px;word-break:break-word;font-weight:700"><strong>${det.cantidad || 0} UND.</strong> — ${det.producto?.nombre || '-'}</div>
-      <div style="display:flex;justify-content:space-between;font-size:10px"><span style="color:#555">P.Unit: S/ ${fm(det.precio_unitario)}</span><strong>S/ ${fm(parseFloat(det.subtotal || 0))}</strong></div>
-    </div>
-  `).join('')}
+  <div style="display:flex;justify-content:space-between;font-size:9px;font-weight:700;border-bottom:1px dashed #aaa;padding-bottom:2px;margin-bottom:3px">
+    <span style="width:25px">Cant.</span>
+    <span style="flex:1;padding-left:3px">Descripción</span>
+    <span style="width:42px;text-align:right">P.Unit</span>
+    <span style="width:42px;text-align:right">Total</span>
+  </div>
+  ${itemsHTML}
   <hr class="d">
-  ${requiereIGV ? `<div class="row"><span>BASE IMPONIBLE</span><span>S/ ${fm(total / 1.18)}</span></div><div class="row"><span>IGV (18%)</span><span>S/ ${fm(total - total / 1.18)}</span></div>` : ''}
-  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px"><span>TOTAL</span><span>S/ ${fm(total)}</span></div>
+  ${descuentosHTML}
+  ${promocionesHTML}
+  ${igvHTML}
+  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px">
+    <span>TOTAL</span><span>S/ ${fm(total)}</span>
+  </div>
   <hr class="s">
   <div class="center bold purple" style="margin-top:4px;font-size:10px">¡Gracias por su preferencia!</div>
   <script>window.onload=function(){window.focus();window.print();}<\/script>
 </body></html>`;
-      ventana.document.write(html);
-      ventana.document.close();
-    } else {
-      try {
-        setDownloading(true);
-        const doc = await generarPDFA4(venta, tipo);
-        const pdfUrl = URL.createObjectURL(doc.output('blob'));
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:0;height:0';
-        document.body.appendChild(iframe);
-        iframe.onload = () => {
-          setTimeout(() => {
-            try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch {}
-            setTimeout(() => { document.body.removeChild(iframe); URL.revokeObjectURL(pdfUrl); }, 1000);
-          }, 500);
-        };
-        iframe.src = pdfUrl;
-      } catch { alert('Error al preparar la impresión'); }
-      finally { setDownloading(false); }
-    }
-  };
+
+    ventana.document.write(html);
+    ventana.document.close();
+  } else {
+    try {
+      setDownloading(true);
+      const doc = await generarPDFA4(venta, tipo);
+      const pdfUrl = URL.createObjectURL(doc.output('blob'));
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:0;height:0';
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        setTimeout(() => {
+          try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch {}
+          setTimeout(() => { document.body.removeChild(iframe); URL.revokeObjectURL(pdfUrl); }, 1000);
+        }, 500);
+      };
+      iframe.src = pdfUrl;
+    } catch { alert('Error al preparar la impresión'); }
+    finally { setDownloading(false); }
+  }
+};
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
@@ -787,7 +901,8 @@ const VenderProductosTab = ({
     }));
 
     const payload = {
-      tipo_pagador_id: tipoPagador,
+   
+      tipo_comprador_id: tipoPagador,
       tipo_comprobante_id: tipoComprobante,
       fecha_venta: new Date().toISOString().slice(0, 10),
       detalles: [...detallesNormales, ...detallesRegalo],

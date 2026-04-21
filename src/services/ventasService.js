@@ -79,6 +79,14 @@ export const actualizarVentaServicio = (id, dto) =>
   api.patch(`/ventas/servicios/${id}`, dto).then(r => r.data);
 
 /**
+ * Verificar si una venta de servicio tiene citas asociadas
+ * @param {number} id - ID de la venta
+ * @returns {Promise<{tieneCitas: boolean, cantidadCitas: number, mensaje?: string}>}
+ */
+export const verificarVentaServicioTieneCitas = (id) =>
+  api.get(`/ventas/servicios/${id}/verificar-citas`).then(r => r.data);
+
+/**
  * Eliminar una venta de servicio
  * @param {number} id - ID de la venta
  */
@@ -179,6 +187,18 @@ export const crearCompradorExterno = (dto) =>
 
 export const getTiposComprobante = () =>
   api.get('/ventas/tipos-comprobante').then(r => r.data);
+
+// ============================================================
+// REPORTES
+// ============================================================
+
+/**
+ * Obtener reportes de ventas
+ * @param {Object} filtros - { fechaInicio: string, fechaFin: string, tipo?: 'general' | 'productos' | 'servicios' }
+ * @returns {Promise<{metricas: Object, ventasPorDia: Array, topItems: Array, descuentos: Array, ingresosPorResponsable: Array}>}
+ */
+export const getReportes = (filtros = {}) =>
+  api.get('/ventas/reportes', { params: filtros }).then(r => r.data);
 
 // ============================================================
 // CATÁLOGOS

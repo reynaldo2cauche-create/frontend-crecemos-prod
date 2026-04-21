@@ -145,9 +145,14 @@ if (tipo !== 'servicio') {
 const nombreItem =
   d.descripcion_linea ||
   d.servicio_tarifa?.servicio?.nombre ||
+  d.producto?.nombre ||
   d.documento_tarifa?.nombre ||
   (d.documento_tarifa_id ? `Documento #${d.documento_tarifa_id}` : null) ||
   'Item';
+
+    const precioTotal = (Number(d.precio_unitario) || 0) * (Number(d.cantidad) || 0);
+    const descLinea = toFloat(d.descuento_monto);
+    const subtotalFinal = precioTotal - descLinea;
 
     return {
       descripcion: '• ' + nombreItem,
@@ -159,9 +164,12 @@ const nombreItem =
       ).padStart(4, '0'),
       cantidad: Number(d.cantidad) || 0,
       precioUnitario: Number(d.precio_unitario) || 0,
-      subtotal: Number(d.subtotal) || 0,
+      subtotal: subtotalFinal,
       paciente: null,
-      esSubitem: false
+      esSubitem: false,
+      descuento_linea: descLinea,
+      descuento_tipo_id: d.descuento_tipo_id,
+      descuento_valor: d.descuento_valor
     };
   });
 }
@@ -236,6 +244,9 @@ const nombreItem =
         ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
         : '';
 
+      const descLinea = toFloat(d.descuento_monto);
+      const tieneDescuento = descLinea > 0;
+
       rows.push({
         descripcion: descripcionCompleta,
         cantidad: Number(d.sesiones_totales) || 1,
@@ -245,33 +256,62 @@ const nombreItem =
         esCombo: true,
         esPrimerItemCombo: esPrimerItem,
         rowspan: esPrimerItem ? totalItems : 0,
-        nombreCombo: c.nombre
+        nombreCombo: c.nombre,
+        descuento_linea: descLinea,
+        descuento_tipo_id: d.descuento_tipo_id,
+        descuento_valor: d.descuento_valor
       });
     });
   });
 
-  // 🔷 ITEMS NORMALES (SERVICIOS SUELTOS)
+  // 🔷 ITEMS NORMALES (SERVICIOS SUELTOS Y PAQUETES)
   normales.forEach(d => {
     const servicioNombre = d.servicio_tarifa?.servicio?.nombre ||
                           d.documento_tarifa?.nombre ||
                           d.descripcion_linea ||
                           'Servicio';
     const motivoNombre = d.servicio_tarifa?.motivo_cita?.nombre || '';
-    const descripcionCompleta = motivoNombre
-      ? `${servicioNombre} [${motivoNombre}]`
-      : servicioNombre;
+    const sesionesTotales = Number(d.sesiones_totales) || 1;
+
+    // Construir formato igual al ticket: "Paquete X (4 SES.) - Servicio [Motivo]"
+    let descripcionCompleta;
+
+    // Si tiene nombre de paquete (viene en descripcion_linea o en paquete.nombre)
+    const nombrePaquete = d.paquete?.nombre ||
+                         d.servicio_tarifa?.paquete?.nombre ||
+                         (sesionesTotales > 1 ? `Paquete de ${sesionesTotales} sesiones` : null);
+
+    if (nombrePaquete && sesionesTotales > 1) {
+      // Formato con paquete: "Paquete Mensual (4 SES.) - Terapia de Lenguaje [Evaluación]"
+      const parteServicio = motivoNombre
+        ? `${servicioNombre} [${motivoNombre}]`
+        : servicioNombre;
+      descripcionCompleta = `${nombrePaquete} - ${parteServicio}`;
+    } else {
+      // Formato sin paquete (sesión individual): "Terapia de Lenguaje [Evaluación]"
+      descripcionCompleta = motivoNombre
+        ? `${servicioNombre} [${motivoNombre}]`
+        : servicioNombre;
+    }
 
     const pacienteNombre = d.paciente
       ? `${d.paciente.nombres || ''} ${d.paciente.apellido_paterno || ''} ${d.paciente.apellido_materno || ''}`.trim()
       : '-';
 
+    const precioTotal = (Number(d.precio_unitario) || 0) * (Number(d.sesiones_totales) || 1);
+    const descLinea = toFloat(d.descuento_monto);
+    const subtotalFinal = precioTotal - descLinea;
+
     rows.push({
       descripcion: descripcionCompleta,
       cantidad: Number(d.sesiones_totales) || 1,
       precioUnitario: Number(d.precio_unitario) || 0,
-      subtotal: (Number(d.precio_unitario) || 0) * (Number(d.sesiones_totales) || 1),
+      subtotal: subtotalFinal,
       paciente: pacienteNombre,
-      esCombo: false
+      esCombo: false,
+      descuento_linea: descLinea,
+      descuento_tipo_id: d.descuento_tipo_id,
+      descuento_valor: d.descuento_valor
     });
   });
 
@@ -306,6 +346,24 @@ const cargarLogo = () => {
 // FORMATO A4
 // ═══════════════════════════════════════════════════════════════════════════════
 
+
+const calcularDescuentoGlobal = (venta) => {
+  const toFloat = (v) => parseFloat(v || 0);
+
+  let descuentoItems = 0;
+
+  (venta.detalles || []).forEach(d => {
+    // 🚫 IGNORAR combos
+    if (d.paquete_combo_id) return;
+
+    descuentoItems += toFloat(d.descuento_monto);
+  });
+
+  // ✅ descuento manual global
+  const descuentoGlobal = toFloat(venta.descuento_monto);
+
+  return descuentoItems + descuentoGlobal;
+};
 export const generarPDFA4 = async (venta, tipo) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -444,35 +502,43 @@ export const generarPDFA4 = async (venta, tipo) => {
     margin: { left: M, right: M }
   });
 } else {
-    doc.autoTable({
+doc.autoTable({
       startY: y,
-      head: [['Cant.', 'Unidad', 'Código', 'Descripción', 'P.U.', 'Total']],
-      body: rows.map((r) => [
-        r.cantidad !== '' ? Number(r.cantidad).toFixed(2) : '',
-        r.codigo || '',
-        r.descripcion,
-        r.paciente || '',
-        r.precioUnitario !== '' ? formatMoney(r.precioUnitario) : '',
-        r.subtotal !== '' ? formatMoney(r.subtotal) : ''
-      ]),
+      head: [['Cant.', 'Descripción', 'P.U.', 'Total']],
+      body: rows.map((r) => {
+        // Formatear descuento por línea si existe
+        let descuentoTexto = '';
+        if (r.descuento_linea && r.descuento_linea > 0) {
+          if (r.descuento_tipo_id === 1) {
+            descuentoTexto = `${r.descuento_valor}%\n-S/ ${formatMoney(r.descuento_linea)}`;
+          } else {
+            descuentoTexto = `-S/ ${formatMoney(r.descuento_linea)}`;
+          }
+        }
+        return [
+          r.cantidad !== '' ? Number(r.cantidad).toFixed(2) : '',
+          r.descripcion,
+          r.precioUnitario !== '' ? `S/ ${formatMoney(r.precioUnitario)}` : '',
+    
+          r.subtotal !== '' ? `S/ ${formatMoney(r.subtotal)}` : '',
+        ];
+      }),
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 3, textColor: COLOR_TEXTO },
       headStyles: { fillColor: [245, 245, 245], textColor: COLOR_TEXTO, fontStyle: 'bold', halign: 'center' },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 15 },
-        1: { halign: 'center', cellWidth: 20 },
-        2: { halign: 'center', cellWidth: 18 },
-        3: { halign: 'left',   cellWidth: 'auto' },
-        4: { halign: 'right',  cellWidth: 25 },
-        5: { halign: 'right',  cellWidth: 25 },
+        0: { halign: 'center', cellWidth: 18 },
+        1: { halign: 'left',   cellWidth: 'auto' },
+        2: { halign: 'right',  cellWidth: 28 },
+        3: { halign: 'right',  cellWidth: 32 },
+        4: { halign: 'right',  cellWidth: 28 },
       },
       margin: { left: M, right: M },
-      
     });
   }
 
   y = doc.lastAutoTable.finalY + 5;
-  const descuento = toFloat(venta.descuento_monto);
+  const descuento = calcularDescuentoGlobal(venta);
   const total     = toFloat(venta.total);
 
   const tipoComprobante = (venta.tipo_comprobante?.nombre || '').toUpperCase();

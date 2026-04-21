@@ -75,6 +75,7 @@ import ReposicionTab from '../pages/Inventario/Reposiciontab';
 import VenderServiciosTab from '../pages/Ventas/VenderServiciosTab';
 import VenderProductosTab from '../pages/Ventas/VenderProductosTab';
 import HistorialVentasTab from '../pages/Ventas/HistorialVentasTab';
+import ReportesVentas from '../pages/Ventas/ReportesVentas';
 import TarifasTab from '../pages/Inventario/Tarifastab';
 import PromocionesPage from '../pages/Promociones/PromocionesPage';
 import TarifarioPage from '../pages/Tarifario/TarifarioPage';
@@ -84,6 +85,7 @@ import ConsultarReclamo from '../pages/LibroReclamaciones/ConsultarReclamo';
 import PanelAdmin from '../pages/LibroReclamaciones/PanelAdmin';
 import Pagos from '../pages/Pagos';
 import GestorCampanas from '../pages/Campanas/GestorCampanas';
+import { Campanas } from '../pages/Campanas/Campanas';
 
 export const AppRouter = () => {
   return (
@@ -444,6 +446,16 @@ export const AppRouter = () => {
             </SidebarProvider>
           </PrivateRoute>
         } />
+        <Route path="/intranet/ventas/reportes" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ReportesVentas />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
 
         <Route path="/intranet/libro-reclamaciones" element={
           <PrivateRoute>
@@ -503,6 +515,7 @@ export const AppRouter = () => {
           <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
           <Route path="libro-reclamaciones/registrar" element={<RegistrarReclamo />} />
           <Route path="libro-reclamaciones/consultar" element={<ConsultarReclamo />} />
+          <Route path="campanas" element={<Campanas />} />
           <Route path="pagos" element={<Pagos />} />
           <Route path="loading" element={<Loading />} />
           <Route path="*" element={<ErrorPage />} />

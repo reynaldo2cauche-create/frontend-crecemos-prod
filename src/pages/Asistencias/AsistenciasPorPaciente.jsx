@@ -48,14 +48,37 @@ const AsistenciasPorPaciente = () => {
     if (busquedaPaciente.trim() === '') {
       setPacienteFiltrado([]);
     } else {
+      const busquedaLower = busquedaPaciente.toLowerCase().trim();
+      const terminos = busquedaLower.split(/\s+/).filter(t => t.length > 0);
+
       const filtrados = pacientes.filter(p => {
-        const nombreCompleto = p.nombre_completo || '';
         const documento = p.numero_documento || p.documento || '';
-        return (
-          nombreCompleto.toLowerCase().includes(busquedaPaciente.toLowerCase()) ||
-          documento.includes(busquedaPaciente)
-        );
+
+        // Si busca por documento
+        if (documento.includes(busquedaPaciente)) {
+          return true;
+        }
+
+        // Búsqueda inteligente por nombre (cada palabra en cualquier campo)
+        const nombres = (p.nombres || '').toLowerCase();
+        const apellidoPaterno = (p.apellido_paterno || '').toLowerCase();
+        const apellidoMaterno = (p.apellido_materno || '').toLowerCase();
+
+        // Si es un solo término, buscar en cualquier campo
+        if (terminos.length === 1) {
+          return nombres.includes(terminos[0]) ||
+                 apellidoPaterno.includes(terminos[0]) ||
+                 apellidoMaterno.includes(terminos[0]);
+        }
+
+        // Si son múltiples términos, cada uno debe estar en algún campo
+        return terminos.every(termino => {
+          return nombres.includes(termino) ||
+                 apellidoPaterno.includes(termino) ||
+                 apellidoMaterno.includes(termino);
+        });
       });
+
       setPacienteFiltrado(filtrados);
     }
   }, [busquedaPaciente, pacientes]);

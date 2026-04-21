@@ -31,8 +31,17 @@ useEffect(() => {
       const data = await getListadoCitasPorPaciente(pacienteId);
       
       if (!isMounted) return; // No actualizar estado si el componente ya no existe
-      
+
       console.log('📦 Datos recibidos:', data);
+
+      // Verificar que las citas tengan los campos de asistencia
+      if (data?.servicios?.length > 0) {
+        const primerasCitas = data.servicios[0]?.paquetes?.[0]?.citas?.slice(0, 2);
+        if (primerasCitas) {
+          console.log('🔍 Ejemplo de citas (verificar campos recepcion_estado_id y terapeuta_estado_id):', primerasCitas);
+        }
+      }
+
       setListado(data);
       
       if (data?.servicios?.length > 0 && data.servicios[0]?.paquetes?.length > 0) {
@@ -112,26 +121,37 @@ useEffect(() => {
     return hora.substring(0, 5);
   };
 
-  // ── NUEVO: badge actualizado con estado "Por agendar" ──────────────────────
-  const AsistenciaBadge = ({ valor, programada }) => {
+  // ── Badge con verificación de asistencia de terapeuta Y admisión ──────────────────────
+  const AsistenciaBadge = ({ recepcion_estado_id, terapeuta_estado_id, programada }) => {
+    // Si no está programada, mostrar "Por agendar"
     if (programada === false) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-semibold border border-blue-100">
         <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
         Por agendar
       </span>
     );
-    if (valor === 1) return (
+
+    // Estado 7 = Asistió (tanto para terapeuta como para admisión/recepción)
+    const terapeutaAsistio = terapeuta_estado_id === 7;
+    const admisionAsistio = recepcion_estado_id === 7;
+
+    // Solo se considera asistencia si AMBOS marcaron asistencia
+    if (terapeutaAsistio && admisionAsistio) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-100">
         <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
         Asistió
       </span>
     );
-    if (valor === 0) return (
+
+    // Si al menos uno marcó que NO asistió, mostrar "No asistió"
+    if ((recepcion_estado_id && !admisionAsistio) || (terapeuta_estado_id && !terapeutaAsistio)) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold border border-red-100">
         <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
         No asistió
       </span>
     );
+
+    // Si ninguno ha marcado, mostrar "Pendiente"
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 text-[10px] font-medium border border-gray-100">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
@@ -200,7 +220,29 @@ const agruparPaquetesCombo = (paquetes) => {
     paquetes: sinVenta
   }] : [];
 
-  return [...combosArray, ...grupoSinVenta, ...individuales];
+  // Combinar todas las ventas (combos e individuales)
+  const todasLasVentas = [...combosArray, ...individuales];
+
+  // Ordenar las ventas por fecha de venta (más reciente primero)
+  todasLasVentas.sort((a, b) => {
+    // Obtener la fecha de la primera cita de cada paquete
+    const fechaA = a.esGrupoCombo
+      ? a.subpaquetes[0]?.citas[0]?.fecha_pago
+      : a.citas[0]?.fecha_pago;
+    const fechaB = b.esGrupoCombo
+      ? b.subpaquetes[0]?.citas[0]?.fecha_pago
+      : b.citas[0]?.fecha_pago;
+
+    if (!fechaA && !fechaB) return 0;
+    if (!fechaA) return 1;
+    if (!fechaB) return -1;
+
+    // Ordenar descendente (más reciente primero)
+    return new Date(fechaB).getTime() - new Date(fechaA).getTime();
+  });
+
+  // Retornar: ventas ordenadas primero, atenciones directas al final
+  return [...todasLasVentas, ...grupoSinVenta];
 };
 
   const paquetesAgrupados = agruparPaquetesCombo(servicioActual.paquetes);
@@ -274,9 +316,13 @@ if (item.esGrupoSinVenta) {
   const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
   const citasPendientes = citasOrdenadas.filter(c => c.programada === false);
 
-  const asistidas = citasProgramadas.filter(c => c.asistencia === 1).length;
-  const noAsistidas = citasProgramadas.filter(c => c.asistencia === 0).length;
-  const pendientes = citasProgramadas.filter(c => c.asistencia == null).length;
+  // Contar asistencias: solo si AMBOS terapeuta Y admisión marcaron estado 7
+  const asistidas = citasProgramadas.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
+  const noAsistidas = citasProgramadas.filter(c =>
+    (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
+    (c.terapeuta_estado_id && c.terapeuta_estado_id !== 7)
+  ).length;
+  const pendientes = citasProgramadas.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
 
   return (
     <div className={`rounded-xl border transition-all ${
@@ -383,7 +429,11 @@ if (item.esGrupoSinVenta) {
                 </span>
                 <span className="text-xs">{cita.especialista || '-'}</span>
                 <span className="text-xs">{cita.motivo_nombre}</span>
-                <AsistenciaBadge valor={cita.asistencia} programada={cita.programada} />
+                <AsistenciaBadge
+                  recepcion_estado_id={cita.recepcion_estado_id}
+                  terapeuta_estado_id={cita.terapeuta_estado_id}
+                  programada={cita.programada}
+                />
               </div>
             );
           })}
@@ -412,9 +462,13 @@ if (item.esGrupoSinVenta) {
             const citasProgramadasCombo = citasOrdenadasCombo.filter(c => c.programada !== false);
             const citasPendientesCombo = citasOrdenadasCombo.filter(c => c.programada === false);
 
-            const asistidasCombo = citasProgramadasCombo.filter(c => c.asistencia === 1).length;
-            const noAsistidasCombo = citasProgramadasCombo.filter(c => c.asistencia === 0).length;
-            const pendientesCombo = citasProgramadasCombo.filter(c => c.asistencia === null || c.asistencia === undefined).length;
+            // Contar asistencias para combos: solo si AMBOS terapeuta Y admisión marcaron estado 7
+            const asistidasCombo = citasProgramadasCombo.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
+            const noAsistidasCombo = citasProgramadasCombo.filter(c =>
+              (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
+              (c.terapeuta_estado_id && c.terapeuta_estado_id !== 7)
+            ).length;
+            const pendientesCombo = citasProgramadasCombo.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
 
             const sesionesTotalesCombo = item.subpaquetes.reduce((sum, sp) => sum + (sp.sesiones_totales || sp.citas.length), 0);
             const sesionesUsadasCombo = citasProgramadasCombo.length;
@@ -577,7 +631,11 @@ if (item.esGrupoSinVenta) {
                           <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
                             {cita.motivo_nombre}
                           </span>
-                          <AsistenciaBadge valor={cita.asistencia} programada={cita.programada} />
+                          <AsistenciaBadge
+                            recepcion_estado_id={cita.recepcion_estado_id}
+                            terapeuta_estado_id={cita.terapeuta_estado_id}
+                            programada={cita.programada}
+                          />
                         </div>
                       );
                     })}
@@ -598,13 +656,17 @@ if (item.esGrupoSinVenta) {
             return new Date(a.fecha || 0) - new Date(b.fecha || 0);
           });
 
-          // ── NUEVO: separar programadas vs pendientes ──────────────────
+          // ── Separar programadas vs pendientes ──────────────────
           const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
           const citasPendientes  = citasOrdenadas.filter(c => c.programada === false);
 
-          const asistidas   = citasProgramadas.filter(c => c.asistencia === 1).length;
-          const noAsistidas = citasProgramadas.filter(c => c.asistencia === 0).length;
-          const pendientes  = citasProgramadas.filter(c => c.asistencia === null || c.asistencia === undefined).length;
+          // Contar asistencias para paquetes individuales: solo si AMBOS terapeuta Y admisión marcaron estado 7
+          const asistidas   = citasProgramadas.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
+          const noAsistidas = citasProgramadas.filter(c =>
+            (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
+            (c.terapeuta_estado_id && c.terapeuta_estado_id !== 7)
+          ).length;
+          const pendientes  = citasProgramadas.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
 
           // Primera cita programada para mostrar metadata del paquete
           const primeraCita = citasProgramadas[0] ?? citasPendientes[0];
@@ -799,7 +861,11 @@ if (item.esGrupoSinVenta) {
                         <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
                           {cita.motivo_nombre}
                         </span>
-                        <AsistenciaBadge valor={cita.asistencia} programada={cita.programada} />
+                        <AsistenciaBadge
+                          recepcion_estado_id={cita.recepcion_estado_id}
+                          terapeuta_estado_id={cita.terapeuta_estado_id}
+                          programada={cita.programada}
+                        />
                       </div>
                     );
                   })}

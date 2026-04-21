@@ -278,7 +278,7 @@ const buildDetalleRows = (detalles, tipo, fm) => {
     if (esPaquete && d.paquete) {
       const spp = d.paquete.cantidad_sesiones || d.paquete.sesiones || d.paquete.numero_sesiones || 1;
       cantidad = Math.round((d.sesiones_totales || 0) / spp).toFixed(2);
-      const base = srvNombre !== '-' ? `${d.paquete.nombre} (${spp} SES.) - ${srvNombre}` : `${d.paquete.nombre} (${spp} SES.)`;
+      const base = srvNombre !== '-' ? `${d.paquete.nombre} - ${srvNombre}` : `${d.paquete.nombre}`;
       desc = motivoCita ? `${base} [${motivoCita}]` : base;
     } else {
       cantidad = (d.sesiones_totales || 0).toFixed(2);
@@ -866,9 +866,42 @@ const VenderServiciosTab = ({
     }
 
     if (ventaExistente.detalles && ventaExistente.detalles.length > 0) {
+      // 🔥 Primero calcular precios totales por combo
+      const preciosPorCombo = new Map();
+
+      ventaExistente.detalles.forEach(d => {
+        if (d.paquete_combo_id) {
+          const comboId = d.paquete_combo_id;
+          const sesiones = d.sesiones_totales || 1;
+          const precioUnit = parseFloat(d.precio_unitario || 0);
+          let subtotal = sesiones * precioUnit;
+
+          // Aplicar descuento a nivel de línea
+          if (d.descuento_tipo_id && d.descuento_valor) {
+            const descuento = d.descuento_tipo_id === 1
+              ? subtotal * (parseFloat(d.descuento_valor) / 100)
+              : parseFloat(d.descuento_valor);
+            subtotal -= descuento;
+          }
+
+          preciosPorCombo.set(comboId, (preciosPorCombo.get(comboId) || 0) + subtotal);
+        }
+      });
+
+      // 🔥 Rastrear qué combos ya fueron procesados para asignar precio solo al primero
+      const combosYaProcesados = new Set();
+
       const lineasPrecargadas = ventaExistente.detalles.map((d, index) => {
         const tipoItem = d.tipoItemVenta || d.tipo_item_venta || 1;
         const esDocumento = tipoItem === 2;
+
+        // Determinar si es el primer ítem de un combo
+        let comboPrecioTotal = 0;
+        if (d.paquete_combo_id && !combosYaProcesados.has(d.paquete_combo_id)) {
+          comboPrecioTotal = preciosPorCombo.get(d.paquete_combo_id) || 0;
+          combosYaProcesados.add(d.paquete_combo_id);
+        }
+
         return {
           id: `edit-${index}`,
           paciente_linea_id: d.paciente_id || d.paciente?.id,
@@ -894,7 +927,7 @@ const VenderServiciosTab = ({
           // Si viene con paquete_combo_id del backend, preservarlo
           paquete_combo_id: d.paquete_combo_id || null,
           _combo_nombre: d.paquete_combo_id ? (d.descripcionLinea || d.descripcion_linea || '').split(' - ')[0] : null,
-          _combo_precio_total: 0,
+          _combo_precio_total: comboPrecioTotal,
           _combo_id: d.paquete_combo_id || null,
         };
       });
@@ -1095,7 +1128,7 @@ const VenderServiciosTab = ({
     const motivoNombre = tarifaSeleccionada.motivo_cita?.nombre || '';
     const servicioNombre = tarifaSeleccionada.servicio?.nombre || `Servicio #${tarifaSeleccionada.servicio_id}`;
     const descripcionLinea = paqueteNombre
-      ? `${paqueteNombre} (${sesionesPorPaquete} SES.) - ${servicioNombre}${motivoNombre ? ` [${motivoNombre}]` : ''}`
+      ? `${paqueteNombre}  - ${servicioNombre}${motivoNombre ? ` [${motivoNombre}]` : ''}`
       : `${sesiones} ${sesiones === 1 ? 'Sesión' : 'Sesiones'} de ${motivoNombre ? motivoNombre + ' - ' : ''}${servicioNombre}`;
 
     setLineas(prev => [...prev, {

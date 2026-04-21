@@ -46,7 +46,7 @@ const GestorCampanas = () => {
     descripcion_corta: '',
     fecha_inicio: '',
     fecha_fin: '',
-    estado_id: 2,
+    estado_id: 1, // Por defecto "Activa"
     orden: 0,
     secciones: [{ titulo: '', contenido: '', orden: 0 }],
   });
@@ -129,7 +129,7 @@ const GestorCampanas = () => {
         descripcion_corta: '',
         fecha_inicio: '',
         fecha_fin: '',
-        estado_id: 2,
+        estado_id: 1, // Por defecto "Activa"
         orden: 0,
         secciones: [{ titulo: '', contenido: '', orden: 0 }],
       });
@@ -185,24 +185,61 @@ const GestorCampanas = () => {
     setGuardando(true);
 
     try {
+      // Validar que el usuario tenga ID
+      if (!user || !user.id) {
+        mostrarFeedback('Error: Usuario no identificado. Por favor, vuelve a iniciar sesión.', 'error');
+        setGuardando(false);
+        return;
+      }
+
       const dataToSend = { ...formData };
+
+      // Limpiar secciones vacías
+      dataToSend.secciones = dataToSend.secciones.filter(
+        s => s.contenido && s.contenido.trim() !== ''
+      );
+
+      // Asegurar que todos los campos numéricos sean números
+      dataToSend.estado_id = parseInt(dataToSend.estado_id);
+      dataToSend.orden = parseInt(dataToSend.orden || 0);
+
+      // Actualizar el orden de las secciones
+      dataToSend.secciones = dataToSend.secciones.map((s, index) => ({
+        ...s,
+        orden: index
+      }));
 
       if (editando) {
         // Agregar user_actua_id al actualizar
         dataToSend.user_actua_id = user.id;
+        console.log('📤 Datos a actualizar:', dataToSend);
         await actualizarCampana(editando.id, dataToSend);
         mostrarFeedback('Campaña actualizada correctamente', 'success');
       } else {
         // Agregar user_crea_id al crear
         dataToSend.user_crea_id = user.id;
+        console.log('📤 Datos a crear:', dataToSend);
         await crearCampana(dataToSend);
         mostrarFeedback('Campaña creada correctamente', 'success');
       }
       cerrarModal();
       cargarDatos();
     } catch (error) {
-      console.error('Error al guardar:', error);
-      mostrarFeedback(error.response?.data?.message || 'Error al guardar la campaña', 'error');
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error response:', error.response?.data);
+
+      // Mostrar mensaje de error más detallado
+      let mensajeError = 'Error al guardar la campaña';
+
+      if (error.response?.data?.message) {
+        mensajeError = error.response.data.message;
+      } else if (error.response?.data?.errors) {
+        // Si hay errores de validación, mostrarlos
+        const errores = Object.values(error.response.data.errors).flat();
+        mensajeError = errores.join(', ');
+      }
+
+      mostrarFeedback(mensajeError, 'error');
     } finally {
       setGuardando(false);
     }
@@ -405,9 +442,6 @@ const GestorCampanas = () => {
                       Estado
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                      Orden
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                       Secciones
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
@@ -436,7 +470,6 @@ const GestorCampanas = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">{getEstadoBadge(campana.estado_id)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{campana.orden}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {campana.secciones?.length || 0}
                       </td>
@@ -548,38 +581,22 @@ const GestorCampanas = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Estado *
-                    </label>
-                    <select
-                      name="estado_id"
-                      value={formData.estado_id}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
-                    >
-                      {estados.map((estado) => (
-                        <option key={estado.id} value={estado.id}>
-                          {estado.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Orden
-                    </label>
-                    <input
-                      type="number"
-                      name="orden"
-                      value={formData.orden}
-                      onChange={handleChange}
-                      min="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Estado *
+                  </label>
+                  <select
+                    name="estado_id"
+                    value={formData.estado_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
+                  >
+                    {estados.map((estado) => (
+                      <option key={estado.id} value={estado.id}>
+                        {estado.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

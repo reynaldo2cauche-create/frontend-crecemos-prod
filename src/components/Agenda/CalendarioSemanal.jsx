@@ -8,10 +8,13 @@ import {
   Ban,
   X,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
 import { esFeriado, getNombreFeriado } from '../../constants/feriados';
+import { obtenerHorariosDisponiblesSinRestricciones } from './utils/horariosDisponibles';
 
 // ✅ Componente memoizado para cada cita individual
 const CitaCard = React.memo(({
@@ -135,6 +138,7 @@ const CalendarioSemanal = ({
   const [bloqueoSeleccionado, setBloqueoSeleccionado] = useState(null);
   const [modalFeriadoAbierto, setModalFeriadoAbierto] = useState(false);
   const [feriadoSeleccionado, setFeriadoSeleccionado] = useState(null);
+  const [diaCopiado, setDiaCopiado] = useState(null); // Para mostrar feedback al copiar
 
 
  // Generar horas según el día de la semana
@@ -144,7 +148,7 @@ const CalendarioSemanal = ({
     // Sábado (6): 8:00 AM a 2:00 PM
     if (diaSemana === 6) {
       let minutos = 8 * 60; // 8:00 AM
-      const finMinutos = 14 * 60; // 2:00 PM
+      const finMinutos = 20 * 60; // 5:00 PM
 
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
@@ -352,6 +356,41 @@ const CalendarioSemanal = ({
     return `${numH}:${m}`;
   };
 
+  // Copiar horarios disponibles del día
+  const copiarHorariosDisponibles = async (dia) => {
+    try {
+      const horariosDisponibles = obtenerHorariosDisponiblesSinRestricciones(
+        dia.fechaString,
+        bloqueos,
+        citas // Pasar las citas para verificar conflictos
+      );
+
+      if (horariosDisponibles.length === 0) {
+        alert('No hay horarios disponibles para este día');
+        return;
+      }
+
+      // Formatear la lista de horarios
+      const nombreDia = dia.fecha.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      const mensaje = `📅 Horarios disponibles - ${nombreDia}\n\n${horariosDisponibles.join('\n')}`;
+
+      await navigator.clipboard.writeText(mensaje);
+
+      // Mostrar feedback
+      setDiaCopiado(dia.fechaString);
+      setTimeout(() => setDiaCopiado(null), 2000);
+    } catch (err) {
+      console.error('Error al copiar:', err);
+      alert('Error al copiar los horarios');
+    }
+  };
+
   const obtenerHoraFin = (cita) => {
     if (cita.hora_fin) return formatearHora(cita.hora_fin.substring(0, 5));
     if (cita.hora_inicio && cita.duracion_minutos) {
@@ -418,16 +457,39 @@ const CalendarioSemanal = ({
             return (
               <div key={dia.fechaString} className="flex-1 min-w-[200px] border-r border-gray-200 last:border-r-0">
                 {/* Header del día */}
-                <div className={`p-3 text-center border-b border-gray-200 sticky top-0 z-30 ${
+                <div className={`p-3 border-b border-gray-200 sticky top-0 z-30 ${
                   esHoy ? 'bg-purple-50 border-b-2 border-b-[#7B1FA2]' : 'bg-gradient-to-r from-gray-50 to-gray-100'
                 }`}>
-                  <div className="capitalize text-sm font-semibold text-gray-600">
-                    {dia.nombre}
-                  </div>
-                  <div className={`text-2xl font-bold mt-1 ${
-                    esHoy ? 'text-[#7B1FA2]' : 'text-gray-700'
-                  }`}>
-                    {dia.numero}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 text-center">
+                      <div className="capitalize text-sm font-semibold text-gray-600">
+                        {dia.nombre}
+                      </div>
+                      <div className={`text-2xl font-bold mt-1 ${
+                        esHoy ? 'text-[#7B1FA2]' : 'text-gray-700'
+                      }`}>
+                        {dia.numero}
+                      </div>
+                    </div>
+                    {/* Botón copiar horarios disponibles */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copiarHorariosDisponibles(dia);
+                      }}
+                      className={`p-2 rounded-lg transition-all ${
+                        diaCopiado === dia.fechaString
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-white hover:bg-purple-50 text-gray-600 hover:text-[#7B1FA2]'
+                      } shadow-sm hover:shadow-md`}
+                      title="Copiar horarios disponibles del día"
+                    >
+                      {diaCopiado === dia.fechaString ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 

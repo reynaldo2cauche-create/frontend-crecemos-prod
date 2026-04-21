@@ -116,6 +116,7 @@ const menuItems = [
       { text: 'Vender Servicios', path: '/intranet/ventas/servicios', icon: ShoppingCartIcon },
       { text: 'Vender Productos', path: '/intranet/ventas/productos', icon: CubeIcon },
       { text: 'Historial de Ventas', path: '/intranet/ventas/historial', icon: ClipboardDocumentCheckIcon },
+      { text: 'Reportes', path: '/intranet/ventas/reportes', icon: ChartBarIcon },
       { text: 'Promociones', path: '/intranet/promociones', icon: SparklesIcon },
     ]
   },

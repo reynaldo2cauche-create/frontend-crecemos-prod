@@ -187,6 +187,14 @@ export default function Footer() {
                     Reglamento Interno para Clientes
                   </a>
                 </li>
+                  <li>
+                  <a href="#" onClick={(e) => { 
+                    e.preventDefault(); 
+                    handleNavigate('/campanas');
+                  }}>
+                    Campañas
+                  </a>
+                </li>
               </ul>
             </div>
 
