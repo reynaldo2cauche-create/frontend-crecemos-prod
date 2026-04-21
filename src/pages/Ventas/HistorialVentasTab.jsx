@@ -20,8 +20,7 @@ import {
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
 import {
-  getVentasServicios,
-  getVentasProductos,
+  getHistorialVentas,
   eliminarVentaServicio,
   eliminarVentaProducto,
   getVentaServicioById,
@@ -1295,8 +1294,9 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 const HistorialVentasTab = () => {
-  const [ventasServicios, setVentasServicios] = useState([]);
-  const [ventasProductos, setVentasProductos] = useState([]);
+  const [historialData, setHistorialData]   = useState([]);
+  const [totalVentas, setTotalVentas]       = useState(0);
+  const [totalMontoGlobal, setTotalMontoGlobal] = useState(0);
   const [loading, setLoading]               = useState(true);
   const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '' });
   const [queryPaciente, setQueryPaciente]   = useState('');
@@ -1317,21 +1317,23 @@ const HistorialVentasTab = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const esAdmision = user?.rol?.id === 2; // ROLES.ADMISION = 2
 
-  useEffect(() => { cargarVentas(); }, []);
-  useEffect(() => { setPage(0); }, [filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, pacienteSeleccionado]);
+  useEffect(() => { cargarVentas(); }, [page, rowsPerPage, filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, pacienteSeleccionado]);
 
   const cargarVentas = async () => {
     setLoading(true);
     try {
-      const filtrosAPI = {};
-      if (filtros.fechaDesde) filtrosAPI.desde = filtros.fechaDesde;
-      if (filtros.fechaHasta) filtrosAPI.hasta = filtros.fechaHasta;
-      const [servsData, prodsData] = await Promise.all([
-        getVentasServicios(filtrosAPI),
-        getVentasProductos(filtrosAPI),
-      ]);
-      setVentasServicios(servsData || []);
-      setVentasProductos(prodsData || []);
+      const params = {
+        page,
+        limit: rowsPerPage,
+        tipo: filtros.tipo,
+      };
+      if (filtros.fechaDesde) params.desde = filtros.fechaDesde;
+      if (filtros.fechaHasta) params.hasta = filtros.fechaHasta;
+      if (pacienteSeleccionado) params.pacienteId = pacienteSeleccionado.id;
+      const res = await getHistorialVentas(params);
+      setHistorialData(res.data || []);
+      setTotalVentas(res.total || 0);
+      setTotalMontoGlobal(res.totalMontoGlobal || 0);
     } catch (err) { console.error('Error cargando ventas:', err); }
     finally { setLoading(false); }
   };
@@ -1430,21 +1432,9 @@ const HistorialVentasTab = () => {
     }
   };
 
-  const ventasCombinadas = [
-    ...ventasServicios.map(v => ({ ...v, tipo: 'servicio' })),
-    ...ventasProductos.map(v => ({ ...v, tipo: 'producto' })),
-  ].sort((a, b) => new Date(b.created_at || b.fecha_venta) - new Date(a.created_at || a.fecha_venta));
-
-  const ventasFiltradas = ventasCombinadas
-    .filter(v => filtros.tipo === 'todos' || (filtros.tipo === 'servicios' ? v.tipo === 'servicio' : v.tipo === 'producto'))
-    .filter(v => {
-      if (!pacienteSeleccionado) return true;
-      return v.paciente?.id === pacienteSeleccionado.id;
-    });
-
-  const totalMonto      = ventasFiltradas.reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
-  const ventasPaginadas = ventasFiltradas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  const totalPages      = Math.ceil(ventasFiltradas.length / rowsPerPage);
+  const totalMonto      = totalMontoGlobal;
+  const ventasPaginadas = historialData;
+  const totalPages      = Math.ceil(totalVentas / rowsPerPage);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1461,10 +1451,10 @@ const HistorialVentasTab = () => {
         {!esAdmision && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: 'Total Ventas',   value: ventasFiltradas.length,  icon: <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" />, bg: 'bg-[#7B1FA2]/10' },
+              { label: 'Total Ventas',   value: totalVentas,             icon: <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" />, bg: 'bg-[#7B1FA2]/10' },
               { label: 'Total Ingresos', value: formatMonto(totalMonto), icon: <span className="text-lg font-bold text-green-600">S/</span>, bg: 'bg-green-50' },
-              { label: 'Servicios',      value: ventasServicios.length,  icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
-              { label: 'Productos',      value: ventasProductos.length,  icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
+              { label: 'Servicios',      value: historialData.filter(v => v.tipo === 'servicio').length, icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+              { label: 'Productos',      value: historialData.filter(v => v.tipo === 'producto').length, icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
             ].map((s, i) => (
               <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
                 <div className="flex items-center gap-3">
@@ -1517,7 +1507,7 @@ const HistorialVentasTab = () => {
 
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo de Venta</label>
-              <select value={filtros.tipo} onChange={e => setFiltros(f => ({ ...f, tipo: e.target.value }))}
+              <select value={filtros.tipo} onChange={e => { setFiltros(f => ({ ...f, tipo: e.target.value })); setPage(0); }}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]">
                 <option value="todos">Todos</option>
                 <option value="servicios">Solo Servicios</option>
@@ -1526,12 +1516,12 @@ const HistorialVentasTab = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
-              <input type="date" value={filtros.fechaDesde} onChange={e => setFiltros(f => ({ ...f, fechaDesde: e.target.value }))}
+              <input type="date" value={filtros.fechaDesde} onChange={e => { setFiltros(f => ({ ...f, fechaDesde: e.target.value })); setPage(0); }}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Hasta</label>
-              <input type="date" value={filtros.fechaHasta} onChange={e => setFiltros(f => ({ ...f, fechaHasta: e.target.value }))}
+              <input type="date" value={filtros.fechaHasta} onChange={e => { setFiltros(f => ({ ...f, fechaHasta: e.target.value })); setPage(0); }}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" />
             </div>
             <div className="flex items-end sm:col-span-5">
@@ -1544,7 +1534,7 @@ const HistorialVentasTab = () => {
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
           {loading ? (
             <div className="flex justify-center py-16"><div className="w-12 h-12 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin" /></div>
-          ) : ventasFiltradas.length === 0 ? (
+          ) : totalVentas === 0 ? (
             <div className="text-center py-16 text-gray-400"><ShoppingCartIcon className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="font-medium">No hay ventas registradas</p></div>
           ) : (
             <div className="overflow-x-auto">
@@ -1637,16 +1627,16 @@ const HistorialVentasTab = () => {
           )}
         </div>
 
-        {!loading && ventasFiltradas.length > 0 && (
+        {!loading && totalVentas > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-xs sm:text-sm text-gray-600">
                 Mostrando <span className="font-semibold text-gray-900">{page * rowsPerPage + 1}</span> a{' '}
-                <span className="font-semibold text-gray-900">{Math.min((page + 1) * rowsPerPage, ventasFiltradas.length)}</span>{' '}
-                de <span className="font-semibold text-gray-900">{ventasFiltradas.length}</span>
+                <span className="font-semibold text-gray-900">{Math.min((page + 1) * rowsPerPage, totalVentas)}</span>{' '}
+                de <span className="font-semibold text-gray-900">{totalVentas}</span>
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2 w-full sm:w-auto">
-                <select value={rowsPerPage} onChange={e => { setRowsPerPage(parseInt(e.target.value)); setPage(0); }}
+                <select value={rowsPerPage} onChange={e => { setPage(0); setRowsPerPage(parseInt(e.target.value)); }}
                   className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] cursor-pointer">
                   <option value={6}>6 por página</option>
                   <option value={12}>12 por página</option>

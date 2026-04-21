@@ -11,6 +11,9 @@ import api from './api';
 export const getVentasServicios = (filtros = {}) =>
   api.get('/ventas/servicios', { params: filtros }).then(r => r.data);
 
+export const getHistorialVentas = (filtros = {}) =>
+  api.get('/ventas/servicios/historial', { params: filtros }).then(r => r.data);
+
 /**
  * Obtener una venta de servicio por ID
  * @param {number} id - ID de la venta

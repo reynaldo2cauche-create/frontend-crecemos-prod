@@ -57,11 +57,6 @@ export const getDistritosByProvincia = async (provinciaId) => {
 
 export const getServicios = async () => {
   const cacheKey = 'catalogos:servicios';
-
-  // TEMPORAL: Limpiar caché para forzar reordenamiento
-  // TODO: Remover después de verificar que funciona
-  cacheManager.delete(cacheKey);
-
   const cached = cacheManager.get(cacheKey);
   if (cached) return cached;
 
@@ -84,7 +79,6 @@ export const getServicios = async () => {
     return 0;
   });
 
-  console.log('🔍 Servicios ordenados:', serviciosOrdenados.map(s => ({ nombre: s.nombre, area: s.area?.nombre })));
 
   cacheManager.set(cacheKey, serviciosOrdenados, CATALOG_TTL);
   return serviciosOrdenados;
