@@ -1296,6 +1296,7 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
 const HistorialVentasTab = () => {
   const [historialData, setHistorialData]   = useState([]);
   const [totalVentas, setTotalVentas]       = useState(0);
+  const [totalMontoFiltrado, setTotalMontoFiltrado] = useState(0);
   const [totalMontoGlobal, setTotalMontoGlobal] = useState(0);
   const [loading, setLoading]               = useState(true);
   const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '' });
@@ -1333,6 +1334,7 @@ const HistorialVentasTab = () => {
       const res = await getHistorialVentas(params);
       setHistorialData(res.data || []);
       setTotalVentas(res.total || 0);
+      setTotalMontoFiltrado(res.totalMonto || 0);
       setTotalMontoGlobal(res.totalMontoGlobal || 0);
     } catch (err) { console.error('Error cargando ventas:', err); }
     finally { setLoading(false); }
@@ -1432,7 +1434,8 @@ const HistorialVentasTab = () => {
     }
   };
 
-  const totalMonto      = totalMontoGlobal;
+  const hayFiltros = filtros.tipo !== 'todos' || filtros.fechaDesde || filtros.fechaHasta || pacienteSeleccionado;
+  const totalMonto = hayFiltros ? totalMontoFiltrado : totalMontoGlobal;
   const ventasPaginadas = historialData;
   const totalPages      = Math.ceil(totalVentas / rowsPerPage);
 

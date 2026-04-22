@@ -1298,7 +1298,7 @@ const handleGuardar = useCallback(async () => {
                     )}
                   </button>
                 )}
-                {citaEditando?.venta_servicio_detalle_id && (
+                {!esTerapeuta && citaEditando?.venta_servicio_detalle_id && (
                   <button
                     onClick={() => setTabValue(4)}
                     className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${

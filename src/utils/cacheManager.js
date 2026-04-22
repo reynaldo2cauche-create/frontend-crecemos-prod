@@ -82,6 +82,18 @@ class CacheManager {
   has(key) {
     return this.get(key) !== null;
   }
+
+  /**
+   * Elimina todas las entradas cuya key empiece con el prefijo dado
+   * @param {string} prefix
+   */
+  deleteByPrefix(prefix) {
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.delete(key);
+      }
+    }
+  }
 }
 
 // Instancia singleton

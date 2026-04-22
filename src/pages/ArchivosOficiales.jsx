@@ -88,6 +88,8 @@ const GestionArchivosOficiales = () => {
   const [tiposArchivoCompletos, setTiposArchivoCompletos] = useState([]);
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
   const [loadingTipos, setLoadingTipos] = useState(false);
+  const [loadingModalAccion, setLoadingModalAccion] = useState(null); // 'descargar' | 'abrir' | null
+  const [hoverDescargar, setHoverDescargar] = useState(false);
   const [errorFechaVigencia, setErrorFechaVigencia] = useState('');
   const [datosInicializados, setDatosInicializados] = useState(false);
 
@@ -1815,34 +1817,69 @@ const GestionArchivosOficiales = () => {
               )}
 
               <button
+                disabled={loadingModalAccion !== null}
+                onMouseEnter={() => setHoverDescargar(true)}
+                onMouseLeave={() => setHoverDescargar(false)}
+                style={{
+                  backgroundColor: hoverDescargar && !loadingModalAccion ? '#dbeafe' : '#ffffff',
+                  borderColor: hoverDescargar && !loadingModalAccion ? '#93c5fd' : '#e5e7eb',
+                  border: `1px solid ${hoverDescargar && !loadingModalAccion ? '#93c5fd' : '#e5e7eb'}`,
+                  transition: 'background-color 0.2s, border-color 0.2s',
+                }}
                 onClick={async () => {
+                  setLoadingModalAccion('descargar');
                   try {
-                    await archivosOficialesService.descargarArchivo(modalVer.id);
+                    const tipo = modalVer.tipoArchivo?.nombre || 'Documento';
+                    const nombreDestinatario = modalVer.paciente
+                      ? `${modalVer.paciente.nombres} ${modalVer.paciente.apellido_paterno}${modalVer.paciente.apellido_materno ? ' ' + modalVer.paciente.apellido_materno : ''}`
+                      : `${modalVer.trabajador?.nombres || ''} ${modalVer.trabajador?.apellidos || ''}`;
+                    const customFilename = `${tipo}_${nombreDestinatario.trim()}`.replace(/[<>:"/\\|?*]/g, '');
+                    await archivosOficialesService.descargarArchivo(modalVer.id, customFilename);
                     setSuccess('Archivo descargado correctamente');
                     setTimeout(() => setSuccess(''), 3000);
                   } catch (error) {
                     console.error('Error al descargar:', error);
                     setError('Error al descargar el archivo');
+                  } finally {
+                    setLoadingModalAccion(null);
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 rounded-xl font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Download className="w-4 h-4" />
-                Descargar
+                {loadingModalAccion === 'descargar' ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                  </svg>
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                {loadingModalAccion === 'descargar' ? 'Descargando...' : 'Descargar'}
               </button>
               <button
+                disabled={loadingModalAccion !== null}
                 onClick={async () => {
+                  setLoadingModalAccion('abrir');
                   try {
                     await archivosOficialesService.visualizarArchivo(modalVer.id);
                   } catch (error) {
                     console.error('Error al visualizar:', error);
                     setError('Error al visualizar el archivo');
+                  } finally {
+                    setLoadingModalAccion(null);
                   }
                 }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:shadow-lg transition-all"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:from-[#6A1B9A] hover:to-[#7B1FA2] hover:shadow-xl hover:scale-[1.02] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Eye className="w-4 h-4" />
-                Abrir Archivo
+                {loadingModalAccion === 'abrir' ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                  </svg>
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+                {loadingModalAccion === 'abrir' ? 'Abriendo...' : 'Abrir Archivo'}
               </button>
             </div>
           </div>
@@ -2014,8 +2051,8 @@ const GestionArchivosOficiales = () => {
             </button>
             <button
               onClick={handleDescargar}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
-            >
+className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium 
+text-gray-700 hover:bg-blue-100 hover:text-blue-700 transition-all"            >
               <Download className="w-4 h-4 text-gray-500" />
               Descargar
             </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -311,6 +311,25 @@ const Agenda = () => {
 
     return params;
   };
+
+  // Polling silencioso cada 30s para ver citas creadas por otros usuarios
+  const obtenerParamsRef = useRef(obtenerParamsFechaActual);
+  useEffect(() => { obtenerParamsRef.current = obtenerParamsFechaActual; });
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const intervalo = setInterval(async () => {
+      try {
+        const params = obtenerParamsRef.current();
+        const citasFrescas = await listarCitas(params, { forceRefresh: true });
+        setCitas(citasFrescas);
+        setTodasLasCitas(citasFrescas);
+      } catch {
+        // silencioso — no interrumpir al usuario
+      }
+    }, 30 * 1000);
+    return () => clearInterval(intervalo);
+  }, [currentUser]);
 
   const abrirModalDesdeSlot = (dia, hora) => {
     const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA

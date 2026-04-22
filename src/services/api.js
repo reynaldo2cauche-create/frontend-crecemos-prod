@@ -5,8 +5,8 @@ import React from 'react';
 import SessionExpiredModal from '../components/SessionExpiredModal';
 
 // URL base del servidor (para archivos estáticos como imágenes)
-export const SERVER_BASE_URL = 'http://localhost:3001'
-// export const SERVER_BASE_URL = 'https://www.crecemos.com.pe';
+// export const SERVER_BASE_URL = 'http://localhost:3001'
+export const SERVER_BASE_URL = 'https://www.crecemos.com.pe';
 
 
 // URL base de la API
