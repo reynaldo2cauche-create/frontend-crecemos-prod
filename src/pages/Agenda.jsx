@@ -1002,12 +1002,16 @@ const guardarCita = async (datosFormulario = null) => {
               <select
                 value={terapeutaFiltro}
                 onChange={(e) => {
-                  setTerapeutaFiltro(e.target.value);
-                  const hoy = new Date();
-                  const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
-                  setFechaActual(hoyCL);
-                  setFechaCalendario(hoyCL);
-                }}
+                    setTerapeutaFiltro(e.target.value);
+                    // Limpiar inmediatamente para evitar flash de datos anteriores
+                    setCitas([]);
+                    setTodasLasCitas([]);
+                    setBloqueos([]);
+                    const hoy = new Date();
+                    const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+                    setFechaActual(hoyCL);
+                    setFechaCalendario(hoyCL);
+                  }}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
