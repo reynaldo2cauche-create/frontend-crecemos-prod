@@ -13,6 +13,10 @@ const ConsentForm = ({ onSubmit, onBack, captchaValue, setCaptchaValue }) => {
 
   const handleFormSubmit = async (data) => {
     setCaptchaError('');
+    if (!captchaValue) {
+      setCaptchaError('Por favor completa la verificación reCAPTCHA antes de continuar.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onSubmit(data);

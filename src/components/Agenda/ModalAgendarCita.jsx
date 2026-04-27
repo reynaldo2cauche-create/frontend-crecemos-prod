@@ -97,6 +97,7 @@ const ModalAgendarCita = ({
 
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
+  const esAdmin = currentUser?.rol?.id === ROLES.ADMINISTRADOR;
   const requiereGeofencing = esTerapeuta || esRecepcionista;
   const { cargando: cargandoGeofencing, dentroDelPerimetro } = useGeofencing(requiereGeofencing, 30000);
   const modoSoloLectura = requiereGeofencing && !dentroDelPerimetro;
@@ -1431,16 +1432,37 @@ const handleGuardar = useCallback(async () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Terapeuta <span className="text-red-500">*</span>
                         </label>
-                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                              <User className="w-4 h-4 text-white" />
+                        {esAdmin ? (
+                          <select
+                            value={formularioCita.doctor_id || terapeutaSeleccionado?.id || ''}
+                            onChange={(e) => onFormularioChange('doctor_id', e.target.value)}
+                            disabled={modoSoloLectura || bloqueadoPorAsistencia}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                          >
+                            <option value="">Seleccionar terapeuta...</option>
+                            {trabajadores
+                              .filter(t => {
+                                const rolId = t.rol_id || t.rol?.id;
+                                return rolId === ROLES.TERAPEUTA && (t.estado === true || t.estado === 1);
+                              })
+                              .map(t => (
+                                <option key={t.id} value={t.id}>
+                                  {t.nombres} {t.apellidos}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                <User className="w-4 h-4 text-white" />
+                              </div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim() : 'No seleccionado'}
+                              </p>
                             </div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim() : 'No seleccionado'}
-                            </p>
                           </div>
-                        </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">

@@ -557,7 +557,7 @@ const FormularioSolicitud = ({
       ...p,
       venta_servicio_id: ventaId,
       // servicio_id se llenará cuando se seleccione el especialista
-      monto: montoInforme > 0 ? montoInforme.toFixed(2) : p.monto,
+      monto: itemsInforme.length > 0 ? montoInforme.toFixed(2) : p.monto,
       nro_recibo: venta.codigo_comprobante ?? p.nro_recibo,
       modalidad_pago_id: venta.modalidad_pago_id ?? venta.modalidad_pago?.id ?? p.modalidad_pago_id,
       documento_tarifa_id: itemsInforme[0]?.documentoTarifaId   // ← camelCase, igual que la API
@@ -621,12 +621,12 @@ const FormularioSolicitud = ({
       }
       return;
     }
-    if (!form.monto || Number(form.monto) <= 0) {
+    if (form.monto === '' || form.monto === null || form.monto === undefined || Number(form.monto) < 0) {
       console.error('❌ Error: Monto inválido:', form.monto);
       if (onMostrarAlerta) {
         onMostrarAlerta({
           titulo: 'Monto inválido',
-          mensaje: 'El monto debe ser mayor a 0',
+          mensaje: 'El monto no puede ser negativo',
           tipo: 'error'
         });
       }

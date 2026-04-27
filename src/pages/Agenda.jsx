@@ -157,9 +157,10 @@ const Agenda = () => {
 
   // Cargar citas
   useEffect(() => {
+    let cancelado = false;
+
     const cargarCitas = async () => {
       try {
-        // ✅ Limpiar citas inmediatamente para evitar flickering
         setCitas([]);
         setTodasLasCitas([]);
         setCargando(true);
@@ -172,17 +173,8 @@ const Agenda = () => {
           params.terapeuta_id = terapeutaFiltro;
         }
 
-        // Calcular el rango de fechas: incluir semanas completas que tocan el mes
         const fecha = new Date(fechaActual);
 
-        // 🕐 LOG DETALLADO PARA DEBUGGING
-        console.log('🕐 DEBUGGING - Hora actual navegador:', new Date().toISOString());
-        console.log('🕐 DEBUGGING - fechaActual state:', fechaActual);
-        console.log('🕐 DEBUGGING - fecha usada para cálculo:', fecha);
-        console.log('🕐 DEBUGGING - Mes de fecha:', fecha.getMonth() + 1);
-        console.log('🕐 DEBUGGING - Año de fecha:', fecha.getFullYear());
-
-        // Formatear fechas como YYYY-MM-DD
         const formatearFecha = (f) => {
           const year = f.getFullYear();
           const month = String(f.getMonth() + 1).padStart(2, '0');
@@ -190,73 +182,74 @@ const Agenda = () => {
           return `${year}-${month}-${day}`;
         };
 
-        // 🔥 NUEVA LÓGICA: Expandir rango para incluir semanas completas
-        // Obtener el primer día del mes
         const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-        // Retroceder hasta el lunes de esa semana (o hasta 7 días antes para incluir la semana anterior)
         const primerDiaExpandido = new Date(primerDiaMes);
         primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
 
-        // Obtener el último día del mes
         const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
-        // Avanzar hasta 7 días después para incluir la siguiente semana
         const ultimoDiaExpandido = new Date(ultimoDiaMes);
         ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
 
         params.fecha_desde = formatearFecha(primerDiaExpandido);
         params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
 
-        console.log(`📅 Cargando citas del ${params.fecha_desde} al ${params.fecha_hasta} (expandido para incluir semanas completas)`);
-
-        // Cargar citas filtradas para mostrar en el calendario
         const citasRes = await listarCitas(params);
-        setCitas(citasRes);
-        setTodasLasCitas(citasRes);
 
+        if (!cancelado) {
+          setCitas(citasRes);
+          setTodasLasCitas(citasRes);
+        }
       } catch (error) {
-        console.error('Error cargando citas:', error);
-        setSnackbarMessage('Error al cargar citas');
-        setSnackbarSeverity('error');
-        setShowSnackbar(true);
+        if (!cancelado) {
+          console.error('Error cargando citas:', error);
+          setSnackbarMessage('Error al cargar citas');
+          setSnackbarSeverity('error');
+          setShowSnackbar(true);
+        }
       } finally {
-        setCargando(false);
+        if (!cancelado) {
+          setCargando(false);
+        }
       }
     };
 
     if (currentUser) {
       cargarCitas();
     }
+
+    return () => { cancelado = true; };
   }, [currentUser, terapeutaFiltro, fechaActual, recargarCitas]);
 
   // Cargar bloqueos del terapeuta
   useEffect(() => {
+    let cancelado = false;
+
     const cargarBloqueos = async () => {
       try {
         let bloqueosRes = [];
 
-        // Si es terapeuta, cargar solo sus bloqueos
         if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
-          console.log('🔒 Cargando bloqueos para terapeuta:', currentUser.id);
           bloqueosRes = await obtenerBloqueosPorTerapeuta(currentUser.id);
-        }
-        // Si es admin/admisión y tiene terapeuta seleccionado
-        else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-          console.log('🔒 Cargando bloqueos para terapeuta seleccionado:', terapeutaFiltro);
+        } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
           bloqueosRes = await obtenerBloqueosPorTerapeuta(terapeutaFiltro);
         }
 
-        console.log('🔒 Bloqueos cargados:', bloqueosRes);
-        console.log('🔒 Cantidad de bloqueos activos:', bloqueosRes?.filter(b => b.activo)?.length || 0);
-        setBloqueos(bloqueosRes || []);
+        if (!cancelado) {
+          setBloqueos(bloqueosRes || []);
+        }
       } catch (error) {
-        console.error('❌ Error cargando bloqueos:', error);
-        setBloqueos([]);
+        if (!cancelado) {
+          console.error('❌ Error cargando bloqueos:', error);
+          setBloqueos([]);
+        }
       }
     };
 
     if (currentUser) {
       cargarBloqueos();
     }
+
+    return () => { cancelado = true; };
   }, [currentUser, terapeutaFiltro]);
 
   // Determinar tipo de cita basado en motivo_id

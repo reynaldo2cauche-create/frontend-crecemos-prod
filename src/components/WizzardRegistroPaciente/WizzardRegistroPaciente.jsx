@@ -24,6 +24,7 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   const [formData, setFormData] = useState(null);
   const [openSuccessDialog, setOpenSuccessDialog] = useState(false);
   const [captchaValue, setCaptchaValue] = useState(null);
+  const [submitError, setSubmitError] = useState('');
   // 🆕 Estado para guardar datos procesados de cada paso
   const [datosProceadosPorPaso, setDatosProcesadosPorPaso] = useState({});
 
@@ -93,6 +94,7 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   };
 
   const handleConfirmSubmit = async (data) => {
+    setSubmitError('');
     try {
       setLoading(true);
       // Calcular edad para saber si es menor de edad
@@ -216,7 +218,11 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
       }, 2000);
     } catch (error) {
       console.error('Error al guardar el paciente:', error);
-      // Aquí podrías mostrar un modal de error si lo deseas
+      const msg = error?.response?.data?.message;
+      setSubmitError(
+        Array.isArray(msg) ? msg.join(', ') :
+        (msg || error?.message || 'Ocurrió un error al registrar. Por favor intenta de nuevo.')
+      );
     } finally {
       setLoading(false);
     }
@@ -244,7 +250,22 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
           {activeStep === 0 && <PersonalDataForm onNext={handleNext} setSnackbar={handleSnackbar} />}
           {activeStep === 1 && <AdditionalInfo onNext={handleNext} onBack={handleBack} />}
           {activeStep === 2 && <MedicalInfo onNext={handleNext} onBack={handleBack} />}
-          {activeStep === 3 && <ConsentForm onSubmit={handleConfirmSubmit} onBack={handleBack} captchaValue={captchaValue} setCaptchaValue={setCaptchaValue} />}
+          {activeStep === 3 && (
+            <>
+              {submitError && (
+                <div style={{
+                  background: '#fef2f2', border: '1px solid #fca5a5',
+                  borderRadius: '12px', padding: '14px 18px',
+                  marginBottom: '16px', color: '#b91c1c',
+                  fontSize: '14px', display: 'flex', alignItems: 'flex-start', gap: '10px'
+                }}>
+                  <span style={{ fontSize: '18px', lineHeight: 1 }}>⚠️</span>
+                  <span>{submitError}</span>
+                </div>
+              )}
+              <ConsentForm onSubmit={handleConfirmSubmit} onBack={handleBack} captchaValue={captchaValue} setCaptchaValue={setCaptchaValue} />
+            </>
+          )}
         </div>
 
                {/* 🎉 MODAL DE ÉXITO MINIMALISTA */}

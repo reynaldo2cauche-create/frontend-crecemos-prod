@@ -960,10 +960,54 @@ const VenderServiciosTab = ({
     } finally { setCalculandoPromos(false); }
   };
 
+  // Obtiene el area_id de un paciente a partir de su array servicios[]
+  const getAreaIdDePaciente = (pac) => {
+    if (!pac) return null;
+    const lista = Array.isArray(pac.servicios) ? pac.servicios : [];
+    for (const s of lista) {
+      if (s.area?.id) return s.area.id;
+      if (s.area_id) return s.area_id;
+      const sId = s.servicio_id || s.id;
+      if (sId) {
+        const tarifa = tarifas.find(t => t.servicio_id === sId);
+        if (tarifa?.servicio?.area?.id) return tarifa.servicio.area.id;
+      }
+    }
+    const sId = pac.servicio?.id || pac.servicio_id;
+    if (sId) {
+      const tarifa = tarifas.find(t => t.servicio_id === sId);
+      if (tarifa?.servicio?.area?.id) return tarifa.servicio.area.id;
+    }
+    return null;
+  };
+
+  // Set de areas permitidas según el pagador
+  const areasPermitidas = (() => {
+    if (tipoPagador === TIPOS_PAGADOR.PACIENTE && pacienteSeleccionado) {
+      const pac = pacientes.find(p => String(p.id) === String(pacienteSeleccionado));
+      const areaId = getAreaIdDePaciente(pac);
+      console.log('🔍 AREA paciente areaId:', areaId, '| servicios:', pac?.servicios?.map(s=>s.id||s.servicio_id));
+      return areaId ? new Set([areaId]) : null;
+    }
+    if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0) {
+      const ids = pacientesDelResponsable
+        .map(pResp => {
+          // pacientesDelResponsable no trae servicios — cruzar con el array principal
+          const pacCompleto = pacientes.find(p => String(p.id) === String(pResp.id));
+          return getAreaIdDePaciente(pacCompleto || pResp);
+        })
+        .filter(Boolean);
+      return ids.length > 0 ? new Set(ids) : null;
+    }
+    return null; // sin filtro (Externo u otros)
+  })();
+
   const itemsFiltrados = busqueda ? [
     ...tarifas.filter(t => {
       const q = busqueda.toLowerCase();
-      return (t.servicio?.nombre || '').toLowerCase().includes(q) || (t.motivo_cita?.nombre || '').toLowerCase().includes(q);
+      const matchBusqueda = (t.servicio?.nombre || '').toLowerCase().includes(q) || (t.motivo_cita?.nombre || '').toLowerCase().includes(q);
+      const matchArea = !areasPermitidas || areasPermitidas.has(t.servicio?.area?.id);
+      return matchBusqueda && matchArea;
     }).map(t => ({ ...t, _tipo: TIPOS_ITEM_VENTA.SERVICIO })),
     ...documentosTarifa.filter(d => {
       const q = busqueda.toLowerCase();
