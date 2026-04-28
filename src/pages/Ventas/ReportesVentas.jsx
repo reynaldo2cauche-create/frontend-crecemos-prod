@@ -12,7 +12,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getReportes } from '../../services/ventasService';
+import { getReportes, getVentasSinCita } from '../../services/ventasService';
 
 const ReportesVentas = () => {
   const [loading, setLoading] = useState(false);
@@ -38,6 +38,10 @@ const ReportesVentas = () => {
   const [ventasPorCategoria, setVentasPorCategoria] = useState([]);
   const [descuentos, setDescuentos] = useState([]);
   const [ingresosPorResponsable, setIngresosPorResponsable] = useState([]);
+  const [ventasSinCita, setVentasSinCita] = useState([]);
+  const [loadingSinCita, setLoadingSinCita] = useState(false);
+  const [paginaActual, setPaginaActual] = useState(1);
+const filasPorPagina = 10; // puedes cambiar a 10 si quieres
 
   const COLORS = ['#7B1FA2', '#A3C644', '#E91E63', '#FF9800', '#2196F3', '#9C27B0'];
 
@@ -57,6 +61,21 @@ const ReportesVentas = () => {
   useEffect(() => {
     if (fechaInicio && fechaFin) cargarReportes();
   }, [fechaInicio, fechaFin, tipoReporte]);
+
+  useEffect(() => {
+    const cargarSinCita = async () => {
+      setLoadingSinCita(true);
+      try {
+        const data = await getVentasSinCita();
+        setVentasSinCita(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error('Error al cargar ventas sin cita:', e);
+      } finally {
+        setLoadingSinCita(false);
+      }
+    };
+    cargarSinCita();
+  }, []);
 
   const cargarReportes = async () => {
     setLoading(true);
@@ -108,6 +127,12 @@ const ReportesVentas = () => {
 
   const formatCurrency = (value) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value ?? 0);
+
+  const formatFecha = (f) => {
+    if (!f) return '—';
+    const [y, m, d] = String(f).slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
@@ -169,6 +194,13 @@ const ReportesVentas = () => {
     },
   ];
 
+
+  const indiceUltimaFila = paginaActual * filasPorPagina;
+  const indicePrimeraFila = indiceUltimaFila - filasPorPagina;
+
+  const ventasPaginadas = ventasSinCita.slice(indicePrimeraFila, indiceUltimaFila);
+
+  const totalPaginas = Math.ceil(ventasSinCita.length / filasPorPagina);
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
 
@@ -360,6 +392,82 @@ const ReportesVentas = () => {
     </ResponsiveContainer>
   )}
 </div>
+
+      {/* Ventas sin cita agendada */}
+      <div className="bg-white rounded-2xl shadow-sm border border-amber-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-amber-100 bg-amber-50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-amber-600" />
+            <h3 className="text-base font-bold text-amber-900">Ventas sin cita agendada</h3>
+            {!loadingSinCita && (
+              <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-800">
+                {ventasSinCita.length}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-amber-600">Servicios vendidos que aún no tienen cita programada</p>
+        </div>
+        <div className="overflow-x-auto">
+          {loadingSinCita ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-sm text-gray-400">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-amber-500 rounded-full animate-spin" />
+              Cargando...
+            </div>
+          ) : ventasSinCita.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-10">Todas las ventas tienen cita agendada</p>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Comprobante</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Paciente</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">Sesiones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {ventasPaginadas.map((row, i) => (
+                  <tr key={i} className="hover:bg-amber-50/40 transition-colors">
+                    <td className="px-4 py-2.5 text-sm text-gray-700 whitespace-nowrap">{formatFecha(row.fecha_venta)}</td>
+                    <td className="px-4 py-2.5 text-sm font-mono text-gray-600">{row.codigo_comprobante || '—'}</td>
+                    <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{row.paciente || '—'}</td>
+                    <td className="px-4 py-2.5 text-sm text-gray-600">{row.descripcion_linea || row.motivo_cita || '—'}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                        {row.sesiones_pendientes} pendientes 
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              Página {paginaActual} de {totalPaginas || 1}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPaginaActual((p) => Math.max(p - 1, 1))}
+                disabled={paginaActual === 1}
+                className="px-3 py-1.5 rounded-lg border text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+              >
+                Anterior
+              </button>
+
+              <button
+                onClick={() => setPaginaActual((p) => Math.min(p + 1, totalPaginas))}
+                disabled={paginaActual === totalPaginas}
+                className="px-3 py-1.5 rounded-lg border text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Tabla descuentos */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">

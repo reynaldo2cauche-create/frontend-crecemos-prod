@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getTarifas } from '../../services/inventarioService';
+import { getTarifas, getPaquetesCombo } from '../../services/inventarioService';
 import { getServicios } from '../../services/serviciosService';
 import { getMotivosCita } from '../../services/citaService';
 import { getDocumentosTarifa } from '../../services/documentoTarifaService';
@@ -11,6 +11,7 @@ const esEntrevista = (nombre = '') => nombre.toLowerCase().includes('entrevista'
 const esEvaluacion = (nombre = '') => nombre.toLowerCase().includes('evaluaci');
 const esPagoTotal = (nombre = '') => nombre.toLowerCase().includes('total');
 const esInformeVerbal = (nombre = '') => nombre.toLowerCase().includes('informe verbal');
+const esInforme = (nombre = '') => nombre.toLowerCase().includes('informe');
 const esInformeEvolucion = (nombre = '') => nombre.toLowerCase().includes('informe de evolución') || nombre.toLowerCase().includes('informe de evolucion');
 
 // ─── Badge ───────────────────────────────────────────────────────────────────
@@ -145,13 +146,13 @@ const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) =>
     const nombre = motivosMap[t.motivo_cita_id] ?? '';
     const precio = parseFloat(t.precio);
 
-    if (!esEntrevista(nombre) && !esEvaluacion(nombre) && !esInformeVerbal(nombre)) {
+    if (!esEntrevista(nombre) && !esEvaluacion(nombre) && !esInforme(nombre)) {
       if (precioBase === null || precio < precioBase) precioBase = precio;
     }
 
     if (esEntrevista(nombre)) tiposServicio.add('Entrevista');
-    if (esEvaluacion(nombre) || esInformeVerbal(nombre)) tiposServicio.add('Evaluación');
-    if (!esEntrevista(nombre) && !esEvaluacion(nombre) && !esInformeVerbal(nombre)) tiposServicio.add('Terapia');
+    if (esEvaluacion(nombre) || esInforme(nombre)) tiposServicio.add('Evaluación');
+    if (!esEntrevista(nombre) && !esEvaluacion(nombre) && !esInforme(nombre)) tiposServicio.add('Terapia');
     if ((t.precios_paquetes ?? []).length > 0) tienePaquetes = true;
   });
 
@@ -216,12 +217,19 @@ const ServicioCard = ({ servicio, tarifas, motivosMap, onClick, isSelected }) =>
 };
 
 // ─── Panel lateral de detalle (servicios) ────────────────────────────────────
-const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
+const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
   const rowsEval = [];
   const rowsTerapia = [];
   let precioBase = null;
   let paquetes = [];
+
+  const esTLInfantil = servicio.nombre?.toLowerCase().includes('lenguaje') && servicio.area?.nombre?.toLowerCase().includes('infantil');
+
+  // Combos solo para Terapia de Lenguaje Infantil
+  const combosDelServicio = esTLInfantil
+    ? combos.filter((c) => (c.items ?? []).some((item) => item.servicioTarifa?.servicio?.id === servicio.id))
+    : [];
 
   tarifas.forEach((t) => {
     const nombre = motivosMap[t.motivo_cita_id] ?? `Motivo #${t.motivo_cita_id}`;
@@ -229,7 +237,7 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
 
     if (esEntrevista(nombre)) {
       rowsEval.push({ label: nombre, descuento: 'vigencia', precio });
-    } else if (esEvaluacion(nombre) || esInformeVerbal(nombre)) {
+    } else if (esEvaluacion(nombre) || esInforme(nombre)) {
       if (esPagoTotal(nombre)) {
         const esTLInfantil = servicio.nombre?.toLowerCase().includes('lenguaje') && servicio.area?.nombre?.toLowerCase().includes('infantil');
         rowsEval.push({
@@ -239,7 +247,7 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
           nota: 'Incluye informe de evaluación',
         });
       } else {
-        rowsEval.push({ label: nombre, descuento: false, precio });
+        rowsEval.push({ label: nombre, descuento: esInforme(nombre), precio });
       }
     } else {
       const tienePaquetes = (t.precios_paquetes ?? []).length > 0;
@@ -283,10 +291,20 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, onClose }) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {rowsEval.length > 0 && (
+            {(rowsEval.length > 0 || combosDelServicio.length > 0) && (
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Evaluación</p>
-                <TarifaTable rows={rowsEval} />
+                {rowsEval.length > 0 && <TarifaTable rows={rowsEval} />}
+                {combosDelServicio.length > 0 && (
+                  <div className={rowsEval.length > 0 ? 'mt-2' : ''}>
+                    <TarifaTable rows={combosDelServicio.map((c) => ({
+                      label: 'Evaluación c/ informe',
+                      nota: c.descripcion || null,
+                      descuento: true,
+                      precio: parseFloat(c.precioTotal),
+                    }))} />
+                  </div>
+                )}
                 {servicio.nombre?.toLowerCase().includes('psicolog') && servicio.nombre?.toLowerCase().includes('infantil') && (
                   <div className="mt-2 flex items-start gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl">
                     <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -486,6 +504,7 @@ const TarifarioPage = () => {
   const [servicios, setServicios] = useState([]);
   const [motivos, setMotivos] = useState([]);
   const [documentosTarifa, setDocumentosTarifa] = useState([]);
+  const [combos, setCombos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedServicio, setSelectedServicio] = useState(null);
@@ -496,16 +515,18 @@ const TarifarioPage = () => {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [tarifasRes, serviciosRes, motivosRes, docsRes] = await Promise.all([
+        const [tarifasRes, serviciosRes, motivosRes, docsRes, combosRes] = await Promise.all([
           getTarifas(),
           getServicios(),
           getMotivosCita(),
           getDocumentosTarifa(),
+          getPaquetesCombo(),
         ]);
         setTarifas(tarifasRes.filter((t) => t.flg_activo === 1 || t.activo));
         setServicios(serviciosRes);
         setMotivos(motivosRes);
         setDocumentosTarifa(docsRes.filter((d) => d.flgActivo === 1));
+        setCombos(Array.isArray(combosRes) ? combosRes : []);
       } catch (e) {
         setError('No se pudo cargar el tarifario.');
         console.error(e);
@@ -669,6 +690,7 @@ const TarifarioPage = () => {
           servicio={selectedServicio}
           tarifas={tarifasMap[selectedServicio.id] ?? []}
           motivosMap={motivosMap}
+          combos={combos}
           onClose={handleClosePanel}
         />
       )}

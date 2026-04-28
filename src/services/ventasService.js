@@ -203,6 +203,9 @@ export const getTiposComprobante = () =>
 export const getReportes = (filtros = {}) =>
   api.get('/ventas/reportes', { params: filtros }).then(r => r.data);
 
+export const getVentasSinCita = () =>
+  api.get('/ventas/reportes/sin-cita').then(r => r.data);
+
 // ============================================================
 // CATÁLOGOS
 // ============================================================

@@ -88,8 +88,9 @@ const GestionArchivosOficiales = () => {
   const [tiposArchivoCompletos, setTiposArchivoCompletos] = useState([]);
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
   const [loadingTipos, setLoadingTipos] = useState(false);
-  const [loadingModalAccion, setLoadingModalAccion] = useState(null); // 'descargar' | 'abrir' | null
+  const [loadingModalAccion, setLoadingModalAccion] = useState(null); // 'descargar' | 'abrir' | 'entrega' | null
   const [hoverDescargar, setHoverDescargar] = useState(false);
+  const [loadingEntrega, setLoadingEntrega] = useState(false);
   const [errorFechaVigencia, setErrorFechaVigencia] = useState('');
   const [datosInicializados, setDatosInicializados] = useState(false);
 
@@ -956,17 +957,29 @@ const GestionArchivosOficiales = () => {
 
                           {/* Footer */}
                           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
-                              doc.estado === 'Activo'
-                                ? 'bg-green-50 text-green-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {doc.estado === 'Activo' ? (
-                                <CheckCircle2 className="w-3 h-3" />
-                              ) : (
-                                <AlertCircle className="w-3 h-3" />
-                              )}
-                              {doc.estado || 'Activo'}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                                doc.estado === 'Activo'
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {doc.estado === 'Activo' ? (
+                                  <CheckCircle2 className="w-3 h-3" />
+                                ) : (
+                                  <AlertCircle className="w-3 h-3" />
+                                )}
+                                {doc.estado || 'Activo'}
+                              </div>
+                              {doc.entregaDigital ? (
+                                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700">
+                                  <CloudUpload className="w-3 h-3" /> Virtual
+                                </div>
+                              ) : null}
+                              {doc.entregaFisica ? (
+                                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700">
+                                  <FileCheck className="w-3 h-3" /> Físico
+                                </div>
+                              ) : null}
                             </div>
                             <button
                               onClick={() => setModalVer(doc)}
@@ -1080,17 +1093,29 @@ const GestionArchivosOficiales = () => {
                                     )}
                                   </td>
                                   <td className="px-4 py-4">
-                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
-                                      doc.estado === 'Activo'
-                                        ? 'bg-green-50 text-green-700'
-                                        : 'bg-gray-100 text-gray-600'
-                                    }`}>
-                                      {doc.estado === 'Activo' ? (
-                                        <CheckCircle2 className="w-3 h-3" />
-                                      ) : (
-                                        <AlertCircle className="w-3 h-3" />
-                                      )}
-                                      {doc.estado || 'Activo'}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                                        doc.estado === 'Activo'
+                                          ? 'bg-green-50 text-green-700'
+                                          : 'bg-gray-100 text-gray-600'
+                                      }`}>
+                                        {doc.estado === 'Activo' ? (
+                                          <CheckCircle2 className="w-3 h-3" />
+                                        ) : (
+                                          <AlertCircle className="w-3 h-3" />
+                                        )}
+                                        {doc.estado || 'Activo'}
+                                      </div>
+                                      {doc.entregaDigital ? (
+                                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700">
+                                          <CloudUpload className="w-3 h-3" /> Virtual
+                                        </div>
+                                      ) : null}
+                                      {doc.entregaFisica ? (
+                                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700">
+                                          <FileCheck className="w-3 h-3" /> Físico
+                                        </div>
+                                      ) : null}
                                     </div>
                                   </td>
                                 </tr>
@@ -1791,6 +1816,132 @@ const GestionArchivosOficiales = () => {
                   </div>
                 </div>
               )}
+
+              {/* ── Sección entrega ── */}
+              {(() => {
+                const handleMarcar = async (tipo) => {
+                  setLoadingEntrega(true);
+                  try {
+                    const res = await archivosOficialesService.marcarEntrega(modalVer.id, tipo);
+                    const actualizado = { ...modalVer, ...res.data };
+                    setModalVer(actualizado);
+                    setDocumentos(prev => prev.map(d => d.id === modalVer.id ? { ...d, ...res.data } : d));
+                    setSuccess(tipo === 'digital' ? 'Entrega virtual registrada' : 'Entrega física registrada');
+                    setTimeout(() => setSuccess(''), 3000);
+                  } catch (err) {
+                    setError('Error al registrar la entrega');
+                  } finally {
+                    setLoadingEntrega(false);
+                  }
+                };
+
+                const fmtFecha = (f) => f
+                  ? `${new Date(f).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })} a las ${new Date(f).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+                  : null;
+
+                const EntregaFila = ({ marcada, tipo, fecha, quien, onMarcar }) => (
+                  <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                    marcada
+                      ? tipo === 'digital'
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-amber-50 border-amber-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    {/* Check / Botón marcar */}
+                    <button
+                      disabled={marcada || loadingEntrega}
+                      onClick={onMarcar}
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                        marcada
+                          ? tipo === 'digital'
+                            ? 'bg-blue-600 border-blue-600'
+                            : 'bg-amber-500 border-amber-500'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                      } disabled:cursor-default`}
+                    >
+                      {marcada && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {tipo === 'digital' ? (
+                          <CloudUpload className={`w-3.5 h-3.5 flex-shrink-0 ${marcada ? 'text-blue-600' : 'text-gray-400'}`} />
+                        ) : (
+                          <FileCheck className={`w-3.5 h-3.5 flex-shrink-0 ${marcada ? 'text-amber-600' : 'text-gray-400'}`} />
+                        )}
+                        <span className={`text-sm font-semibold ${marcada ? 'text-gray-900' : 'text-gray-500'}`}>
+                          Entrega {tipo === 'digital' ? 'Virtual (Digital)' : 'Física'}
+                          {tipo === 'digital' && (
+                            <span className="ml-1.5 text-[10px] font-normal text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">obligatorio</span>
+                          )}
+                        </span>
+                      </div>
+
+                      {marcada && fecha && (
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{fmtFecha(fecha)}</p>
+                      )}
+                      {marcada && quien && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                          <User className="w-3 h-3 flex-shrink-0" />
+                          <span className="font-medium text-gray-700">{quien.nombres} {quien.apellidos}</span>
+                        </p>
+                      )}
+                      {!marcada && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {loadingEntrega ? 'Guardando...' : 'Sin marcar — haz clic en el círculo para registrar'}
+                        </p>
+                      )}
+                    </div>
+
+                    {!marcada && (
+                      <button
+                        disabled={loadingEntrega}
+                        onClick={onMarcar}
+                        className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50 ${
+                          tipo === 'digital'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                        }`}
+                      >
+                        Marcar
+                      </button>
+                    )}
+                  </div>
+                );
+
+                return (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Entrega del documento</p>
+                      {modalVer.entregaDigital && modalVer.entregaFisica && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-semibold">
+                          <CheckCircle2 className="w-3 h-3" /> Completa
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3 space-y-2">
+                      <EntregaFila
+                        tipo="digital"
+                        marcada={!!modalVer.entregaDigital}
+                        fecha={modalVer.fechaEntregaDigital}
+                        quien={modalVer.entregadoDigitalPor}
+                        onMarcar={() => handleMarcar('digital')}
+                      />
+                      <EntregaFila
+                        tipo="fisico"
+                        marcada={!!modalVer.entregaFisica}
+                        fecha={modalVer.fechaEntregaFisica}
+                        quien={modalVer.entregadoFisicoPor}
+                        onMarcar={() => handleMarcar('fisico')}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-xs text-blue-900">

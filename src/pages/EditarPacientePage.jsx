@@ -994,7 +994,11 @@ const handleEliminarConvenio = async () => {
                   <div className="h-12 bg-gray-50 rounded-xl animate-pulse mt-1.5"></div>
                 </div>
               ) : (
-                <ResumenTerapiasView pacienteId={paciente?.id} user={user} />
+                <ResumenTerapiasView
+                  pacienteId={paciente?.id}
+                  user={user}
+                  pacienteNombre={paciente ? `${paciente.nombres || ''} ${paciente.apellido_paterno || ''} ${paciente.apellido_materno || ''}`.trim() : ''}
+                />
               )
             )}
           </div>

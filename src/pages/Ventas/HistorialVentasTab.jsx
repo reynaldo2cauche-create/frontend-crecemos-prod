@@ -1031,75 +1031,74 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              {tipo === 'servicio' ? <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" /> : <CubeIcon className="w-5 h-5 text-[#7B1FA2]" />}
-              <h2 className="font-bold text-gray-900">Detalle de Venta de {tipo === 'servicio' ? 'Servicio' : 'Producto'}</h2>
+              {tipo === 'servicio' ? <ShoppingCartIcon className="w-4 h-4 text-[#7B1FA2]" /> : <CubeIcon className="w-4 h-4 text-[#7B1FA2]" />}
+              <h2 className="font-bold text-sm text-gray-900">Detalle de Venta de {tipo === 'servicio' ? 'Servicio' : 'Producto'}</h2>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setMostrarPrint(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-[#7B1FA2] text-white text-sm font-medium rounded-lg hover:bg-[#6A1B9A] transition-colors">
-                <PrinterIcon className="w-4 h-4" />Imprimir
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#7B1FA2] text-white text-xs font-medium rounded-lg hover:bg-[#6A1B9A] transition-colors">
+                <PrinterIcon className="w-3.5 h-3.5" />Imprimir
               </button>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100">
-                <XMarkIcon className="w-5 h-5 text-gray-500" />
+              <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
+                <XMarkIcon className="w-4 h-4 text-gray-500" />
               </button>
             </div>
           </div>
 
-          <div className="overflow-y-auto px-6 py-5 space-y-4">
-            {venta.codigo_comprobante && (
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 border-l-4 border-purple-600 px-4 py-3 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-purple-700 mb-0.5">Número de Comprobante</p>
-                    <p className="text-2xl font-bold font-mono text-purple-900 tracking-wider">{venta.codigo_comprobante}</p>
-                  </div>
-                  <div className="text-right">
-                    <ComprobanteLabel nombre={venta.tipo_comprobante?.nombre} id={venta.tipo_comprobante?.id} />
-                    <p className="text-xs text-gray-500 mt-1">{formatFecha(venta.fecha_venta)}</p>
-                  </div>
+          <div className="overflow-y-auto px-4 py-3 space-y-3">
+            {/* Cabecera comprobante + info en una sola fila */}
+            <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded-xl">
+              <div>
+                <p className="text-xs text-gray-500">Fecha</p>
+                <p className="font-semibold text-sm text-gray-900">{formatFecha(venta.fecha_venta)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Comprobante</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <ComprobanteLabel nombre={venta.tipo_comprobante?.nombre} id={venta.tipo_comprobante?.id} />
+                  {venta.codigo_comprobante && (
+                    <span className="text-xs font-mono font-bold text-purple-900">{venta.codigo_comprobante}</span>
+                  )}
                 </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl">
-              {!venta.codigo_comprobante && (
-                <>
-                  <div><p className="text-xs text-gray-500">Fecha</p><p className="font-semibold text-gray-900">{formatFecha(venta.fecha_venta)}</p></div>
-                  <div><p className="text-xs text-gray-500">Comprobante</p><div className="mt-0.5"><ComprobanteLabel nombre={venta.tipo_comprobante?.nombre} id={venta.tipo_comprobante?.id} /></div></div>
-                </>
-              )}
-              <div className={!venta.codigo_comprobante ? '' : 'col-span-2'}>
+              <div>
                 <p className="text-xs text-gray-500">Tipo de Pagador</p>
-                <p className="font-semibold text-gray-900">{tipoPagadorNombre(venta.tipo_pagador_id || venta.tipo_comprador_id)}</p>
+                <p className="font-semibold text-sm text-gray-900">{tipoPagadorNombre(venta.tipo_pagador_id || venta.tipo_comprador_id)}</p>
               </div>
+              {venta.modalidad_pago && (
+                <div>
+                  <p className="text-xs text-gray-500">Pago</p>
+                  <p className="font-semibold text-sm text-gray-900">{venta.modalidad_pago.nombre}</p>
+                </div>
+              )}
               {venta.paciente && (
-                <div className="col-span-2"><p className="text-xs text-gray-500">Paciente</p>
-                  <p className="font-semibold text-gray-900">{venta.paciente.nombres} {venta.paciente.apellido_paterno} {venta.paciente.apellido_materno || ''}</p></div>
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500">Paciente</p>
+                  <p className="font-semibold text-sm text-gray-900">{venta.paciente.nombres} {venta.paciente.apellido_paterno} {venta.paciente.apellido_materno || ''}</p>
+                </div>
               )}
               {venta.responsable && (
-                <div className="col-span-2"><p className="text-xs text-gray-500">Responsable (quien paga)</p>
-                  <p className="font-semibold text-gray-900">{venta.responsable.nombres} {venta.responsable.apellido_paterno} {venta.responsable.apellido_materno || ''}</p></div>
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500">Responsable (quien paga)</p>
+                  <p className="font-semibold text-sm text-gray-900">{venta.responsable.nombres} {venta.responsable.apellido_paterno} {venta.responsable.apellido_materno || ''}</p>
+                </div>
               )}
               {venta.comprador_externo && (
-                <div className="col-span-2"><p className="text-xs text-gray-500">Comprador Externo</p>
-                  <p className="font-semibold text-gray-900">{venta.comprador_externo.nombre} - DNI: {venta.comprador_externo.dni}</p></div>
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500">Comprador Externo</p>
+                  <p className="font-semibold text-sm text-gray-900">{venta.comprador_externo.nombre} — DNI: {venta.comprador_externo.dni}</p>
+                </div>
               )}
-              {venta.modalidad_pago && (
-              <div className="col-span-2">
-                <p className="text-xs text-gray-500">Modalidad de Pago</p>
-                <p className="font-semibold text-gray-900">{venta.modalidad_pago.nombre}</p>
-              </div>
-            )}
             </div>
 
             <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                 {tipo === 'servicio' ? 'Servicios vendidos' : 'Productos vendidos'}
               </p>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                {(() => {
   const detalles = venta.detalles || [];
 
@@ -1131,42 +1130,30 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
   // Renderizar combos
   Object.values(combosMap).forEach((combo, ci) => {
     elementos.push(
-      <div key={`combo-${ci}`} className="p-3 bg-gray-50 rounded-lg">
-        {/* Header combo */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-gray-900"> {combo.nombre}</span>
-            <span className="px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-700">
-              Paquete Combo
-            </span>
+      <div key={`combo-${ci}`} className="p-2.5 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-gray-900">{combo.nombre}</span>
+            <span className="px-1.5 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-700">Combo</span>
           </div>
-      
+          <span className="font-bold text-sm text-gray-900">{formatMonto(combo.subtotal)}</span>
         </div>
-        {/* Items del combo */}
-        <div className="space-y-1 pl-4 border-l-2 border-purple-200">
+        <div className="space-y-0.5 pl-3 border-l-2 border-purple-200">
           {combo.items.map((d, idx) => {
             const srvNombre = d.descripcionLinea
               ? d.descripcionLinea.split(' - ').slice(1).join(' - ') || d.descripcionLinea
               : getServicioNombre(d);
-        
             return (
               <div key={idx} className="text-xs text-gray-600">
-                <span className="font-medium">• {d.sesiones_totales || 1} ses.</span>
-                {' — '}
-                {srvNombre}
-             
+                <span className="font-medium">{d.sesiones_totales || 1} ses.</span>{' — '}{srvNombre}
                 {d.paciente && (
-                  <span className="block pl-3 text-purple-600 font-medium">
+                  <span className="block pl-2 text-purple-600 font-medium">
                     Para: {d.paciente.nombres} {d.paciente.apellido_paterno} {d.paciente.apellido_materno || ''}
                   </span>
                 )}
               </div>
             );
           })}
-        </div>
-        <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-200">
-          <span className="text-xs text-gray-500 font-medium">Total del paquete:</span>
-          <span className="font-bold text-gray-900">{formatMonto(combo.subtotal)}</span>
         </div>
       </div>
     );
@@ -1175,50 +1162,43 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
   // Renderizar ítems normales
   normales.forEach((d, i) => {
     elementos.push(
-      <div key={`normal-${i}`} className="p-3 bg-gray-50 rounded-lg">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+      <div key={`normal-${i}`} className="p-2.5 bg-gray-50 rounded-lg">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
               <p className="font-semibold text-sm text-gray-900">
                 {tipo === 'servicio'
                   ? (d.descripcionLinea || getServicioNombre(d) || d.paquete?.nombre || '—')
                   : (d.producto?.nombre || '—')}
               </p>
               {tipo === 'servicio' && d.tipo_venta?.nombre && (
-                <span className={`px-2 py-0.5 text-xs font-semibold rounded ${
+                <span className={`px-1.5 py-0.5 text-xs font-semibold rounded ${
                   d.tipo_venta.nombre.toLowerCase().includes('paquete')
                     ? 'bg-purple-100 text-purple-700'
                     : 'bg-blue-100 text-blue-700'
-                }`}>
-                  {d.tipo_venta.nombre}
-                </span>
+                }`}>{d.tipo_venta.nombre}</span>
               )}
               {tipo === 'servicio' && getMotivoCita(d) && (
-                <span className="px-2 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 rounded">
-                  {getMotivoCita(d)}
-                </span>
+                <span className="px-1.5 py-0.5 text-xs text-gray-500 bg-gray-100 rounded">{getMotivoCita(d)}</span>
               )}
             </div>
             <p className="text-xs text-gray-500">
               {tipo === 'servicio' ? (
                 <>
-                  {d.sesiones_totales} sesión(es) × {formatMonto(d.precio_unitario)} = {formatMonto(d.sesiones_totales * d.precio_unitario)}
+                  {d.sesiones_totales} ses. × {formatMonto(d.precio_unitario)}
                   {d.paciente && (
-                    <span className="block mt-1 text-purple-600 font-medium">
+                    <span className="block text-purple-600 font-medium">
                       Para: {d.paciente.nombres} {d.paciente.apellido_paterno} {d.paciente.apellido_materno || ''}
                     </span>
                   )}
                 </>
               ) : (
-                <>{d.cantidad} unid. × {formatMonto(d.precio_unitario)} = {formatMonto(d.cantidad * d.precio_unitario)}</>
+                <>{d.cantidad} unid. × {formatMonto(d.precio_unitario)}</>
               )}
             </p>
-            <DescuentoLabel tipoDescuento={d.descuento_tipo} valor={d.descuento_valor} monto={d.descuento_monto} className="mt-1" />
+            <DescuentoLabel tipoDescuento={d.descuento_tipo} valor={d.descuento_valor} monto={d.descuento_monto} className="mt-0.5" />
           </div>
-        </div>
-        <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-          <span className="text-xs text-gray-500 font-medium">Subtotal de línea:</span>
-          <span className="font-bold text-gray-900">{formatMonto(d.subtotal)}</span>
+          <span className="font-bold text-sm text-gray-900 whitespace-nowrap">{formatMonto(d.subtotal)}</span>
         </div>
       </div>
     );
@@ -1231,26 +1211,26 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
 
             <PanelPromocionesDetalle promociones={promociones} />
 
-            <div className="space-y-2 border-t pt-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal:</span>
-                <span className="font-semibold">{formatMonto(venta.subtotal)}</span>
+            <div className="space-y-1.5 border-t pt-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Subtotal:</span>
+                <span className="font-semibold text-gray-900">{formatMonto(venta.subtotal)}</span>
               </div>
               {parseFloat(venta.descuento_monto) > 0 && venta.descuento_tipo && (
-                <div className="flex justify-between text-sm text-amber-600">
+                <div className="flex justify-between text-xs text-amber-600">
                   <span>Descuento global ({venta.descuento_tipo.nombre}{venta.descuento_tipo.id === 1 ? `: ${parseFloat(venta.descuento_valor)}%` : ''}):</span>
                   <span className="font-semibold">- {formatMonto(venta.descuento_monto)}</span>
                 </div>
               )}
               {conIgv ? (
                 <>
-                  <div className="flex justify-between text-sm text-gray-500"><span>Base imponible:</span><span className="font-semibold">{formatMonto(base)}</span></div>
-                  <div className="flex justify-between text-sm text-gray-500"><span>IGV (18% incluido):</span><span className="font-semibold">{formatMonto(igv)}</span></div>
+                  <div className="flex justify-between text-xs text-gray-400"><span>Base imponible:</span><span>{formatMonto(base)}</span></div>
+                  <div className="flex justify-between text-xs text-gray-400"><span>IGV (18%):</span><span>{formatMonto(igv)}</span></div>
                 </>
               ) : (
-                <div className="flex justify-between text-sm text-gray-400"><span>IGV:</span><span className="text-xs italic">No aplica (Nota de Venta)</span></div>
+                <div className="flex justify-between text-xs text-gray-400"><span>IGV:</span><span className="italic">No aplica (NV)</span></div>
               )}
-              <div className="flex justify-between text-lg font-bold text-[#7B1FA2] pt-2 border-t">
+              <div className="flex justify-between text-base font-bold text-[#7B1FA2] pt-1.5 border-t">
                 <span>TOTAL:</span><span>{formatMonto(venta.total)}</span>
               </div>
             </div>

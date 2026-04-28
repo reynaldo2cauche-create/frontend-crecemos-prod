@@ -62,6 +62,7 @@ const ModalAgendarCita = ({
   const [mensajeAlerta, setMensajeAlerta] = useState('');
   const [tituloAlerta, setTituloAlerta] = useState('Campo Requerido');
   const [tipoAlerta, setTipoAlerta] = useState('error'); // 'error', 'warning', 'feriado'
+  const [conflictoTerapeuta, setConflictoTerapeuta] = useState('');
 
   const motivoAccion = formularioCita.motivo_accion || '';
 
@@ -430,11 +431,13 @@ const ModalAgendarCita = ({
           if (citaEditando.venta_servicio_detalle_id) {
             const infoVenta = await getInfoVentaDeCita(citaEditando.id);
             if (infoVenta) {
-              const { sesiones_restantes, sesiones_totales } = infoVenta;
+              const restantes = infoVenta.sesiones_restantes || 0;
               if (infoVenta.es_ultima_cita) {
                 mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* Esta es la *última sesión* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Le recomendamos coordinar la renovación.`;
               } else if (infoVenta.es_penultima_cita) {
-                mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* del paquete.`;
+                mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
+              } else if (restantes > 0) {
+                mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar del paquete contratado (${infoVenta.sesiones_totales} sesiones en total).`;
               }
             }
           }
@@ -1014,6 +1017,96 @@ const handleGuardar = useCallback(async () => {
     : (citaEditando?.fecha && citaEditando?.hora_inicio
         ? [{ fecha: citaEditando.fecha, horaInicio: citaEditando.hora_inicio.substring(0, 5) }]
         : []);
+
+
+
+        // ─── VERIFICAR CONFLICTO DE TERAPEUTA ──────────────────────────────────
+{
+  const toMin = (h) => {
+    const [hh, mm] = (h || '').split(':').map(Number);
+    return hh * 60 + (mm || 0);
+  };
+
+  let terapeutasIds = [];
+  if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
+    const doctorId = formularioCita.doctor_id || terapeutaSeleccionado?.id;
+    if (doctorId) terapeutasIds = [parseInt(doctorId)];
+  } else if (tipoCita === 'REUNION_CLINICA') {
+    terapeutasIds = terapeutasReunion
+      .map(t => parseInt(t.terapeuta_id))
+      .filter(id => id && !isNaN(id));
+  }
+
+  if (terapeutasIds.length > 0) {
+    const fechasUnicas = [...new Set(
+      fechasHorasARevisar.map(fh => fh.fecha).filter(Boolean)
+    )];
+
+    for (const fecha of fechasUnicas) {
+      try {
+        const resp = await api.get('/citas', {
+          params: { fecha_desde: fecha, fecha_hasta: fecha }
+        });
+        const todasCitas = Array.isArray(resp.data) ? resp.data : [];
+
+        const citasTerapeuta = todasCitas.filter(c => {
+          if (citaEditando && c.id === citaEditando.id) return false;
+          if (c.tipo_cita === 'NORMAL' || c.tipo_cita === 'VISITA_ESCOLAR') {
+            return terapeutasIds.includes(c.doctor_id);
+          }
+          if (c.tipo_cita === 'REUNION_CLINICA') {
+            const ids = c.terapeutas?.map(t => t.id_terapeuta || t.terapeuta_id || t.id) || [];
+            return terapeutasIds.some(id => ids.includes(id));
+          }
+          return false;
+        });
+
+        for (const fh of fechasHorasARevisar.filter(fh => fh.fecha === fecha)) {
+          if (!fh.horaInicio) continue;
+          const durMin = parseInt(formularioCita.duracion || 40);
+          const nuevaInicio = toMin(fh.horaInicio);
+          const nuevaFin = nuevaInicio + durMin;
+
+          for (const c of citasTerapeuta) {
+            const cInicio = toMin(c.hora_inicio);
+            const cFin = cInicio + parseInt(c.duracion_minutos || 40);
+
+            const hayConflicto =
+              (nuevaInicio >= cInicio && nuevaInicio < cFin) ||
+              (nuevaFin > cInicio && nuevaFin <= cFin) ||
+              (nuevaInicio <= cInicio && nuevaFin >= cFin);
+
+            if (hayConflicto) {
+              const t = trabajadores.find(w => w.id === c.doctor_id);
+              const nombreTerapeuta = t
+                ? `Lic. ${t.nombres} ${t.apellidos}`.trim()
+                : 'El terapeuta';
+
+              const horaFin = (() => {
+                const fin = cInicio + parseInt(c.duracion_minutos || 40);
+                return `${String(Math.floor(fin / 60)).padStart(2, '0')}:${String(fin % 60).padStart(2, '0')}`;
+              })();
+
+              const servConf = c.servicio?.nombre || c.tipo_cita || 'otra cita';
+
+              mostrarAlerta(
+                'Conflicto de Terapeuta',
+                `${nombreTerapeuta} ya tiene una cita de ${c.hora_inicio.substring(0, 5)} a ${horaFin} (${servConf}).\n\nSelecciona otro horario.`,
+                'warning'
+              );
+              setGuardandoLocal(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudo verificar conflictos de terapeuta:', err.message);
+      }
+    }
+  }
+}
+// ───────────────────────────────────────────────────────────────────────
+
 
   const pacienteId = formularioCita.paciente_id ?? citaEditando?.paciente_id;
   if (pacienteId) {

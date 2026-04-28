@@ -256,6 +256,20 @@ const archivosOficialesService = {
   },
 
   /**
+   * Marcar entrega del archivo (fisico o digital)
+   * @param {number} id - ID del archivo
+   * @param {'fisico'|'digital'} tipoEntrega - Tipo de entrega
+   */
+  marcarEntrega: async (id, tipoEntrega) => {
+    try {
+      const response = await api.patch(`${API_PATH}/${id}/entrega`, { tipoEntrega });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  /**
    * Generar código de validación preview
    */
   generarCodigoPreview: async () => {

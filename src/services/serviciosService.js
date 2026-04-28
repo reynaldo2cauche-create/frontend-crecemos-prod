@@ -7,27 +7,22 @@ import api from './api';
 /**
  * Obtener todos los servicios del catálogo
  */
+const ORDEN_AREAS = ['infantil', 'adolescente', 'adulto'];
+
+const prioridadArea = (nombre = '') => {
+  const n = nombre.toLowerCase();
+  const idx = ORDEN_AREAS.findIndex(k => n.includes(k));
+  return idx === -1 ? ORDEN_AREAS.length : idx;
+};
+
 export const getServicios = () =>
   api.get('/catalogos/servicios').then(r => {
-    // Ordenar servicios: primero Infantil, luego Adultos
-    const serviciosOrdenados = r.data.sort((a, b) => {
-      const areaNombreA = (a.area?.nombre || '').toLowerCase().trim();
-      const areaNombreB = (b.area?.nombre || '').toLowerCase().trim();
-
-      // Verificar si es infantil (con variaciones posibles)
-      const esInfantilA = areaNombreA.includes('infantil');
-      const esInfantilB = areaNombreB.includes('infantil');
-
-      // Si A es Infantil y B no, A va primero
-      if (esInfantilA && !esInfantilB) return -1;
-      // Si B es Infantil y A no, B va primero
-      if (!esInfantilA && esInfantilB) return 1;
-      // Si ambos son del mismo tipo, mantener el orden original
-      return 0;
+    const serviciosOrdenados = [...r.data].sort((a, b) => {
+      const pa = prioridadArea(a.area?.nombre);
+      const pb = prioridadArea(b.area?.nombre);
+      if (pa !== pb) return pa - pb;
+      return (a.nombre || '').localeCompare(b.nombre || '', 'es');
     });
-
-    console.log('🔍 Servicios ordenados (serviciosService):', serviciosOrdenados.map(s => ({ nombre: s.nombre, area: s.area?.nombre })));
-
     return serviciosOrdenados;
   });
 

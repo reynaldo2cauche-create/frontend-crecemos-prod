@@ -760,6 +760,7 @@ const VenderServiciosTab = ({
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
   const [modalidadesPago, setModalidadesPago] = useState([]);
   const [modalidadPagoId, setModalidadPagoId] = useState(null);
+  const [mostrarModalSinModalidad, setMostrarModalSinModalidad] = useState(false);
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1302,7 +1303,7 @@ const VenderServiciosTab = ({
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
     if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
-    if (!modalidadPagoId && !modoEdicion) return setError('Selecciona una modalidad de pago');
+    if (!modalidadPagoId && !modoEdicion) { setMostrarModalSinModalidad(true); return; }
 
     setLoading(true);
     try {
@@ -2019,6 +2020,34 @@ const VenderServiciosTab = ({
 
       {mostrarModalImpresion && ventaGuardada && (
         <PrintPreviewModal venta={ventaGuardada} tipo="servicio" onClose={() => setMostrarModalImpresion(false)} />
+      )}
+
+      {mostrarModalSinModalidad && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900 text-base">Modalidad de pago requerida</h2>
+                <p className="text-xs text-gray-500 mt-0.5">No puedes guardar la venta sin seleccionar una modalidad</p>
+              </div>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-600">Por favor selecciona una <span className="font-semibold text-gray-800">modalidad de pago</span> antes de continuar.</p>
+            </div>
+            <div className="px-6 py-4 flex justify-end border-t border-gray-100">
+              <button
+                onClick={() => setMostrarModalSinModalidad(false)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

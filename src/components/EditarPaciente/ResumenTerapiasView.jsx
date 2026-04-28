@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getResumenTerapiasPorPaciente } from '../../services/citaService';
 import ListadoCitasPorServicio from './ListadoCitasPorServicio';
 import { ROLES } from '../../constants/roles'; // ajusta la ruta según tu estructura
-const ResumenTerapiasView = ({ pacienteId, user }) => {
+const ResumenTerapiasView = ({ pacienteId, user, pacienteNombre }) => {
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -104,7 +104,7 @@ const ResumenTerapiasView = ({ pacienteId, user }) => {
       {/* 🔥 LISTADO DE CITAS - SIEMPRE VISIBLE */}
       {pacienteId && puedeVerHistorial && (
         <div className="mt-6">
-          <ListadoCitasPorServicio pacienteId={pacienteId} />
+          <ListadoCitasPorServicio pacienteId={pacienteId} pacienteNombre={pacienteNombre} />
         </div>
       )}
     </div>

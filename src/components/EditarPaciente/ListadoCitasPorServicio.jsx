@@ -6,7 +6,7 @@ import { DetalleVentaModal } from '../../pages/Ventas/HistorialVentasTab';
 
 const PAQUETES_POR_PAGINA = 5;
 
-const ListadoCitasPorServicio = ({ pacienteId }) => {
+const ListadoCitasPorServicio = ({ pacienteId, pacienteNombre }) => {
   const [listado, setListado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -261,7 +261,15 @@ const agruparPaquetesCombo = (paquetes) => {
         <div className="w-9 h-9 rounded-xl bg-[#7B1FA2]/5 flex items-center justify-center flex-shrink-0">
           <Calendar className="w-4 h-4 text-[#7B1FA2]" />
         </div>
-        <h3 className="text-sm font-bold text-gray-900">Historial de citas</h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-gray-900">Historial de citas</h3>
+          {pacienteNombre && (
+            <p className="text-xs text-[#7B1FA2] font-medium flex items-center gap-1 mt-0.5">
+              <User className="w-3 h-3 flex-shrink-0" />
+              {pacienteNombre}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Tabs de servicios */}
@@ -353,6 +361,14 @@ if (item.esGrupoSinVenta) {
                 Atenciones directas
               </span>
             </div>
+
+            {/* Nombre del paciente */}
+            {pacienteNombre && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                <span className="text-xs text-gray-500 font-medium">{pacienteNombre}</span>
+              </div>
+            )}
 
             {/* stats IGUAL que tu diseño */}
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -538,7 +554,13 @@ if (item.esGrupoSinVenta) {
                         )}
                       </div>
 
-               
+                      {/* Nombre del paciente */}
+                      {pacienteNombre && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 font-medium">{pacienteNombre}</span>
+                        </div>
+                      )}
 
                       {/* Mini stats del combo */}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -763,6 +785,14 @@ if (item.esGrupoSinVenta) {
               )}
                     </div>
 
+
+                    {/* Nombre del paciente */}
+                    {pacienteNombre && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                        <span className="text-xs text-gray-500 font-medium">{pacienteNombre}</span>
+                      </div>
+                    )}
 
                     {/* Mini stats */}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">

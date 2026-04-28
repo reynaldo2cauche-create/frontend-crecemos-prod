@@ -116,7 +116,7 @@ const menuItems = [
       { text: 'Vender Servicios', path: '/intranet/ventas/servicios', icon: ShoppingCartIcon },
       { text: 'Vender Productos', path: '/intranet/ventas/productos', icon: CubeIcon },
       { text: 'Historial de Ventas', path: '/intranet/ventas/historial', icon: ClipboardDocumentCheckIcon },
-      { text: 'Reportes', path: '/intranet/ventas/reportes', icon: ChartBarIcon },
+      { text: 'Reportes', path: '/intranet/ventas/reportes', icon: ChartBarIcon, adminOnly: true },
       { text: 'Promociones', path: '/intranet/promociones', icon: SparklesIcon },
     ]
   },
@@ -396,7 +396,7 @@ const Sidebar = () => {
 
                     {!isCollapsed && isOpen && (
                       <div className="ml-4 mt-1 space-y-1">
-                        {item.subItems.map((subItem, subIndex) => {
+                        {item.subItems.filter(subItem => !(subItem.adminOnly && user?.rol?.id !== ROLES.ADMINISTRADOR)).map((subItem, subIndex) => {
                           const SubIcon = subItem.icon;
                           const isSubActive = location.pathname === subItem.path;
 
