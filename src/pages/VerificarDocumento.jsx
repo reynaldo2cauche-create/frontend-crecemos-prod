@@ -322,7 +322,11 @@ const VerificarDocumentos = () => {
   const handleDescargarPDF = async () => {
     if (!documento || !documento.id) return;
     try {
-      await archivosOficialesService.descargarArchivoValidado(documento.id, documento.codigo);
+      const tipo = documento.tipoDocumento || 'Documento';
+      const nombres = documento.destinatario?.nombres || '';
+      const apellidos = documento.destinatario?.apellidos || '';
+      const nombreArchivo = `${tipo} - ${nombres} ${apellidos}`.trim().replace(/[/\\?%*:|"<>]/g, '-');
+      await archivosOficialesService.descargarArchivoValidado(documento.id, documento.codigo, nombreArchivo);
     } catch (error) {
       console.error('Error al descargar:', error);
       alert('No se pudo descargar el documento.');

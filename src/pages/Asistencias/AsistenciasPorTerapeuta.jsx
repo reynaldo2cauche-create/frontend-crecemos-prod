@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { UserIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { obtenerTerapeutas, obtenerAsistenciasPorTerapeuta } from '../../services/api';
+import { UserIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { obtenerTerapeutas, obtenerAsistenciasPorTerapeuta, modificarAsistenciaAdmin } from '../../services/api';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+
+const ESTADO_ASISTIO = 7;
+const ESTADO_SESION_DICTADA = 6;
 
 const AsistenciasPorTerapeuta = () => {
+  const currentUser = useCurrentUser();
   const [terapeutas, setTerapeutas] = useState([]);
   const [terapeutaSeleccionado, setTerapeutaSeleccionado] = useState(null);
   const [asistencias, setAsistencias] = useState([]);
@@ -11,6 +16,8 @@ const AsistenciasPorTerapeuta = () => {
   const [fechaFin, setFechaFin] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [modalEditar, setModalEditar] = useState(null);
+  const [editando, setEditando] = useState(false);
   const [estadisticas, setEstadisticas] = useState({
     total: 0,
     completadas: 0,
@@ -108,6 +115,33 @@ const AsistenciasPorTerapeuta = () => {
       hour: '2-digit',
       minute: '2-digit'
     }).replace(',', '');
+  };
+
+  const abrirEditar = (asistencia) => {
+    setModalEditar({
+      citaId: asistencia.cita_id,
+      recepcion: asistencia.recepcion_marco == 1 ? (asistencia.recepcion_estado_id ?? '') : '',
+      terapeuta: asistencia.terapeuta_marco == 1 ? (asistencia.terapeuta_estado_id ?? '') : '',
+    });
+  };
+
+  const guardarEdicion = async () => {
+    if (!modalEditar) return;
+    setEditando(true);
+    try {
+      await modificarAsistenciaAdmin(
+        modalEditar.citaId,
+        modalEditar.recepcion === '' ? null : Number(modalEditar.recepcion),
+        modalEditar.terapeuta === '' ? null : Number(modalEditar.terapeuta),
+        currentUser?.id
+      );
+      setModalEditar(null);
+      await cargarAsistencias(terapeutaSeleccionado.id);
+    } catch (err) {
+      alert('Error al guardar los cambios');
+    } finally {
+      setEditando(false);
+    }
   };
 
   return (
@@ -233,12 +267,13 @@ const AsistenciasPorTerapeuta = () => {
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recepción</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Terapeuta</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Fecha Registro</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Editar</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {asistencias.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                       {cargando ? 'Cargando...' : 'No hay registros en el rango seleccionado'}
                     </td>
                   </tr>
@@ -288,6 +323,15 @@ const AsistenciasPorTerapeuta = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {asistencia.terapeuta_fecha ? formatearFecha(asistencia.terapeuta_fecha) : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => abrirEditar(asistencia)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                            title="Editar asistencia"
+                          >
+                            <PencilSquareIcon className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -374,6 +418,84 @@ const AsistenciasPorTerapeuta = () => {
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
           <UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 text-lg font-medium">Seleccione un terapeuta para ver sus asistencias</p>
+        </div>
+      )}
+
+      {/* Modal editar asistencia */}
+      {modalEditar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Editar asistencia</h3>
+            <p className="text-sm text-gray-500 mb-5">Cita #{modalEditar.citaId}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Recepción</label>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Asistió', value: ESTADO_ASISTIO, color: 'green' },
+                    { label: 'Sesión dictada', value: ESTADO_SESION_DICTADA, color: 'orange' },
+                    { label: 'Desmarcar', value: '', color: 'gray' },
+                  ].map(({ label, value, color }) => (
+                    <button
+                      key={String(value)}
+                      onClick={() => setModalEditar(p => ({ ...p, recepcion: value }))}
+                      className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all ${
+                        modalEditar.recepcion === value
+                          ? color === 'green' ? 'bg-green-100 border-green-500 text-green-800'
+                          : color === 'orange' ? 'bg-orange-100 border-orange-500 text-orange-800'
+                          : 'bg-gray-100 border-gray-400 text-gray-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Terapeuta</label>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Asistió', value: ESTADO_ASISTIO, color: 'green' },
+                    { label: 'Sesión dictada', value: ESTADO_SESION_DICTADA, color: 'orange' },
+                    { label: 'Desmarcar', value: '', color: 'gray' },
+                  ].map(({ label, value, color }) => (
+                    <button
+                      key={String(value)}
+                      onClick={() => setModalEditar(p => ({ ...p, terapeuta: value }))}
+                      className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all ${
+                        modalEditar.terapeuta === value
+                          ? color === 'green' ? 'bg-green-100 border-green-500 text-green-800'
+                          : color === 'orange' ? 'bg-orange-100 border-orange-500 text-orange-800'
+                          : 'bg-gray-100 border-gray-400 text-gray-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setModalEditar(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarEdicion}
+                disabled={editando}
+                className="flex-1 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                {editando ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

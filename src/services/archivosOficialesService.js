@@ -194,7 +194,7 @@ const archivosOficialesService = {
    * @param {number} id - ID del archivo
    * @param {string} codigo - Código del documento para la marca de agua
    */
-  descargarArchivoValidado: async (id, codigo = '') => {
+  descargarArchivoValidado: async (id, codigo = '', nombrePersonalizado = '') => {
     try {
       console.log('Descargando archivo validado ID:', id);
       const response = await api.get(`${API_PATH}/descargar-validado/${id}`, {
@@ -203,13 +203,15 @@ const archivosOficialesService = {
 
       console.log('Respuesta recibida:', response);
 
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = 'documento_oficial.pdf';
+      let filename = nombrePersonalizado ? `${nombrePersonalizado}.pdf` : 'documento_oficial.pdf';
 
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+      if (!nombrePersonalizado) {
+        const contentDisposition = response.headers['content-disposition'];
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, '');
+          }
         }
       }
 

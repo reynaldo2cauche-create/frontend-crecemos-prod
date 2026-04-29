@@ -206,6 +206,18 @@ export const getReportes = (filtros = {}) =>
 export const getVentasSinCita = () =>
   api.get('/ventas/reportes/sin-cita').then(r => r.data);
 
+
+export const getHistorialVentasExcel = ({ fechaInicio, fechaFin, tipo }) =>
+  api.get('/ventas/servicios/historial', { 
+    params: { 
+      desde: fechaInicio,   // ← aquí estaba el problema
+      hasta: fechaFin,      // ← y aquí
+      tipo: tipo === 'general' ? 'todos' : tipo, 
+      page: 0, 
+      limit: 9999 
+    } 
+  }).then(r => r.data);
+
 // ============================================================
 // CATÁLOGOS
 // ============================================================

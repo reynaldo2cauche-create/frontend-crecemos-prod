@@ -12,13 +12,25 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getReportes, getVentasSinCita } from '../../services/ventasService';
+import { getReportes, getVentasSinCita , getHistorialVentasExcel } from '../../services/ventasService';
+import {
+  exportarMetricas,
+  exportarTendencia,
+  exportarDistribucion,
+  exportarResponsables,
+  exportarTopItems,
+  exportarVentasSinCita,
+  exportarDescuentos,
+  exportarHistorialVentas
+} from '../../utils/excelReportesVentas';
+
 
 const ReportesVentas = () => {
   const [loading, setLoading] = useState(false);
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [tipoReporte, setTipoReporte] = useState('general');
+  const [historialVentas, setHistorialVentas] = useState([]);
 
   const [metricas, setMetricas] = useState({
     totalVentas: 0,
@@ -41,7 +53,20 @@ const ReportesVentas = () => {
   const [ventasSinCita, setVentasSinCita] = useState([]);
   const [loadingSinCita, setLoadingSinCita] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
-const filasPorPagina = 10; // puedes cambiar a 10 si quieres
+  const [exportando, setExportando] = useState(null);
+  const filasPorPagina = 10;
+
+  const exportar = (key, fn) => {
+    setExportando(key);
+    try {
+      fn();
+    } catch (e) {
+      console.error('Error exportando Excel:', e);
+      alert('Error al generar el Excel: ' + (e?.message || e));
+    } finally {
+      setExportando(null);
+    }
+  };
 
   const COLORS = ['#7B1FA2', '#A3C644', '#E91E63', '#FF9800', '#2196F3', '#9C27B0'];
 
@@ -110,6 +135,13 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
       const ingresos = data.ingresosPorResponsable || [];
       console.log('👤 ingresosPorResponsable:', ingresos);
       setIngresosPorResponsable(ingresos);
+
+     const historialData = await getHistorialVentasExcel({ 
+        fechaInicio,   // esto se mapea a "desde" dentro del service
+        fechaFin,      // esto se mapea a "hasta"
+        tipo: tipoReporte 
+      });
+      setHistorialVentas(historialData.data || []);
 
       // ✅ ventasPorCategoria → no existe en backend, se construye desde métricas
       const categorias = [
@@ -201,6 +233,26 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
   const ventasPaginadas = ventasSinCita.slice(indicePrimeraFila, indiceUltimaFila);
 
   const totalPaginas = Math.ceil(ventasSinCita.length / filasPorPagina);
+
+  const filtros = { fechaInicio, fechaFin, tipoReporte };
+
+  const BtnExcel = ({ id, onClick, disabled }) => {
+    const cargando = exportando === id;
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled || cargando}
+        title="Exportar a Excel"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#217346] hover:bg-[#1a5c37] disabled:opacity-40 transition-all shadow-sm"
+      >
+        {cargando
+          ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          : <ArrowDownTrayIcon className="w-3.5 h-3.5" />}
+        {cargando ? 'Exportando…' : 'Excel'}
+      </button>
+    );
+  };
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
 
@@ -262,10 +314,24 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
               )}
             </button>
           </div>
+
+        
         </div>
       </div>
+      <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Exportar historial:</span>
+          <BtnExcel
+            id="historial"
+            onClick={() => exportar('historial', () => exportarHistorialVentas(historialVentas, filtros))}
+            disabled={loading || historialVentas.length === 0}
+          />
+        </div>
 
       {/* 5 Tarjetas métricas */}
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-bold text-gray-700">Métricas del período</h2>
+        <BtnExcel id="metricas" onClick={() => exportar('metricas', () => exportarMetricas(metricas, filtros))} disabled={loading} />
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {metricCards.map(({ label, value, sub, gradient, border, text, num, iconBg, iconColor, Icon }) => (
           <div key={label} className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 border ${border}`}>
@@ -283,25 +349,30 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
 
       {/* Tendencia de ventas — ancho completo */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-[#7B1FA2]" />
-          Tendencia de ventas
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-[#7B1FA2]" />
+            Tendencia de ventas
+          </h3>
+          <BtnExcel id="tendencia" onClick={() => exportar('tendencia', () => exportarTendencia(ventasPorDia, filtros))} disabled={loading || ventasPorDia.length === 0} />
+        </div>
         {ventasPorDia.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={ventasPorDia}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="fecha" style={{ fontSize: '12px' }} />
-              <YAxis yAxisId="left" style={{ fontSize: '12px' }} />
-              <YAxis yAxisId="right" orientation="right" style={{ fontSize: '12px' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Line yAxisId="left"  type="monotone" dataKey="ventas"   stroke="#7B1FA2" strokeWidth={2} dot={{ r: 3 }} name="Cantidad" />
-              <Line yAxisId="right" type="monotone" dataKey="ingresos" stroke="#A3C644" strokeWidth={2} dot={{ r: 3 }} name="Ingresos" />
-            </LineChart>
-          </ResponsiveContainer>
+          <div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={ventasPorDia}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="fecha" style={{ fontSize: '12px' }} />
+                <YAxis yAxisId="left" style={{ fontSize: '12px' }} />
+                <YAxis yAxisId="right" orientation="right" style={{ fontSize: '12px' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Line yAxisId="left"  type="monotone" dataKey="ventas"   stroke="#7B1FA2" strokeWidth={2} dot={{ r: 3 }} name="Cantidad" />
+                <Line yAxisId="right" type="monotone" dataKey="ingresos" stroke="#A3C644" strokeWidth={2} dot={{ r: 3 }} name="Ingresos" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
 
@@ -310,65 +381,79 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
 
         {/* Distribución por tipo */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-base font-bold text-gray-900 mb-4">Distribución por tipo</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-gray-900">Distribución por tipo</h3>
+            <BtnExcel id="distribucion" onClick={() => exportar('distribucion', () => exportarDistribucion(ventasPorCategoria, metricas, filtros))} disabled={loading || ventasPorCategoria.every(v => v.valor === 0)} />
+          </div>
           {ventasPorCategoria.every(v => v.valor === 0) ? (
             <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={ventasPorCategoria}
-                  cx="50%" cy="50%"
-                  labelLine={true}
-                  label={({ nombre, valor, percent }) =>
-                    `${nombre}: ${valor} (${(percent * 100).toFixed(0)}%)`
-                  }
-                  outerRadius={75}
-                  dataKey="valor"
-                  nameKey="nombre"
-                >
-                  {ventasPorCategoria.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => [v, 'Cantidad']} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={ventasPorCategoria}
+                    cx="50%" cy="50%"
+                    labelLine={true}
+                    label={({ nombre, valor, percent }) =>
+                      `${nombre}: ${valor} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    outerRadius={75}
+                    dataKey="valor"
+                    nameKey="nombre"
+                  >
+                    {ventasPorCategoria.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [v, 'Cantidad']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
 
         {/* Ingresos por responsable */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-base font-bold text-gray-900 mb-4">Ingresos por responsable</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-gray-900">Ingresos por responsable</h3>
+            <BtnExcel id="responsables" onClick={() => exportar('responsables', () => exportarResponsables(ingresosPorResponsable, filtros))} disabled={loading || ingresosPorResponsable.length === 0} />
+          </div>
           {ingresosPorResponsable.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={ingresosPorResponsable} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  type="number"
-                  tickFormatter={(v) => `S/ ${v.toLocaleString('es-PE')}`}
-                  style={{ fontSize: '12px' }}
-                />
-                <YAxis dataKey="nombre" type="category" width={130} style={{ fontSize: '11px' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="ingresos" fill="#A3C644" name="Ingresos" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={ingresosPorResponsable} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v) => `S/ ${v.toLocaleString('es-PE')}`}
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis dataKey="nombre" type="category" width={130} style={{ fontSize: '11px' }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="ingresos" fill="#A3C644" name="Ingresos" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>
 
   {/* Top productos/servicios — solo barra de cantidad, ingresos en tooltip */}
 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-  <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-    <ChartBarIcon className="w-5 h-5 text-[#7B1FA2]" />
-    Top productos / servicios más vendidos
-  </h3>
+  <div className="flex items-center justify-between mb-4">
+    <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+      <ChartBarIcon className="w-5 h-5 text-[#7B1FA2]" />
+      Top productos / servicios más vendidos
+    </h3>
+    <BtnExcel id="topitems" onClick={() => exportar('topitems', () => exportarTopItems(topItems, filtros))} disabled={loading || topItems.length === 0} />
+  </div>
   {topItems.length === 0 ? (
     <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
   ) : (
+    <div>
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={topItems} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -390,6 +475,7 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
         <Bar dataKey="cantidad" fill="#7B1FA2" name="Cantidad" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   )}
 </div>
 
@@ -405,7 +491,10 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
               </span>
             )}
           </div>
-          <p className="text-xs text-amber-600">Servicios vendidos que aún no tienen cita programada</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-amber-600">Servicios vendidos que aún no tienen cita programada</p>
+            <BtnExcel id="sincita" onClick={() => exportar('sincita', () => exportarVentasSinCita(ventasSinCita, filtros))} disabled={ventasSinCita.length === 0} />
+          </div>
         </div>
         <div className="overflow-x-auto">
           {loadingSinCita ? (
@@ -471,8 +560,9 @@ const filasPorPagina = 10; // puedes cambiar a 10 si quieres
 
       {/* Tabla descuentos */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-900">Descuentos aplicados por tipo</h3>
+          <BtnExcel id="descuentos" onClick={() => exportar('descuentos', () => exportarDescuentos(descuentos, filtros))} disabled={loading || descuentos.length === 0} />
         </div>
           <div className="overflow-x-auto">
             {descuentos.length === 0 ? (

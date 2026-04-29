@@ -318,7 +318,9 @@ if (item.esGrupoSinVenta) {
   const citasOrdenadas = [...todasCitas].sort((a, b) => {
     if (a.programada === false) return 1;
     if (b.programada === false) return -1;
-    return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+    const fechaDiff = new Date(a.fecha || 0) - new Date(b.fecha || 0);
+    if (fechaDiff !== 0) return fechaDiff;
+    return (a.hora || '').localeCompare(b.hora || '');
   });
 
   const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
@@ -468,11 +470,13 @@ if (item.esGrupoSinVenta) {
             .flatMap(sp => sp.citas)
             .find(c => c.venta_id);
 
-            // Ordenar citas: primero programadas por fecha, luego pendientes
+            // Ordenar citas: primero programadas por fecha y hora, luego pendientes
             const citasOrdenadasCombo = [...todasCitasCombo].sort((a, b) => {
               if (a.programada === false) return 1;
               if (b.programada === false) return -1;
-              return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+              const fechaDiff = new Date(a.fecha || 0) - new Date(b.fecha || 0);
+              if (fechaDiff !== 0) return fechaDiff;
+              return (a.hora || '').localeCompare(b.hora || '');
             });
 
             const citasProgramadasCombo = citasOrdenadasCombo.filter(c => c.programada !== false);
@@ -675,7 +679,9 @@ if (item.esGrupoSinVenta) {
           const citasOrdenadas = [...paquete.citas].sort((a, b) => {
             if (a.programada === false) return 1;
             if (b.programada === false) return -1;
-            return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+            const fechaDiff = new Date(a.fecha || 0) - new Date(b.fecha || 0);
+            if (fechaDiff !== 0) return fechaDiff;
+            return (a.hora || '').localeCompare(b.hora || '');
           });
 
           // ── Separar programadas vs pendientes ──────────────────

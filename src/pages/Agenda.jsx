@@ -839,6 +839,16 @@ const guardarCita = async (datosFormulario = null) => {
 
   const debeSeleccionarTerapeuta = (currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && !terapeutaFiltro;
 
+  useEffect(() => {
+    if (terapeutaSeleccionadoMemo) {
+      const nombre = `${terapeutaSeleccionadoMemo.nombres || ''} ${terapeutaSeleccionadoMemo.apellidos || ''}`.trim();
+      document.title = `${nombre} - Agenda`;
+    } else {
+      document.title = 'Agenda';
+    }
+    return () => { document.title = 'Centro Crecemos'; };
+  }, [terapeutaSeleccionadoMemo]);
+
   // Duración de citas disponibles - memorizado para evitar re-renders
   const duraciones = useMemo(() => [
     { valor: '40', label: '40 minutos' },
