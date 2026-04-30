@@ -65,6 +65,13 @@ const getDniComprador = (venta) =>
   venta.paciente?.numero_documento ||
   '-';
 
+// Devuelve array de pagos: prioriza venta.pagos (tabla), fallback a modalidad_pago del campo
+const getPagosVenta = (venta) => {
+  if (Array.isArray(venta.pagos) && venta.pagos.length > 0) return venta.pagos;
+  if (venta.modalidad_pago) return [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }];
+  return [];
+};
+
 const getFechaEmision = (venta) => {
   const str = String(venta.fecha_venta || '');
   const [datePart, timePart] = str.split('T');
@@ -605,7 +612,32 @@ doc.autoTable({
     margin: { left: M, right: M },
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  y = doc.lastAutoTable.finalY + 4;
+
+  // ─── Métodos de pago ───────────────────────────────────────────────────────
+  const pagosVenta = getPagosVenta(venta);
+  if (pagosVenta.length > 0) {
+    doc.autoTable({
+      startY: y,
+      body: [
+        [{ content: 'FORMA DE PAGO', colSpan: 3, styles: { fontStyle: 'bold', fontSize: 8, textColor: [80, 80, 80], fillColor: [245, 245, 245], halign: 'left' } }],
+        ...pagosVenta.map(p => [
+          { content: p.modalidad_pago?.nombre || '—', styles: { fontSize: 8 } },
+          { content: p.referencia ? `Ref: ${p.referencia}` : '', styles: { fontSize: 7, textColor: [120, 120, 120] } },
+          { content: `S/ ${formatMoney(toFloat(p.monto))}`, styles: { halign: 'right', fontSize: 8, fontStyle: 'bold' } },
+        ]),
+      ],
+      theme: 'plain',
+      styles: { cellPadding: 1.5 },
+      columnStyles: {
+        0: { halign: 'left', cellWidth: pageW - M * 2 - 80 },
+        1: { halign: 'left', cellWidth: 45 },
+        2: { halign: 'right', cellWidth: 35 },
+      },
+      margin: { left: M, right: M },
+    });
+    y = doc.lastAutoTable.finalY + 4;
+  }
 
   // Importe en letras
   doc.setDrawColor(...COLOR_LINEA); doc.setLineWidth(0.3);

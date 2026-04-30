@@ -426,18 +426,47 @@ const ModalAgendarCita = ({
         const saludo = obtenerSaludo();
 
         // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
+       // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
         let mensajeUltimaSesion = '';
         try {
           if (citaEditando.venta_servicio_detalle_id) {
             const infoVenta = await getInfoVentaDeCita(citaEditando.id);
+
+
+            console.log('🔍 DEBUG sesiones:', {
+      restantes: infoVenta?.sesiones_restantes,
+      totales: infoVenta?.sesiones_totales,
+      es_penultima: infoVenta?.es_penultima_cita,
+      es_ultima: infoVenta?.es_ultima_cita,
+      tipo_venta: infoVenta?.tipo_venta_id
+    });
             if (infoVenta) {
               const restantes = infoVenta.sesiones_restantes || 0;
+              const esSesionUnitaria = infoVenta.tipo_venta_id === 1;
+              
+              // ✅ FIX: calcular penúltima manualmente si el backend no la devuelve
+              const esPenultimaManual = !infoVenta.es_penultima_cita && 
+                                        !infoVenta.es_ultima_cita && 
+                                        restantes === 1;
+
               if (infoVenta.es_ultima_cita) {
-                mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* Esta es la *última sesión* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Le recomendamos coordinar la renovación.`;
-              } else if (infoVenta.es_penultima_cita) {
-                mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* ${infoVenta.sesiones_totales === 1 ? 'Esta es la sesión adquirida.' : `Esta es la última de las *${infoVenta.sesiones_totales} sesiones* adquiridas.`} Le recomendamos coordinar una nueva cita para continuar con su proceso.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* Esta es la *última sesión* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Le recomendamos coordinar la renovación.`;
+                }
+              }  else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2) {// ✅ incluir fallback
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* de las ${infoVenta.sesiones_totales} sesiones adquiridas. Le recomendamos ir coordinando la contratación de más sesiones para continuar con su proceso.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
+                }
               } else if (restantes > 0) {
-                mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar del paquete contratado (${infoVenta.sesiones_totales} sesiones en total).`;
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar de las ${infoVenta.sesiones_totales} sesiones adquiridas.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar del paquete contratado (${infoVenta.sesiones_totales} sesiones en total).`;
+                }
               }
             }
           }
@@ -3356,16 +3385,20 @@ const handleGuardar = useCallback(async () => {
                       const esPenultima = programadas.length >= 2 && programadas[programadas.length - 2].id === citaEditando?.id;
                       const restantes = Math.max(0, totalSesiones - programadas.length);
 
+                      const esSesionUnitaria = infoPaquete.tipo_venta_id === 1;
                       if (esUltima) return (
                         <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2">
                           <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-sm font-bold text-amber-800">Última sesión del paquete</p>
+                            <p className="text-sm font-bold text-amber-800">
+                              {esSesionUnitaria ? 'Última sesión adquirida' : 'Última sesión del paquete'}
+                            </p>
                             <p className="text-xs text-amber-700 mt-0.5">
-                              {totalSesiones > 1
-                                ? `Se han agendado las ${totalSesiones} sesiones contratadas.`
-                                : 'Sesión individual completada.'}
-                              {restantes === 0 ? ' Se recomienda coordinar la renovación.' : ''}
+                              {esSesionUnitaria
+                                ? (totalSesiones === 1
+                                    ? 'Esta es la sesión adquirida. Se recomienda coordinar una nueva cita.'
+                                    : `Se han usado las ${totalSesiones} sesiones adquiridas. Se recomienda coordinar una nueva cita.`)
+                                : (`Se han agendado las ${totalSesiones} sesiones contratadas. Se recomienda coordinar la renovación.`)}
                             </p>
                           </div>
                         </div>
@@ -3374,8 +3407,14 @@ const handleGuardar = useCallback(async () => {
                         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-sm font-bold text-blue-800">Penúltima sesión del paquete</p>
-                            <p className="text-xs text-blue-700 mt-0.5">Luego de esta cita quedará solo 1 sesión más.</p>
+                            <p className="text-sm font-bold text-blue-800">
+                              {esSesionUnitaria ? 'Penúltima sesión adquirida' : 'Penúltima sesión del paquete'}
+                            </p>
+                            <p className="text-xs text-blue-700 mt-0.5">
+                              {esSesionUnitaria
+                                ? `Luego de esta cita quedará 1 sesión más de las ${totalSesiones} adquiridas.`
+                                : 'Luego de esta cita quedará solo 1 sesión más.'}
+                            </p>
                           </div>
                         </div>
                       );

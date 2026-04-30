@@ -190,6 +190,23 @@ const descuentoMonto = descuentoLineas + descuentoGlobal;
       <div style={{ display: 'flex', justifyContent: 'space-between', ...s.bold, fontSize: '13px', color: '#7B1FA2', margin: '4px 0 3px' }}>
         <span>TOTAL</span><span>S/ {fm(total)}</span>
       </div>
+      {(() => {
+        const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+          ? venta.pagos
+          : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+        if (!pagosVenta.length) return null;
+        return (
+          <div style={{ borderTop: '1px dashed #ccc', marginTop: '3px', paddingTop: '3px' }}>
+            <div style={{ fontSize: '8px', fontWeight: '700', color: '#555', marginBottom: '2px' }}>FORMA DE PAGO</div>
+            {pagosVenta.map((p, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '1px' }}>
+                <span>{p.modalidad_pago?.nombre || '—'}{p.referencia ? ` — ${p.referencia}` : ''}</span>
+                <span style={{ fontWeight: '600' }}>S/ {fm(p.monto)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <hr style={s.hrSolid} />
       <div style={{ fontSize: '8px', marginBottom: '4px', lineHeight: '1.3' }}>
         <span style={s.bold}>IMPORTE EN LETRAS: </span>
@@ -410,6 +427,14 @@ const handleImprimir = async () => {
   <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px">
     <span>TOTAL</span><span>S/ ${fm(total)}</span>
   </div>
+  ${(() => {
+    const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+      ? venta.pagos
+      : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+    if (!pagosVenta.length) return '';
+    const rows = pagosVenta.map(p => `<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:1px"><span>${p.modalidad_pago?.nombre || '—'}${p.referencia ? ` — ${p.referencia}` : ''}</span><span style="font-weight:600">S/ ${fm(p.monto)}</span></div>`).join('');
+    return `<div style="border-top:1px dashed #ccc;margin-top:3px;padding-top:3px"><div style="font-size:8px;font-weight:700;color:#555;margin-bottom:2px">FORMA DE PAGO</div>${rows}</div>`;
+  })()}
   <hr class="s">
   <div class="center bold purple" style="margin-top:4px;font-size:10px">¡Gracias por su preferencia!</div>
   <script>window.onload=function(){window.focus();window.print();}<\/script>
@@ -636,6 +661,7 @@ const VenderProductosTab = ({
   const [compradoresExternos, setCompradoresExternos] = useState([]);
   const [tiposComprobante, setTiposComprobante] = useState([]);
   const [modalidadesPago, setModalidadesPago] = useState([]);
+  const [pagos, setPagos] = useState([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
 
   // Estados para la venta
   const [lineas, setLineas] = useState([]);
@@ -650,7 +676,6 @@ const VenderProductosTab = ({
   const [responsableId, setResponsableId] = useState('');
   const [compradorExternoId, setCompradorExternoId] = useState('');
   const [tipoComprobante, setTipoComprobante] = useState(1);
-  const [modalidadPagoId, setModalidadPagoId] = useState(null);
 
   const [promocionesAplicadas, setPromocionesAplicadas] = useState([]);
   const [totalDescuentoPromo, setTotalDescuentoPromo] = useState(0);
@@ -658,6 +683,7 @@ const VenderProductosTab = ({
   const [calculandoPromos, setCalculandoPromos] = useState(false);
   const timerPromo = useRef(null);
 
+  // Eliminar estado individual de modalidad
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mostrarModalExterno, setMostrarModalExterno] = useState(false);
@@ -666,6 +692,10 @@ const VenderProductosTab = ({
   const [mostrarModalExito, setMostrarModalExito] = useState(false);
   const [ventaGuardada, setVentaGuardada] = useState(null);
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
+
+  const [alertaAbierta, setAlertaAbierta] = useState(false);
+  const [mensajeAlerta, setMensajeAlerta] = useState('');
+  const [tituloAlerta, setTituloAlerta] = useState('');
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -746,8 +776,12 @@ const VenderProductosTab = ({
       setCompradorExternoId(v.comprador_externo_id);
     }
     
-    // Modalidad de pago
-    if (v.modalidad_pago_id) setModalidadPagoId(v.modalidad_pago_id);
+    // Pagos
+    if (v.pagos && v.pagos.length > 0) {
+      setPagos(v.pagos.map(p => ({ uid: p.id, modalidad_pago_id: p.modalidad_pago_id, monto: p.monto, referencia: p.referencia || '' })));
+    } else if (v.modalidad_pago_id) {
+      setPagos([{ uid: Date.now(), modalidad_pago_id: v.modalidad_pago_id, monto: v.total || '', referencia: '' }]);
+    }
     
     // Nota y observaciones
     if (v.nota) setNota(v.nota);
@@ -906,7 +940,11 @@ const VenderProductosTab = ({
       tipo_comprobante_id: tipoComprobante,
       fecha_venta: new Date().toISOString().slice(0, 10),
       detalles: [...detallesNormales, ...detallesRegalo],
-      modalidad_pago_id: modalidadPagoId,
+      pagos: pagos.filter(p => p.modalidad_pago_id).map(p => ({
+        modalidad_pago_id: parseInt(p.modalidad_pago_id),
+        monto: parseFloat(p.monto) || 0,
+        referencia: p.referencia || null,
+      })),
     };
 
     // user_crea_id solo para crear, user_actua_id solo para actualizar
@@ -961,7 +999,21 @@ const VenderProductosTab = ({
     if (tipoPagador === TIPOS_PAGADOR.PACIENTE && !pacienteId) return setError('Selecciona un paciente');
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableId) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoId) return setError('Selecciona o crea un comprador externo');
-    if (!modalidadPagoId) return setError('Selecciona una modalidad de pago');
+    const pagosValidos = pagos.filter(p => p.modalidad_pago_id && parseFloat(p.monto) > 0);
+    if (pagosValidos.length === 0) {
+      setTituloAlerta('Método de Pago Requerido');
+      setMensajeAlerta('Agrega al menos un método de pago con monto para continuar.');
+      setAlertaAbierta(true);
+      return;
+    }
+    const totalPagado = pagosValidos.reduce((s, p) => s + parseFloat(p.monto), 0);
+    const totalVenta = totales.total;
+    if (Math.abs(totalPagado - totalVenta) > 0.05) {
+      setTituloAlerta('Monto Incorrecto');
+      setMensajeAlerta(`El total pagado (S/ ${totalPagado.toFixed(2)}) no coincide con el total de la venta (S/ ${totalVenta.toFixed(2)}).`);
+      setAlertaAbierta(true);
+      return;
+    }
 
     const payload = construirPayload();
 
@@ -1015,7 +1067,7 @@ const VenderProductosTab = ({
     setPromocionesAplicadas([]);
     setTotalDescuentoPromo(0);
     setProductosRegalo([]);
-    setModalidadPagoId(null);
+    setPagos([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
     setTipoPagador(TIPOS_PAGADOR.PACIENTE);
     setTipoComprobante(1);
   };
@@ -1120,17 +1172,6 @@ const VenderProductosTab = ({
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">
-                  Modalidad de Pago <span className="text-red-500">*</span>
-                </label>
-                <select value={modalidadPagoId ?? ''} onChange={(e) => setModalidadPagoId(e.target.value ? parseInt(e.target.value) : null)}
-                  disabled={bloqueado}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed">
-                  <option value="">Seleccionar modalidad...</option>
-                  {modalidadesPago.map((m) => (<option key={m.id} value={m.id}>{m.nombre}</option>))}
-                </select>
-              </div>
 
               {tipoPagador === TIPOS_PAGADOR.PACIENTE && (
                 <div>
@@ -1339,6 +1380,73 @@ const VenderProductosTab = ({
             </div>
           </div>
 
+          {/* Métodos de Pago */}
+          <div className="p-6 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-600 mb-3">
+              Métodos de Pago <span className="text-red-500">*</span>
+              <span className="ml-2 text-gray-400 font-normal">— puedes dividir entre varios métodos</span>
+            </p>
+            <div className="space-y-2 max-w-2xl">
+              {pagos.map((pago) => (
+                <div key={pago.uid} className="flex items-center gap-2">
+                  <select
+                    value={pago.modalidad_pago_id}
+                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, modalidad_pago_id: e.target.value } : p))}
+                    disabled={bloqueado}
+                    className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100">
+                    <option value="">Seleccionar método...</option>
+                    {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  </select>
+                  <div className="relative w-32 shrink-0">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-semibold pointer-events-none">S/</span>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={pago.monto}
+                      onFocus={() => {
+                        if (!pago.monto) {
+                          const restante = totales.total - pagos.filter(p => p.uid !== pago.uid).reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
+                          if (restante > 0) setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, monto: restante.toFixed(2) } : p));
+                        }
+                      }}
+                      onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, monto: e.target.value } : p))}
+                      disabled={bloqueado}
+                      placeholder="0.00"
+                      className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                  </div>
+                  <input
+                    type="text"
+                    value={pago.referencia}
+                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, referencia: e.target.value } : p))}
+                    disabled={bloqueado}
+                    placeholder="Nro. operación, código..."
+                    className="w-44 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                  {!bloqueado && pagos.length > 1 && (
+                    <button type="button" onClick={() => setPagos(prev => prev.filter(p => p.uid !== pago.uid))}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0">
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-1">
+                {!bloqueado && (
+                  <button type="button"
+                    onClick={() => setPagos(prev => [...prev, { uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }])}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#7B1FA2] hover:text-[#6A1B9A]">
+                    <PlusIcon className="w-3.5 h-3.5" />Agregar otro método
+                  </button>
+                )}
+                {(() => {
+                  const totalPagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
+                  const pendiente = totales.total - totalPagado;
+                  if (Math.abs(pendiente) < 0.01) return <p className="text-xs text-green-600 font-semibold ml-auto">✓ Pago completo (S/ {totales.total.toFixed(2)})</p>;
+                  if (pendiente > 0) return <p className="text-xs text-amber-600 font-semibold ml-auto">Falta asignar: S/ {pendiente.toFixed(2)}</p>;
+                  return <p className="text-xs text-red-500 font-semibold ml-auto">Excede por: S/ {Math.abs(pendiente).toFixed(2)}</p>;
+                })()}
+              </div>
+            </div>
+          </div>
+
           {/* Acciones */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
             {esModoEdicion ? (
@@ -1426,6 +1534,36 @@ const VenderProductosTab = ({
         onClose={() => setMostrarModalExito(false)}
         mensaje="¡Venta Registrada!"
       />
+
+
+      {/* Modal de Alerta de Pago */}
+      {alertaAbierta && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 px-5 py-4 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-red-400 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{tituloAlerta}</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 leading-relaxed">{mensajeAlerta}</p>
+            </div>
+            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setAlertaAbierta(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-semibold text-sm transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de vista previa para impresión */}
       {mostrarModalImpresion && ventaGuardada && (

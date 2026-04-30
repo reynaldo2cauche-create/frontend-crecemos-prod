@@ -468,6 +468,23 @@ elementos.push(
       <div style={{ display: 'flex', justifyContent: 'space-between', ...s.bold, fontSize: '13px', color: '#7B1FA2', margin: '4px 0 3px' }}>
         <span>TOTAL</span><span>S/ {fm(total)}</span>
       </div>
+      {(() => {
+        const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+          ? venta.pagos
+          : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+        if (!pagosVenta.length) return null;
+        return (
+          <div style={{ borderTop: '1px dashed #ccc', marginTop: '3px', paddingTop: '3px' }}>
+            <div style={{ fontSize: '8px', fontWeight: '700', color: '#555', marginBottom: '2px' }}>FORMA DE PAGO</div>
+            {pagosVenta.map((p, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '1px' }}>
+                <span>{p.modalidad_pago?.nombre || '—'}{p.referencia ? ` — ${p.referencia}` : ''}</span>
+                <span style={{ fontWeight: '600' }}>S/ {fm(p.monto)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <hr style={s.hrSolid} />
       <div style={{ fontSize: '8px', marginBottom: '4px', lineHeight: '1.3' }}>
         <span style={s.bold}>IMPORTE EN LETRAS: </span>
@@ -625,6 +642,14 @@ ${(() => {
 <hr class="d">
 ${requiereIGV ? `<div class="row"><span>BASE IMPONIBLE</span><span>S/ ${fm(total / 1.18)}</span></div><div class="row"><span>IGV (18%)</span><span>S/ ${fm(total - total / 1.18)}</span></div>` : ''}
 <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px"><span>TOTAL</span><span>S/ ${fm(total)}</span></div>
+${(() => {
+  const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+    ? venta.pagos
+    : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+  if (!pagosVenta.length) return '';
+  const rows = pagosVenta.map(p => `<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:1px"><span>${p.modalidad_pago?.nombre || '—'}${p.referencia ? ` — ${p.referencia}` : ''}</span><span style="font-weight:600">S/ ${fm(p.monto)}</span></div>`).join('');
+  return `<div style="border-top:1px dashed #ccc;margin-top:3px;padding-top:3px"><div style="font-size:8px;font-weight:700;color:#555;margin-bottom:2px">FORMA DE PAGO</div>${rows}</div>`;
+})()}
 <hr class="s"><div class="center bold purple" style="margin-top:4px;font-size:10px">¡Gracias por su preferencia!</div>
 <script>window.onload=function(){window.focus();window.print();}<\/script></body></html>`;
       ventana.document.write(html);
@@ -759,8 +784,10 @@ const VenderServiciosTab = ({
   const [ventaGuardada, setVentaGuardada] = useState(null);
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
   const [modalidadesPago, setModalidadesPago] = useState([]);
-  const [modalidadPagoId, setModalidadPagoId] = useState(null);
-  const [mostrarModalSinModalidad, setMostrarModalSinModalidad] = useState(false);
+  const [pagos, setPagos] = useState([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
+  const [alertaAbierta, setAlertaAbierta] = useState(false);
+  const [mensajeAlerta, setMensajeAlerta] = useState('');
+  const [tituloAlerta, setTituloAlerta] = useState('');
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -859,7 +886,11 @@ const VenderServiciosTab = ({
     if (ventaExistente.responsable_id) setResponsableSeleccionado(ventaExistente.responsable_id);
     if (ventaExistente.comprador_externo_id) setCompradorExternoSeleccionado(ventaExistente.comprador_externo_id);
     if (ventaExistente.tipo_comprobante_id) setTipoComprobante(ventaExistente.tipo_comprobante_id);
-    if (ventaExistente.modalidad_pago_id) setModalidadPagoId(ventaExistente.modalidad_pago_id);
+    if (ventaExistente.pagos && ventaExistente.pagos.length > 0) {
+      setPagos(ventaExistente.pagos.map(p => ({ uid: p.id, modalidad_pago_id: p.modalidad_pago_id, monto: p.monto, referencia: p.referencia || '' })));
+    } else if (ventaExistente.modalidad_pago_id) {
+      setPagos([{ uid: Date.now(), modalidad_pago_id: ventaExistente.modalidad_pago_id, monto: ventaExistente.total || '', referencia: '' }]);
+    }
     setNota(ventaExistente.nota || '');
     setObservaciones(ventaExistente.observaciones || '');
     if (ventaExistente.descuento_tipo_id && ventaExistente.descuento_valor) {
@@ -1281,7 +1312,7 @@ const VenderServiciosTab = ({
     setTipoComprobante(1);
     setPromocionesAplicadas([]);
     setTotalDescuentoPromo(0);
-    setModalidadPagoId(null);
+    setPagos([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
   };
 
   const handleCrearExterno = async (e) => {
@@ -1303,7 +1334,21 @@ const VenderServiciosTab = ({
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && !responsableSeleccionado) return setError('Selecciona un responsable');
     if (tipoPagador === TIPOS_PAGADOR.EXTERNO && !compradorExternoSeleccionado) return setError('Selecciona o crea un comprador externo');
     if (lineas.find(l => !l.paciente_linea_id)) return setError('Todas las líneas deben tener un paciente asignado');
-    if (!modalidadPagoId && !modoEdicion) { setMostrarModalSinModalidad(true); return; }
+    const pagosValidos = pagos.filter(p => p.modalidad_pago_id && parseFloat(p.monto) > 0);
+    if (pagosValidos.length === 0) {
+      setTituloAlerta('Método de Pago Requerido');
+      setMensajeAlerta('Agrega al menos un método de pago con monto para continuar.');
+      setAlertaAbierta(true);
+      return;
+    }
+    const totalPagado = pagosValidos.reduce((s, p) => s + parseFloat(p.monto), 0);
+    const totalVenta = totales.total;
+    if (Math.abs(totalPagado - totalVenta) > 0.05) {
+      setTituloAlerta('Monto Incorrecto');
+      setMensajeAlerta(`El total pagado (S/ ${totalPagado.toFixed(2)}) no coincide con el total de la venta (S/ ${totalVenta.toFixed(2)}).`);
+      setAlertaAbierta(true);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -1382,7 +1427,11 @@ const VenderServiciosTab = ({
       }
       if (nota) payload.nota = nota;
       if (observaciones) payload.observaciones = observaciones;
-      if (modalidadPagoId) payload.modalidad_pago_id = modalidadPagoId;
+      payload.pagos = pagosValidos.map(p => ({
+        modalidad_pago_id: parseInt(p.modalidad_pago_id),
+        monto: parseFloat(p.monto),
+        referencia: p.referencia || null,
+      }));
       if (totalDescuentoPromo > 0) payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
 
       if (modoEdicion && onGuardarEdicion) {
@@ -1625,18 +1674,6 @@ const VenderServiciosTab = ({
                 )}
               </div>
 
-              {/* Modalidad de Pago */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Modalidad de Pago <span className="text-red-500">*</span></label>
-                <select
-                  value={modalidadPagoId ?? ''}
-                  onChange={(e) => setModalidadPagoId(e.target.value ? parseInt(e.target.value) : null)}
-                  disabled={!!ventaGuardada}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] bg-white text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed">
-                  <option value="">Seleccionar modalidad...</option>
-                  {modalidadesPago.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-                </select>
-              </div>
             </div>
           </div>
 
@@ -1869,6 +1906,73 @@ const VenderServiciosTab = ({
             </div>
           </div>
 
+          {/* Métodos de Pago */}
+          <div className="p-6 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-600 mb-3">
+              Métodos de Pago <span className="text-red-500">*</span>
+              <span className="ml-2 text-gray-400 font-normal">— puedes dividir entre varios métodos</span>
+            </p>
+            <div className="space-y-2 max-w-2xl">
+              {pagos.map((pago) => (
+                <div key={pago.uid} className="flex items-center gap-2">
+                  <select
+                    value={pago.modalidad_pago_id}
+                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, modalidad_pago_id: e.target.value } : p))}
+                    disabled={!!ventaGuardada}
+                    className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100">
+                    <option value="">Seleccionar método...</option>
+                    {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  </select>
+                  <div className="relative w-32 shrink-0">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-semibold pointer-events-none">S/</span>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={pago.monto}
+                      onFocus={() => {
+                        if (!pago.monto) {
+                          const restante = totales.total - pagos.filter(p => p.uid !== pago.uid).reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
+                          if (restante > 0) setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, monto: restante.toFixed(2) } : p));
+                        }
+                      }}
+                      onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, monto: e.target.value } : p))}
+                      disabled={!!ventaGuardada}
+                      placeholder="0.00"
+                      className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                  </div>
+                  <input
+                    type="text"
+                    value={pago.referencia}
+                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, referencia: e.target.value } : p))}
+                    disabled={!!ventaGuardada}
+                    placeholder="Nro. operación, código..."
+                    className="w-44 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                  {!ventaGuardada && pagos.length > 1 && (
+                    <button type="button" onClick={() => setPagos(prev => prev.filter(p => p.uid !== pago.uid))}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0">
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-1">
+                {!ventaGuardada && (
+                  <button type="button"
+                    onClick={() => setPagos(prev => [...prev, { uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }])}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#7B1FA2] hover:text-[#6A1B9A]">
+                    <PlusIcon className="w-3.5 h-3.5" />Agregar otro método
+                  </button>
+                )}
+                {(() => {
+                  const totalPagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
+                  const pendiente = totales.total - totalPagado;
+                  if (Math.abs(pendiente) < 0.01) return <p className="text-xs text-green-600 font-semibold ml-auto">✓ Pago completo (S/ {totales.total.toFixed(2)})</p>;
+                  if (pendiente > 0) return <p className="text-xs text-amber-600 font-semibold ml-auto">Falta asignar: S/ {pendiente.toFixed(2)}</p>;
+                  return <p className="text-xs text-red-500 font-semibold ml-auto">Excede por: S/ {Math.abs(pendiente).toFixed(2)}</p>;
+                })()}
+              </div>
+            </div>
+          </div>
+
           {/* Acciones */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
             {ventaGuardada ? (
@@ -2017,38 +2121,38 @@ const VenderServiciosTab = ({
       )}
 
       <ModalExito isOpen={mostrarModalExito} onClose={() => setMostrarModalExito(false)} mensaje="¡Venta Registrada!" />
-
-      {mostrarModalImpresion && ventaGuardada && (
-        <PrintPreviewModal venta={ventaGuardada} tipo="servicio" onClose={() => setMostrarModalImpresion(false)} />
-      )}
-
-      {mostrarModalSinModalidad && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                <span className="text-xl">⚠️</span>
-              </div>
-              <div>
-                <h2 className="font-bold text-gray-900 text-base">Modalidad de pago requerida</h2>
-                <p className="text-xs text-gray-500 mt-0.5">No puedes guardar la venta sin seleccionar una modalidad</p>
+      {/* Modal de Alerta de Pago */}
+      {alertaAbierta && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 px-5 py-4 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-red-400 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{tituloAlerta}</h3>
               </div>
             </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-gray-600">Por favor selecciona una <span className="font-semibold text-gray-800">modalidad de pago</span> antes de continuar.</p>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 leading-relaxed">{mensajeAlerta}</p>
             </div>
-            <div className="px-6 py-4 flex justify-end border-t border-gray-100">
+            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
               <button
-                onClick={() => setMostrarModalSinModalidad(false)}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-colors"
+                onClick={() => setAlertaAbierta(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-semibold text-sm transition-all"
               >
                 Entendido
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
+      {mostrarModalImpresion && ventaGuardada && (
+        <PrintPreviewModal venta={ventaGuardada} tipo="servicio" onClose={() => setMostrarModalImpresion(false)} />
+      )}
+
     </div>
   );
 };

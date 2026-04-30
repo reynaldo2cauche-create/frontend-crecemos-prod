@@ -541,6 +541,23 @@ const descuento = descuentoItems + descuentoGlobal;
       <div style={{ display: 'flex', justifyContent: 'space-between', ...s.bold, fontSize: '13px', color: '#7B1FA2', margin: '4px 0 3px' }}>
         <span>TOTAL</span><span>S/ {formatMoney(total)}</span>
       </div>
+      {(() => {
+        const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+          ? venta.pagos
+          : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+        if (!pagosVenta.length) return null;
+        return (
+          <div style={{ borderTop: '1px dashed #ccc', marginTop: '3px', paddingTop: '3px' }}>
+            <div style={{ fontSize: '8px', fontWeight: '700', color: '#555', marginBottom: '2px' }}>FORMA DE PAGO</div>
+            {pagosVenta.map((p, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '1px' }}>
+                <span>{p.modalidad_pago?.nombre || '—'}{p.referencia ? ` — ${p.referencia}` : ''}</span>
+                <span style={{ fontWeight: '600' }}>S/ {formatMoney(p.monto)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <hr style={s.hrSolid} />
       <div style={{ fontSize: '8px', marginBottom: '4px', lineHeight: '1.3' }}>
         <span style={s.bold}>IMPORTE EN LETRAS: </span>
@@ -746,6 +763,14 @@ ${(() => {
   ${promosHTML}
   ${requiereIGV ? `<div class="row"><span>BASE IMPONIBLE</span><span>S/ ${fm(total / 1.18)}</span></div><div class="row"><span>IGV (18%)</span><span>S/ ${fm(total - total / 1.18)}</span></div>` : ''}
   <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;color:#7B1FA2;margin:4px 0 3px"><span>TOTAL</span><span>S/ ${fm(total)}</span></div>
+  ${(() => {
+    const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+      ? venta.pagos
+      : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+    if (!pagosVenta.length) return '';
+    const rows = pagosVenta.map(p => `<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:1px"><span>${p.modalidad_pago?.nombre || '—'}${p.referencia ? ` — ${p.referencia}` : ''}</span><span style="font-weight:600">S/ ${fm(p.monto)}</span></div>`).join('');
+    return `<div style="border-top:1px dashed #ccc;margin-top:3px;padding-top:3px"><div style="font-size:8px;font-weight:700;color:#555;margin-bottom:2px">FORMA DE PAGO</div>${rows}</div>`;
+  })()}
   <hr class="s">
   <div style="font-size:9px;margin-bottom:4px;line-height:1.3"><strong>IMPORTE EN LETRAS: </strong>${importeLetras}</div>
   ${venta.observaciones?.trim() ? `<hr class="d"><div style="font-size:9px"><strong>OBSERVACIONES:</strong><div style="margin-top:2px;white-space:pre-wrap">${venta.observaciones}</div></div>` : ''}
@@ -1068,12 +1093,25 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                 <p className="text-xs text-gray-500">Tipo de Pagador</p>
                 <p className="font-semibold text-sm text-gray-900">{tipoPagadorNombre(venta.tipo_pagador_id || venta.tipo_comprador_id)}</p>
               </div>
-              {venta.modalidad_pago && (
-                <div>
-                  <p className="text-xs text-gray-500">Pago</p>
-                  <p className="font-semibold text-sm text-gray-900">{venta.modalidad_pago.nombre}</p>
-                </div>
-              )}
+              {(() => {
+                const pagosVenta = Array.isArray(venta.pagos) && venta.pagos.length > 0
+                  ? venta.pagos
+                  : venta.modalidad_pago ? [{ modalidad_pago: venta.modalidad_pago, monto: venta.total }] : [];
+                if (!pagosVenta.length) return null;
+                return (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">Forma de Pago</p>
+                    <div className="flex flex-col gap-0.5">
+                      {pagosVenta.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="font-semibold text-gray-900">{p.modalidad_pago?.nombre || '—'}{p.referencia ? ` — ${p.referencia}` : ''}</span>
+                          <span className="font-semibold text-gray-700">S/ {p.monto != null ? Number(p.monto).toFixed(2) : '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {venta.paciente && (
                 <div className="col-span-2">
                   <p className="text-xs text-gray-500">Paciente</p>
