@@ -115,7 +115,7 @@ const AsistenciasPorPaciente = () => {
     setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
   };
 
-  const cargarAsistencias = async (pacienteId) => {
+  const cargarAsistencias = async (pacienteId, resetPage = true) => {
     if (!fechaInicio || !fechaFin) {
       alert('Seleccione un rango de fechas');
       return;
@@ -132,7 +132,7 @@ const AsistenciasPorPaciente = () => {
 
       setAsistencias(conRegistro);
       calcularEstadisticas(conRegistro);
-      setPage(0);
+      if (resetPage) setPage(0);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
       alert('Error al cargar asistencias');
@@ -177,7 +177,7 @@ const AsistenciasPorPaciente = () => {
         currentUser?.id
       );
       setModalEditar(null);
-      await cargarAsistencias(pacienteSeleccionado.id);
+      await cargarAsistencias(pacienteSeleccionado.id, false);
     } catch (err) {
       alert('Error al guardar los cambios');
     } finally {
@@ -379,7 +379,7 @@ const AsistenciasPorPaciente = () => {
                         </td>
                         <td className="px-6 py-4">
                           {asistencia.recepcion_marco == 1 && asistencia.terapeuta_marco == 1 ? (
-                            asistencia.recepcion_estado_id === 7 && asistencia.terapeuta_estado_id === 7 ? (
+                            asistencia.recepcion_estado_id === asistencia.terapeuta_estado_id ? (
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
                                 ✓ Validado
                               </span>

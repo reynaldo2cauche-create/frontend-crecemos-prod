@@ -145,7 +145,7 @@ const Inconsistencias = () => {
   }, [filtros, inconsistencias]);
 
   // ✅ FIX: limpiar datos viejos antes de cada búsqueda
-  const cargarInconsistencias = async (inicio, fin) => {
+  const cargarInconsistencias = async (inicio, fin, resetPage = true) => {
     const fechaInicioFinal = inicio || fechaInicio;
     const fechaFinFinal    = fin    || fechaFin;
 
@@ -156,7 +156,7 @@ const Inconsistencias = () => {
 
     setInconsistencias([]);
     setInconsistenciasFiltradas([]);
-    setPage(0);
+    if (resetPage) setPage(0);
     setCargando(true);
 
     try {
@@ -413,7 +413,7 @@ const Inconsistencias = () => {
       setShowSnackbar(true);
 
       cerrarModal();
-      cargarInconsistencias(fechaInicio, fechaFin);
+      cargarInconsistencias(fechaInicio, fechaFin, false);
     } catch (error) {
       console.error('Error al modificar asistencia:', error);
       setSnackbarMessage(error.response?.data?.message || 'Error al modificar asistencia');

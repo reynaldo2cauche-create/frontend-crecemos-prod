@@ -144,7 +144,6 @@ const GestionPopup = () => {
       showNotification('Popup creado correctamente', 'success');
       setDialogoCrear(false);
       resetFormulario();
-      setPaginaActual(1); // Volver a la primera página
       await cargarPopups();
     } catch (error) {
       showNotification('Error al crear el popup', 'error');

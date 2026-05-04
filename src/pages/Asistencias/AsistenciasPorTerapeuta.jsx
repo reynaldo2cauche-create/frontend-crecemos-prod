@@ -68,7 +68,7 @@ const AsistenciasPorTerapeuta = () => {
     setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
   };
 
-  const cargarAsistencias = async (terapeutaId) => {
+  const cargarAsistencias = async (terapeutaId, resetPage = true) => {
     if (!fechaInicio || !fechaFin) {
       alert('Seleccione un rango de fechas');
       return;
@@ -85,7 +85,7 @@ const AsistenciasPorTerapeuta = () => {
 
       setAsistencias(conRegistro);
       calcularEstadisticas(conRegistro);
-      setPage(0);
+      if (resetPage) setPage(0);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
       alert('Error al cargar asistencias');
@@ -136,7 +136,7 @@ const AsistenciasPorTerapeuta = () => {
         currentUser?.id
       );
       setModalEditar(null);
-      await cargarAsistencias(terapeutaSeleccionado.id);
+      await cargarAsistencias(terapeutaSeleccionado.id, false);
     } catch (err) {
       alert('Error al guardar los cambios');
     } finally {

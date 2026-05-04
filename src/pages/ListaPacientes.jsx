@@ -94,9 +94,10 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
         if (searchParams.servicioId && searchParams.servicioId !== '') {
           params.append('servicioId', searchParams.servicioId);
         }
-        // ✅ AGREGADO
         if (searchParams.terapeutaId && searchParams.terapeutaId !== '') {
           params.append('terapeutaId', searchParams.terapeutaId);
+          // Forzar soloPropio para que no se expandan subordinados del terapeuta filtrado
+          params.append('soloPropio', 'true');
         }
         
         if (params.toString()) {

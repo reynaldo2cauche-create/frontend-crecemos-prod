@@ -206,3 +206,18 @@ export const obtenerEstadosSolicitud = async () => {
     throw error;
   }
 };
+
+/**
+ * Verifica si una venta de servicio tiene una solicitud de informe asociada.
+ * @param {number} ventaId
+ * @returns {Promise<{tieneSolicitud: boolean, mensaje?: string}>}
+ */
+export const verificarVentaTieneSolicitudInforme = async (ventaId) => {
+  try {
+    const response = await api.get(`/solicitudes-informe/por-venta/${ventaId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al verificar solicitud de informe:', error);
+    throw error;
+  }
+};

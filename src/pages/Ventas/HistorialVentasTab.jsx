@@ -32,6 +32,7 @@ import {
 } from '../../services/ventasService';
 import VenderServiciosTab from './VenderServiciosTab';
 import VenderProductosTab from './VenderProductosTab';
+import { verificarVentaTieneSolicitudInforme } from '../../services/solicitudInformeService';
 import {
   generarTicketPDF,
   generarTicketTermico,
@@ -1358,6 +1359,15 @@ const HistorialVentasTab = () => {
     finally { setLoading(false); }
   };
 
+  const verificarSolicitudInforme = async (ventaId) => {
+    try {
+      const { tieneSolicitud, mensaje } = await verificarVentaTieneSolicitudInforme(ventaId);
+      return { tieneSolicitud, mensaje };
+    } catch {
+      return { tieneSolicitud: false };
+    }
+  };
+
   // 🔥 VALIDAR ANTES DE ABRIR MODAL DE ELIMINAR
   const handleClickEliminar = async (venta) => {
     // Solo validar para ventas de servicio
@@ -1376,8 +1386,18 @@ const HistorialVentasTab = () => {
         setFeedback({ tipo: 'error', mensaje: 'Error al verificar la venta' });
         return;
       }
+
+      // Verificar si ya tiene solicitud de informe
+      const { tieneSolicitud, mensaje: msgInforme } = await verificarSolicitudInforme(venta.id);
+      if (tieneSolicitud) {
+        setFeedback({
+          tipo: 'error',
+          mensaje: `❌ No se puede eliminar: ${msgInforme || 'Esta venta tiene una solicitud de informe asociada'}`
+        });
+        return;
+      }
     }
-    // Si no tiene citas o es de producto, abrir modal
+    // Si no tiene citas ni solicitud de informe, abrir modal
     setVentaEliminar(venta);
   };
 
@@ -1397,6 +1417,16 @@ const HistorialVentasTab = () => {
       } catch (err) {
         console.error('Error verificando citas:', err);
         setFeedback({ tipo: 'error', mensaje: 'Error al verificar la venta' });
+        return;
+      }
+
+      // Verificar si ya tiene solicitud de informe
+      const { tieneSolicitud, mensaje: msgInforme } = await verificarSolicitudInforme(venta.id);
+      if (tieneSolicitud) {
+        setFeedback({
+          tipo: 'error',
+          mensaje: `❌ No se puede editar: ${msgInforme || 'Esta venta tiene una solicitud de informe asociada'}`
+        });
         return;
       }
     }
