@@ -895,13 +895,36 @@ const ModalAgendarCita = ({
 
       setCargandoVentas(true);
       try {
-        const ventas = await getVentasDisponibles(pacienteId, servicioId, motivoCitaId);
-        setVentasDisponibles(ventas || []);
+        let ventas = await getVentasDisponibles(pacienteId, servicioId, motivoCitaId);
+        ventas = ventas || [];
 
-        // Si solo hay una venta disponible, seleccionarla automáticamente
-        if (ventas && ventas.length === 1 && !modoEdicion) {
+        // En modo edición: si la venta actual de la cita no está en el listado
+        // (puede ocurrir cuando ya no tiene sesiones disponibles), agregarla como entrada
+        // SOLO si el motivo no ha cambiado — si cambió, no se debe reutilizar la venta original
+        const motivoOriginalId = citaEditando?.motivo_id || citaEditando?.motivo?.id;
+        const motivoNoHaCambiado = !motivoOriginalId || String(motivoCitaId) === String(motivoOriginalId);
+        if (modoEdicion && citaEditando?.venta_servicio_detalle_id && motivoNoHaCambiado) {
+          const ventaActualEnLista = ventas.some(
+            v => String(v.id) === String(citaEditando.venta_servicio_detalle_id)
+          );
+          if (!ventaActualEnLista) {
+            ventas = [
+              {
+                id: citaEditando.venta_servicio_detalle_id,
+                descripcion: `#${citaEditando.venta_servicio_detalle_id} — ${citaEditando.servicio?.nombre || 'Servicio'}${citaEditando.motivo?.nombre ? ` - ${citaEditando.motivo.nombre}` : ''} (sin sesiones disponibles)`,
+                sesiones_disponibles: 0,
+              },
+              ...ventas,
+            ];
+          }
+        }
+
+        setVentasDisponibles(ventas);
+
+        // Si solo hay una venta disponible, seleccionarla automáticamente (solo en nueva cita)
+        if (ventas.length === 1 && !modoEdicion) {
           onFormularioChange('venta_servicio_detalle_id', ventas[0].id);
-          setVentaSeleccionada(ventas[0]); // 🛒 IMPORTANTE: Actualizar estado
+          setVentaSeleccionada(ventas[0]);
         }
       } catch (error) {
         console.error('Error al cargar ventas disponibles:', error);
@@ -913,7 +936,7 @@ const ModalAgendarCita = ({
     };
 
     cargarVentasDisponibles();
-  }, [formularioCita.paciente_id, formularioCita.servicio_id, formularioCita.motivo_id, tipoCita, modoEdicion]);
+  }, [formularioCita.paciente_id, formularioCita.servicio_id, formularioCita.motivo_id, tipoCita, modoEdicion, citaEditando?.id, citaEditando?.venta_servicio_detalle_id]);
 
   // 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
 // 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
@@ -1210,7 +1233,7 @@ const handleGuardar = useCallback(async () => {
   }
 
   // Validar que para citas NORMALES haya una venta seleccionada
-  if (tipoCita === 'NORMAL' && !modoEdicion) {
+  if (tipoCita === 'NORMAL') {
     if (!formularioCita.venta_servicio_detalle_id) {
       setTituloAlerta('Venta Requerida');
       setMensajeAlerta(
@@ -1219,6 +1242,25 @@ const handleGuardar = useCallback(async () => {
       setAlertaAbierta(true);
       setGuardandoLocal(false);
       return;
+    }
+    // En edición: si el motivo cambió, verificar que la venta seleccionada
+    // sea válida para el nuevo motivo (sesiones_disponibles > 0)
+    if (modoEdicion && citaEditando) {
+      const motivoOriginalId = citaEditando.motivo_id || citaEditando.motivo?.id;
+      if (String(formularioCita.motivo_id) !== String(motivoOriginalId)) {
+        const ventaValida = ventasDisponibles.find(
+          v => String(v.id) === String(formularioCita.venta_servicio_detalle_id) && (v.sesiones_disponibles || 0) > 0
+        );
+        if (!ventaValida) {
+          mostrarAlerta(
+            'Sin Sesiones Disponibles',
+            'El paciente no tiene una compra activa para el motivo seleccionado. No se puede cambiar el motivo sin una compra válida para ese servicio.',
+            'error'
+          );
+          setGuardandoLocal(false);
+          return;
+        }
+      }
     }
   }
 
@@ -1453,7 +1495,17 @@ const handleGuardar = useCallback(async () => {
                   </label>
                   <select
                     value={formularioCita.motivo_id || ''}
-                    onChange={(e) => onFormularioChange('motivo_id', e.target.value)}
+                    onChange={(e) => {
+                      const newMotivoId = e.target.value;
+                      onFormularioChange('motivo_id', newMotivoId);
+                      if (modoEdicion && citaEditando) {
+                        const motivoOriginalId = citaEditando.motivo_id || citaEditando.motivo?.id;
+                        if (String(newMotivoId) !== String(motivoOriginalId)) {
+                          onFormularioChange('venta_servicio_detalle_id', '');
+                          setVentaSeleccionada(null);
+                        }
+                      }
+                    }}
                     disabled={loadingMotivos || esTerapeuta || modoSoloLectura}
                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900
                     focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/20
@@ -1472,6 +1524,31 @@ const handleGuardar = useCallback(async () => {
                       </p>
                     </div>
                   )}
+                  {/* Compra vinculada a la cita (solo si el motivo no ha cambiado) */}
+                  {modoEdicion && citaEditando?.venta_servicio_detalle_id && tipoCita === 'NORMAL' &&
+                   String(formularioCita.motivo_id) === String(citaEditando.motivo_id || citaEditando.motivo?.id) && (
+                    <div className="mt-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <Package className="w-3.5 h-3.5 text-purple-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-purple-800">
+                        <span className="font-semibold">Compra vinculada:</span>{' '}
+                        #{citaEditando.venta_servicio_detalle_id}
+                        {citaEditando.servicio?.nombre ? ` — ${citaEditando.servicio.nombre}` : ''}
+                        {citaEditando.motivo?.nombre ? ` (${citaEditando.motivo.nombre})` : ''}
+                      </p>
+                    </div>
+                  )}
+                  {/* Advertencia si se cambia el motivo a uno sin compra disponible */}
+                  {modoEdicion && !cargandoVentas && tipoCita === 'NORMAL' &&
+                  formularioCita.paciente_id && formularioCita.servicio_id && formularioCita.motivo_id &&
+                  ventasDisponibles.length === 0 && (
+                  <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700">
+                      <span className="font-semibold">Sin sesiones disponibles.</span>{' '}
+                      El paciente no tiene una compra activa para este motivo. Debe realizar una compra antes de cambiar el motivo.
+                    </p>
+                  </div>
+                )}
                 </div>
 
                 {/* 🔒 ADVERTENCIA: CITA CON ASISTENCIA REGISTRADA */}
@@ -1593,7 +1670,7 @@ const handleGuardar = useCallback(async () => {
                         <select
                           value={formularioCita.servicio_id || ''}
                           onChange={(e) => onFormularioChange('servicio_id', e.target.value)}
-                          disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
+                          disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia || (modoEdicion && !!citaEditando?.venta_servicio_detalle_id)}
                           className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                         >
                           <option value="">Seleccionar servicio...</option>
@@ -1658,8 +1735,7 @@ const handleGuardar = useCallback(async () => {
                               }
                             }
                           }}
-                          disabled={cargandoVentas || !formularioCita.paciente_id || !formularioCita.servicio_id || esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                        disabled={cargandoVentas || !formularioCita.paciente_id || !formularioCita.servicio_id || esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                         >
                           <option value="">
                             {cargandoVentas
@@ -1676,11 +1752,16 @@ const handleGuardar = useCallback(async () => {
                             </option>
                           ))}
                         </select>
-                        {formularioCita.paciente_id && formularioCita.servicio_id && !cargandoVentas && ventasDisponibles.length === 0 && (
-                          <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            El paciente no tiene sesiones disponibles de este servicio. Debe realizar una compra primero.
-                          </p>
+                        {formularioCita.paciente_id && formularioCita.servicio_id && formularioCita.motivo_id && !cargandoVentas && ventasDisponibles.length === 0 && (
+                          <div className="mt-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-red-700">
+                              <span className="font-semibold">No hay sesiones disponibles</span> para este motivo y servicio.
+                              {modoEdicion
+                                ? ' No se puede cambiar el motivo sin una compra válida. El paciente debe realizar una compra primero.'
+                                : ' El paciente debe realizar una compra primero.'}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
