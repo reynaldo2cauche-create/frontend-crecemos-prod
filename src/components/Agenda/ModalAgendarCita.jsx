@@ -888,14 +888,16 @@ const ModalAgendarCita = ({
       const servicioId = formularioCita.servicio_id;
       const motivoCitaId = formularioCita.motivo_id;
 
-      if (!pacienteId || !servicioId || !motivoCitaId) {
+      if (!pacienteId || !servicioId) {
         setVentasDisponibles([]);
         return;
       }
 
       setCargandoVentas(true);
       try {
-        let ventas = await getVentasDisponibles(pacienteId, servicioId, motivoCitaId);
+        // Cargamos con motivo si está seleccionado, sin él si no — así el usuario
+        // ve sus sesiones disponibles tan pronto elige paciente y servicio.
+        let ventas = await getVentasDisponibles(pacienteId, servicioId, motivoCitaId || null);
         ventas = ventas || [];
 
         // En modo edición: si la venta actual de la cita no está en el listado
@@ -1743,7 +1745,7 @@ const handleGuardar = useCallback(async () => {
                               : !formularioCita.paciente_id || !formularioCita.servicio_id
                                 ? 'Primero selecciona paciente y servicio'
                                 : ventasDisponibles.length === 0
-                                  ? 'No hay sesiones disponibles'
+                                  ? 'No hay sesiones disponibles para este servicio'
                                   : 'Seleccionar compra...'}
                           </option>
                           {ventasDisponibles.map((venta) => (

@@ -12,7 +12,9 @@ const esEvaluacion = (nombre = '') => nombre.toLowerCase().includes('evaluaci');
 const esPagoTotal = (nombre = '') => nombre.toLowerCase().includes('total');
 const esInformeVerbal = (nombre = '') => nombre.toLowerCase().includes('informe verbal');
 const esInforme = (nombre = '') => nombre.toLowerCase().includes('informe');
-const esInformeEvolucion = (nombre = '') => nombre.toLowerCase().includes('informe de evolución') || nombre.toLowerCase().includes('informe de evolucion');
+const esInformeEvolucion = (nombre = '') =>
+  nombre.toLowerCase().includes('informe de evolución') ||
+  nombre.toLowerCase().includes('informe de evolucion');
 
 // ─── Badge ───────────────────────────────────────────────────────────────────
 const Badge = ({ tipo }) => {
@@ -224,11 +226,14 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
   let precioBase = null;
   let paquetes = [];
 
-  const esTLInfantil = servicio.nombre?.toLowerCase().includes('lenguaje') && servicio.area?.nombre?.toLowerCase().includes('infantil');
+  const esTLInfantil =
+    servicio.nombre?.toLowerCase().includes('lenguaje') &&
+    servicio.area?.nombre?.toLowerCase().includes('infantil');
 
-  // Combos solo para Terapia de Lenguaje Infantil
   const combosDelServicio = esTLInfantil
-    ? combos.filter((c) => (c.items ?? []).some((item) => item.servicioTarifa?.servicio?.id === servicio.id))
+    ? combos.filter((c) =>
+        (c.items ?? []).some((item) => item.servicioTarifa?.servicio?.id === servicio.id)
+      )
     : [];
 
   tarifas.forEach((t) => {
@@ -239,9 +244,10 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
       rowsEval.push({ label: nombre, descuento: 'vigencia', precio });
     } else if (esEvaluacion(nombre) || esInforme(nombre)) {
       if (esPagoTotal(nombre)) {
-        const esTLInfantil = servicio.nombre?.toLowerCase().includes('lenguaje') && servicio.area?.nombre?.toLowerCase().includes('infantil');
         rowsEval.push({
-          label: esTLInfantil ? 'Evaluación + Informe de evaluación' : 'Pago total evaluación',
+          label: esTLInfantil
+            ? 'Evaluación + Informe de evaluación'
+            : 'Pago total evaluación',
           descuento: '5pct',
           precio: esTLInfantil ? precio : null,
           nota: 'Incluye informe de evaluación',
@@ -270,9 +276,11 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
         }`}
         onClick={handleClose}
       />
-      <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
-        isClosing ? 'translate-x-full' : 'translate-x-0'
-      }`}>
+      <div
+        className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
+          isClosing ? 'translate-x-full' : 'translate-x-0'
+        }`}
+      >
         <div className="h-full flex flex-col">
           <div className="flex-shrink-0 border-b border-gray-200 p-6">
             <div className="flex items-start justify-between">
@@ -282,7 +290,10 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
                   {servicio.area?.nombre ?? 'Área no especificada'}
                 </p>
               </div>
-              <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200">
+              <button
+                onClick={handleClose}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+              >
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -293,28 +304,43 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {(rowsEval.length > 0 || combosDelServicio.length > 0) && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Evaluación</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                  Evaluación
+                </p>
                 {rowsEval.length > 0 && <TarifaTable rows={rowsEval} />}
                 {combosDelServicio.length > 0 && (
                   <div className={rowsEval.length > 0 ? 'mt-2' : ''}>
-                    <TarifaTable rows={combosDelServicio.map((c) => ({
-                      label: 'Evaluación c/ informe',
-                      nota: c.descripcion || null,
-                      descuento: true,
-                      precio: parseFloat(c.precioTotal),
-                    }))} />
+                    <TarifaTable
+                      rows={combosDelServicio.map((c) => ({
+                        label: 'Evaluación c/ informe',
+                        nota: c.descripcion || null,
+                        descuento: true,
+                        precio: parseFloat(c.precioTotal),
+                      }))}
+                    />
                   </div>
                 )}
-                {servicio.nombre?.toLowerCase().includes('psicolog') && servicio.nombre?.toLowerCase().includes('infantil') && (
-                  <div className="mt-2 flex items-start gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl">
-                    <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    <p className="text-xs text-green-700 font-medium">
-                      Aplica 5% de descuento en el pago total de la Evaluación
-                    </p>
-                  </div>
-                )}
+                {servicio.nombre?.toLowerCase().includes('psicolog') &&
+                  servicio.nombre?.toLowerCase().includes('infantil') && (
+                    <div className="mt-2 flex items-start gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl">
+                      <svg
+                        className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                        />
+                      </svg>
+                      <p className="text-xs text-green-700 font-medium">
+                        Aplica 5% de descuento en el pago total de la Evaluación
+                      </p>
+                    </div>
+                  )}
               </div>
             )}
             {rowsTerapia.length > 0 && (
@@ -359,11 +385,12 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
         }`}
         onClick={handleClose}
       />
-      <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
-        isClosing ? 'translate-x-full' : 'translate-x-0'
-      }`}>
+      <div
+        className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-all duration-300 ${
+          isClosing ? 'translate-x-full' : 'translate-x-0'
+        }`}
+      >
         <div className="h-full flex flex-col">
-          {/* Header */}
           <div className="flex-shrink-0 border-b border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -372,7 +399,10 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
                   <p className="text-sm text-gray-500 mt-1">{doc.tipoArchivo.nombre}</p>
                 )}
               </div>
-              <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200">
+              <button
+                onClick={handleClose}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+              >
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -380,9 +410,7 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
             </div>
           </div>
 
-          {/* Contenido */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Precio */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Precio</p>
               <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
@@ -393,7 +421,6 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
               </div>
             </div>
 
-            {/* Descripción */}
             {doc.descripcion && doc.descripcion !== doc.nombre && (
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Descripción</p>
@@ -403,14 +430,24 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
               </div>
             )}
 
-            {/* Nota informe de evolución */}
             {informeEvolucion && (
               <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 flex gap-3">
-                <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <p className="text-sm text-blue-700">
-                  Este documento se emite únicamente después de haber completado <span className="font-semibold">16 sesiones</span>.
+                  Este documento se emite únicamente después de haber completado{' '}
+                  <span className="font-semibold">16 sesiones</span>.
                 </p>
               </div>
             )}
@@ -456,7 +493,12 @@ const DocumentoTarifaCard = ({ doc, onClick, isSelected }) => {
         </div>
         <div className={`transform transition-all duration-300 ${isHovered ? 'translate-x-1' : ''}`}>
           <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-            <svg className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
@@ -466,11 +508,252 @@ const DocumentoTarifaCard = ({ doc, onClick, isSelected }) => {
   );
 };
 
+// ─── Convenio Aldeas Infantiles SOS ──────────────────────────────────────────
+const ALDEAS_DESCUENTOS = [
+  {
+    categoria: 'Evaluaciones y Entrevistas',
+    color: 'amber',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      />
+    ),
+    items: [
+      { label: 'Evaluación en Terapia de Lenguaje', descuento: '50%' },
+      { label: 'Evaluación en Terapia Ocupacional', descuento: '50%' },
+      { label: 'Entrevista psicológica para padres o cuidadores', descuento: '50%' },
+    ],
+  },
+  {
+    categoria: 'Informes Terapéuticos',
+    color: 'blue',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
+    ),
+    items: [
+      { label: 'Informes de evaluación', descuento: '100%', nota: 'Gratuito' },
+      { label: 'Informes de avance o evolución terapéutica', descuento: '50%' },
+    ],
+  },
+  {
+    categoria: 'Servicios Terapéuticos',
+    color: 'green',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+      />
+    ),
+    items: [
+      {
+        label: 'Terapia de Lenguaje',
+        descuento: '10%',
+        nota: 'En paquetes de 4 sesiones a más',
+      },
+      {
+        label: 'Terapia Ocupacional',
+        descuento: '10%',
+        nota: 'En paquetes de 4 sesiones a más',
+      },
+      {
+        label: 'Psicología (infantil, adolescente o adulto)',
+        descuento: '10%',
+        nota: 'En paquetes de 4 sesiones a más',
+      },
+    ],
+  },
+];
+
+const colorMap = {
+  amber: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    badgeBg: 'bg-amber-100',
+    badgeText: 'text-amber-700',
+    titleColor: 'text-amber-800',
+  },
+  blue: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    iconBg: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+    badgeBg: 'bg-blue-100',
+    badgeText: 'text-blue-700',
+    titleColor: 'text-blue-800',
+  },
+  green: {
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    iconBg: 'bg-green-100',
+    iconColor: 'text-green-600',
+    badgeBg: 'bg-green-100',
+    badgeText: 'text-green-700',
+    titleColor: 'text-green-800',
+  },
+};
+
+const AldeasConvenioSection = () => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mb-8">
+      {/* Banner principal */}
+      <div className="rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-red-50 overflow-hidden">
+        {/* Header del convenio */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-red-100">
+          <div className="flex items-center gap-3">
+            {/* Logo/ícono representativo */}
+            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-6 h-6 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-gray-900">Convenio Aldeas Infantiles SOS Perú</h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                  Convenio especial
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Descuentos exclusivos para beneficiarios — Centro de Terapias Crecemos
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
+          >
+            {expanded ? 'Ocultar' : 'Ver descuentos'}
+            <svg
+              className={`w-4 h-4 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Contenido expandible */}
+        <div
+          className={`overflow-hidden transition-all duration-500 ease-in-out ${
+            expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="px-5 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {ALDEAS_DESCUENTOS.map((grupo) => {
+              const c = colorMap[grupo.color];
+              return (
+                <div
+                  key={grupo.categoria}
+                  className={`rounded-xl border ${c.border} ${c.bg} p-4`}
+                >
+                  {/* Cabecera de categoría */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`w-7 h-7 rounded-lg ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
+                      <svg
+                        className={`w-4 h-4 ${c.iconColor}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        {grupo.icon}
+                      </svg>
+                    </div>
+                    <p className={`text-xs font-bold uppercase tracking-wide ${c.titleColor}`}>
+                      {grupo.categoria}
+                    </p>
+                  </div>
+
+                  {/* Items */}
+                  <ul className="space-y-2.5">
+                    {grupo.items.map((item, idx) => (
+                      <li key={idx} className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-800 leading-tight">
+                            {item.label}
+                          </p>
+                          {item.nota && (
+                            <p className="text-xs text-gray-500 mt-0.5 italic">{item.nota}</p>
+                          )}
+                        </div>
+                        <span
+                          className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${c.badgeBg} ${c.badgeText} border ${c.border}`}
+                        >
+                          {item.descuento === '100%' ? 'Gratis' : `${item.descuento} dto.`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Nota al pie */}
+          <div className="px-5 pb-4">
+            <div className="flex items-start gap-2 bg-white rounded-xl border border-gray-100 px-4 py-3">
+              <svg
+                className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <p className="text-xs text-gray-500">
+                Los descuentos aplican exclusivamente a beneficiarios del convenio con Aldeas Infantiles SOS Perú.
+                Para consultas sobre la aplicación del convenio, comuníquese con administración.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Mapeo de rangos de edad por área ────────────────────────────────────────
 const RANGOS_EDAD = {
-  'Área Infantil':     [{ label: 'Infantil',     rango: '1 a 12 años',   color: 'bg-blue-50 text-blue-600 border-blue-100' }],
-  'Área Adolescentes': [{ label: 'Adolescentes', rango: '13 a 17 años',  color: 'bg-orange-50 text-orange-600 border-orange-100' }],
-  'Área Adultos':      [{ label: 'Adultos',      rango: '18 años a más', color: 'bg-green-50 text-green-600 border-green-100' }],
+  'Área Infantil': [
+    { label: 'Infantil', rango: '1 a 12 años', color: 'bg-blue-50 text-blue-600 border-blue-100' },
+  ],
+  'Área Adolescentes': [
+    { label: 'Adolescentes', rango: '13 a 17 años', color: 'bg-orange-50 text-orange-600 border-orange-100' },
+  ],
+  'Área Adultos': [
+    { label: 'Adultos', rango: '18 años a más', color: 'bg-green-50 text-green-600 border-green-100' },
+  ],
 };
 
 const ORDEN_AREAS = ['Área Infantil', 'Área Adolescentes', 'Área Adultos'];
@@ -487,7 +770,10 @@ const SeccionHeader = ({ titulo, cantidad }) => {
         <div className="flex items-center gap-1.5 ml-1">
           <span className="text-gray-300 text-xs">—</span>
           {rangos.map((r) => (
-            <span key={r.label} className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-medium ${r.color}`}>
+            <span
+              key={r.label}
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-medium ${r.color}`}
+            >
               <span className="font-semibold">{r.label}</span>
               <span className="opacity-75">{r.rango}</span>
             </span>
@@ -623,8 +909,12 @@ const TarifarioPage = () => {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-[#7B1FA2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
             </svg>
           </div>
           <div>
@@ -636,25 +926,35 @@ const TarifarioPage = () => {
 
       {/* Contenido */}
       <div className="p-6">
-        {[...ORDEN_AREAS, ...Object.keys(serviciosAgrupados).filter(a => !ORDEN_AREAS.includes(a))]
-          .filter(areaNombre => serviciosAgrupados[areaNombre])
-          .map(areaNombre => { const areaServicios = serviciosAgrupados[areaNombre]; return (
-          <div key={areaNombre} className="mb-8">
-            <SeccionHeader titulo={areaNombre} cantidad={areaServicios.length} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {areaServicios.map((servicio) => (
-                <ServicioCard
-                  key={servicio.id}
-                  servicio={servicio}
-                  tarifas={tarifasMap[servicio.id] ?? []}
-                  motivosMap={motivosMap}
-                  onClick={handleServicioClick}
-                  isSelected={selectedServicio?.id === servicio.id && panelOpen}
-                />
-              ))}
-            </div>
-          </div>
-        ); })}
+        {/* ── Convenio Aldeas Infantiles SOS ── */}
+        <AldeasConvenioSection />
+
+        {/* ── Servicios por área ── */}
+        {[
+          ...ORDEN_AREAS,
+          ...Object.keys(serviciosAgrupados).filter((a) => !ORDEN_AREAS.includes(a)),
+        ]
+          .filter((areaNombre) => serviciosAgrupados[areaNombre])
+          .map((areaNombre) => {
+            const areaServicios = serviciosAgrupados[areaNombre];
+            return (
+              <div key={areaNombre} className="mb-8">
+                <SeccionHeader titulo={areaNombre} cantidad={areaServicios.length} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {areaServicios.map((servicio) => (
+                    <ServicioCard
+                      key={servicio.id}
+                      servicio={servicio}
+                      tarifas={tarifasMap[servicio.id] ?? []}
+                      motivosMap={motivosMap}
+                      onClick={handleServicioClick}
+                      isSelected={selectedServicio?.id === servicio.id && panelOpen}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
 
         {documentosTarifa.length > 0 && (
           <div className="mb-8">
@@ -676,8 +976,12 @@ const TarifarioPage = () => {
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
             <p className="text-gray-400">No hay servicios disponibles</p>
@@ -696,10 +1000,7 @@ const TarifarioPage = () => {
       )}
 
       {panelDocOpen && selectedDocumento && (
-        <DetallePanelDocumento
-          doc={selectedDocumento}
-          onClose={handleClosePanelDoc}
-        />
+        <DetallePanelDocumento doc={selectedDocumento} onClose={handleClosePanelDoc} />
       )}
     </div>
   );

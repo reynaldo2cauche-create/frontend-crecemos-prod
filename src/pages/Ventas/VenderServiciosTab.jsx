@@ -1207,7 +1207,14 @@ const VenderServiciosTab = ({
       ? `${paqueteNombre}  - ${servicioNombre}${motivoNombre ? ` [${motivoNombre}]` : ''}`
       : `${sesiones} ${sesiones === 1 ? 'Sesión' : 'Sesiones'} de ${motivoNombre ? motivoNombre + ' - ' : ''}${servicioNombre}`;
 
-    setLineas(prev => [...prev, {
+    // Regla clínica (solo informativa en UI — el backend hace el split real)
+  const SERVICIOS_REGLA_EVAL = [4, 7, 12];
+  const aplicaReglaEval =
+    SERVICIOS_REGLA_EVAL.includes(tarifaSeleccionada.servicio_id) &&
+    motivoNombre.toLowerCase().includes('evaluaci') &&
+    sesiones >= 2;
+
+  setLineas(prev => [...prev, {
       id: Date.now(),
       tipo_item_venta: TIPOS_ITEM_VENTA.SERVICIO,
       tipo_venta_servicio_id: tipoVentaId,
@@ -1229,6 +1236,7 @@ const VenderServiciosTab = ({
       paquete_combo_id: null,
       _combo_precio_total: 0,
       _combo_id: null,
+      _regla_evaluacion: aplicaReglaEval,
     }]);
 
     setBusqueda('');
@@ -1711,6 +1719,11 @@ const VenderServiciosTab = ({
                           ) : (
                             <span className={`px-2 py-0.5 text-xs font-semibold rounded ${linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                               {linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? 'Paquete' : 'Sesión'}
+                            </span>
+                          )}
+                          {linea._regla_evaluacion && (
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-700">
+                              última sesión → Informe Verbal
                             </span>
                           )}
                         </div>

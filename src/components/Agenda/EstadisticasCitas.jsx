@@ -11,6 +11,8 @@ const EstadisticasCitas = ({
   const [estadisticas, setEstadisticas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const esTerapeuta = user?.rol?.id === 4; 
 
   useEffect(() => {
     cargarEstadisticas();
@@ -81,6 +83,7 @@ const EstadisticasCitas = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Total del AÑO (sin reuniones clínicas) */}
+      {!esTerapeuta && (
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
@@ -95,7 +98,7 @@ const EstadisticasCitas = ({
             </div>
           </div>
         </div>
-      </div>
+        </div> )}
 
       {/* 2. Total del MES (sin reuniones clínicas) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
