@@ -72,7 +72,8 @@ useEffect(() => {
     setPaginaActual(1);
     const primerPaquete = listado.servicios[servicioSeleccionado]?.paquetes?.[0];
     if (primerPaquete) {
-      setPaquetesAbiertos({ [primerPaquete.paquete_id]: true });
+      const primeraVentaKey = primerPaquete.venta_id ?? 'sin-venta';
+      setPaquetesAbiertos({ [primeraVentaKey]: true });
     }
   }, [servicioSeleccionado, listado]);
 
@@ -183,75 +184,48 @@ useEffect(() => {
 
   const servicioActual = listado.servicios[servicioSeleccionado];
 
-  // ── NUEVO: Agrupar paquetes-combo por paquete_combo_id ────────────────
-const agruparPaquetesCombo = (paquetes) => {
-  const combos = {};
-  const individuales = [];
-  let sinVenta = [];
+  // Agrupar todos los paquetes por venta_id
+const agruparPorVenta = (paquetes) => {
+  const ventasMap = {};
+  const sinVentaArr = [];
 
   paquetes.forEach(paquete => {
     if (!paquete.venta_id) {
-      sinVenta.push(paquete);
+      sinVentaArr.push(paquete);
       return;
     }
-
-    if (paquete.paquete_combo_id) {
-      const key = paquete.paquete_combo_id;
-
-      if (!combos[key]) {
-        combos[key] = {
-          esGrupoCombo: true,
-          paquete_combo_id: key,
-          paquete_combo_nombre: paquete.paquete_nombre,
-          subpaquetes: [],
-        };
-      }
-
-      combos[key].subpaquetes.push(paquete);
-    } else {
-      individuales.push(paquete);
+    const key = paquete.venta_id;
+    if (!ventasMap[key]) {
+      ventasMap[key] = { venta_id: key, paquetes: [] };
     }
+    ventasMap[key].paquetes.push(paquete);
   });
 
-  const combosArray = Object.values(combos);
+  const ventas = Object.values(ventasMap);
 
-  const grupoSinVenta = sinVenta.length > 0 ? [{
-    esGrupoSinVenta: true,
-    paquetes: sinVenta
-  }] : [];
-
-  // Combinar todas las ventas (combos e individuales)
-  const todasLasVentas = [...combosArray, ...individuales];
-
-  // Ordenar las ventas por fecha de venta (más reciente primero)
-  todasLasVentas.sort((a, b) => {
-    // Obtener la fecha de la primera cita de cada paquete
-    const fechaA = a.esGrupoCombo
-      ? a.subpaquetes[0]?.citas[0]?.fecha_pago
-      : a.citas[0]?.fecha_pago;
-    const fechaB = b.esGrupoCombo
-      ? b.subpaquetes[0]?.citas[0]?.fecha_pago
-      : b.citas[0]?.fecha_pago;
-
+  ventas.sort((a, b) => {
+    const fechaA = a.paquetes.flatMap(p => p.citas).find(c => c.fecha_pago)?.fecha_pago;
+    const fechaB = b.paquetes.flatMap(p => p.citas).find(c => c.fecha_pago)?.fecha_pago;
     if (!fechaA && !fechaB) return 0;
     if (!fechaA) return 1;
     if (!fechaB) return -1;
-
-    // Ordenar descendente (más reciente primero)
     return new Date(fechaB).getTime() - new Date(fechaA).getTime();
   });
 
-  // Retornar: ventas ordenadas primero, atenciones directas al final
-  return [...todasLasVentas, ...grupoSinVenta];
+  if (sinVentaArr.length > 0) {
+    ventas.push({ venta_id: null, esGrupoSinVenta: true, paquetes: sinVentaArr });
+  }
+
+  return ventas;
 };
 
-  const paquetesAgrupados = agruparPaquetesCombo(servicioActual.paquetes);
+  const ventasAgrupadas = agruparPorVenta(servicioActual.paquetes);
 
-  const totalPaquetes = paquetesAgrupados.length;
-  const totalPaginas = Math.ceil(totalPaquetes / PAQUETES_POR_PAGINA);
+  const totalVentas = ventasAgrupadas.length;
+  const totalPaginas = Math.ceil(totalVentas / PAQUETES_POR_PAGINA);
   const inicio = (paginaActual - 1) * PAQUETES_POR_PAGINA;
   const fin = inicio + PAQUETES_POR_PAGINA;
-  const paquetesPaginados = paquetesAgrupados.slice(inicio, fin);
+  const ventasPaginadas = ventasAgrupadas.slice(inicio, fin);
 
   return (
     <div className="mt-8">
@@ -302,381 +276,17 @@ const agruparPaquetesCombo = (paquetes) => {
         })}
       </div>
 
-      {/* Paquetes */}
+      {/* Ventas */}
       <div className="flex flex-col gap-3">
-        {paquetesPaginados.map((item, itemIdx) => {
-          const indiceReal = inicio + itemIdx;
+        {ventasPaginadas.map((venta) => {
+          const ventaKey = venta.venta_id ?? 'sin-venta';
+          const abierto = !!paquetesAbiertos[ventaKey];
+          const esSinVenta = !venta.venta_id;
 
+          const todasCitas = venta.paquetes.flatMap(p => p.citas);
+          const primeraCitaConInfo = todasCitas.find(c => c.comprobante || c.fecha_pago);
 
-
-                // 🔥 NUEVO: GRUPO SIN VENTA
-if (item.esGrupoSinVenta) {
-  const abierto = !!paquetesAbiertos['sin-venta'];
-
-  const todasCitas = item.paquetes.flatMap(p => p.citas);
-
-  const citasOrdenadas = [...todasCitas].sort((a, b) => {
-    if (a.programada === false) return 1;
-    if (b.programada === false) return -1;
-    const fechaDiff = new Date(a.fecha || 0) - new Date(b.fecha || 0);
-    if (fechaDiff !== 0) return fechaDiff;
-    return (a.hora || '').localeCompare(b.hora || '');
-  });
-
-  const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
-  const citasPendientes = citasOrdenadas.filter(c => c.programada === false);
-
-  // Contar asistencias: solo si AMBOS terapeuta Y admisión marcaron estado 7
-  const asistidas = citasProgramadas.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
-  const noAsistidas = citasProgramadas.filter(c =>
-    (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
-    (c.terapeuta_estado_id && c.terapeuta_estado_id !== 7)
-  ).length;
-  const pendientes = citasProgramadas.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
-
-  return (
-    <div className={`rounded-xl border transition-all ${
-      abierto ? 'border-gray-400 shadow-sm' : 'border-gray-200'
-    }`}>
-
-      {/* HEADER — MISMO DISEÑO */}
-      <button
-        onClick={() => togglePaquete('sin-venta')}
-        className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-          abierto ? 'bg-gray-100 rounded-b-none' : 'bg-white hover:bg-gray-50'
-        }`}
-      >
-        <div className="flex items-start gap-3">
-
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-200">
-            <Package className="w-4 h-4 text-gray-600" />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-
-              <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-gray-200 text-gray-700">
-                Sin venta
-              </span>
-
-              <span className="text-sm font-semibold text-gray-800">
-                Atenciones directas
-              </span>
-            </div>
-
-            {/* Nombre del paciente */}
-            {pacienteNombre && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                <span className="text-xs text-gray-500 font-medium">{pacienteNombre}</span>
-              </div>
-            )}
-
-            {/* stats IGUAL que tu diseño */}
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              {asistidas > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-green-600 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  {asistidas} asistió
-                </span>
-              )}
-              {noAsistidas > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-red-500 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  {noAsistidas} no asistió
-                </span>
-              )}
-              {pendientes > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                  {pendientes} pendiente
-                </span>
-              )}
-              {citasPendientes.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                  {citasPendientes.length} por agendar
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="text-gray-500 mt-1">
-            {abierto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </div>
-      </button>
-
-      {/* TABLA — MISMA QUE YA TIENES */}
-      {abierto && (
-        <div className="border-t border-gray-200">
-
-          <div
-            className="grid px-4 py-2 bg-gray-50 border-b border-gray-100"
-            style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
-          >
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">#</span>
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Fecha</span>
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Hora</span>
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Especialista</span>
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Motivo</span>
-            <span className="text-[10px] font-semibold text-gray-400 uppercase">Asistencia</span>
-          </div>
-
-          {citasOrdenadas.map((cita, i) => {
-            const esPendiente = cita.programada === false;
-
-            return (
-              <div
-                key={i}
-                className={`grid items-center px-4 py-2.5 border-b border-gray-50 ${
-                  esPendiente
-                    ? 'bg-blue-50/30 border-dashed'
-                    : i % 2 === 0
-                      ? 'bg-white'
-                      : 'bg-gray-50/30'
-                }`}
-                style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
-              >
-                <span className="text-xs text-gray-400">{i + 1}</span>
-                <span className="text-xs">
-                  {esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
-                </span>
-                <span className="text-xs">
-                  {esPendiente ? '-' : formatearHora(cita.hora)}
-                </span>
-                <span className="text-xs">{cita.especialista || '-'}</span>
-                <span className="text-xs">{cita.motivo_nombre}</span>
-                <AsistenciaBadge
-                  recepcion_estado_id={cita.recepcion_estado_id}
-                  terapeuta_estado_id={cita.terapeuta_estado_id}
-                  programada={cita.programada}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-          // ── NUEVO: Renderizar paquete-combo agrupado ──────────────────
-          if (item.esGrupoCombo) {
-            const comboAbierto = !!paquetesAbiertos[`combo-${item.paquete_combo_id}`];
-
-            // Combinar TODAS las citas de todos los subpaquetes
-            const todasCitasCombo = item.subpaquetes.flatMap(sp => sp.citas);
-            const primeraCitaCombo = item.subpaquetes
-            .flatMap(sp => sp.citas)
-            .find(c => c.venta_id);
-
-            // Ordenar citas: primero programadas por fecha y hora, luego pendientes
-            const citasOrdenadasCombo = [...todasCitasCombo].sort((a, b) => {
-              if (a.programada === false) return 1;
-              if (b.programada === false) return -1;
-              const fechaDiff = new Date(a.fecha || 0) - new Date(b.fecha || 0);
-              if (fechaDiff !== 0) return fechaDiff;
-              return (a.hora || '').localeCompare(b.hora || '');
-            });
-
-            const citasProgramadasCombo = citasOrdenadasCombo.filter(c => c.programada !== false);
-            const citasPendientesCombo = citasOrdenadasCombo.filter(c => c.programada === false);
-
-            // Contar asistencias para combos: solo si AMBOS terapeuta Y admisión marcaron estado 7
-            const asistidasCombo = citasProgramadasCombo.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
-            const noAsistidasCombo = citasProgramadasCombo.filter(c =>
-              (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
-              (c.terapeuta_estado_id && c.terapeuta_estado_id !== 7)
-            ).length;
-            const pendientesCombo = citasProgramadasCombo.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
-
-            const sesionesTotalesCombo = item.subpaquetes.reduce((sum, sp) => sum + (sp.sesiones_totales || sp.citas.length), 0);
-            const sesionesUsadasCombo = citasProgramadasCombo.length;
-            const porcentajeCombo = sesionesTotalesCombo > 0
-              ? Math.round((sesionesUsadasCombo / sesionesTotalesCombo) * 100)
-              : 0;
-
-            return (
-              <div key={`combo-${item.paquete_combo_id}`} className={`rounded-xl border transition-all ${
-                comboAbierto ? 'border-purple-500/30 shadow-lg' : 'border-purple-200'
-              }`}>
-                {/* Header del paquete-combo */}
-                <button
-                  onClick={() => togglePaquete(`combo-${item.paquete_combo_id}`)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-                    comboAbierto ? 'bg-purple-50 rounded-b-none' : 'bg-white hover:bg-purple-50/50'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      comboAbierto ? 'bg-purple-500/20' : 'bg-purple-100'
-                    }`}>
-                      <Package className={`w-4 h-4 ${comboAbierto ? 'text-purple-700' : 'text-purple-500'}`} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700">
-                          Paquete Combo
-                        </span>
-                        <span className={`text-sm font-semibold ${comboAbierto ? 'text-purple-700' : 'text-gray-800'}`}>
-                          {item.paquete_combo_nombre}
-                        </span>
-
-                      {primeraCitaCombo?.fecha_pago && (
-                          <>
-                            <span className="text-gray-300">·</span>
-                            <span className="text-xs text-gray-500">
-                              {formatearFecha(primeraCitaCombo.fecha_pago)}
-                            </span>
-                          </>
-                        )}
-
-                        {primeraCitaCombo?.comprobante && (
-                          <>
-                            <span className="text-gray-300">·</span>
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                abrirDetalleVenta(primeraCitaCombo);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  abrirDetalleVenta(primeraCitaCombo);
-                                }
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-purple-600 hover:text-white hover:bg-purple-600 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Receipt className="w-3 h-3" />
-                              {primeraCitaCombo.comprobante}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Nombre del paciente */}
-                      {pacienteNombre && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 font-medium">{pacienteNombre}</span>
-                        </div>
-                      )}
-
-                      {/* Mini stats del combo */}
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <span className="text-[10px] text-gray-400">
-                          {sesionesUsadasCombo}/{sesionesTotalesCombo} sesiones
-                        </span>
-                        {asistidasCombo > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-green-600 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            {asistidasCombo} asistió
-                          </span>
-                        )}
-                        {noAsistidasCombo > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-red-500 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                            {noAsistidasCombo} no asistió
-                          </span>
-                        )}
-                        {pendientesCombo > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                            {pendientesCombo} pendiente{pendientesCombo > 1 ? 's' : ''}
-                          </span>
-                        )}
-                        {citasPendientesCombo.length > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                            {citasPendientesCombo.length} por agendar
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Barra de progreso del combo */}
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-purple-500 rounded-full transition-all"
-                            style={{ width: `${porcentajeCombo}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">{porcentajeCombo}%</span>
-                      </div>
-                    </div>
-
-                    <div className={`flex-shrink-0 mt-1 ${comboAbierto ? 'text-purple-600' : 'text-gray-400'}`}>
-                      {comboAbierto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
-                  </div>
-                </button>
-
-                {/* Tabla única con TODAS las citas del combo */}
-                {comboAbierto && (
-                  <div className="border-t border-purple-200">
-                    <div className="grid px-4 py-2 bg-purple-50 border-b border-purple-100"
-                      style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">#</span>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Fecha</span>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Hora</span>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Especialista</span>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Motivo</span>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Asistencia</span>
-                    </div>
-
-                    {citasOrdenadasCombo.map((cita, citaIdx) => {
-                      const esPendiente = cita.programada === false;
-                      return (
-                        <div
-                          key={cita.id ?? `pending-${citaIdx}`}
-                          className={`grid items-center px-4 py-2.5 border-b border-purple-50 last:border-b-0 transition-colors ${
-                            esPendiente
-                              ? 'bg-blue-50/30 border-dashed'
-                              : citaIdx % 2 === 0
-                                ? 'bg-white hover:bg-purple-50/20'
-                                : 'bg-purple-50/20 hover:bg-purple-50/30'
-                          }`}
-                          style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
-                        >
-                          <span className={`text-xs font-semibold ${esPendiente ? 'text-blue-300' : 'text-gray-400'}`}>
-                            {citaIdx + 1}
-                          </span>
-                          <span className={`text-xs font-medium ${esPendiente ? 'text-blue-300 italic' : 'text-gray-700'}`}>
-                            {esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
-                          </span>
-                          <span className={`text-xs ${esPendiente ? 'text-blue-300' : 'text-gray-500'}`}>
-                            {esPendiente ? '-' : formatearHora(cita.hora)}
-                          </span>
-                          <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
-                            {cita.especialista || '-'}
-                          </span>
-                          <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
-                            {cita.motivo_nombre}
-                          </span>
-                          <AsistenciaBadge
-                            recepcion_estado_id={cita.recepcion_estado_id}
-                            terapeuta_estado_id={cita.terapeuta_estado_id}
-                            programada={cita.programada}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // ── Renderizar paquete individual (código original) ──────────
-          const paquete = item;
-          const abierto = !!paquetesAbiertos[paquete.paquete_id];
-          const esSinVenta = false;
-
-          const citasOrdenadas = [...paquete.citas].sort((a, b) => {
+          const citasOrdenadas = [...todasCitas].sort((a, b) => {
             if (a.programada === false) return 1;
             if (b.programada === false) return -1;
             const fechaDiff = new Date(a.fecha || 0) - new Date(b.fecha || 0);
@@ -684,11 +294,9 @@ if (item.esGrupoSinVenta) {
             return (a.hora || '').localeCompare(b.hora || '');
           });
 
-          // ── Separar programadas vs pendientes ──────────────────
           const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
-          const citasPendientes  = citasOrdenadas.filter(c => c.programada === false);
+          const citasPorAgendar  = citasOrdenadas.filter(c => c.programada === false);
 
-          // Contar asistencias para paquetes individuales: solo si AMBOS terapeuta Y admisión marcaron estado 7
           const asistidas   = citasProgramadas.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
           const noAsistidas = citasProgramadas.filter(c =>
             (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
@@ -696,117 +304,81 @@ if (item.esGrupoSinVenta) {
           ).length;
           const pendientes  = citasProgramadas.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
 
-          // Primera cita programada para mostrar metadata del paquete
-          const primeraCita = citasProgramadas[0] ?? citasPendientes[0];
-
-          const esCitaIndividual = citasOrdenadas.length === 1 && citasPendientes.length === 0;
-          const esPaqueteCombo = false; // Los combos ya se renderizaron antes
-      // 🔥 CAMBIO AQUÍ
-        const nombrePaquete = esSinVenta
-          ? 'Atención directa'
-          : esCitaIndividual
-            ? 'Cita individual'
-            : `Paquete ${indiceReal + 1}`;
-
-          // ── NUEVO: barra de progreso sesiones ─────────────────────────
-          const sesionesTotales  = paquete.sesiones_totales || citasOrdenadas.length;
-          const sesionesUsadas   = citasProgramadas.length;
-          const porcentaje       = sesionesTotales > 0
-            ? Math.round((sesionesUsadas / sesionesTotales) * 100)
-            : 0;
+          const sesionesTotales = citasOrdenadas.length;
+          const sesionesUsadas  = citasProgramadas.length;
+          const porcentaje      = sesionesTotales > 0 ? Math.round((sesionesUsadas / sesionesTotales) * 100) : 0;
 
           return (
-            <div key={paquete.paquete_id} className={`rounded-xl border transition-all ${
-              abierto ? 'border-[#7B1FA2]/20 shadow-sm' : 'border-gray-100'
+            <div key={ventaKey} className={`rounded-xl border transition-all ${
+              abierto
+                ? esSinVenta ? 'border-gray-400 shadow-sm' : 'border-[#7B1FA2]/20 shadow-sm'
+                : esSinVenta ? 'border-gray-200' : 'border-gray-100'
             }`}>
 
-              {/* Header del paquete */}
+              {/* Header de la venta */}
               <button
-                onClick={() => togglePaquete(paquete.paquete_id)}
+                onClick={() => togglePaquete(ventaKey)}
                 className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-                  abierto ? 'bg-[#7B1FA2]/5 rounded-b-none' : 'bg-white hover:bg-gray-50'
+                  abierto
+                    ? esSinVenta ? 'bg-gray-100 rounded-b-none' : 'bg-[#7B1FA2]/5 rounded-b-none'
+                    : 'bg-white hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-start gap-3">
-
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    abierto ? 'bg-[#7B1FA2]/10' : 'bg-gray-100'
+                    esSinVenta ? 'bg-gray-200' : abierto ? 'bg-[#7B1FA2]/10' : 'bg-gray-100'
                   }`}>
-                    <Package className={`w-4 h-4 ${abierto ? 'text-[#7B1FA2]' : 'text-gray-400'}`} />
+                    {esSinVenta
+                      ? <Package className="w-4 h-4 text-gray-500" />
+                      : <CreditCard className={`w-4 h-4 ${abierto ? 'text-[#7B1FA2]' : 'text-gray-400'}`} />
+                    }
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Badge tipo */}
-                          <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
-                      esSinVenta
-                        ? 'bg-gray-200 text-gray-700'
-                        : esCitaIndividual
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {esSinVenta
-                        ? 'Sin venta'
-                        : esCitaIndividual
-                          ? 'Cita Individual'
-                          : 'Paquete'}
-                    </span>
-
-
-                      <span className={`text-sm font-semibold ${abierto ? 'text-[#7B1FA2]' : 'text-gray-800'}`}>
-                        {nombrePaquete}
+                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
+                        esSinVenta ? 'bg-gray-200 text-gray-700' : 'bg-[#7B1FA2]/10 text-[#7B1FA2]'
+                      }`}>
+                        {esSinVenta ? 'Sin venta' : 'Venta'}
                       </span>
 
-                      {primeraCita?.fecha_pago && (
+                      {esSinVenta ? (
+                        <span className="text-sm font-semibold text-gray-800">Atenciones directas</span>
+                      ) : (
                         <>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-gray-500">{formatearFecha(primeraCita.fecha_pago)}</span>
+                          {primeraCitaConInfo?.fecha_pago && (
+                            <span className="text-xs text-gray-500">
+                              {formatearFecha(primeraCitaConInfo.fecha_pago)}
+                            </span>
+                          )}
+                          {primeraCitaConInfo?.comprobante && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => { e.stopPropagation(); abrirDetalleVenta(primeraCitaConInfo); }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault(); e.stopPropagation();
+                                    abrirDetalleVenta(primeraCitaConInfo);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-[#7B1FA2] hover:text-white hover:bg-[#7B1FA2] rounded-md transition-colors cursor-pointer"
+                              >
+                                <Receipt className="w-3 h-3" />
+                                {primeraCitaConInfo.comprobante}
+                              </span>
+                            </>
+                          )}
                         </>
                       )}
-
-              {primeraCita?.comprobante && (
-                <>
-                  <span className="text-gray-300">·</span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      abrirDetalleVenta(primeraCita);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        abrirDetalleVenta(primeraCita);
-                      }
-                    }}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-[#7B1FA2] hover:text-white hover:bg-[#7B1FA2] rounded-md transition-colors cursor-pointer"
-                    title={!primeraCita.venta_id ? 'Información de venta no disponible' : 'Ver detalle de venta'}
-                  >
-                    <Receipt className="w-3 h-3" />
-                    {primeraCita.comprobante}
-                  </span>
-                </>
-              )}
                     </div>
 
-
-                    {/* Nombre del paciente */}
-                    {pacienteNombre && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                        <span className="text-xs text-gray-500 font-medium">{pacienteNombre}</span>
-                      </div>
-                    )}
-
-                    {/* Mini stats */}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {sesionesTotales > 1 && (
-                        <span className="text-[10px] text-gray-400">
-                          {sesionesUsadas}/{sesionesTotales} sesiones
-                        </span>
-                      )}
+                      <span className="text-[10px] text-gray-400">
+                        {sesionesUsadas}/{sesionesTotales} sesiones
+                      </span>
                       {asistidas > 0 && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-green-600 font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -825,21 +397,19 @@ if (item.esGrupoSinVenta) {
                           {pendientes} pendiente{pendientes > 1 ? 's' : ''}
                         </span>
                       )}
-                      {/* ── NUEVO: contador sesiones por agendar ── */}
-                      {citasPendientes.length > 0 && (
+                      {citasPorAgendar.length > 0 && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                          {citasPendientes.length} por agendar
+                          {citasPorAgendar.length} por agendar
                         </span>
                       )}
                     </div>
 
-                    {/* ── NUEVO: barra de progreso ───────────────────────── */}
                     {sesionesTotales > 1 && (
                       <div className="mt-2 flex items-center gap-2">
                         <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#7B1FA2] rounded-full transition-all"
+                            className={`h-full rounded-full transition-all ${esSinVenta ? 'bg-gray-400' : 'bg-[#7B1FA2]'}`}
                             style={{ width: `${porcentaje}%` }}
                           />
                         </div>
@@ -848,15 +418,15 @@ if (item.esGrupoSinVenta) {
                     )}
                   </div>
 
-                  <div className={`flex-shrink-0 mt-1 ${abierto ? 'text-[#7B1FA2]' : 'text-gray-400'}`}>
+                  <div className={`flex-shrink-0 mt-1 ${abierto ? (esSinVenta ? 'text-gray-500' : 'text-[#7B1FA2]') : 'text-gray-400'}`}>
                     {abierto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </div>
               </button>
 
-              {/* Lista de citas */}
+              {/* Tabla de citas */}
               {abierto && (
-                <div className="border-t border-[#7B1FA2]/10">
+                <div className={`border-t ${esSinVenta ? 'border-gray-200' : 'border-[#7B1FA2]/10'}`}>
                   <div className="grid px-4 py-2 bg-gray-50 border-b border-gray-100"
                     style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}>
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">#</span>
@@ -874,7 +444,6 @@ if (item.esGrupoSinVenta) {
                         key={cita.id ?? `pending-${citaIdx}`}
                         className={`grid items-center px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${
                           esPendiente
-                            // ── NUEVO: fila punteada para slots por agendar ──
                             ? 'bg-blue-50/30 border-dashed'
                             : citaIdx % 2 === 0
                               ? 'bg-white hover:bg-gray-50/60'
@@ -916,7 +485,7 @@ if (item.esGrupoSinVenta) {
       {totalPaginas > 1 && (
         <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
           <div className="text-xs text-gray-500">
-            Mostrando {inicio + 1}-{Math.min(fin, totalPaquetes)} de {totalPaquetes} paquetes
+            Mostrando {inicio + 1}-{Math.min(fin, totalVentas)} de {totalVentas} ventas
           </div>
           <div className="flex items-center gap-2">
             <button
