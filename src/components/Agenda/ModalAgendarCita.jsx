@@ -913,7 +913,7 @@ const ModalAgendarCita = ({
             ventas = [
               {
                 id: citaEditando.venta_servicio_detalle_id,
-                descripcion: `#${citaEditando.venta_servicio_detalle_id} — ${citaEditando.servicio?.nombre || 'Servicio'}${citaEditando.motivo?.nombre ? ` - ${citaEditando.motivo.nombre}` : ''} (sin sesiones disponibles)`,
+                descripcion: `#${citaEditando.venta_servicio_detalle_id} — ${citaEditando.servicio?.nombre || 'Servicio'}${citaEditando.motivo?.nombre ? ` - ${citaEditando.motivo.nombre}` : ''} (compra vinculada)`,
                 sesiones_disponibles: 0,
               },
               ...ventas,

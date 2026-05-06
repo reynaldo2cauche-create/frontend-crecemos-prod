@@ -442,7 +442,7 @@ const Agenda = () => {
         encargado,
         firma_documento,
         user_id_crea: citaCompleta.user_id_crea || currentUser?.id,
-        venta_servicio_detalle_id: citaCompleta.compra_id || null
+        venta_servicio_detalle_id: citaCompleta.venta_servicio_detalle_id || null
       });
 
       setModalAbierto(true);
