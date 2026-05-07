@@ -33,10 +33,11 @@ export const ListaPacientes = () => {
   const [filters, setFilters] = useState({
     distritoId: '',
     estadoId: '',
+    estadoServicioId: '',
     numeroDocumento: '',
     nombreCompleto: '',
     servicioId: '',
-    terapeutaId: '' // ✅ AGREGADO
+    terapeutaId: ''
   });
   const [numeroDocumentoInput, setNumeroDocumentoInput] = useState('');
   const [nombreCompletoInput, setNombreCompletoInput] = useState('');
@@ -93,6 +94,9 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
         if (searchParams.nombreCompleto) params.append('nombreCompleto', searchParams.nombreCompleto);
         if (searchParams.servicioId && searchParams.servicioId !== '') {
           params.append('servicioId', searchParams.servicioId);
+        }
+        if (searchParams.estadoServicioId && searchParams.estadoServicioId !== '') {
+          params.append('estadoServicioId', searchParams.estadoServicioId);
         }
         if (searchParams.terapeutaId && searchParams.terapeutaId !== '') {
           params.append('terapeutaId', searchParams.terapeutaId);
@@ -234,6 +238,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
         nombreCompleto: nombreCompletoInput || '',
         distritoId: filters.distritoId || '',
         estadoId: filters.estadoId || '',
+        estadoServicioId: filters.estadoServicioId || '',
         terapeutaId: filters.terapeutaId || '',
         ...(canViewServiceInfo(user) && { servicioId: filters.servicioId || '' })
       };
@@ -263,6 +268,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
     setFilters({
       distritoId: '',
       estadoId: '',
+      estadoServicioId: '',
       numeroDocumento: '',
       nombreCompleto: '',
       terapeutaId: '',
@@ -397,7 +403,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
     );
   }
 
-  const filtrosActivos = searchParams.distritoId || searchParams.estadoId || searchParams.servicioId || searchParams.numeroDocumento || searchParams.nombreCompleto || (searchParams.terapeutaId && !esJefe);
+  const filtrosActivos = searchParams.distritoId || searchParams.estadoId || searchParams.estadoServicioId || searchParams.servicioId || searchParams.numeroDocumento || searchParams.nombreCompleto || (searchParams.terapeutaId && !esJefe);
 
  const etiquetaVistaJefe = esJefe
   ? filtroJefe === 'propio' || filtroJefe === ''
@@ -428,7 +434,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
       {/* Estadísticas Cards - Estilo RRHH - Una sola fila */}
       
-      {estadisticas  && user?.rol?.id !== ROLES.TERAPEUTA &&  (
+      {estadisticas && user?.rol?.id !== ROLES.TERAPEUTA && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {/* Pacientes Registrados este mes */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
@@ -458,7 +464,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
             </div>
           </div>
 
-          {/* Total de Pacientes en Tratamiento */}
+          {/* Total en Tratamiento (suma de servicios activos) */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-gray-600">En Tratamiento</span>
@@ -467,16 +473,14 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
               </div>
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              {estadisticas?.estadisticas
-                ?.filter(est => ['Entrevista', 'Evaluacion', 'Terapia'].includes(est.estadoNombre))
-                .reduce((sum, est) => sum + est.total, 0) || 0}
+              {(estadisticas?.estadisticas || [])
+                .filter(est => ['Nuevo', 'Entrevista', 'Evaluacion', 'Terapia'].includes(est.estadoNombre))
+                .reduce((sum, est) => sum + est.total, 0)}
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">
-              Entrevista, Evaluación y Terapia
-            </div>
+            <div className="text-xs text-gray-500 mt-0.5">Nuevo, Entrevista, Evaluación y Terapia</div>
           </div>
 
-          {/* Desglose por Estados - Mismo card en la misma fila */}
+          {/* Desglose por Estado */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-gray-600">Por Estado</span>
@@ -485,26 +489,18 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              {estadisticas.estadisticas.map((est) => {
-                // Colores específicos por estado
-                const getEstadoColor = (nombreEstado) => {
-                  const colorMap = {
-                    'Nuevo': { bg: 'bg-green-100', text: 'text-green-700' },
-                    'Entrevista': { bg: 'bg-blue-100', text: 'text-blue-700' },
-                    'Evaluacion': { bg: 'bg-orange-100', text: 'text-orange-700' },
-                    'Terapia': { bg: 'bg-purple-100', text: 'text-purple-700' },
-                    'Inactivo': { bg: 'bg-gray-100', text: 'text-gray-700' }
-                  };
-                  return colorMap[nombreEstado] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+              {(estadisticas?.estadisticas || []).map((est) => {
+                const colorMap = {
+                  'Nuevo':      { bg: 'bg-green-100',  text: 'text-green-700'  },
+                  'Entrevista': { bg: 'bg-blue-100',   text: 'text-blue-700'   },
+                  'Evaluacion': { bg: 'bg-orange-100', text: 'text-orange-700' },
+                  'Terapia':    { bg: 'bg-purple-100', text: 'text-purple-700' },
+                  'Inactivo':   { bg: 'bg-gray-100',   text: 'text-gray-700'   },
                 };
-
-                const color = getEstadoColor(est.estadoNombre);
-
+                const color = colorMap[est.estadoNombre] || { bg: 'bg-gray-100', text: 'text-gray-700' };
                 return (
-                  <div
-                    key={est.estadoId}
-                    className={`inline-flex items-center justify-center gap-0.5 ${color.bg} rounded px-1.5 py-0.5`}
-                  >
+                  <div key={est.estadoId}
+                    className={`inline-flex items-center justify-center gap-0.5 ${color.bg} rounded px-1.5 py-0.5`}>
                     <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{est.estadoNombre}</span>
                     <span className={`text-[10px] font-bold ${color.text}`}>{est.total}</span>
                   </div>
@@ -548,10 +544,10 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
                   </div>
                 )}
                 
-                {searchParams.estadoId && (
+                {searchParams.estadoServicioId && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg border border-[#7B1FA2]/30 text-sm">
                     <span className="font-medium text-[#7B1FA2]">Estado:</span>
-                    <span className="text-gray-700">{estados.find(e => e.id === parseInt(searchParams.estadoId))?.nombre}</span>
+                    <span className="text-gray-700">{estados.find(e => e.id === parseInt(searchParams.estadoServicioId))?.nombre}</span>
                   </div>
                 )}
                 
@@ -643,10 +639,10 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
                 </select>
               )}
 
-              {/* Estado */}
+              {/* Estado por servicio */}
               <select
-                value={filters.estadoId}
-                onChange={(e) => handleFilterChange('estadoId', e.target.value)}
+                value={filters.estadoServicioId}
+                onChange={(e) => handleFilterChange('estadoServicioId', e.target.value)}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
               >
                 <option value="">Todos los estados</option>

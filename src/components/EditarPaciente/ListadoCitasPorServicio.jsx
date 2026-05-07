@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronUp, CreditCard, User, Package, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import { getListadoCitasPorPaciente } from '../../services/citaService';
 import { getVentaServicioById } from '../../services/ventasService';
-import { DetalleVentaModal } from '../../pages/Ventas/HistorialVentasTab';
+import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 const PAQUETES_POR_PAGINA = 5;
 

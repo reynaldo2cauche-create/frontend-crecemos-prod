@@ -51,13 +51,42 @@ const formatearFecha = (fechaStr) => {
 
 const getEstadoColor = (nombreEstado) => {
   const colorMap = {
-    'Nuevo': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500' },
-    'Entrevista': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+    'Nuevo':      { bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200',  dot: 'bg-green-500'  },
+    'Entrevista': { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',   dot: 'bg-blue-500'   },
     'Evaluacion': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-500' },
-    'Terapia': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
-    'Inactivo': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-500' }
+    'Terapia':    { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
+    'Inactivo':   { bg: 'bg-gray-50',   text: 'text-gray-500',   border: 'border-gray-200',   dot: 'bg-gray-400'   },
   };
-  return colorMap[nombreEstado] || colorMap['Inactivo'];
+  return colorMap[nombreEstado] || { bg: 'bg-gray-50', text: 'text-gray-400', border: 'border-gray-200', dot: 'bg-gray-300' };
+};
+
+const ABREVIATURA_SERVICIO = {
+  1: 'TL', 2: 'PO', 3: 'TA', 4: 'PI', 5: 'EPC',
+  6: 'OV', 7: 'PTI', 8: 'TP', 9: 'TF', 10: 'TLA',
+};
+const SKIP = new Set(['de','del','la','el','y','en','con','para','a','o']);
+const getAbrev = (id, nombre) =>
+  ABREVIATURA_SERVICIO[id] ||
+  (nombre || '').split(' ').filter(w => w && !SKIP.has(w.toLowerCase())).map(w => w[0]).join('').toUpperCase().slice(0, 3) || '?';
+
+const ServicioChips = ({ servicios }) => {
+  if (!servicios?.length) return <span className="text-xs text-gray-400">Sin servicios</span>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {servicios.map((s, i) => {
+        const colors = getEstadoColor(s.estado_nombre);
+        return (
+          <span
+            key={s.id ?? i}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${colors.bg} ${colors.text} ${colors.border}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${colors.dot} flex-shrink-0`} />
+            {s.servicio_nombre} - {s.estado_nombre || 'Sin estado'}
+          </span>
+        );
+      })}
+    </div>
+  );
 };
 
 // Función para construir la URL del logo igual que en EditarPacientePage
@@ -173,8 +202,6 @@ const ConveniosDisplay = ({ pacienteId, convenios: propConvenios }) => {
 
 // Tarjeta minimalista con colores balanceados
 const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
-  const estadoColors = getEstadoColor(paciente.estado?.nombre);
-  
   return (
     <div
       onClick={onClick}
@@ -203,20 +230,10 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="mb-2">
             <h3 className="font-bold text-gray-900 text-sm leading-tight">
               {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
             </h3>
-            
-            <div className={`
-              flex items-center gap-1.5 px-2.5 py-1 rounded-lg border flex-shrink-0
-              ${estadoColors.bg} ${estadoColors.border}
-            `}>
-              <div className={`w-1.5 h-1.5 rounded-full ${estadoColors.dot}`} />
-              <span className={`text-[10px] font-semibold ${estadoColors.text} uppercase tracking-wide`}>
-                {paciente.estado?.nombre}
-              </span>
-            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -227,29 +244,10 @@ const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
               <Calendar className="w-3 h-3 flex-shrink-0 text-orange-500" />
               <span>{calcularEdad(paciente.fecha_nacimiento)}</span>
             </div>
-            
-            {canViewServiceInfo(user) && paciente.servicios && paciente.servicios.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {paciente.servicios.map((servicio, idx) => {
-                  const colores = [
-                    { bg: 'bg-purple-100', text: 'text-purple-700' },
-                    { bg: 'bg-blue-100', text: 'text-blue-700' },
-                    { bg: 'bg-green-100', text: 'text-green-700' },
-                    { bg: 'bg-orange-100', text: 'text-orange-700' },
-                    { bg: 'bg-pink-100', text: 'text-pink-700' },
-                    { bg: 'bg-indigo-100', text: 'text-indigo-700' }
-                  ];
-                  const color = colores[idx % colores.length];
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`inline-flex items-center gap-1 ${color.bg} rounded px-2 py-0.5`}
-                    >
-                      <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{servicio.servicio_nombre}</span>
-                    </div>
-                  );
-                })}
+            {canViewServiceInfo(user) && (
+              <div className="mt-1">
+                <ServicioChips servicios={paciente.servicios} />
               </div>
             )}
 
@@ -275,7 +273,6 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
   const [showConfirm, setShowConfirm] = useState(false);
   const [convenios, setConvenios] = useState([]);
   const [loadingConvenios, setLoadingConvenios] = useState(false);
-  const estadoColors = getEstadoColor(paciente.estado?.nombre);
 
   useEffect(() => {
     const cargarConvenios = async () => {
@@ -388,16 +385,20 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <div className={`
-              flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border bg-white/95
-              ${estadoColors.border}
-            `}>
-              <div className={`w-1.5 h-1.5 rounded-full ${estadoColors.dot}`} />
-              <span className={`text-xs font-semibold ${estadoColors.text} uppercase tracking-wide`}>
-                {paciente.estado?.nombre}
-              </span>
-            </div>
-            
+            {(paciente.servicios || []).length > 0 ? (
+              (paciente.servicios).map((s, idx) => {
+                const colors = getEstadoColor(s.estado_nombre);
+                return (
+                  <div key={s.id ?? idx} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-white/95 ${colors.border}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                    <span className={`text-xs font-semibold ${colors.text} uppercase tracking-wide`}>
+                      {s.servicio_nombre} - {s.estado_nombre || 'Sin estado'}
+                    </span>
+                  </div>
+                );
+              })
+            ) : null}
+
             <div className="px-3.5 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-xs text-white font-medium border border-white/30 flex items-center gap-1.5">
               <Clock className="w-3 h-3" />
               {formatearFecha(paciente.fecha_creacion || paciente.created_at)}
@@ -768,16 +769,11 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Convenios
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Estado
-                  </th>
-                 
+
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {pacientes.map((paciente) => {
-                  const estadoColors = getEstadoColor(paciente.estado?.nombre);
-
                   return (
                     <tr
                       key={paciente.id}
@@ -822,24 +818,17 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                         <td className="px-4 py-4">
                           {paciente.servicios && paciente.servicios.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {paciente.servicios.map((servicio, idx) => {
-                                const colores = [
-                                  { bg: 'bg-purple-100', text: 'text-purple-700' },
-                                  { bg: 'bg-blue-100', text: 'text-blue-700' },
-                                  { bg: 'bg-green-100', text: 'text-green-700' },
-                                  { bg: 'bg-orange-100', text: 'text-orange-700' },
-                                  { bg: 'bg-pink-100', text: 'text-pink-700' },
-                                  { bg: 'bg-indigo-100', text: 'text-indigo-700' }
-                                ];
-                                const color = colores[idx % colores.length];
-
+                              {paciente.servicios.map((s, idx) => {
+                                const colors = getEstadoColor(s.estado_nombre);
                                 return (
-                                  <div
-                                    key={idx}
-                                    className={`inline-flex items-center gap-1 ${color.bg} rounded px-2 py-0.5`}
+                                  <span
+                                    key={s.id ?? idx}
+                                    title={`${s.servicio_nombre} · ${s.estado_nombre || 'Sin estado'}`}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${colors.bg} ${colors.text} ${colors.border}`}
                                   >
-                                    <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{servicio.servicio_nombre}</span>
-                                  </div>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${colors.dot} flex-shrink-0`} />
+                                    {s.servicio_nombre} - {s.estado_nombre || 'Sin estado'}
+                                  </span>
                                 );
                               })}
                             </div>
@@ -865,15 +854,6 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                       <td className="px-4 py-4">
                         <ConveniosDisplay pacienteId={paciente.id} />
                       </td>
-                      <td className="px-4 py-4">
-                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${estadoColors.bg} ${estadoColors.border}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${estadoColors.dot}`} />
-                          <span className={`text-xs font-semibold ${estadoColors.text} uppercase tracking-wide`}>
-                            {paciente.estado?.nombre}
-                          </span>
-                        </div>
-                      </td>
-                     
                     </tr>
                   );
                 })}

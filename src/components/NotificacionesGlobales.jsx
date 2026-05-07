@@ -3,7 +3,7 @@ import {
   Bell, X, TriangleAlert, Info, Calendar, Cake, Trash,
   Clock, PenSquare, FileText, Loader2, PartyPopper,
   Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown, ClipboardList, FileUp, UserCog,
-  FileCheck
+  FileCheck, UserMinus
 } from 'lucide-react';
 import {
   obtenerNotificacionesRecientes,
@@ -42,7 +42,9 @@ const TIPO_CONFIG = {
   INDICACION_TERAPEUTICA:   { icono: ClipboardList, color: 'text-teal-500',   borde: 'border-teal-400',   label: 'Indicación terapéutica' },
   DOCUMENTO_SUBIDO:         { icono: FileUp,        color: 'text-blue-500',   borde: 'border-blue-400',   label: 'Documento subido'     },
   CAMBIO_ESTADO_PACIENTE:   { icono: UserCog,       color: 'text-amber-600',  borde: 'border-amber-500',  label: 'Cambio de estado'     },
+  CAMBIO_ESTADO_SERVICIO:   { icono: UserCog,       color: 'text-amber-500',  borde: 'border-amber-400',  label: 'Cambio estado servicio' },
   SOLICITUD_INFORME:        { icono: FileCheck,     color: 'text-violet-600', borde: 'border-violet-500', label: 'Solicitud de informe' },
+  SERVICIO_INACTIVO:        { icono: UserMinus,     color: 'text-red-500',    borde: 'border-red-400',    label: 'Servicio inactivo'    },
   DEFAULT:                  { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
 };
 

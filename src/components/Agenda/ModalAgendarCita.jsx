@@ -32,7 +32,7 @@ import { useGeofencing } from '../../hooks/useGeofencing';
 import { esFeriado, getNombreFeriado } from '../../constants/feriados';
 import { getVentasDisponibles, getListadoCitasPorPaciente, getInfoVentaDeCita } from '../../services/citaService';
 import { getVentaServicioById } from '../../services/ventasService';
-import { DetalleVentaModal } from '../../pages/Ventas/HistorialVentasTab';
+import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 const ModalAgendarCita = ({
   open,
