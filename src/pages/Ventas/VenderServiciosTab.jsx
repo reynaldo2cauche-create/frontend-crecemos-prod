@@ -400,41 +400,34 @@ const VenderServiciosTab = ({
     } finally { setCalculandoPromos(false); }
   };
 
-  // Obtiene el area_id de un paciente a partir de su array servicios[]
-  const getAreaIdDePaciente = (pac) => {
+  // Deriva el area_id según la edad calculada desde fecha_nacimiento
+  // 0-12 → Infantil (1), 13-17 → Adolescentes (3), 18+ → Adultos (2)
+  const getAreaIdPorEdad = (pac) => {
     if (!pac) return null;
-    const lista = Array.isArray(pac.servicios) ? pac.servicios : [];
-    for (const s of lista) {
-      if (s.area?.id) return s.area.id;
-      if (s.area_id) return s.area_id;
-      const sId = s.servicio_id || s.id;
-      if (sId) {
-        const tarifa = tarifas.find(t => t.servicio_id === sId);
-        if (tarifa?.servicio?.area?.id) return tarifa.servicio.area.id;
-      }
-    }
-    const sId = pac.servicio?.id || pac.servicio_id;
-    if (sId) {
-      const tarifa = tarifas.find(t => t.servicio_id === sId);
-      if (tarifa?.servicio?.area?.id) return tarifa.servicio.area.id;
-    }
-    return null;
+    const fecha = pac.fecha_nacimiento || pac.fechaNacimiento;
+    if (!fecha) return null;
+    const hoy = new Date();
+    const nac = new Date(fecha);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const m = hoy.getMonth() - nac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+    if (edad <= 12) return 1;  // Área Infantil
+    if (edad <= 17) return 3;  // Área Adolescentes
+    return 2;                   // Área Adultos
   };
 
-  // Set de areas permitidas según el pagador
+  // Set de areas permitidas según el pagador seleccionado
   const areasPermitidas = (() => {
     if (tipoPagador === TIPOS_PAGADOR.PACIENTE && pacienteSeleccionado) {
       const pac = pacientes.find(p => String(p.id) === String(pacienteSeleccionado));
-      const areaId = getAreaIdDePaciente(pac);
-      console.log('🔍 AREA paciente areaId:', areaId, '| servicios:', pac?.servicios?.map(s=>s.id||s.servicio_id));
+      const areaId = getAreaIdPorEdad(pac);
       return areaId ? new Set([areaId]) : null;
     }
     if (tipoPagador === TIPOS_PAGADOR.RESPONSABLE && pacientesDelResponsable.length > 0) {
       const ids = pacientesDelResponsable
         .map(pResp => {
-          // pacientesDelResponsable no trae servicios — cruzar con el array principal
-          const pacCompleto = pacientes.find(p => String(p.id) === String(pResp.id));
-          return getAreaIdDePaciente(pacCompleto || pResp);
+          const pacCompleto = pacientes.find(p => String(p.id) === String(pResp.id || pResp));
+          return getAreaIdPorEdad(pacCompleto || pResp);
         })
         .filter(Boolean);
       return ids.length > 0 ? new Set(ids) : null;
@@ -455,7 +448,19 @@ const VenderServiciosTab = ({
     }).map(d => ({ ...d, _tipo: TIPOS_ITEM_VENTA.DOCUMENTO })),
     ...paquetesCombo.filter(c => {
       const q = busqueda.toLowerCase();
-      return (c.nombre || '').toLowerCase().includes(q) || (c.descripcion || '').toLowerCase().includes(q);
+      const matchBusqueda = (c.nombre || '').toLowerCase().includes(q) || (c.descripcion || '').toLowerCase().includes(q);
+      if (!matchBusqueda) return false;
+      // Filtrar combos por área: al menos un ítem del combo debe pertenecer al área del paciente
+      if (areasPermitidas) {
+        const tieneItemEnArea = (c.items || []).some(item => {
+          const tarifaId = item.servicioTarifaId ?? item.servicio_tarifa_id;
+          if (!tarifaId) return false;
+          const tarifa = tarifas.find(t => t.id === tarifaId);
+          return tarifa && areasPermitidas.has(tarifa.servicio?.area?.id);
+        });
+        if (!tieneItemEnArea) return false;
+      }
+      return true;
     }).map(c => ({ ...c, _tipo: 'COMBO' })),
   ] : [];
 

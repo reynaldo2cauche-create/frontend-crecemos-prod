@@ -743,6 +743,195 @@ const AldeasConvenioSection = () => {
   );
 };
 
+// ─── Convenio Colegio Sor Ana de los Ángeles ─────────────────────────────────
+const SOR_ANA_DESCUENTOS = [
+  {
+    categoria: 'Beneficios para estudiantes',
+    color: 'purple',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
+      />
+    ),
+    items: [
+      { label: 'Primera cita de evaluación o entrevista inicial', descuento: '50%' },
+      { label: 'Primera cita para estudiantes con necesidad de apoyo económico', descuento: '100%', nota: 'Gratuita — previa identificación por el colegio' },
+      { label: 'Paquetes terapéuticos (apoyo económico)', descuento: '10%' },
+    ],
+  },
+  {
+    categoria: 'Beneficios para padres de familia',
+    color: 'blue',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+    ),
+    items: [
+      { label: 'Primera cita de evaluación o entrevista inicial', descuento: '50%' },
+      { label: 'Paquetes terapéuticos', descuento: '10%', nota: 'Cuando corresponda' },
+    ],
+  },
+  {
+    categoria: 'Colaboradores del colegio',
+    color: 'green',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+      />
+    ),
+    items: [
+      { label: 'Entrevista psicológica inicial', descuento: '50%', nota: 'Exclusivo servicio de Psicología' },
+      { label: 'Paquetes de sesiones psicológicas', descuento: '25%', nota: 'Exclusivo servicio de Psicología' },
+    ],
+  },
+];
+
+const sorAnaColorMap = {
+  purple: {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
+    badgeBg: 'bg-purple-100',
+    badgeText: 'text-purple-700',
+    titleColor: 'text-purple-800',
+  },
+  blue: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    iconBg: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+    badgeBg: 'bg-blue-100',
+    badgeText: 'text-blue-700',
+    titleColor: 'text-blue-800',
+  },
+  green: {
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    iconBg: 'bg-green-100',
+    iconColor: 'text-green-600',
+    badgeBg: 'bg-green-100',
+    badgeText: 'text-green-700',
+    titleColor: 'text-green-800',
+  },
+};
+
+const SorAnaConvenioSection = () => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mb-8">
+      <div className="rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 via-white to-purple-50 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-purple-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
+                />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-gray-900">I.E.P. Colegio Sor Ana de los Ángeles</h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">
+                  Convenio especial
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Descuentos ofrecidos en el convenio — Centro de Terapias Crecemos
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-600 hover:bg-purple-100 transition-colors"
+          >
+            {expanded ? 'Ocultar' : 'Ver descuentos'}
+            <svg
+              className={`w-4 h-4 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          className={`overflow-hidden transition-all duration-500 ease-in-out ${
+            expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="px-5 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {SOR_ANA_DESCUENTOS.map((grupo) => {
+              const c = sorAnaColorMap[grupo.color];
+              return (
+                <div key={grupo.categoria} className={`rounded-xl border ${c.border} ${c.bg} p-4`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`w-7 h-7 rounded-lg ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
+                      <svg className={`w-4 h-4 ${c.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {grupo.icon}
+                      </svg>
+                    </div>
+                    <p className={`text-xs font-bold uppercase tracking-wide ${c.titleColor}`}>
+                      {grupo.categoria}
+                    </p>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {grupo.items.map((item, idx) => (
+                      <li key={idx} className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-800 leading-tight">{item.label}</p>
+                          {item.nota && (
+                            <p className="text-xs text-gray-500 mt-0.5 italic">{item.nota}</p>
+                          )}
+                        </div>
+                        <span
+                          className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${c.badgeBg} ${c.badgeText} border ${c.border}`}
+                        >
+                          {item.descuento === '100%' ? 'Gratis' : `${item.descuento} dto.`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="px-5 pb-4">
+            <div className="flex items-start gap-2 bg-white rounded-xl border border-gray-100 px-4 py-3">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-xs text-gray-500">
+                Los descuentos aplican exclusivamente a estudiantes, padres de familia y colaboradores del I.E.P. Colegio Sor Ana de los Ángeles.
+                Para consultas sobre la aplicación del convenio, comuníquese con administración.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Mapeo de rangos de edad por área ────────────────────────────────────────
 const RANGOS_EDAD = {
   'Área Infantil': [
@@ -928,6 +1117,9 @@ const TarifarioPage = () => {
       <div className="p-6">
         {/* ── Convenio Aldeas Infantiles SOS ── */}
         <AldeasConvenioSection />
+
+        {/* ── Convenio Colegio Sor Ana de los Ángeles ── */}
+        <SorAnaConvenioSection />
 
         {/* ── Servicios por área ── */}
         {[

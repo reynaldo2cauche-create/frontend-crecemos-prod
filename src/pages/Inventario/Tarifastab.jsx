@@ -239,6 +239,77 @@ const TarifaModal = ({ tarifa, servicios, motivos, onClose, onSaved }) => {
   );
 };
 
+// ─── ComboBox buscable ───────────────────────────────────────────────────────
+
+const ComboBox = ({ options, value, onChange, placeholder = 'Buscar...', renderOption, renderSelected, getSearchText, disabled = false }) => {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+
+  const selected = options.find(o => o.id === value);
+
+  const filtered = query.trim() === ''
+    ? options
+    : options.filter(o => {
+        const txt = getSearchText ? getSearchText(o) : (renderSelected ? renderSelected(o) : String(o.id));
+        return txt.toLowerCase().includes(query.toLowerCase());
+      });
+
+  // Cerrar al click fuera
+  React.useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <div
+        className={`flex items-center w-full px-3 py-1.5 text-sm border rounded-lg cursor-pointer transition-all ${
+          disabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-200 hover:border-[#7B1FA2]/50 focus-within:ring-2 focus-within:ring-[#7B1FA2]/30 focus-within:border-[#7B1FA2]'
+        }`}
+        onClick={() => !disabled && setOpen(o => !o)}
+      >
+        {open ? (
+          <input
+            autoFocus
+            className="flex-1 outline-none text-sm bg-transparent"
+            placeholder={placeholder}
+            value={query}
+            onChange={e => { setQuery(e.target.value); }}
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <span className={`flex-1 truncate ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
+            {selected ? (renderSelected ? renderSelected(selected) : renderOption(selected, true)) : placeholder}
+          </span>
+        )}
+        <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-gray-400">Sin resultados</div>
+          ) : (
+            filtered.map(opt => (
+              <div
+                key={opt.id}
+                onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                className={`px-3 py-2 cursor-pointer hover:bg-[#7B1FA2]/5 transition-colors ${value === opt.id ? 'bg-[#7B1FA2]/10' : ''}`}
+              >
+                {renderOption(opt)}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Modal Paquete Combo ─────────────────────────────────────────────────────
 
 const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => {
@@ -515,33 +586,41 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
                                   {tipoItem === 'servicio' ? 'Servicio' : tipoItem === 'documento' ? 'Documento' : 'Selecciona un tipo primero'}
                                 </label>
                                 {tipoItem === 'servicio' ? (
-                                  <select
-                                    value={item.servicio_tarifa_id || ''}
-                                    onChange={(e) => actualizarItem(idx, 'servicio_tarifa_id', e.target.value ? parseInt(e.target.value) : null)}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30"
-                                    required
-                                  >
-                                    <option value="">Seleccionar servicio...</option>
-                                    {tarifas.map(t => (
-                                      <option key={t.id} value={t.id}>
-                                        {t._servicio?.nombre} - {t._motivo?.nombre} (S/ {t.precio})
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <ComboBox
+                                    options={tarifas}
+                                    value={item.servicio_tarifa_id}
+                                    onChange={(id) => actualizarItem(idx, 'servicio_tarifa_id', id)}
+                                    placeholder="Buscar servicio..."
+                                    getSearchText={(t) => `${t._servicio?.nombre || ''} ${t._motivo?.nombre || ''} ${t._servicio?.area?.nombre || ''}`}
+                                    renderOption={(t) => (
+                                      <div>
+                                        <div className="font-semibold text-gray-900 text-xs">{t._servicio?.nombre}</div>
+                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                          <span className="text-xs text-purple-600 font-medium">{t._servicio?.area?.nombre}</span>
+                                          <span className="text-xs text-gray-400">·</span>
+                                          <span className="text-xs text-gray-500">{t._motivo?.nombre}</span>
+                                          <span className="text-xs text-gray-400">·</span>
+                                          <span className="text-xs font-semibold text-green-700">S/ {parseFloat(t.precio || 0).toFixed(2)}</span>
+                                        </div>
+                                      </div>
+                                    )}
+                                    renderSelected={(t) => `${t._servicio?.nombre} · ${t._motivo?.nombre} · S/ ${parseFloat(t.precio || 0).toFixed(2)}`}
+                                  />
                                 ) : tipoItem === 'documento' ? (
-                                  <select
-                                    value={item.documento_tarifa_id || ''}
-                                    onChange={(e) => actualizarItem(idx, 'documento_tarifa_id', e.target.value ? parseInt(e.target.value) : null)}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30"
-                                    required
-                                  >
-                                    <option value="">Seleccionar documento...</option>
-                                    {documentos.map(d => (
-                                      <option key={d.id} value={d.id}>
-                                        {d.nombre} (S/ {d.precio})
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <ComboBox
+                                    options={documentos}
+                                    value={item.documento_tarifa_id}
+                                    onChange={(id) => actualizarItem(idx, 'documento_tarifa_id', id)}
+                                    placeholder="Buscar documento..."
+                                    getSearchText={(d) => `${d.nombre || ''}`}
+                                    renderOption={(d) => (
+                                      <div>
+                                        <div className="font-semibold text-gray-900 text-xs">{d.nombre}</div>
+                                        <span className="text-xs font-semibold text-green-700">S/ {parseFloat(d.precio || 0).toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                    renderSelected={(d) => `${d.nombre} · S/ ${parseFloat(d.precio || 0).toFixed(2)}`}
+                                  />
                                 ) : (
                                   <div className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-400">
                                     Selecciona un tipo arriba
@@ -1058,9 +1137,13 @@ const TarifasTab = () => {
                                 const doc = documentos.find(d => d.id === (item.documentoTarifaId ?? item.documento_tarifa_id));
                                 const nombre = tarifa ? tarifa._servicio?.nombre : doc ? doc.nombre : '?';
                                 const cantidad = item.cantidad;
+                                const areaNombre = tarifa?._servicio?.area?.nombre;
                                 return (
                                   <div key={idx} className="truncate">
                                     {cantidad > 1 ? `${cantidad}x ` : ''}{nombre}
+                                    {areaNombre && (
+                                      <span className="ml-1 text-purple-500">· {areaNombre}</span>
+                                    )}
                                   </div>
                                 );
                               }).slice(0, 3)}

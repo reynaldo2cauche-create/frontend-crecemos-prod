@@ -209,9 +209,11 @@ const AdditionalInfo = ({ onNext, onBack }) => {
   );
 
   const serviciosFiltrados = edad === null ? servicios
-    : edad < 18
-      ? servicios.filter(s => s.area?.nombre === "Área Infantil")
-      : servicios.filter(s => s.area?.nombre === "Área Adolescentes y Adultos");
+    : edad <= 12
+      ? servicios.filter(s => s.area?.nombre === 'Área Infantil')
+      : edad <= 17
+        ? servicios.filter(s => s.area?.nombre === 'Área Adolescentes')
+        : servicios.filter(s => s.area?.nombre === 'Área Adultos');
 
   const esExistente = (responsableId) => responsableExistente[responsableId]?.existe === true;
 
