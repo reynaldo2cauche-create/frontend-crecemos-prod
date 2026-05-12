@@ -90,9 +90,11 @@ const menuItems = [
       { text: 'Gratificaciones', path: '/intranet/rrhh/gratificaciones', icon: CurrencyDollarIcon },
       { text: 'Vacaciones', path: '/intranet/rrhh/vacaciones', icon: CalendarIcon },
       { text: 'Historial de Pagos', path: '/intranet/rrhh/historial', icon: ClockIcon },
+      { text: 'Cumpleaños', path: '/intranet/rrhh/cumpleanos', icon: GiftIcon },
       { text: 'Dashboard', path: '/intranet/rrhh/dashboard', icon: ChartBarIcon }
     ]
   },
+  { text: 'Informes', path: '/intranet/informes', icon: DocumentChartBarIcon, adminAdmisionOnly: true },
   { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon, adminOnly: true },
   {
     text: 'Inventario',

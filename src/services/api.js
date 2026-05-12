@@ -172,6 +172,14 @@ export const obtenerAsistenciasPorTerapeuta = async (terapeutaId, fechaInicio, f
 };
 
 /**
+ * Obtener pacientes asignados a un terapeuta con sus estados
+ */
+export const obtenerPacientesPorTerapeuta = async (terapeutaId) => {
+  const response = await api.get(`/asignacion-terapeuta/terapeuta/${terapeutaId}`);
+  return response.data;
+};
+
+/**
  * Obtener asistencias por paciente
  */
 export const obtenerAsistenciasPorPaciente = async (pacienteId, fechaInicio, fechaFin) => {

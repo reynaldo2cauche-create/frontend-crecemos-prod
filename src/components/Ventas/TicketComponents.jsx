@@ -141,9 +141,13 @@ export const buildDetalleRows = (detalles, tipo, fm) => {
       return;
     }
 
-    const esPaquete  = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
-    const motivoCita = getMotivoCita(d);
-    const srvNombre  = getServicioNombre(d);
+    const esPaquete   = d.tipo_venta?.nombre?.toLowerCase().includes('paquete');
+    const esDocumento = d.tipoItemVenta === 2 || d.tipo_item_venta === 2
+                     || d.documentoTarifaId   || d.documento_tarifa_id;
+    const motivoCita  = getMotivoCita(d);
+    const srvNombre   = esDocumento
+      ? (d.documento_tarifa?.nombre || d.documentoTarifa?.nombre || 'Informe')
+      : getServicioNombre(d);
 
     let desc, cantidad;
     if (esPaquete && d.paquete) {

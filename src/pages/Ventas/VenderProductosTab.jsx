@@ -164,7 +164,7 @@ const VenderProductosTab = ({
   const [compradoresExternos, setCompradoresExternos] = useState([]);
   const [tiposComprobante, setTiposComprobante] = useState([]);
   const [modalidadesPago, setModalidadesPago] = useState([]);
-  const [pagos, setPagos] = useState([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
+  const [pagos, setPagos] = useState([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '', fecha_pago: '' }]);
 
   // Estados para la venta
   const [lineas, setLineas] = useState([]);
@@ -281,9 +281,9 @@ const VenderProductosTab = ({
     
     // Pagos
     if (v.pagos && v.pagos.length > 0) {
-      setPagos(v.pagos.map(p => ({ uid: p.id, modalidad_pago_id: p.modalidad_pago_id, monto: p.monto, referencia: p.referencia || '' })));
+      setPagos(v.pagos.map(p => ({ uid: p.id, modalidad_pago_id: p.modalidad_pago_id, monto: p.monto, referencia: p.referencia || '', fecha_pago: p.fecha_pago || '' })));
     } else if (v.modalidad_pago_id) {
-      setPagos([{ uid: Date.now(), modalidad_pago_id: v.modalidad_pago_id, monto: v.total || '', referencia: '' }]);
+      setPagos([{ uid: Date.now(), modalidad_pago_id: v.modalidad_pago_id, monto: v.total || '', referencia: '', fecha_pago: '' }]);
     }
     
     // Nota y observaciones
@@ -447,6 +447,7 @@ const VenderProductosTab = ({
         modalidad_pago_id: parseInt(p.modalidad_pago_id),
         monto: parseFloat(p.monto) || 0,
         referencia: p.referencia || null,
+        fecha_pago: p.fecha_pago || null,
       })),
     };
 
@@ -517,6 +518,13 @@ const VenderProductosTab = ({
       setAlertaAbierta(true);
       return;
     }
+    const pagosSinFecha = pagosValidos.filter(p => !p.fecha_pago);
+    if (pagosSinFecha.length > 0) {
+      setTituloAlerta('Fecha de Pago Requerida');
+      setMensajeAlerta(`${pagosSinFecha.length === 1 ? 'Un método de pago no tiene' : `${pagosSinFecha.length} métodos de pago no tienen`} fecha registrada. Completa la fecha en todos los pagos antes de guardar.`);
+      setAlertaAbierta(true);
+      return;
+    }
 
     const payload = construirPayload();
 
@@ -570,7 +578,7 @@ const VenderProductosTab = ({
     setPromocionesAplicadas([]);
     setTotalDescuentoPromo(0);
     setProductosRegalo([]);
-    setPagos([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
+    setPagos([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '', fecha_pago: '' }]);
     setTipoPagador(TIPOS_PAGADOR.PACIENTE);
     setTipoComprobante(1);
   };
@@ -922,7 +930,13 @@ const VenderProductosTab = ({
                     onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, referencia: e.target.value } : p))}
                     disabled={bloqueado}
                     placeholder="Nro. operación, código..."
-                    className="w-44 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                    className="w-40 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                  <input
+                    type="date"
+                    value={pago.fecha_pago ? pago.fecha_pago.slice(0, 10) : ''}
+                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, fecha_pago: e.target.value } : p))}
+                    disabled={bloqueado}
+                    className="w-36 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
                   {!bloqueado && pagos.length > 1 && (
                     <button type="button" onClick={() => setPagos(prev => prev.filter(p => p.uid !== pago.uid))}
                       className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0">
@@ -934,7 +948,7 @@ const VenderProductosTab = ({
               <div className="flex items-center justify-between pt-1">
                 {!bloqueado && (
                   <button type="button"
-                    onClick={() => setPagos(prev => [...prev, { uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }])}
+                    onClick={() => setPagos(prev => [...prev, { uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '', fecha_pago: '' }])}
                     className="flex items-center gap-1.5 text-xs font-semibold text-[#7B1FA2] hover:text-[#6A1B9A]">
                     <PlusIcon className="w-3.5 h-3.5" />Agregar otro método
                   </button>

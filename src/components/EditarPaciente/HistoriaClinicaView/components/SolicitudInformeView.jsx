@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText, Plus, X, Save, Calendar, DollarSign, User, Receipt,
-  Eye, Trash2, CheckCircle, ChevronDown, ChevronUp, AlertCircle,
+  Eye, Trash2, CheckCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, AlertCircle,
   Package, Clock, Banknote, Hash, Upload, Check, XCircle, FileCheck,
   Send, Download, ZoomIn, ZoomOut, RotateCw, Info,
 } from 'lucide-react';
@@ -103,6 +103,7 @@ const getFormInitial = () => {
     servicio_id: null, venta_servicio_id: '', documento_tarifa_id: '',
     especialista_id: '', fecha_solicitud: hoy, fecha_entrega: addDays(hoy, 5),
     monto: '', nro_recibo: '', modalidad_pago_id: '', estado_pago_id: 1, nota: '',
+    ventaPagos: [],
   };
 };
 
@@ -457,7 +458,7 @@ const FormularioSolicitud = ({
   serviciosPaciente, // 👈 Nuevo: para buscar servicio_id por terapeuta
   onMostrarAlerta, // 👈 Callback para mostrar alertas
 }) => {
-  const [form, setForm] = useState({ ...getFormInitial(), especialista_id: user?.id ?? '' });
+  const [form, setForm] = useState({ ...getFormInitial(), especialista_id: user?.id ?? '', user_crea_id: user?.id ?? '' });
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   /**
@@ -556,15 +557,14 @@ const FormularioSolicitud = ({
     setForm(p => ({
       ...p,
       venta_servicio_id: ventaId,
-      // servicio_id se llenará cuando se seleccione el especialista
       monto: itemsInforme.length > 0 ? montoInforme.toFixed(2) : p.monto,
       nro_recibo: venta.codigo_comprobante ?? p.nro_recibo,
       modalidad_pago_id: venta.modalidad_pago_id ?? venta.modalidad_pago?.id ?? p.modalidad_pago_id,
-      documento_tarifa_id: itemsInforme[0]?.documentoTarifaId   // ← camelCase, igual que la API
-                  ?? itemsInforme[0]?.documento_tarifa_id 
-                  ?? itemsInforme[0]?.documento_tarifa?.id 
+      documento_tarifa_id: itemsInforme[0]?.documentoTarifaId
+                  ?? itemsInforme[0]?.documento_tarifa_id
+                  ?? itemsInforme[0]?.documento_tarifa?.id
                   ?? p.documento_tarifa_id,
-
+      ventaPagos: Array.isArray(venta.pagos) && venta.pagos.length > 0 ? venta.pagos : [],
     }));
   };
 
@@ -646,8 +646,9 @@ const FormularioSolicitud = ({
 
     console.log('✅ Validación exitosa, enviando datos...');
 
+    const { ventaPagos: _vp, ...formDatos } = form;
     onSubmit({
-      ...form,
+      ...formDatos,
       servicio_id:       Number(form.servicio_id),
       venta_servicio_id: Number(form.venta_servicio_id),
       documento_tarifa_id:   Number(form.documento_tarifa_id),
@@ -769,24 +770,40 @@ const FormularioSolicitud = ({
         </div>
      <div>
         <label className={LABEL_CLS}>
-          <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5" /> Modalidad</span>
+          <span className="flex items-center gap-1.5">
+            <Banknote className="w-3.5 h-3.5" /> Forma de pago
+            {ventaSeleccionada && (form.ventaPagos.length > 0 || form.modalidad_pago_id) && (
+              <span className="text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md normal-case">auto</span>
+            )}
+          </span>
         </label>
-        <div className="relative">
-          <select
-            value={form.modalidad_pago_id}
-            onChange={e => set('modalidad_pago_id', e.target.value)}
-            className={`${INPUT_CLS} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            disabled={!!ventaSeleccionada}
-          >
-            <option value="">Seleccionar...</option>
-            {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-          </select>
-          {ventaSeleccionada && form.modalidad_pago_id && (
-            <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">
-              auto
-            </span>
-          )}
-        </div>
+        {ventaSeleccionada && form.ventaPagos.length > 0 ? (
+          <div className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl bg-gray-50 space-y-1.5">
+            {form.ventaPagos.map((p, i) => (
+              <div key={i} className="flex items-center justify-between text-xs text-gray-700">
+                <span className="font-medium">{p.modalidad_pago?.nombre || '—'}{p.referencia ? <span className="text-gray-400"> · {p.referencia}</span> : ''}</span>
+                <span className="font-bold text-gray-800">S/ {Number(p.monto || 0).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="relative">
+            <select
+              value={form.modalidad_pago_id}
+              onChange={e => set('modalidad_pago_id', e.target.value)}
+              className={`${INPUT_CLS} ${ventaSeleccionada ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              disabled={!!ventaSeleccionada}
+            >
+              <option value="">Seleccionar...</option>
+              {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+            </select>
+            {ventaSeleccionada && form.modalidad_pago_id && (
+              <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-md pointer-events-none">
+                auto
+              </span>
+            )}
+          </div>
+        )}
       </div>
       </div>
 
@@ -1181,11 +1198,6 @@ const SolicitudCard = ({ solicitud, user, onVer, onEliminar, onAccion }) => {
             <span className="flex items-center gap-1 font-semibold text-purple-700">
               <Clock className="w-3.5 h-3.5" /> Entrega: {fmtDate(solicitud.fecha_entrega)}
             </span>
-            {mostrarInfoBancaria && (
-              <span className="flex items-center gap-1 font-semibold text-gray-700">
-                <DollarSign className="w-3.5 h-3.5" /> {fmtMoney(solicitud.monto)}
-              </span>
-            )}
           </div>
 
           {/* Botones de workflow */}
@@ -1321,8 +1333,29 @@ const ModalVer = ({ solicitud, user, onClose }) => {
                     <p className="text-gray-900 font-medium">{solicitud.nro_recibo || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Modalidad de pago</p>
-                    <p className="text-gray-900 font-medium">{solicitud.modalidad_pago?.nombre ?? '—'}</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Pagos realizados</p>
+                    {solicitud.venta_servicio?.pagos?.length > 0 ? (
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        {solicitud.venta_servicio.pagos.map((p, i) => (
+                          <div key={i} className={`flex items-center justify-between px-3 py-2 ${i > 0 ? 'border-t border-gray-100' : ''}`}>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-sm font-semibold text-gray-800">{p.modalidad_pago?.nombre || '—'}</span>
+                              <div className="flex items-center gap-2 text-xs text-gray-400">
+                                {p.referencia && <span>Ref: {p.referencia}</span>}
+                                {p.fecha_pago && (
+                                  <span>{new Date(p.fecha_pago).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-sm font-bold text-gray-900">S/ {Number(p.monto || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : solicitud.modalidad_pago?.nombre ? (
+                      <p className="text-gray-900 font-medium">{solicitud.modalidad_pago.nombre}</p>
+                    ) : (
+                      <p className="text-gray-400 text-sm italic">Sin información</p>
+                    )}
                   </div>
                 </>
               )}
@@ -1447,6 +1480,8 @@ const ModalVer = ({ solicitud, user, onClose }) => {
   const [terapeutas,        setTerapeutas]        = useState([]);
   const [serviciosPaciente, setServiciosPaciente] = useState([]); // Para buscar servicio_id por terapeuta
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [pageSol, setPageSol] = useState(0);
+  const ITEMS_SOL = 5;
   const [modalVer,          setModalVer]          = useState(null);
   const [modalSubir,        setModalSubir]        = useState(null);
   const [modalRevisar,      setModalRevisar]      = useState(null);
@@ -1700,20 +1735,48 @@ const ModalVer = ({ solicitud, user, onClose }) => {
           <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-400">No hay solicitudes registradas</p>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {solicitudes.map(s => (
-            <SolicitudCard
-              key={s.id}
-              solicitud={s}
-              user={user}
-              onVer={setModalVer}
-              onEliminar={handleEliminar}
-              onAccion={handleAccion}
-            />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const totalPag = Math.ceil(solicitudes.length / ITEMS_SOL);
+        const paginadas = solicitudes.slice(pageSol * ITEMS_SOL, (pageSol + 1) * ITEMS_SOL);
+        return (
+          <>
+            <div className="space-y-2">
+              {paginadas.map(s => (
+                <SolicitudCard
+                  key={s.id}
+                  solicitud={s}
+                  user={user}
+                  onVer={setModalVer}
+                  onEliminar={handleEliminar}
+                  onAccion={handleAccion}
+                />
+              ))}
+            </div>
+            {totalPag > 1 && (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs text-gray-400">{solicitudes.length} solicitudes</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPageSol(p => Math.max(0, p - 1))}
+                    disabled={pageSol === 0}
+                    className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-gray-500 font-medium">{pageSol + 1} / {totalPag}</span>
+                  <button
+                    onClick={() => setPageSol(p => Math.min(totalPag - 1, p + 1))}
+                    disabled={pageSol === totalPag - 1}
+                    className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 };

@@ -8,9 +8,11 @@ import {
   SparklesIcon,
   PencilIcon,
   TrashIcon,
+  CheckBadgeIcon,
 } from '@heroicons/react/24/outline';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
+import { obtenerModalidadesPago } from '../../services/solicitudInformeService';
 import {
   getHistorialVentas,
   eliminarVentaServicio,
@@ -20,6 +22,8 @@ import {
   actualizarVentaServicio,
   actualizarVentaProducto,
   verificarVentaServicioTieneCitas,
+  validarPagoVentaServicio,
+  validarPagoVentaProducto,
 } from '../../services/ventasService';
 import { verificarVentaTieneSolicitudInforme } from '../../services/solicitudInformeService';
 import PrintPreviewModal, { getServicioNombre, getMotivoCita } from '../../components/Ventas/TicketComponents';
@@ -45,7 +49,8 @@ const HistorialVentasTab = () => {
   const [totalMontoFiltrado, setTotalMontoFiltrado] = useState(0);
   const [totalMontoGlobal, setTotalMontoGlobal] = useState(0);
   const [loading, setLoading]               = useState(true);
-  const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '' });
+  const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '', metodoPagoId: '' });
+  const [modalidades, setModalidades]       = useState([]);
   const [queryPaciente, setQueryPaciente]   = useState('');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [showDropdownPaciente, setShowDropdownPaciente] = useState(false);
@@ -59,11 +64,13 @@ const HistorialVentasTab = () => {
   const [page, setPage]                     = useState(0);
   const [rowsPerPage, setRowsPerPage]       = useState(12);
   const [feedback, setFeedback]             = useState(null);
+  const [validando, setValidando]           = useState(null); // id procesando
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const esAdmision = user?.rol?.id === 2;
 
-  useEffect(() => { cargarVentas(); }, [page, rowsPerPage, filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, pacienteSeleccionado]);
+  useEffect(() => { obtenerModalidadesPago().then(setModalidades).catch(() => {}); }, []);
+  useEffect(() => { cargarVentas(); }, [page, rowsPerPage, filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, filtros.metodoPagoId, pacienteSeleccionado]);
 
   const cargarVentas = async () => {
     setLoading(true);
@@ -71,6 +78,7 @@ const HistorialVentasTab = () => {
       const params = { page, limit: rowsPerPage, tipo: filtros.tipo };
       if (filtros.fechaDesde) params.desde = filtros.fechaDesde;
       if (filtros.fechaHasta) params.hasta = filtros.fechaHasta;
+      if (filtros.metodoPagoId) params.metodoPagoId = filtros.metodoPagoId;
       if (pacienteSeleccionado) params.pacienteId = pacienteSeleccionado.id;
       const res = await getHistorialVentas(params);
       setHistorialData(res.data || []);
@@ -177,7 +185,32 @@ const HistorialVentasTab = () => {
     }
   };
 
-  const hayFiltros = filtros.tipo !== 'todos' || filtros.fechaDesde || filtros.fechaHasta || pacienteSeleccionado;
+  const handleValidarPago = async (venta, pago) => {
+    const key = `pago-${pago.id}`;
+    if (validando === key) return;
+    setValidando(key);
+    try {
+      const updated = venta.tipo === 'servicio'
+        ? await validarPagoVentaServicio(pago.id)
+        : await validarPagoVentaProducto(pago.id);
+      // Actualizar solo ese pago dentro de la venta en el estado local
+      setHistorialData(prev => prev.map(item => {
+        if (item.tipo !== venta.tipo || item.id !== venta.id) return item;
+        return {
+          ...item,
+          pagos: (item.pagos || []).map(p =>
+            p.id === pago.id ? { ...p, ...updated } : p
+          ),
+        };
+      }));
+    } catch {
+      setFeedback({ tipo: 'error', mensaje: 'Error al actualizar validación de pago' });
+    } finally {
+      setValidando(null);
+    }
+  };
+
+  const hayFiltros = filtros.tipo !== 'todos' || filtros.fechaDesde || filtros.fechaHasta || filtros.metodoPagoId || pacienteSeleccionado;
   const totalMonto = hayFiltros ? totalMontoFiltrado : totalMontoGlobal;
   const ventasPaginadas = historialData;
   const totalPages = Math.ceil(totalVentas / rowsPerPage);
@@ -215,7 +248,7 @@ const HistorialVentasTab = () => {
         )}
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
             <div className="relative sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">Paciente</label>
               <div className="relative">
@@ -262,6 +295,16 @@ const HistorialVentasTab = () => {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Método de Pago</label>
+              <select value={filtros.metodoPagoId} onChange={e => { setFiltros(f => ({ ...f, metodoPagoId: e.target.value })); setPage(0); }}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]">
+                <option value="">Todos</option>
+                {modalidades.map(m => (
+                  <option key={m.id} value={m.id}>{m.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Desde</label>
               <input type="date" value={filtros.fechaDesde} onChange={e => { setFiltros(f => ({ ...f, fechaDesde: e.target.value })); setPage(0); }}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" />
@@ -271,7 +314,7 @@ const HistorialVentasTab = () => {
               <input type="date" value={filtros.fechaHasta} onChange={e => { setFiltros(f => ({ ...f, fechaHasta: e.target.value })); setPage(0); }}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" />
             </div>
-            <div className="flex items-end sm:col-span-5">
+            <div className="flex items-end sm:col-span-6">
               <button onClick={cargarVentas}
                 className="px-6 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] transition-colors">
                 Filtrar
@@ -297,7 +340,7 @@ const HistorialVentasTab = () => {
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="text-left px-6 py-3 text-xs font-bold text-gray-500 uppercase">Tipo</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Comprobante</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Fecha</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Fecha y Hora</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Pagador</th>
                     <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Cliente</th>
                     <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Items</th>
@@ -305,6 +348,8 @@ const HistorialVentasTab = () => {
                     <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">Base</th>
                     <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">IGV</th>
                     <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">Total</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Nro Operación</th>
+                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Pago validado</th>
                     <th className="text-center px-6 py-3 text-xs font-bold text-gray-500 uppercase">Acciones</th>
                   </tr>
                 </thead>
@@ -325,7 +370,14 @@ const HistorialVentasTab = () => {
                             {v.codigo_comprobante && <p className="text-sm font-mono font-semibold text-purple-700">{v.codigo_comprobante}</p>}
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-gray-700">{formatFecha(v.fecha_venta)}</td>
+                        <td className="px-4 py-4 text-gray-700">
+                          <div className="text-sm font-medium">{formatFecha(v.fecha_venta)}</div>
+                          {v.created_at && (
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {new Date(v.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-4 text-gray-600 text-xs">{tipoPagadorNombre(v.tipo_pagador_id || v.tipo_comprador_id)}</td>
                         <td className="px-4 py-4 text-gray-900 text-sm">
                           {v.paciente
@@ -349,6 +401,80 @@ const HistorialVentasTab = () => {
                           {conIgv ? formatMonto(igv) : <span className="text-gray-300 text-xs">—</span>}
                         </td>
                         <td className="px-4 py-4 text-right font-bold text-gray-900">{formatMonto(v.total)}</td>
+
+                        {/* Nro Operación */}
+                        <td className="px-4 py-4">
+                          {(v.pagos || []).length === 0 ? (
+                            <span className="text-xs text-gray-300">—</span>
+                          ) : (
+                            <div className="space-y-2">
+                              {(v.pagos || []).map(pago => (
+                                <div key={pago.id} className="text-xs">
+                                  {pago.referencia
+                                    ? <span className="font-mono font-semibold text-gray-800">{pago.referencia}</span>
+                                    : <span className="text-gray-300">—</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Pago validado — checkbox por método de pago */}
+                        <td className="px-4 py-4">
+                          {(v.pagos || []).length === 0 ? (
+                            <span className="text-xs text-gray-300 italic">Sin pagos</span>
+                          ) : (
+                            <div className="space-y-2">
+                              {(v.pagos || []).map(pago => {
+                                const key = `pago-${pago.id}`;
+                                const cargando = validando === key;
+                                const validado = !!pago.pago_validado;
+                                const validadoPor = pago.validado_por
+                                  ? [pago.validado_por.nombres, pago.validado_por.apellidos].filter(Boolean).join(' ')
+                                  : null;
+                                const validadoAt = pago.pago_validado_at
+                                  ? new Date(pago.pago_validado_at).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                  : null;
+                                return (
+                                  <div key={pago.id} className="flex items-start gap-2">
+                                    <div
+                                      onClick={() => !validado && !cargando && handleValidarPago(v, pago)}
+                                      title={validado
+                                        ? `Validado por: ${validadoPor ?? '—'}\nFecha: ${validadoAt ?? '—'}`
+                                        : 'Clic para marcar como validado'}
+                                      className={`mt-0.5 w-4 h-4 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
+                                        validado
+                                          ? 'bg-green-500 border-green-500 cursor-default'
+                                          : cargando
+                                          ? 'border-gray-300 bg-gray-100 cursor-wait'
+                                          : 'border-gray-300 bg-white hover:border-green-400 cursor-pointer'
+                                      }`}
+                                    >
+                                      {validado && (
+                                        <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 10" fill="none">
+                                          <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                      )}
+                                      {cargando && !validado && (
+                                        <div className="w-2 h-2 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className={`text-xs font-medium ${validado ? 'text-green-700' : 'text-gray-600'}`}>
+                                        {pago.modalidad_pago?.nombre ?? '—'}
+                                        <span className="font-normal text-gray-500 ml-1">S/ {Number(pago.monto || 0).toFixed(2)}</span>
+                                      </div>
+                                      {validado && validadoPor && (
+                                        <div className="text-[10px] text-green-500 leading-tight">{validadoPor}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => { setVentaDetalle(v); setTipoDetalle(v.tipo); }} title="Ver detalle"

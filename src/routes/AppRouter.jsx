@@ -54,6 +54,7 @@ import EmpleadosPage from '../pages/rrhh/EmpleadosPage';
 import GratificacionesPage from '../pages/rrhh/GratificacionesPage';
 import HistorialPagosPage from '../pages/rrhh/HistorialPagosPage';
 import DashboardRRHH from '../pages/rrhh/DashboardRRHH';
+import CumpleanosTrabajadores from '../pages/rrhh/CumpleanosTrabajadores';
 import VacacionesPage from '../pages/rrhh/VacacionesPage';
 import ConveniosPage from '../pages/ConveniosPage';
 import GestionStaff from '../pages/GestionStaff';
@@ -86,6 +87,7 @@ import PanelAdmin from '../pages/LibroReclamaciones/PanelAdmin';
 import Pagos from '../pages/Pagos';
 import GestorCampanas from '../pages/Campanas/GestorCampanas';
 import { Campanas } from '../pages/Campanas/Campanas';
+import GestionInformesPage from '../pages/Informes/GestionInformesPage';
 
 export const AppRouter = () => {
   return (
@@ -212,6 +214,17 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <VacacionesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/rrhh/cumpleanos" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <CumpleanosTrabajadores />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
@@ -474,6 +487,17 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <GestorCampanas />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/informes" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestionInformesPage />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

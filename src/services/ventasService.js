@@ -81,6 +81,12 @@ export const marcarSesionUsada = (detalleId, body) =>
 export const actualizarVentaServicio = (id, dto) =>
   api.patch(`/ventas/servicios/${id}`, dto).then(r => r.data);
 
+export const validarPagoVentaServicio = (pagoId) =>
+  api.patch(`/ventas/servicios/pago/${pagoId}/validar`).then(r => r.data);
+
+export const validarPagoVentaProducto = (pagoId) =>
+  api.patch(`/ventas/productos/pago/${pagoId}/validar`).then(r => r.data);
+
 /**
  * Verificar si una venta de servicio tiene citas asociadas
  * @param {number} id - ID de la venta

@@ -78,9 +78,9 @@ const getEstadoColor = (nombreEstado) => {
 
 const ABREVIATURA_SERVICIO = {
   1:  'TL',   // Terapia de Lenguaje Infantil
-  2:  'PO',   // Terapia Ocupacional
+  2:  'TO',   // Terapia Ocupacional
   3:  'TA',   // Terapia de Aprendizaje
-  4:  'PI',   // Psicología Infantil
+  4:  'PS',   // Psicología Infantil
   5:  'EPC',  // Evaluación Psicológica para Colegio
   6:  'OV',   // Orientación Vocacional
   7:  'PTI',  // Psicoterapia Individual

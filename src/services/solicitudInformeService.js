@@ -159,6 +159,22 @@ export const marcarInformeEntregado = async (solicitudId) => {
   }
 };
 
+// ==================== HISTORIAL DE ESTADO ====================
+
+/**
+ * Obtiene el historial de cambios de estado de una solicitud.
+ * @param {number} solicitudId
+ */
+export const obtenerHistorialEstadoSolicitud = async (solicitudId) => {
+  try {
+    const response = await api.get(`/solicitudes-informe/${solicitudId}/historial`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener historial de estado:', error);
+    throw error;
+  }
+};
+
 // ==================== HISTORIAL DE REVISIONES ====================
 
 /**

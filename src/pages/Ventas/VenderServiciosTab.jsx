@@ -192,7 +192,7 @@ const VenderServiciosTab = ({
   const [ventaGuardada, setVentaGuardada] = useState(null);
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
   const [modalidadesPago, setModalidadesPago] = useState([]);
-  const [pagos, setPagos] = useState([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
+  const [pagos, setPagos] = useState([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '', fecha_pago: '' }]);
   const [alertaAbierta, setAlertaAbierta] = useState(false);
   const [mensajeAlerta, setMensajeAlerta] = useState('');
   const [tituloAlerta, setTituloAlerta] = useState('');
@@ -295,9 +295,9 @@ const VenderServiciosTab = ({
     if (ventaExistente.comprador_externo_id) setCompradorExternoSeleccionado(ventaExistente.comprador_externo_id);
     if (ventaExistente.tipo_comprobante_id) setTipoComprobante(ventaExistente.tipo_comprobante_id);
     if (ventaExistente.pagos && ventaExistente.pagos.length > 0) {
-      setPagos(ventaExistente.pagos.map(p => ({ uid: p.id, modalidad_pago_id: p.modalidad_pago_id, monto: p.monto, referencia: p.referencia || '' })));
+      setPagos(ventaExistente.pagos.map(p => ({ uid: p.id, modalidad_pago_id: p.modalidad_pago_id, monto: p.monto, referencia: p.referencia || '', fecha_pago: p.fecha_pago || '' })));
     } else if (ventaExistente.modalidad_pago_id) {
-      setPagos([{ uid: Date.now(), modalidad_pago_id: ventaExistente.modalidad_pago_id, monto: ventaExistente.total || '', referencia: '' }]);
+      setPagos([{ uid: Date.now(), modalidad_pago_id: ventaExistente.modalidad_pago_id, monto: ventaExistente.total || '', referencia: '', fecha_pago: '' }]);
     }
     setNota(ventaExistente.nota || '');
     setObservaciones(ventaExistente.observaciones || '');
@@ -733,7 +733,7 @@ const VenderServiciosTab = ({
     setTipoComprobante(1);
     setPromocionesAplicadas([]);
     setTotalDescuentoPromo(0);
-    setPagos([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }]);
+    setPagos([{ uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '', fecha_pago: '' }]);
   };
 
   const handleCrearExterno = async (e) => {
@@ -767,6 +767,13 @@ const VenderServiciosTab = ({
     if (Math.abs(totalPagado - totalVenta) > 0.05) {
       setTituloAlerta('Monto Incorrecto');
       setMensajeAlerta(`El total pagado (S/ ${totalPagado.toFixed(2)}) no coincide con el total de la venta (S/ ${totalVenta.toFixed(2)}).`);
+      setAlertaAbierta(true);
+      return;
+    }
+    const pagosSinFecha = pagosValidos.filter(p => !p.fecha_pago);
+    if (pagosSinFecha.length > 0) {
+      setTituloAlerta('Fecha de Pago Requerida');
+      setMensajeAlerta(`${pagosSinFecha.length === 1 ? 'Un método de pago no tiene' : `${pagosSinFecha.length} métodos de pago no tienen`} fecha registrada. Completa la fecha en todos los pagos antes de guardar.`);
       setAlertaAbierta(true);
       return;
     }
@@ -852,6 +859,7 @@ const VenderServiciosTab = ({
         modalidad_pago_id: parseInt(p.modalidad_pago_id),
         monto: parseFloat(p.monto),
         referencia: p.referencia || null,
+        fecha_pago: p.fecha_pago || null,
       }));
       if (totalDescuentoPromo > 0) payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
 
@@ -1371,7 +1379,13 @@ const VenderServiciosTab = ({
                     onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, referencia: e.target.value } : p))}
                     disabled={!!ventaGuardada}
                     placeholder="Nro. operación, código..."
-                    className="w-44 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                    className="w-40 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                  <input
+                    type="date"
+                    value={pago.fecha_pago ? pago.fecha_pago.slice(0, 10) : ''}
+                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, fecha_pago: e.target.value } : p))}
+                    disabled={!!ventaGuardada}
+                    className="w-36 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
                   {!ventaGuardada && pagos.length > 1 && (
                     <button type="button" onClick={() => setPagos(prev => prev.filter(p => p.uid !== pago.uid))}
                       className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0">
@@ -1383,7 +1397,7 @@ const VenderServiciosTab = ({
               <div className="flex items-center justify-between pt-1">
                 {!ventaGuardada && (
                   <button type="button"
-                    onClick={() => setPagos(prev => [...prev, { uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '' }])}
+                    onClick={() => setPagos(prev => [...prev, { uid: Date.now(), modalidad_pago_id: '', monto: '', referencia: '', fecha_pago: '' }])}
                     className="flex items-center gap-1.5 text-xs font-semibold text-[#7B1FA2] hover:text-[#6A1B9A]">
                     <PlusIcon className="w-3.5 h-3.5" />Agregar otro método
                   </button>

@@ -51,8 +51,16 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
             {/* Info cabecera */}
             <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded-xl">
               <div>
-                <p className="text-xs text-gray-500">Fecha</p>
+                <p className="text-xs text-gray-500">Fecha de venta</p>
                 <p className="font-semibold text-sm text-gray-900">{formatFecha(venta.fecha_venta)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Registrado el</p>
+                <p className="font-semibold text-sm text-gray-900">
+                  {venta.created_at
+                    ? new Date(venta.created_at).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '—'}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Comprobante</p>
@@ -78,18 +86,45 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                 if (!pagosVenta.length) return null;
                 return (
                   <div className="col-span-2">
-                    <p className="text-xs text-gray-500 mb-1">Forma de Pago</p>
-                    <div className="flex flex-col gap-0.5">
-                      {pagosVenta.map((p, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <span className="font-semibold text-gray-900">
-                            {p.modalidad_pago?.nombre || '—'}{p.referencia ? ` — ${p.referencia}` : ''}
-                          </span>
-                          <span className="font-semibold text-gray-700">
-                            S/ {p.monto != null ? Number(p.monto).toFixed(2) : '—'}
-                          </span>
-                        </div>
-                      ))}
+                    <p className="text-xs text-gray-500 mb-1.5">Forma de Pago</p>
+                    <div className="flex flex-col gap-2">
+                      {pagosVenta.map((p, i) => {
+                        const validado = !!p.pago_validado;
+                        const validadoPor = p.validado_por
+                          ? [p.validado_por.nombres, p.validado_por.apellidos].filter(Boolean).join(' ')
+                          : null;
+                        const validadoAt = p.pago_validado_at
+                          ? new Date(p.pago_validado_at).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          : null;
+                        return (
+                          <div key={i} className={`rounded-lg px-3 py-2 border ${validado ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-semibold text-gray-900">
+                                {p.modalidad_pago?.nombre || '—'}{p.referencia ? ` — ${p.referencia}` : ''}
+                              </span>
+                              <span className="font-semibold text-gray-700">
+                                S/ {p.monto != null ? Number(p.monto).toFixed(2) : '—'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {validado ? (
+                                <>
+                                  <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 12 10" fill="none">
+                                      <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    Validado
+                                  </span>
+                                  {validadoPor && <span className="text-xs text-green-600">por {validadoPor}</span>}
+                                  {validadoAt && <span className="text-xs text-gray-400">· {validadoAt}</span>}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">Pago pendiente de validación</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

@@ -82,29 +82,26 @@ const EvaluacionPsicologicaColegioPage = () => {
                     className="original-price"
                     style={{ textDecoration: "line-through", color: "gray" }}
                   >
-                    S/. 360.00
+                    S/. 400.00
                   </span>
                   <br />
                   <span className="currency">S/.</span>
-                  <span className="amount">320.00</span>
+                  <span className="amount">370.00</span>
                 </div>
                 <p className="description">
-                  Evaluación completa del desarrollo cognitivo, emocional y
-                  social de tu hijo.
+                  Ideal para niños y adolescentes de 4 a 17 años. Evaluación completa del desarrollo cognitivo, emocional y social.
                 </p>
 
-                <h4>Servicios Incluidos:</h4>
+                <h4>Incluye 6 citas:</h4>
                 <ul className="features-list">
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Entrevista
-                    (Padres)
+                    <i className="bi bi-check-circle-fill"></i> 1 Entrevista inicial (solo padres)
                   </li>
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 4 Sesiones
-                    evaluativas:
+                    <i className="bi bi-check-circle-fill"></i> 4 Sesiones evaluativas:
                   </li>
                   <li style={{ marginLeft: "30px" }}>
-                    <i className="bi bi-dot"></i> Cognitivas
+                    <i className="bi bi-dot"></i> Cognitiva
                   </li>
                   <li style={{ marginLeft: "30px" }}>
                     <i className="bi bi-dot"></i> Emocional
@@ -113,13 +110,10 @@ const EvaluacionPsicologicaColegioPage = () => {
                     <i className="bi bi-dot"></i> Social
                   </li>
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Informe Verbal
+                    <i className="bi bi-check-circle-fill"></i> 1 Sesión de entrega de informe verbal (solo padres), donde se explican los resultados obtenidos.
                   </li>
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Informe Físico
-                  </li>
-                  <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Informe Electrónico
+                    <i className="bi bi-gift-fill"></i> Informe físico y digital sin costo adicional, ideal para presentar en el colegio.
                   </li>
                 </ul>
 
@@ -141,29 +135,26 @@ const EvaluacionPsicologicaColegioPage = () => {
                     className="original-price"
                     style={{ textDecoration: "line-through", color: "white" }}
                   >
-                    S/. 400.00
+                    S/. 460.00
                   </span>
                   <br />
                   <span className="currency">S/.</span>
-                  <span className="amount">370.00</span>
+                  <span className="amount">420.00</span>
                 </div>
                 <p className="description">
-                  Evaluación integral incluyendo preparación escolar y
-                  habilidades académicas.
+                  Recomendado para niños y adolescentes de 5 a 17 años. Evaluación integral incluyendo preparación escolar y habilidades académicas.
                 </p>
 
-                <h4>Servicios Incluidos:</h4>
+                <h4>Incluye 7 citas:</h4>
                 <ul className="features-list">
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Entrevista
-                    (Padres)
+                    <i className="bi bi-check-circle-fill"></i> 1 Entrevista inicial (solo padres)
                   </li>
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 5 Sesiones
-                    evaluativas:
+                    <i className="bi bi-check-circle-fill"></i> 5 Sesiones evaluativas:
                   </li>
                   <li style={{ marginLeft: "30px" }}>
-                    <i className="bi bi-dot"></i> Cognitivas
+                    <i className="bi bi-dot"></i> Cognitiva
                   </li>
                   <li style={{ marginLeft: "30px" }}>
                     <i className="bi bi-dot"></i> Emocional
@@ -172,16 +163,13 @@ const EvaluacionPsicologicaColegioPage = () => {
                     <i className="bi bi-dot"></i> Social
                   </li>
                   <li style={{ marginLeft: "30px" }}>
-                    <i className="bi bi-dot"></i> Aprestamiento Escolar
+                    <i className="bi bi-dot"></i> Aprestamiento escolar
                   </li>
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Informe Verbal
+                    <i className="bi bi-check-circle-fill"></i> 1 Sesión de entrega de informe verbal (solo padres), donde se explican los resultados obtenidos.
                   </li>
                   <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Informe Físico
-                  </li>
-                  <li>
-                    <i className="bi bi-check-circle-fill"></i> 1 Informe Electrónico
+                    <i className="bi bi-gift-fill"></i> Informe físico y digital sin costo adicional, ideal para presentar en el colegio.
                   </li>
                 </ul>
 

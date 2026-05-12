@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { UserIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, PencilSquareIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { obtenerTerapeutas, obtenerAsistenciasPorTerapeuta, modificarAsistenciaAdmin } from '../../services/api';
+import { getEstadosPaciente } from '../../services/pacienteService';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 const ESTADO_ASISTIO = 7;
@@ -24,9 +25,12 @@ const AsistenciasPorTerapeuta = () => {
     noAsistio: 0,
     pendientes: 0
   });
+  const [estadosPacientes, setEstadosPacientes] = useState({});
+  const [catalogoEstados, setCatalogoEstados] = useState([]);
 
   useEffect(() => {
     cargarTerapeutas();
+    getEstadosPaciente().then(data => setCatalogoEstados(data)).catch(() => {});
 
     const hoy = new Date();
     const diaSemana = hoy.getDay();
@@ -62,10 +66,19 @@ const AsistenciasPorTerapeuta = () => {
     const total = data.length;
     const completadas = data.filter(a => a.terapeuta_estado_id === 7).length;
     const sesionDictada = data.filter(a => a.terapeuta_estado_id === 6).length;
-    // Pendiente = al menos uno de los dos no marcó
     const pendientes = data.filter(a => !a.recepcion_marco || !a.terapeuta_marco).length;
-
     setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
+
+    // Contar pacientes únicos por estado dentro del rango filtrado
+    const vistos = new Set();
+    const conteo = {};
+    for (const a of data) {
+      if (!a.paciente_id || vistos.has(a.paciente_id)) continue;
+      vistos.add(a.paciente_id);
+      const est = a.paciente_estado || 'Sin estado';
+      conteo[est] = (conteo[est] || 0) + 1;
+    }
+    setEstadosPacientes(conteo);
   };
 
   const cargarAsistencias = async (terapeutaId, resetPage = true) => {
@@ -104,6 +117,7 @@ const AsistenciasPorTerapeuta = () => {
     } else {
       setAsistencias([]);
       setEstadisticas({ total: 0, completadas: 0, noAsistio: 0, pendientes: 0 });
+      setEstadosPacientes({});
     }
   };
 
@@ -209,46 +223,54 @@ const AsistenciasPorTerapeuta = () => {
         )}
       </div>
 
-      {/* Estadísticas */}
+      {/* Métricas */}
       {terapeutaSeleccionado && asistencias.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600">Total Citas</p>
-                <p className="text-2xl font-bold text-blue-900">{estadisticas.total}</p>
-              </div>
-              <CalendarIcon className="w-8 h-8 text-blue-500" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-between">
+            <p className="text-sm font-medium text-blue-600">Total Citas</p>
+            <div className="flex items-end justify-between mt-2">
+              <p className="text-3xl font-bold text-blue-900">{estadisticas.total}</p>
+              <CalendarIcon className="w-8 h-8 text-blue-400" />
             </div>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600">Asistió</p>
-                <p className="text-2xl font-bold text-green-900">{estadisticas.completadas}</p>
-              </div>
-              <CheckCircleIcon className="w-8 h-8 text-green-500" />
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col justify-between">
+            <p className="text-sm font-medium text-green-600">Asistió</p>
+            <div className="flex items-end justify-between mt-2">
+              <p className="text-3xl font-bold text-green-900">{estadisticas.completadas}</p>
+              <CheckCircleIcon className="w-8 h-8 text-green-400" />
             </div>
           </div>
 
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600">Sesión Dictada</p>
-                <p className="text-2xl font-bold text-orange-900">{estadisticas.noAsistio}</p>
-              </div>
-              <XCircleIcon className="w-8 h-8 text-orange-500" />
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex flex-col justify-between">
+            <p className="text-sm font-medium text-orange-600">Sesión Dictada</p>
+            <div className="flex items-end justify-between mt-2">
+              <p className="text-3xl font-bold text-orange-900">{estadisticas.noAsistio}</p>
+              <XCircleIcon className="w-8 h-8 text-orange-400" />
             </div>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-600">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-900">{estadisticas.pendientes}</p>
-              </div>
-              <ClockIcon className="w-8 h-8 text-yellow-500" />
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex flex-col justify-between">
+            <p className="text-sm font-medium text-yellow-600">Pendientes</p>
+            <div className="flex items-end justify-between mt-2">
+              <p className="text-3xl font-bold text-yellow-900">{estadisticas.pendientes}</p>
+              <ClockIcon className="w-8 h-8 text-yellow-400" />
+            </div>
+          </div>
+
+          {/* Card estados de pacientes */}
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-purple-600">Estado Pacientes</p>
+              <UserGroupIcon className="w-5 h-5 text-purple-400" />
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+              {catalogoEstados.map(e => (
+                <div key={e.id} className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">{e.nombre}</span>
+                  <span className="text-xs font-bold text-purple-900 ml-1">{estadosPacientes[e.nombre] || 0}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

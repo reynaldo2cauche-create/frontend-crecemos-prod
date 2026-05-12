@@ -563,25 +563,29 @@ const tipoPagadorLabel = (id) =>
   id === 1 ? 'Paciente' : id === 2 ? 'Responsable' : id === 3 ? 'Externo' : '—';
 
 // ─── Estructura de columnas ───────────────────────────────────────────────────
-// Cabecera de venta (cols A–J) + detalle (cols K–P)
+// Cabecera de venta (cols A–N) + detalle (cols O–T)
 // A  Fecha
-// B  Tipo
-// C  Comprobante (tipo)
-// D  N° Comprobante
-// E  Pagador (tipo)
-// F  Cliente
-// G  Subtotal
-// H  Descuento
-// I  Total
-// J  Promos
-// K  # Línea
-// L  Descripción ítem
-// M  Paciente ítem
-// N  Cantidad
-// O  P. Unit.
-// P  Subtotal ítem
+// B  Hora
+// C  Tipo
+// D  Comprobante (tipo)
+// E  N° Comprobante
+// F  Pagador (tipo)
+// G  Cliente
+// H  Usuario que registró
+// I  Subtotal
+// J  Descuento
+// K  Total
+// L  Promos
+// M  Notas
+// N  Observaciones
+// O  # Línea
+// P  Descripción ítem
+// Q  Paciente ítem
+// R  Cantidad
+// S  P. Unit.
+// T  Subtotal ítem
 
-const NCOLS = 16; // A(0)–P(15)
+const NCOLS = 20; // A(0)–T(19)
 
 // ─── Función principal ────────────────────────────────────────────────────────
 
@@ -598,34 +602,38 @@ export function exportarHistorialVentas(ventas, filtros) {
   const thD  = S.th('1565C0');   // azul para detalle
   const thDL = S.thL('1565C0');
 
-  // Grupo venta
+  // Grupo venta (A–N = cols 0–13)
   ws[`A${r}`] = C('CABECERA DE VENTA', { ...thV, alignment: { horizontal: 'center', vertical: 'center' } });
-  for (let c = 1; c <= 9; c++) ws[`${col(c)}${r}`] = C('', thV);
-  merges.push({ s: { r: r - 1, c: 0 }, e: { r: r - 1, c: 9 } });
+  for (let c = 1; c <= 13; c++) ws[`${col(c)}${r}`] = C('', thV);
+  merges.push({ s: { r: r - 1, c: 0 }, e: { r: r - 1, c: 13 } });
 
-  // Grupo detalle
-  ws[`K${r}`] = C('DETALLE DE LÍNEAS', { ...thD, alignment: { horizontal: 'center', vertical: 'center' } });
-  for (let c = 11; c <= 15; c++) ws[`${col(c)}${r}`] = C('', thD);
-  merges.push({ s: { r: r - 1, c: 10 }, e: { r: r - 1, c: 15 } });
+  // Grupo detalle (O–T = cols 14–19)
+  ws[`O${r}`] = C('DETALLE DE LÍNEAS', { ...thD, alignment: { horizontal: 'center', vertical: 'center' } });
+  for (let c = 15; c <= 19; c++) ws[`${col(c)}${r}`] = C('', thD);
+  merges.push({ s: { r: r - 1, c: 14 }, e: { r: r - 1, c: 19 } });
   r++;
 
   // Fila r: encabezados de columna
-  ws[`A${r}`] = C('FECHA',          thVL);
-  ws[`B${r}`] = C('TIPO',           thV);
-  ws[`C${r}`] = C('COMPROBANTE',    thV);
-  ws[`D${r}`] = C('N° COMPROBANTE', thV);
-  ws[`E${r}`] = C('PAGADOR',        thV);
-  ws[`F${r}`] = C('CLIENTE',        thVL);
-  ws[`G${r}`] = C('SUBTOTAL (S/)',  thV);
-  ws[`H${r}`] = C('DESCUENTO (S/)', thV);
-  ws[`I${r}`] = C('TOTAL (S/)',     thV);
-  ws[`J${r}`] = C('PROMOS',         thV);
-  ws[`K${r}`] = C('#',              thD);
-  ws[`L${r}`] = C('DESCRIPCIÓN',    thDL);
-  ws[`M${r}`] = C('PACIENTE',       thDL);
-  ws[`N${r}`] = C('CANT.',          thD);
-  ws[`O${r}`] = C('P. UNIT. (S/)',  thD);
-  ws[`P${r}`] = C('SUBTOTAL (S/)',  thD);
+  ws[`A${r}`] = C('FECHA',            thVL);
+  ws[`B${r}`] = C('HORA',             thV);
+  ws[`C${r}`] = C('TIPO',             thV);
+  ws[`D${r}`] = C('COMPROBANTE',      thV);
+  ws[`E${r}`] = C('N° COMPROBANTE',   thV);
+  ws[`F${r}`] = C('PAGADOR',          thV);
+  ws[`G${r}`] = C('CLIENTE',          thVL);
+  ws[`H${r}`] = C('REGISTRADO POR',   thVL);
+  ws[`I${r}`] = C('SUBTOTAL (S/)',    thV);
+  ws[`J${r}`] = C('DESCUENTO (S/)',   thV);
+  ws[`K${r}`] = C('TOTAL (S/)',       thV);
+  ws[`L${r}`] = C('PROMOS',           thV);
+  ws[`M${r}`] = C('NOTAS',            thVL);
+  ws[`N${r}`] = C('OBSERVACIONES',    thVL);
+  ws[`O${r}`] = C('#',                thD);
+  ws[`P${r}`] = C('DESCRIPCIÓN',      thDL);
+  ws[`Q${r}`] = C('PACIENTE',         thDL);
+  ws[`R${r}`] = C('CANT.',            thD);
+  ws[`S${r}`] = C('P. UNIT. (S/)',    thD);
+  ws[`T${r}`] = C('SUBTOTAL (S/)',    thD);
   r++;
 
   // ── Filas de datos ────────────────────────────────────────────────────────
@@ -667,43 +675,55 @@ export function exportarHistorialVentas(ventas, filtros) {
     sumDesc  += descuento;
 
     // Datos de cabecera — se repiten en la primera fila y se mergean verticalmente
-    const fechaStr = fmtFecha(v.fecha_venta);
-    const tipoStr  = tipo === 'servicio' ? 'Servicio' : 'Producto';
-    const compNom  = v.tipo_comprobante?.nombre || '—';
-    const compCod  = v.codigo_comprobante || '—';
-    const pagStr   = tipoPagadorLabel(v.tipo_pagador_id || v.tipo_comprador_id);
-    const cliente  = getCliente(v);
+    const fechaStr  = fmtFecha(v.fecha_venta);
+    const horaStr   = v.created_at
+      ? new Date(v.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : '—';
+    const tipoStr   = tipo === 'servicio' ? 'Servicio' : 'Producto';
+    const compNom   = v.tipo_comprobante?.nombre || '—';
+    const compCod   = v.codigo_comprobante || '—';
+    const pagStr    = tipoPagadorLabel(v.tipo_pagador_id || v.tipo_comprador_id);
+    const cliente   = getCliente(v);
+    const usuarioStr = v.user_crea
+      ? `${v.user_crea.nombres || ''} ${v.user_crea.apellidos || ''}`.trim()
+      : '—';
+    const notaStr   = v.nota || '—';
+    const obsStr    = v.observaciones || '—';
 
     // Escribir celdas de cabecera fila a fila
     // En la primera fila del grupo: valor real; en el resto: vacío (el merge une visualmente)
     for (let li = 0; li < nLineas; li++) {
       const fila = r + li;
 
-      // Columnas de cabecera (A–J): solo primera línea tiene valor, el resto vacío
+      // Columnas de cabecera (A–N): solo primera línea tiene valor, el resto vacío
       const esFirst = li === 0;
 
-      ws[`A${fila}`] = C(esFirst ? fechaStr : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11, bold: esFirst } });
-      ws[`B${fila}`] = C(esFirst ? tipoStr  : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11, bold: esFirst,
+      ws[`A${fila}`] = C(esFirst ? fechaStr   : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11, bold: esFirst } });
+      ws[`B${fila}`] = C(esFirst ? horaStr    : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11, color: { rgb: P.GRAY4 } } });
+      ws[`C${fila}`] = C(esFirst ? tipoStr    : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11, bold: esFirst,
         color: { rgb: tipo === 'servicio' ? '1565C0' : P.AMBER } } });
-      ws[`C${fila}`] = C(esFirst ? compNom  : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11 } });
-      ws[`D${fila}`] = C(esFirst ? compCod  : '', { ...tdV('center'), font: { name: 'Courier New', sz: 11, bold: esFirst, color: { rgb: P.PURPLE2 } } });
-      ws[`E${fila}`] = C(esFirst ? pagStr   : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11 } });
-      ws[`F${fila}`] = C(esFirst ? cliente  : '', { ...tdV(), font: { name: 'Calibri', sz: 11, bold: esFirst } });
-      ws[`G${fila}`] = C(esFirst ? fmtMoneda(v.subtotal || total) : '', { ...tdV('right'), font: { name: 'Calibri', sz: 11 } });
-      ws[`H${fila}`] = C(esFirst ? (descuento > 0 ? `− ${fmtMoneda(descuento)}` : '—') : '', {
+      ws[`D${fila}`] = C(esFirst ? compNom    : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11 } });
+      ws[`E${fila}`] = C(esFirst ? compCod    : '', { ...tdV('center'), font: { name: 'Courier New', sz: 11, bold: esFirst, color: { rgb: P.PURPLE2 } } });
+      ws[`F${fila}`] = C(esFirst ? pagStr     : '', { ...tdV('center'), font: { name: 'Calibri', sz: 11 } });
+      ws[`G${fila}`] = C(esFirst ? cliente    : '', { ...tdV(), font: { name: 'Calibri', sz: 11, bold: esFirst } });
+      ws[`H${fila}`] = C(esFirst ? usuarioStr : '', { ...tdV(), font: { name: 'Calibri', sz: 11, color: { rgb: P.BLUE } } });
+      ws[`I${fila}`] = C(esFirst ? fmtMoneda(v.subtotal || total) : '', { ...tdV('right'), font: { name: 'Calibri', sz: 11 } });
+      ws[`J${fila}`] = C(esFirst ? (descuento > 0 ? `− ${fmtMoneda(descuento)}` : '—') : '', {
         ...tdV('right'),
         font: { name: 'Calibri', sz: 11, color: { rgb: descuento > 0 ? P.AMBER : P.GRAY3 } },
       });
-      ws[`I${fila}`] = C(esFirst ? fmtMoneda(total) : '', {
+      ws[`K${fila}`] = C(esFirst ? fmtMoneda(total) : '', {
         ...tdV('right'),
         font: { name: 'Calibri', sz: 11, bold: esFirst, color: { rgb: P.GREEN } },
       });
-      ws[`J${fila}`] = C(esFirst ? (promos > 0 ? `✦ ${promos}` : '—') : '', {
+      ws[`L${fila}`] = C(esFirst ? (promos > 0 ? `✦ ${promos}` : '—') : '', {
         ...tdV('center'),
         font: { name: 'Calibri', sz: 11, color: { rgb: promos > 0 ? '15803D' : P.GRAY3 } },
       });
+      ws[`M${fila}`] = C(esFirst ? notaStr    : '', { ...tdV(), font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: P.GRAY4 } } });
+      ws[`N${fila}`] = C(esFirst ? obsStr     : '', { ...tdV(), font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: P.GRAY4 } } });
 
-      // Columnas de detalle (K–P)
+      // Columnas de detalle (O–T)
       const d = detalles[li];
       if (d) {
         const desc   = getDescripcionDetalle(d, tipo);
@@ -712,21 +732,21 @@ export function exportarHistorialVentas(ventas, filtros) {
         const punit  = parseFloat(d.precio_unitario || 0);
         const subDet = parseFloat(d.subtotal || punit * cant || 0);
 
-        ws[`K${fila}`] = C(li + 1,          { ...tdD('center'), font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: P.PURPLE2 } } }, 'n');
-        ws[`L${fila}`] = C(desc,            { ...tdD(), font: { name: 'Calibri', sz: 11 } });
-        ws[`M${fila}`] = C(pac,             { ...tdD(), font: { name: 'Calibri', sz: 11, color: { rgb: P.PURPLE2 } } });
-        ws[`N${fila}`] = C(cant,            { ...tdD('center'), font: { name: 'Calibri', sz: 11 } }, 'n');
-        ws[`O${fila}`] = C(fmtMoneda(punit),{ ...tdD('right'), font: { name: 'Calibri', sz: 11 } });
-        ws[`P${fila}`] = C(fmtMoneda(subDet),{ ...tdD('right'), font: { name: 'Calibri', sz: 11, bold: true } });
+        ws[`O${fila}`] = C(li + 1,            { ...tdD('center'), font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: P.PURPLE2 } } }, 'n');
+        ws[`P${fila}`] = C(desc,              { ...tdD(), font: { name: 'Calibri', sz: 11 } });
+        ws[`Q${fila}`] = C(pac,               { ...tdD(), font: { name: 'Calibri', sz: 11, color: { rgb: P.PURPLE2 } } });
+        ws[`R${fila}`] = C(cant,              { ...tdD('center'), font: { name: 'Calibri', sz: 11 } }, 'n');
+        ws[`S${fila}`] = C(fmtMoneda(punit),  { ...tdD('right'), font: { name: 'Calibri', sz: 11 } });
+        ws[`T${fila}`] = C(fmtMoneda(subDet), { ...tdD('right'), font: { name: 'Calibri', sz: 11, bold: true } });
       } else {
         // Venta sin detalles — celdas vacías
-        for (const letra of ['K','L','M','N','O','P']) ws[`${letra}${fila}`] = C('', tdD());
+        for (const letra of ['O','P','Q','R','S','T']) ws[`${letra}${fila}`] = C('', tdD());
       }
     }
 
-    // Merge vertical para celdas de cabecera (A–J) si hay más de 1 línea
+    // Merge vertical para celdas de cabecera (A–N) si hay más de 1 línea
     if (nLineas > 1) {
-      for (let c = 0; c <= 9; c++) {
+      for (let c = 0; c <= 13; c++) {
         merges.push({ s: { r: r - 1, c }, e: { r: r - 1 + nLineas - 1, c } });
       }
     }
@@ -737,36 +757,42 @@ export function exportarHistorialVentas(ventas, filtros) {
 
   // ── Fila total ────────────────────────────────────────────────────────────
   ws[`A${r}`] = C(`TOTAL — ${ventas.length} ventas`, S.totalL());
-  for (let c = 1; c <= 5; c++) ws[`${col(c)}${r}`] = C('', S.totalL());
-  merges.push({ s: { r: r - 1, c: 0 }, e: { r: r - 1, c: 5 } });
+  for (let c = 1; c <= 7; c++) ws[`${col(c)}${r}`] = C('', S.totalL());
+  merges.push({ s: { r: r - 1, c: 0 }, e: { r: r - 1, c: 7 } });
 
-  ws[`G${r}`] = C('',                  S.total());
-  ws[`H${r}`] = C(`− ${fmtMoneda(sumDesc)}`, S.total());
-  ws[`I${r}`] = C(fmtMoneda(sumTotal), S.total());
-  ws[`J${r}`] = C('',                  S.totalC());
-  for (const letra of ['K','L','M','N','O','P']) ws[`${letra}${r}`] = C('', S.totalC());
+  ws[`I${r}`] = C('',                       S.total());
+  ws[`J${r}`] = C(`− ${fmtMoneda(sumDesc)}`, S.total());
+  ws[`K${r}`] = C(fmtMoneda(sumTotal),       S.total());
+  ws[`L${r}`] = C('',                        S.totalC());
+  ws[`M${r}`] = C('',                        S.totalC());
+  ws[`N${r}`] = C('',                        S.totalC());
+  for (const letra of ['O','P','Q','R','S','T']) ws[`${letra}${r}`] = C('', S.totalC());
 
   guardar(
     ws,
     merges,
-    `A1:P${r}`,
+    `A1:T${r}`,
     [
       { wpx: 95  }, // A Fecha
-      { wpx: 70  }, // B Tipo
-      { wpx: 85  }, // C Comprobante
-      { wpx: 115 }, // D N° Comprobante
-      { wpx: 80  }, // E Pagador
-      { wpx: 175 }, // F Cliente
-      { wpx: 110 }, // G Subtotal
-      { wpx: 110 }, // H Descuento
-      { wpx: 110 }, // I Total
-      { wpx: 55  }, // J Promos
-      { wpx: 35  }, // K #
-      { wpx: 195 }, // L Descripción
-      { wpx: 165 }, // M Paciente
-      { wpx: 55  }, // N Cant.
-      { wpx: 100 }, // O P. Unit.
-      { wpx: 110 }, // P Subtotal ítem
+      { wpx: 70  }, // B Hora
+      { wpx: 70  }, // C Tipo
+      { wpx: 85  }, // D Comprobante
+      { wpx: 115 }, // E N° Comprobante
+      { wpx: 75  }, // F Pagador
+      { wpx: 175 }, // G Cliente
+      { wpx: 155 }, // H Registrado por
+      { wpx: 105 }, // I Subtotal
+      { wpx: 105 }, // J Descuento
+      { wpx: 105 }, // K Total
+      { wpx: 50  }, // L Promos
+      { wpx: 180 }, // M Notas
+      { wpx: 180 }, // N Observaciones
+      { wpx: 35  }, // O #
+      { wpx: 195 }, // P Descripción
+      { wpx: 165 }, // Q Paciente
+      { wpx: 55  }, // R Cant.
+      { wpx: 100 }, // S P. Unit.
+      { wpx: 110 }, // T Subtotal ítem
     ],
     `Historial_Ventas_${filtros.fechaInicio ?? ''}_${filtros.fechaFin ?? ''}`,
     r,
