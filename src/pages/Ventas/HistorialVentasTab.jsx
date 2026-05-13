@@ -68,6 +68,7 @@ const HistorialVentasTab = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const esAdmision = user?.rol?.id === 2;
+  const esAdministrador = user?.rol?.id === 1;
 
   useEffect(() => { obtenerModalidadesPago().then(setModalidades).catch(() => {}); }, []);
   useEffect(() => { cargarVentas(); }, [page, rowsPerPage, filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, filtros.metodoPagoId, pacienteSeleccionado]);
@@ -438,16 +439,20 @@ const HistorialVentasTab = () => {
                                 return (
                                   <div key={pago.id} className="flex items-start gap-2">
                                     <div
-                                      onClick={() => !validado && !cargando && handleValidarPago(v, pago)}
+                                      onClick={() => esAdministrador && !validado && !cargando && handleValidarPago(v, pago)}
                                       title={validado
                                         ? `Validado por: ${validadoPor ?? '—'}\nFecha: ${validadoAt ?? '—'}`
-                                        : 'Clic para marcar como validado'}
+                                        : esAdministrador
+                                        ? 'Clic para marcar como validado'
+                                        : 'Solo el administrador puede validar pagos'}
                                       className={`mt-0.5 w-4 h-4 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
                                         validado
                                           ? 'bg-green-500 border-green-500 cursor-default'
                                           : cargando
                                           ? 'border-gray-300 bg-gray-100 cursor-wait'
-                                          : 'border-gray-300 bg-white hover:border-green-400 cursor-pointer'
+                                          : esAdministrador
+                                          ? 'border-gray-300 bg-white hover:border-green-400 cursor-pointer'
+                                          : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
                                       }`}
                                     >
                                       {validado && (
