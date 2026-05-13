@@ -32,6 +32,7 @@ import {
   BanknotesIcon,
   ShoppingCartIcon,
   SparklesIcon,
+  RectangleGroupIcon,
 } from '@heroicons/react/24/outline';
 import { Campaign } from '@mui/icons-material';
 
@@ -118,6 +119,13 @@ const menuSections = [
       { text: 'Popup Inicio', path: '/intranet/popup-promocional', icon: BellAlertIcon },
       { text: 'Sorteo', path: '/intranet/sorteo', icon: GiftIcon },
       { text: 'Campañas', path: '/intranet/campanas', icon: Campaign },
+    ],
+  },
+  {
+    title: 'CENTRO OPERATIVO',
+    roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION, ROLES.TERAPEUTA, ROLES.RECURSOS_HUMANOS],
+    items: [
+      { text: 'Centro Operativo', path: '/intranet/centro-operativo', icon: RectangleGroupIcon },
     ],
   },
   {

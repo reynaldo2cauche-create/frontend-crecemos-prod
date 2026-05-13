@@ -88,6 +88,7 @@ import Pagos from '../pages/Pagos';
 import GestorCampanas from '../pages/Campanas/GestorCampanas';
 import { Campanas } from '../pages/Campanas/Campanas';
 import GestionInformesPage from '../pages/Informes/GestionInformesPage';
+import CentroOperativo from '../pages/CentroOperativo/CentroOperativo';
 
 export const AppRouter = () => {
   return (
@@ -498,6 +499,18 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <GestionInformesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* ── CENTRO OPERATIVO ────────────────────────────────────── */}
+        <Route path="/intranet/centro-operativo" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <CentroOperativo />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
