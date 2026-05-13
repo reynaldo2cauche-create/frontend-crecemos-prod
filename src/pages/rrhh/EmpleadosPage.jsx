@@ -130,12 +130,13 @@ export default function EmpleadosPage() {
     try {
       if (empleado.estado === 1 || empleado.estado === true) {
         await desactivarTrabajador(empleado.id);
+        setEmpleados(prev => prev.map(e => e.id === empleado.id ? { ...e, estado: 0 } : e));
         showNotification('Empleado desactivado correctamente', 'success');
       } else {
         await activarTrabajador(empleado.id);
+        setEmpleados(prev => prev.map(e => e.id === empleado.id ? { ...e, estado: 1 } : e));
         showNotification('Empleado activado correctamente', 'success');
       }
-      cargarDatos();
     } catch (error) {
       showNotification('Error al cambiar el estado del empleado', 'error');
     }

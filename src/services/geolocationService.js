@@ -74,9 +74,9 @@ export const obtenerUbicacionActual = () => {
         reject(new Error(mensaje));
       },
       {
-        enableHighAccuracy: true, // Usar GPS si está disponible
-        timeout: 10000, // 10 segundos
-        maximumAge: 0 // No usar ubicación en caché
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000 // Usar posición cacheada del browser si tiene menos de 30s
       }
     );
   });

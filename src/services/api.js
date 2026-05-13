@@ -17,6 +17,20 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
+// Caché de coordenadas GPS: evita llamar getCurrentPosition en cada request
+const GPS_CACHE_TTL = 30000; // 30 segundos
+let _gpsCache = { coords: null, ts: 0 };
+
+const obtenerCoordenadasCacheadas = async () => {
+  const ahora = Date.now();
+  if (_gpsCache.coords && (ahora - _gpsCache.ts) < GPS_CACHE_TTL) {
+    return _gpsCache.coords;
+  }
+  const ubicacion = await obtenerUbicacionActual();
+  _gpsCache = { coords: ubicacion, ts: ahora };
+  return ubicacion;
+};
+
 // Interceptor para agregar el token Y coordenadas GPS en cada petición
 api.interceptors.request.use(
   async (config) => {
@@ -26,21 +40,16 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 2. Agregar coordenadas GPS PARA TODOS LOS USUARIOS (auditoría)
+    // 2. Agregar coordenadas GPS (cacheadas 30s para no bloquear cada request)
     try {
       const userStr = localStorage.getItem('user');
       if (userStr) {
-        const user = JSON.parse(userStr);
-
-        // Intentar obtener ubicación para TODOS los usuarios (para auditoría)
         try {
-          const ubicacion = await obtenerUbicacionActual();
+          const ubicacion = await obtenerCoordenadasCacheadas();
           config.headers['x-user-latitude'] = ubicacion.lat.toString();
           config.headers['x-user-longitude'] = ubicacion.lng.toString();
-          console.log(`📍 Coordenadas agregadas al request: ${ubicacion.lat}, ${ubicacion.lng}`);
         } catch (gpsError) {
           console.warn('⚠️ No se pudo obtener ubicación GPS:', gpsError.message);
-          // No bloqueamos el request si falla el GPS
         }
       }
     } catch (error) {

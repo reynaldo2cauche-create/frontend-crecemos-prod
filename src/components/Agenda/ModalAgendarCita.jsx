@@ -428,34 +428,34 @@ const ModalAgendarCita = ({
         // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
        // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
         let mensajeUltimaSesion = '';
+        let esCitaFinal = false;
         try {
           if (citaEditando.venta_servicio_detalle_id) {
             const infoVenta = await getInfoVentaDeCita(citaEditando.id);
 
-
             console.log('🔍 DEBUG sesiones:', {
-      restantes: infoVenta?.sesiones_restantes,
-      totales: infoVenta?.sesiones_totales,
-      es_penultima: infoVenta?.es_penultima_cita,
-      es_ultima: infoVenta?.es_ultima_cita,
-      tipo_venta: infoVenta?.tipo_venta_id
-    });
+              restantes: infoVenta?.sesiones_restantes,
+              totales: infoVenta?.sesiones_totales,
+              es_penultima: infoVenta?.es_penultima_cita,
+              es_ultima: infoVenta?.es_ultima_cita,
+              tipo_venta: infoVenta?.tipo_venta_id
+            });
             if (infoVenta) {
               const restantes = infoVenta.sesiones_restantes || 0;
               const esSesionUnitaria = infoVenta.tipo_venta_id === 1;
-              
-              // ✅ FIX: calcular penúltima manualmente si el backend no la devuelve
-              const esPenultimaManual = !infoVenta.es_penultima_cita && 
-                                        !infoVenta.es_ultima_cita && 
+
+              const esPenultimaManual = !infoVenta.es_penultima_cita &&
+                                        !infoVenta.es_ultima_cita &&
                                         restantes === 1;
 
               if (infoVenta.es_ultima_cita) {
+                esCitaFinal = true;
                 if (esSesionUnitaria) {
-                  mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* ${infoVenta.sesiones_totales === 1 ? 'Esta es la sesión adquirida.' : `Esta es la última de las *${infoVenta.sesiones_totales} sesiones* adquiridas.`} Le recomendamos coordinar una nueva cita para continuar con su proceso.`;
+                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la ${infoVenta.sesiones_totales === 1 ? 'sesión adquirida' : `última de las *${infoVenta.sesiones_totales} sesiones* adquiridas`}. En caso deseen continuar con sus terapias, les recomendamos coordinar una nueva contratación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
                 } else {
-                  mensajeUltimaSesion = `\n\n⚠️ *Aviso importante:* Esta es la *última sesión* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Le recomendamos coordinar la renovación.`;
+                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la última sesión del paquete contratado (${infoVenta.sesiones_totales} sesiones). En caso deseen continuar con sus terapias y mantener su horario habitual, les recomendamos coordinar la renovación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
                 }
-              }  else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2) {// ✅ incluir fallback
+              } else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2) {
                 if (esSesionUnitaria) {
                   mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* de las ${infoVenta.sesiones_totales} sesiones adquiridas. Le recomendamos ir coordinando la contratación de más sesiones para continuar con su proceso.`;
                 } else {
@@ -474,6 +474,9 @@ const ModalAgendarCita = ({
           console.warn('No se pudo obtener info de la venta:', err);
         }
 
+        // El aviso de pago ya va integrado en mensajeUltimaSesion cuando es última cita
+        const mensajePago = '';
+
         let mensaje;
         if (citasMismoDia.length > 1) {
           let mensajeCitas = '';
@@ -489,14 +492,14 @@ const ModalAgendarCita = ({
             mensaje = `${saludo}, Sr(a).
   Le hacemos recordar las citas de *${nombrePaciente}* para el día
   🗓️ *${diaSemana}, ${dia} de ${mes}*
-  ${mensajeCitas}${mensajeUltimaSesion}
+  ${mensajeCitas}${mensajeUltimaSesion}${mensajePago}
 
   🥳 ¡Los esperamos! ✨`;
           } else {
             mensaje = `${saludo}, *${nombrePaciente}*
   Le hacemos recordar sus citas para el día
   🗓️ *${diaSemana}, ${dia} de ${mes}*
-  ${mensajeCitas}${mensajeUltimaSesion}
+  ${mensajeCitas}${mensajeUltimaSesion}${mensajePago}
 
   🥳 ¡Lo esperamos! ✨`;
           }
@@ -507,7 +510,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${formatearHora(citaEditando.hora_inicio)}*
   💜 ${getServicioConMotivo(citaEditando)}
-  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
 
   🥳 ¡Los esperamos! ✨`;
           } else {
@@ -516,7 +519,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${formatearHora(citaEditando.hora_inicio)}*
   💜 ${getServicioConMotivo(citaEditando)}
-  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
 
   🥳 ¡Lo esperamos! ✨`;
           }
@@ -589,6 +592,8 @@ const ModalAgendarCita = ({
         terapeutaNombre = 'Equipo de Terapeutas';
       }
 
+      const mensajePago = '';
+
       let mensaje;
       if (tieneResponsable) {
         mensaje = `${saludo}, Sr(a).
@@ -596,7 +601,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${horaFormateada}*
   💜 ${servicioNombre}
-  ✨ ${terapeutaNombre}
+  ✨ ${terapeutaNombre}${mensajePago}
 
   🥳 ¡Los esperamos! ✨`;
       } else {
@@ -605,7 +610,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${horaFormateada}*
   💜 ${servicioNombre}
-  ✨ ${terapeutaNombre}
+  ✨ ${terapeutaNombre}${mensajePago}
 
   🥳 ¡Lo esperamos! ✨`;
       }
