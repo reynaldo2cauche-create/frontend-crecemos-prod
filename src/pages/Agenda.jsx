@@ -55,6 +55,7 @@ const Agenda = () => {
     const ahora = new Date();
     return new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Lima' }));
   });
+  const cambioTerapeutaRef = useRef(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [slotSeleccionado, setSlotSeleccionado] = useState(null);
   const [terapeutaFiltro, setTerapeutaFiltro] = useState('');
@@ -89,6 +90,8 @@ const Agenda = () => {
   const [trabajadores, setTrabajadores] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [cargandoCita, setCargandoCita] = useState(false); // ✅ Loading para abrir modal
+  // Cache stale-while-revalidate: clave = "terapeutaId-fechaDesde-fechaHasta"
+  const citasCache = useRef(new Map());
 
   // Estados para notificaciones
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -160,42 +163,56 @@ const Agenda = () => {
     let cancelado = false;
 
     const cargarCitas = async () => {
-      try {
-        setCitas([]);
-        setTodasLasCitas([]);
-        setCargando(true);
+      let params = {};
 
-        let params = {};
+      if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+        params.terapeuta_id = currentUser.id;
+      } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+        params.terapeuta_id = terapeutaFiltro;
+      }
 
-        if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
-          params.terapeuta_id = currentUser.id;
-        } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-          params.terapeuta_id = terapeutaFiltro;
-        }
+      const fecha = new Date(fechaActual);
+      const formatearFecha = (f) => {
+        const year = f.getFullYear();
+        const month = String(f.getMonth() + 1).padStart(2, '0');
+        const day = String(f.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
 
-        const fecha = new Date(fechaActual);
+      const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+      const primerDiaExpandido = new Date(primerDiaMes);
+      primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
+      const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+      const ultimoDiaExpandido = new Date(ultimoDiaMes);
+      ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
 
-        const formatearFecha = (f) => {
-          const year = f.getFullYear();
-          const month = String(f.getMonth() + 1).padStart(2, '0');
-          const day = String(f.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        };
+      params.fecha_desde = formatearFecha(primerDiaExpandido);
+      params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
 
-        const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-        const primerDiaExpandido = new Date(primerDiaMes);
-        primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
+      const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+      const cachedData = citasCache.current.get(cacheKey);
 
-        const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
-        const ultimoDiaExpandido = new Date(ultimoDiaMes);
-        ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
+     const esCambioTerapeuta = cambioTerapeutaRef.current;
+      cambioTerapeutaRef.current = false; // resetear para la próxima
 
-        params.fecha_desde = formatearFecha(primerDiaExpandido);
-        params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
-
-        const citasRes = await listarCitas(params);
-
+      if (cachedData && !esCambioTerapeuta) {
+        // Misma semana/terapeuta: mostrar caché inmediato sin spinner
         if (!cancelado) {
+          setCitas(cachedData);
+          setTodasLasCitas(cachedData);
+          setCargando(false);
+        }
+      } else {
+        // Cambio de terapeuta: ya limpiamos arriba, solo mantener spinner
+        if (!cancelado) {
+          setCargando(true);
+        }
+      }
+      // Siempre buscar la versión fresca en segundo plano
+      try {
+        const citasRes = await listarCitas(params);
+        if (!cancelado) {
+          citasCache.current.set(cacheKey, citasRes);
           setCitas(citasRes);
           setTodasLasCitas(citasRes);
         }
@@ -307,14 +324,23 @@ const Agenda = () => {
 
   // Polling silencioso cada 30s para ver citas creadas por otros usuarios
   const obtenerParamsRef = useRef(obtenerParamsFechaActual);
-  useEffect(() => { obtenerParamsRef.current = obtenerParamsFechaActual; });
+  const terapeutaFiltroRef = useRef(terapeutaFiltro);
+  useEffect(() => {
+    obtenerParamsRef.current = obtenerParamsFechaActual;
+    terapeutaFiltroRef.current = terapeutaFiltro;
+  });
 
   useEffect(() => {
     if (!currentUser) return;
     const intervalo = setInterval(async () => {
       try {
+        const filtroAlInicio = terapeutaFiltroRef.current;
         const params = obtenerParamsRef.current();
         const citasFrescas = await listarCitas(params, { forceRefresh: true });
+        // descartar si el terapeuta cambió mientras esperábamos la respuesta
+        if (terapeutaFiltroRef.current !== filtroAlInicio) return;
+        const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+        citasCache.current.set(cacheKey, citasFrescas);
         setCitas(citasFrescas);
         setTodasLasCitas(citasFrescas);
       } catch {
@@ -723,6 +749,8 @@ const guardarCita = async (datosFormulario = null) => {
     console.log(`🔄 Recargando citas del ${params.fecha_desde} al ${params.fecha_hasta}`);
 
     const citasActualizadas = await listarCitas(params);
+    const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+    citasCache.current.set(cacheKey, citasActualizadas);
     setCitas(citasActualizadas);
     setTodasLasCitas(citasActualizadas);
 
@@ -770,6 +798,8 @@ const guardarCita = async (datosFormulario = null) => {
       // Recargar citas del mes actual visualizado
       const params = obtenerParamsFechaActual();
       const citasActualizadas = await listarCitas(params);
+      const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+      citasCache.current.set(cacheKey, citasActualizadas);
       setCitas(citasActualizadas);
       setTodasLasCitas(citasActualizadas);
 
@@ -1005,16 +1035,18 @@ const guardarCita = async (datosFormulario = null) => {
               <select
                 value={terapeutaFiltro}
                 onChange={(e) => {
-                    setTerapeutaFiltro(e.target.value);
-                    // Limpiar inmediatamente para evitar flash de datos anteriores
-                    setCitas([]);
-                    setTodasLasCitas([]);
-                    setBloqueos([]);
-                    const hoy = new Date();
-                    const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
-                    setFechaActual(hoyCL);
-                    setFechaCalendario(hoyCL);
-                  }}
+                  cambioTerapeutaRef.current = true;
+                  // Limpiar citas inmediatamente para no mostrar datos del terapeuta anterior
+                  setCitas([]);
+                  setTodasLasCitas([]);
+                  setBloqueos([]);
+                  setCargando(true);
+                  setTerapeutaFiltro(e.target.value); // dispara el useEffect
+                  const hoy = new Date();
+                  const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+                  setFechaActual(hoyCL);
+                  setFechaCalendario(hoyCL);
+                }}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
