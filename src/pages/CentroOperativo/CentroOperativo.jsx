@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   PlusIcon, ClockIcon, PencilIcon, TrashIcon, ChatBubbleLeftIcon,
   PlayIcon, PauseIcon, ChartBarIcon, XMarkIcon, CheckIcon,
-  ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon,
+  ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon, Bars3Icon,
 } from '@heroicons/react/24/outline';
 import {
   listarTareas, obtenerColumnas, obtenerPrioridades, crearTarea,
@@ -75,7 +75,7 @@ function Notificacion({ notif }) {
 
 // ─── Tarjeta de tarea ─────────────────────────────────────────────────────────
 
-function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, puedeTimer, soloAdmin }) {
+function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, puedeTimer, puedeEditar, puedeEliminar }) {
   const vencida = estaVencida(tarea);
   const tiempo = useTiempoVivo(tarea);
   const dias = diasRestantes(tarea.fecha_limite);
@@ -83,7 +83,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
   return (
     <div
       draggable
-      onDragStart={() => onDragStart(tarea)}
+      onDragStart={(e) => { e.dataTransfer.setData('dragType', 'tarea'); onDragStart(tarea); }}
       onDragEnd={() => onDragEnd()}
       onDragOver={(e) => e.preventDefault()}
       onClick={() => onVerDetalle(tarea)}
@@ -155,13 +155,13 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
               {tarea.timer_activo ? <PauseIcon className="w-3.5 h-3.5" /> : <PlayIcon className="w-3.5 h-3.5" />}
             </button>
           )}
-          {soloAdmin && (
+          {puedeEditar && (
             <button onClick={() => onEditar(tarea)}
               className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
               <PencilIcon className="w-3.5 h-3.5" />
             </button>
           )}
-          {soloAdmin && (
+          {puedeEliminar && (
             <button onClick={() => onEliminar(tarea.id)}
               className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
               <TrashIcon className="w-3.5 h-3.5" />
@@ -589,6 +589,11 @@ function ReporteModal({ onCerrar }) {
 function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
   const [form, setForm] = useState({ nombre: '', color: '#8b5cf6', es_final: false });
   const [guardando, setGuardando] = useState(false);
+  const [listaLocal, setListaLocal] = useState(columnas);
+  const [dragOver, setDragOver] = useState(null);
+  const dragSrcRef = useRef(null);
+
+  useEffect(() => { setListaLocal(columnas); }, [columnas]);
 
   const handleCrear = async () => {
     if (!form.nombre.trim()) return;
@@ -616,24 +621,71 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
     }
   };
 
+  const handleDragStart = (col) => { dragSrcRef.current = col.id; };
+
+  const handleDragOver = (e, col) => {
+    e.preventDefault();
+    if (dragSrcRef.current === col.id) return;
+    setDragOver(col.id);
+  };
+
+  const handleDrop = async (e, targetCol) => {
+    e.preventDefault();
+    setDragOver(null);
+    const srcId = dragSrcRef.current;
+    dragSrcRef.current = null;
+    if (!srcId || srcId === targetCol.id) return;
+    const reordenado = [...listaLocal];
+    const fromIdx = reordenado.findIndex(c => c.id === srcId);
+    const toIdx = reordenado.findIndex(c => c.id === targetCol.id);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [col] = reordenado.splice(fromIdx, 1);
+    reordenado.splice(toIdx, 0, col);
+    setListaLocal(reordenado);
+    try {
+      await reordenarColumnas(reordenado.map(c => c.id));
+      showNotif('Orden guardado');
+      onActualizar();
+    } catch {
+      showNotif('Error al guardar el orden', 'error');
+      setListaLocal(columnas);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Gestionar columnas</h2>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Gestionar columnas</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Arrastra <Bars3Icon className="w-3 h-3 inline" /> para reordenar</p>
+          </div>
           <button onClick={onCerrar} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400"><XMarkIcon className="w-5 h-5" /></button>
         </div>
-        <div className="p-5 space-y-4">
-          {/* Lista de columnas existentes */}
-          <div className="space-y-2">
-            {columnas.map(col => (
-              <div key={col.id} className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-100 bg-gray-50">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }} />
-                  <span className="text-sm font-medium text-gray-700">{col.nombre}</span>
-                  {col.es_final && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">Final</span>}
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
+          {/* Lista de columnas existentes con drag-to-reorder */}
+          <div className="space-y-1.5">
+            {listaLocal.map(col => (
+              <div
+                key={col.id}
+                draggable
+                onDragStart={() => handleDragStart(col)}
+                onDragOver={(e) => handleDragOver(e, col)}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={(e) => handleDrop(e, col)}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
+                  dragOver === col.id
+                    ? 'border-[#7B1FA2] bg-purple-50 shadow-sm'
+                    : 'border-gray-100 bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <Bars3Icon className="w-4 h-4 text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: col.color }} />
+                  <span className="text-sm font-medium text-gray-700 truncate">{col.nombre}</span>
+                  {col.es_final && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Final</span>}
                 </div>
-                <button onClick={() => handleEliminar(col)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <button onClick={() => handleEliminar(col)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 ml-2">
                   <TrashIcon className="w-4 h-4" />
                 </button>
               </div>
@@ -683,6 +735,7 @@ export default function CentroOperativo() {
   const [mostrarColumnas, setMostrarColumnas] = useState(false);
   const [notif, setNotif] = useState({ show: false, message: '', type: 'success' });
   const [isDragging, setIsDragging] = useState(false);
+  const [colDragOver, setColDragOver] = useState(null);
   const draggedTareaRef = useRef(null);
   const colDragRef = useRef(null);
 
@@ -785,22 +838,19 @@ export default function CentroOperativo() {
     }
   };
 
-  const handleDrop = async (colId) => {
-    // columna arrastrando sobre otra columna → reordenar
-    if (colDragRef.current) {
-      const src = colDragRef.current;
-      colDragRef.current = null;
-      if (src.id === colId) return;
-      const reordenado = [...columnas];
-      const fromIdx = reordenado.findIndex(c => c.id === src.id);
-      const toIdx = reordenado.findIndex(c => c.id === colId);
-      reordenado.splice(fromIdx, 1);
-      reordenado.splice(toIdx, 0, src);
-      setColumnas(reordenado);
-      try { await reordenarColumnas(reordenado.map(c => c.id)); } catch { cargar(); }
-      return;
-    }
-    // tarea arrastrando
+  const handleDropColumna = async (srcId, targetId) => {
+    if (srcId === targetId) return;
+    const reordenado = [...columnas];
+    const fromIdx = reordenado.findIndex(c => c.id === srcId);
+    const toIdx = reordenado.findIndex(c => c.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [col] = reordenado.splice(fromIdx, 1);
+    reordenado.splice(toIdx, 0, col);
+    setColumnas(reordenado);
+    try { await reordenarColumnas(reordenado.map(c => c.id)); } catch { cargar(); }
+  };
+
+  const handleDropTarea = async (e, colId) => {
     const tarea = draggedTareaRef.current;
     draggedTareaRef.current = null;
     setIsDragging(false);
@@ -827,45 +877,48 @@ export default function CentroOperativo() {
       <Notificacion notif={notif} />
 
       {/* Header */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 pt-24 lg:pt-4 pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-xl flex items-center justify-center shadow-md">
-              <BuildingOfficeIcon className="w-5 h-5 text-white" />
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 pt-24 lg:pt-6 pb-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* Título */}
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg">
+              <BuildingOfficeIcon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">Centro Operativo</h1>
-              <p className="text-xs text-gray-400">Gestión y seguimiento de tareas internas</p>
+              <h1 className="text-2xl font-bold text-gray-900">Centro Operativo</h1>
+              <p className="text-sm text-gray-500">Gestión y seguimiento de tareas internas</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {[
-              { label: tareas.length, sub: 'Total', cls: 'text-gray-700 bg-gray-50 border-gray-200' },
-              { label: enCurso, sub: 'En curso', cls: 'text-blue-700 bg-blue-50 border-blue-100' },
-              { label: completadas, sub: 'Listas', cls: 'text-green-700 bg-green-50 border-green-100' },
-              ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', cls: 'text-red-700 bg-red-50 border-red-100' }] : []),
-            ].map(s => (
-              <div key={s.sub} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${s.cls}`}>
-                <span className="text-base font-bold">{s.label}</span>{s.sub}
-              </div>
-            ))}
-            <div className="w-px h-6 bg-gray-200 mx-1" />
+
+          {/* Stats + acciones */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              {[
+                { label: tareas.length, sub: 'Total', cls: 'text-gray-700 bg-gray-50 border-gray-200' },
+                { label: enCurso, sub: 'En curso', cls: 'text-blue-700 bg-blue-50 border-blue-100' },
+                { label: completadas, sub: 'Listas', cls: 'text-green-700 bg-green-50 border-green-100' },
+                ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', cls: 'text-red-700 bg-red-50 border-red-100' }] : []),
+              ].map(s => (
+                <div key={s.sub} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold ${s.cls}`}>
+                  <span className="font-bold">{s.label}</span> {s.sub}
+                </div>
+              ))}
+            </div>
+            <div className="w-px h-6 bg-gray-200" />
             <button onClick={() => setMostrarReporte(true)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-              <ChartBarIcon className="w-3.5 h-3.5" /> Reporte
+              <ChartBarIcon className="w-4 h-4" /> Reporte
             </button>
             {admin && (
               <button onClick={() => setMostrarColumnas(true)}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-                <PlusIcon className="w-3.5 h-3.5" /> Columnas
+                <PlusIcon className="w-4 h-4" /> Columnas
               </button>
             )}
-            {admin && (
-              <button onClick={() => setModalCrear(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-lg transition-all shadow-sm">
-                <PlusIcon className="w-3.5 h-3.5" /> Nueva tarea
-              </button>
-            )}
+            <button onClick={() => setModalCrear(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-lg transition-all shadow-sm">
+              <PlusIcon className="w-4 h-4" /> Nueva tarea
+            </button>
           </div>
         </div>
       </div>
@@ -890,26 +943,49 @@ export default function CentroOperativo() {
         </div>
       ) : (
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
-          <div className="flex gap-3 px-5 py-4 h-full"
-            style={{ minWidth: `${columnas.length * 280 + (admin ? 120 : 40) + 40}px` }}>
+          <div className="flex gap-1.5 px-4 py-4 h-full"
+            style={{ minWidth: `${columnas.length * 272 + (admin ? 60 : 20) + 32}px` }}>
             {columnas.map((col, colIdx) => {
               const tareasCol = tareasPorColumna(col.id);
               const tieneVencidas = tareasCol.some(estaVencida);
 
               return (
                 <React.Fragment key={col.id}>
-                  <div className="flex-shrink-0 w-[268px] flex flex-col"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(col.id)}
-                  >
-                  {/* Header columna — arrastrable para reordenar */}
+                  <div className="flex-shrink-0 w-[262px] flex flex-col">
+                  {/* Header columna — arrastrable para reordenar columnas */}
                   <div
                     draggable={admin}
-                    onDragStart={() => { colDragRef.current = col; }}
-                    onDragEnd={() => { colDragRef.current = null; }}
-                    className={`flex items-center justify-between mb-2.5 px-1 ${admin ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('dragType', 'columna');
+                      e.dataTransfer.setData('columnaId', String(col.id));
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (!isDragging) setColDragOver(col.id);
+                    }}
+                    onDragLeave={() => setColDragOver(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setColDragOver(null);
+                      if (e.dataTransfer.getData('dragType') === 'columna') {
+                        handleDropColumna(Number(e.dataTransfer.getData('columnaId')), col.id);
+                      }
+                    }}
+                    className={`flex items-center justify-between mb-2 px-1.5 py-1.5 rounded-xl border-2 transition-all ${
+                      admin ? 'cursor-grab active:cursor-grabbing' : ''
+                    } ${
+                      colDragOver === col.id
+                        ? 'border-[#7B1FA2] bg-purple-50 shadow-sm'
+                        : 'border-transparent hover:bg-gray-100'
+                    }`}
                   >
                     <div className="flex items-center gap-2">
+                      {admin && (
+                        <Bars3Icon className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" title="Arrastra para reordenar" />
+                      )}
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: col.color }} />
                       <span className="text-sm font-bold text-gray-700">{col.nombre}</span>
                       <span className="text-[11px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
@@ -917,12 +993,10 @@ export default function CentroOperativo() {
                       </span>
                       {tieneVencidas && <ExclamationTriangleIcon className="w-3 h-3 text-red-500" />}
                     </div>
-                    {admin && (
-                      <button onClick={() => setModalCrear(true)}
-                        className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-[#7B1FA2] transition-colors">
-                        <PlusIcon className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button onClick={(e) => { e.stopPropagation(); setModalCrear(true); }}
+                      className="p-1 rounded-lg hover:bg-white text-gray-300 hover:text-[#7B1FA2] transition-colors">
+                      <PlusIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   {/* Área de tarjetas */}
@@ -930,7 +1004,7 @@ export default function CentroOperativo() {
                     className="flex-1 rounded-2xl p-2 border-2 border-dashed transition-all overflow-y-auto"
                     style={{ backgroundColor: col.color + '0d', borderColor: col.color + (isDragging ? 'aa' : '40') }}
                     onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(col.id)}
+                    onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.getData('dragType') === 'tarea') handleDropTarea(e, col.id); }}
                   >
                     {tareasCol.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center py-10 text-center">
@@ -948,7 +1022,8 @@ export default function CentroOperativo() {
                           onDragStart={(tarea) => { draggedTareaRef.current = tarea; setIsDragging(true); }}
                           onDragEnd={() => { draggedTareaRef.current = null; setIsDragging(false); }}
                           puedeTimer={admin || esAsignadoATarea(t)}
-                          soloAdmin={admin} />
+                          puedeEditar={admin || t.user_crea?.id === currentUser?.id}
+                          puedeEliminar={admin} />
                       ))
                     )}
                   </div>
@@ -956,10 +1031,10 @@ export default function CentroOperativo() {
 
                   {/* Separador con + entre columnas */}
                   {admin && (
-                    <div className="flex-shrink-0 w-10 flex items-start justify-center pt-9">
+                    <div className="flex-shrink-0 w-6 flex items-start justify-center pt-8">
                       <button onClick={() => setMostrarColumnas(true)}
-                        className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-300 hover:border-[#7B1FA2] hover:text-[#7B1FA2] hover:bg-purple-50 transition-all">
-                        <PlusIcon className="w-3.5 h-3.5" />
+                        className="w-5 h-5 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-300 hover:border-[#7B1FA2] hover:text-[#7B1FA2] hover:bg-purple-50 transition-all">
+                        <PlusIcon className="w-2.5 h-2.5" />
                       </button>
                     </div>
                   )}
