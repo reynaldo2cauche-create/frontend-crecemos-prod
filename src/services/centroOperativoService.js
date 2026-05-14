@@ -41,8 +41,12 @@ export const pausarTimer = (id) =>
 export const listarComentarios = (tareaId) =>
   api.get(`/tareas/${tareaId}/comentarios`).then(r => r.data);
 
-export const agregarComentario = (tareaId, contenido) =>
-  api.post(`/tareas/${tareaId}/comentarios`, { contenido }).then(r => r.data);
+export const agregarComentario = (tareaId, contenido, archivos = []) => {
+  const form = new FormData();
+  form.append('contenido', contenido);
+  archivos.forEach(f => form.append('archivos', f));
+  return api.post(`/tareas/${tareaId}/comentarios`, form).then(r => r.data);
+};
 
 // ─── Reporte ─────────────────────────────────────────────────────────────────
 
@@ -59,3 +63,17 @@ export const reordenarColumnas = (ids) =>
 
 export const eliminarColumna = (id) =>
   api.delete(`/tareas/columnas/${id}`).then(r => r.data);
+
+// ─── Archivos ─────────────────────────────────────────────────────────────────
+
+export const listarArchivos = (tareaId) =>
+  api.get(`/tareas/${tareaId}/archivos`).then(r => r.data);
+
+export const subirArchivos = (tareaId, files) => {
+  const form = new FormData();
+  files.forEach(f => form.append('archivos', f));
+  return api.post(`/tareas/${tareaId}/archivos`, form).then(r => r.data);
+};
+
+export const eliminarArchivo = (tareaId, archivoId) =>
+  api.delete(`/tareas/${tareaId}/archivos/${archivoId}`).then(r => r.data);

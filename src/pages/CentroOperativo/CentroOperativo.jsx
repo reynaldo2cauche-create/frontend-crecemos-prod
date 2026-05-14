@@ -3,13 +3,16 @@ import {
   PlusIcon, ClockIcon, PencilIcon, TrashIcon, ChatBubbleLeftIcon,
   PlayIcon, PauseIcon, ChartBarIcon, XMarkIcon, CheckIcon,
   ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon, Bars3Icon,
+  PaperClipIcon, ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import {
   listarTareas, obtenerColumnas, obtenerPrioridades, crearTarea,
   actualizarTarea, eliminarTarea, moverColumna, iniciarTimer,
   pausarTimer, listarComentarios, agregarComentario, obtenerReporteMensual,
   crearColumna, eliminarColumna, reordenarColumnas,
+  subirArchivos, eliminarArchivo,
 } from '../../services/centroOperativoService';
+import { SERVER_BASE_URL } from '../../services/api';
 import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
 
@@ -36,6 +39,31 @@ function estaVencida(tarea) {
 function diasRestantes(fecha) {
   if (!fecha) return null;
   return Math.ceil((new Date(fecha) - new Date()) / (1000 * 60 * 60 * 24));
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileColor(mime) {
+  if (!mime) return 'bg-gray-400';
+  if (mime.startsWith('image/')) return 'bg-blue-400';
+  if (mime === 'application/pdf') return 'bg-red-400';
+  if (mime.includes('word') || mime.includes('document')) return 'bg-blue-600';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'bg-green-500';
+  return 'bg-gray-400';
+}
+
+function fileLabel(mime) {
+  if (!mime) return 'DOC';
+  if (mime.startsWith('image/')) return 'IMG';
+  if (mime === 'application/pdf') return 'PDF';
+  if (mime.includes('word') || mime.includes('document')) return 'DOC';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'XLS';
+  return 'FILE';
 }
 
 // ─── Timer en vivo ────────────────────────────────────────────────────────────
@@ -142,10 +170,17 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
 
       {/* Timer + acciones */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100" onClick={e => e.stopPropagation()}>
-        <div className={`flex items-center gap-1 text-[11px] font-medium ${tarea.timer_activo ? 'text-green-600' : 'text-gray-400'}`}>
-          <ClockIcon className="w-3 h-3" />
-          {formatTiempo(tiempo)}
-          {tarea.timer_activo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-0.5" />}
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-1 text-[11px] font-medium ${tarea.timer_activo ? 'text-green-600' : 'text-gray-400'}`}>
+            <ClockIcon className="w-3 h-3" />
+            {formatTiempo(tiempo)}
+            {tarea.timer_activo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-0.5" />}
+          </div>
+          {tarea.archivos?.length > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+              <PaperClipIcon className="w-3 h-3" />{tarea.archivos.length}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {puedeTimer && (
@@ -175,7 +210,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
 
 // ─── Modal crear/editar ───────────────────────────────────────────────────────
 
-function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, onCerrar }) {
+function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, onCerrar, showNotif }) {
   const [form, setForm] = useState({
     titulo: tarea?.titulo || '',
     descripcion: tarea?.descripcion || '',
@@ -189,6 +224,8 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
   });
   const [guardando, setGuardando] = useState(false);
   const [nuevaAsig, setNuevaAsig] = useState({ tipo: 'usuario', id: '' });
+  const [archivosSeleccionados, setArchivosSeleccionados] = useState([]);
+  const fileModalRef = useRef(null);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -212,7 +249,7 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
     if (!form.titulo.trim()) return;
     setGuardando(true);
     try {
-      await onGuardar({
+      const tareaGuardada = await onGuardar({
         titulo: form.titulo.trim(),
         descripcion: form.descripcion || null,
         prioridad_id: Number(form.prioridad_id),
@@ -222,6 +259,16 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
           a.tipo === 'usuario' ? { usuario_id: a.id } : { rol_id: a.id }
         ),
       });
+      if (archivosSeleccionados.length > 0 && tareaGuardada?.id) {
+        try {
+          await subirArchivos(tareaGuardada.id, archivosSeleccionados);
+        } catch (e) {
+          showNotif(e?.response?.data?.message || 'Error al subir archivos', 'error');
+        }
+      }
+      onCerrar();
+    } catch (e) {
+      showNotif(e?.response?.data?.message || 'Error al guardar la tarea', 'error');
     } finally {
       setGuardando(false);
     }
@@ -319,6 +366,28 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
               ))}
             </div>
           </div>
+
+          {/* Archivos adjuntos al crear/editar */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Archivos adjuntos</label>
+            <label className="flex items-center gap-2 w-fit px-3.5 py-2 border border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#7B1FA2] hover:bg-purple-50 transition-all text-sm text-gray-500 hover:text-[#7B1FA2]">
+              <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
+              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s) seleccionado(s)` : 'Seleccionar archivos'}
+              <input ref={fileModalRef} type="file" multiple className="hidden"
+                onChange={e => setArchivosSeleccionados(Array.from(e.target.files))} />
+            </label>
+            {archivosSeleccionados.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {archivosSeleccionados.map((f, i) => (
+                  <span key={i} className="flex items-center gap-1 text-[10px] bg-purple-50 text-[#7B1FA2] px-2 py-1 rounded-full border border-purple-100">
+                    {f.name}
+                    <button type="button" onClick={() => setArchivosSeleccionados(p => p.filter((_, j) => j !== i))}
+                      className="hover:text-red-500 ml-0.5"><XMarkIcon className="w-3 h-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 px-5 pb-5">
@@ -337,23 +406,42 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
 
 // ─── Modal detalle + comentarios ──────────────────────────────────────────────
 
-function DetalleModal({ tarea, onCerrar, puedeCommentar }) {
+function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, showNotif }) {
   const [comentarios, setComentarios] = useState([]);
   const [nuevo, setNuevo] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [archivos, setArchivos] = useState(tarea.archivos || []);
+  const [archivosPendientes, setArchivosPendientes] = useState([]);
+  const [preview, setPreview] = useState(null);
+  const fileInputRef = useRef(null);
   const tiempo = useTiempoVivo(tarea);
 
   useEffect(() => {
     listarComentarios(tarea.id).then(setComentarios).catch(() => {});
   }, [tarea.id]);
 
+  const handleEliminarArchivo = async (archivoId) => {
+    if (!window.confirm('¿Eliminar este archivo?')) return;
+    try {
+      await eliminarArchivo(tarea.id, archivoId);
+      setArchivos(p => p.filter(a => a.id !== archivoId));
+    } catch {}
+  };
+
   const enviar = async () => {
-    if (!nuevo.trim()) return;
+    if (!nuevo.trim() && archivosPendientes.length === 0) return;
+    console.log('[enviar] archivosPendientes:', archivosPendientes.length, archivosPendientes.map(f => ({ name: f.name, size: f.size, type: f.type })));
     setEnviando(true);
     try {
-      const c = await agregarComentario(tarea.id, nuevo.trim());
+      const c = await agregarComentario(tarea.id, nuevo.trim() || ' ', archivosPendientes);
       setComentarios(p => [...p, c]);
       setNuevo('');
+      setArchivosPendientes([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Error al enviar el comentario';
+      if (showNotif) showNotif(msg, 'error');
+      else alert(msg);
     } finally {
       setEnviando(false);
     }
@@ -439,15 +527,23 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar }) {
             </p>
           )}
 
-          {/* Comentarios */}
+          {/* Actividad: comentarios + archivos */}
           <div>
             <p className="text-xs font-semibold text-gray-600 mb-2.5 flex items-center gap-1.5">
               <ChatBubbleLeftIcon className="w-4 h-4 text-[#7B1FA2]" />
-              Comentarios <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{comentarios.length}</span>
+              Actividad
+              <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{comentarios.length}</span>
+              {archivos.length > 0 && (
+                <span className="bg-purple-50 text-[#7B1FA2] px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5">
+                  <PaperClipIcon className="w-2.5 h-2.5" />{archivos.length}
+                </span>
+              )}
             </p>
+
+            {/* Lista de comentarios */}
             <div className="space-y-2 mb-3">
-              {comentarios.length === 0 && (
-                <p className="text-xs text-gray-400 italic text-center py-3">Sin comentarios aún.</p>
+              {comentarios.length === 0 && archivos.length === 0 && (
+                <p className="text-xs text-gray-400 italic text-center py-3">Sin actividad aún.</p>
               )}
               {comentarios.map(c => (
                 <div key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
@@ -457,23 +553,178 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar }) {
                       {new Date(c.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </p>
-                  <p className="text-xs text-gray-700 leading-relaxed">{c.contenido}</p>
+                  {c.contenido?.trim() && (
+                    <p className="text-xs text-gray-700 leading-relaxed mb-2">{c.contenido}</p>
+                  )}
+                  {c.archivos?.length > 0 && (
+                    <div className="space-y-1 mt-1">
+                      {c.archivos.map(a => {
+                        const url = `${SERVER_BASE_URL}${a.url}`;
+                        const esImagen = a.tipo_mime?.startsWith('image/');
+                        const esPDF = a.tipo_mime === 'application/pdf';
+                        return (
+                          <div key={a.id} className="rounded-lg overflow-hidden border border-gray-200">
+                            {esImagen && (
+                              <button onClick={() => setPreview(a)} className="block w-full">
+                                <img src={url} alt={a.nombre_original}
+                                  className="w-full max-h-48 object-cover hover:opacity-90 transition-opacity" />
+                              </button>
+                            )}
+                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white">
+                              <div className={`w-5 h-5 rounded flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 ${fileColor(a.tipo_mime)}`}>
+                                {fileLabel(a.tipo_mime)}
+                              </div>
+                              <span className="text-[11px] text-gray-600 truncate flex-1">{a.nombre_original}</span>
+                              {(esPDF || esImagen) && (
+                                <button onClick={() => setPreview(a)}
+                                  className="text-[10px] font-semibold text-[#7B1FA2] hover:underline flex-shrink-0">
+                                  Ver
+                                </button>
+                              )}
+                              <a href={url} download={a.nombre_original}
+                                className="flex-shrink-0 text-gray-400 hover:text-[#7B1FA2]">
+                                <ArrowDownTrayIcon className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+
+            {/* Lista de archivos */}
+            {archivos.length > 0 && (
+              <div className="space-y-1.5 mb-3">
+                {archivos.map(a => {
+                  const url = `${SERVER_BASE_URL}${a.url}`;
+                  const esImagen = a.tipo_mime?.startsWith('image/');
+                  const esPDF = a.tipo_mime === 'application/pdf';
+                  const puedePrevisualizr = esImagen || esPDF;
+                  return (
+                    <div key={a.id} className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                      <div className="flex items-center gap-2.5 px-3 py-2">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold ${fileColor(a.tipo_mime)}`}>
+                          {fileLabel(a.tipo_mime)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-700 truncate">{a.nombre_original}</p>
+                          {a.tamanio && <p className="text-[10px] text-gray-400">{formatFileSize(a.tamanio)}</p>}
+                        </div>
+                        {puedePrevisualizr && (
+                          <button onClick={() => setPreview(a)}
+                            className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0 text-[10px] font-semibold">
+                            Ver
+                          </button>
+                        )}
+                        <a href={url} download={a.nombre_original}
+                          className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0"
+                          title="Descargar">
+                          <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                        </a>
+                        {puedeEliminarArchivo && (
+                          <button onClick={() => handleEliminarArchivo(a.id)}
+                            className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {/* Miniatura inline para imágenes */}
+                      {esImagen && (
+                        <button onClick={() => setPreview(a)} className="block w-full text-left">
+                          <img src={url} alt={a.nombre_original}
+                            className="w-full max-h-40 object-cover border-t border-gray-100 hover:opacity-90 transition-opacity" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Input comentario + adjuntar */}
             {puedeCommentar && (
-              <div className="flex gap-2">
-                <input value={nuevo} onChange={e => setNuevo(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && enviar()}
-                  placeholder="Escribe un comentario..."
-                  className="flex-1 border border-gray-200 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all" />
-                <button onClick={enviar} disabled={enviando || !nuevo.trim()}
-                  className="px-4 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-md disabled:opacity-50 transition-all">
-                  <CheckIcon className="w-4 h-4" />
-                </button>
+              <div className="space-y-2">
+                {/* Archivos pendientes de envío */}
+                {archivosPendientes.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {archivosPendientes.map((f, i) => (
+                      <span key={i} className="flex items-center gap-1 text-[10px] bg-purple-50 text-[#7B1FA2] px-2 py-1 rounded-full border border-purple-100">
+                        <PaperClipIcon className="w-2.5 h-2.5" />
+                        {f.name}
+                        <button type="button" onClick={() => setArchivosPendientes(p => p.filter((_, j) => j !== i))}
+                          className="hover:text-red-500 ml-0.5"><XMarkIcon className="w-3 h-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    setArchivosPendientes(p => [...p, ...Array.from(e.target.files)]);
+                    e.target.value = '';
+                  }}
+                />
+                <div className="flex gap-2 items-center">
+                  <input value={nuevo} onChange={e => setNuevo(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && enviar()}
+                    placeholder="Comentario o adjunta un archivo..."
+                    className="flex-1 border border-gray-200 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all" />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 rounded-xl border border-gray-200 hover:border-[#7B1FA2] hover:text-[#7B1FA2] hover:bg-purple-50 text-gray-400 transition-colors flex-shrink-0 relative"
+                    title="Adjuntar archivos"
+                  >
+                    <PaperClipIcon className="w-4 h-4" />
+                    {archivosPendientes.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#7B1FA2] text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {archivosPendientes.length}
+                      </span>
+                    )}
+                  </button>
+                  <button onClick={enviar} disabled={enviando || (!nuevo.trim() && archivosPendientes.length === 0)}
+                    className="p-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl hover:shadow-md disabled:opacity-50 transition-all flex-shrink-0">
+                    <CheckIcon className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Preview overlay */}
+          {preview && (
+            <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+              <div className="relative w-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+                  <p className="text-sm font-semibold text-gray-700 truncate">{preview.nombre_original}</p>
+                  <div className="flex items-center gap-2">
+                    <a href={`${SERVER_BASE_URL}${preview.url}`} download={preview.nombre_original}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200">
+                      <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Descargar
+                    </a>
+                    <button onClick={() => setPreview(null)} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400">
+                      <XMarkIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-50">
+                  {preview.tipo_mime?.startsWith('image/') ? (
+                    <img src={`${SERVER_BASE_URL}${preview.url}`} alt={preview.nombre_original}
+                      className="max-w-full max-h-full object-contain p-4" />
+                  ) : preview.tipo_mime === 'application/pdf' ? (
+                    <embed src={`${SERVER_BASE_URL}${preview.url}`} type="application/pdf"
+                      className="w-full" style={{ height: '75vh' }} />
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -792,25 +1043,17 @@ export default function CentroOperativo() {
   const tareasPorColumna = (colId) => tareas.filter(t => t.columna_id === colId);
 
   const handleCrear = async (payload) => {
-    try {
-      await crearTarea(payload);
-      setModalCrear(false);
-      showNotif('Tarea creada correctamente');
-      cargar();
-    } catch {
-      showNotif('Error al crear la tarea', 'error');
-    }
+    const tarea = await crearTarea(payload);
+    showNotif('Tarea creada correctamente');
+    cargar();
+    return tarea;
   };
 
   const handleEditar = async (payload) => {
-    try {
-      await actualizarTarea(tareaEditar.id, payload);
-      setTareaEditar(null);
-      showNotif('Tarea actualizada');
-      cargar();
-    } catch {
-      showNotif('Error al actualizar', 'error');
-    }
+    const tarea = await actualizarTarea(tareaEditar.id, payload);
+    showNotif('Tarea actualizada');
+    cargar();
+    return tarea;
   };
 
   const handleEliminar = async (id) => {
@@ -1068,6 +1311,7 @@ export default function CentroOperativo() {
           roles={roles}
           onGuardar={tareaEditar ? handleEditar : handleCrear}
           onCerrar={() => { setModalCrear(false); setTareaEditar(null); }}
+          showNotif={showNotif}
         />
       )}
 
@@ -1076,6 +1320,8 @@ export default function CentroOperativo() {
           tarea={tareaDetalle}
           onCerrar={() => setTareaDetalle(null)}
           puedeCommentar={admin || esAsignadoATarea(tareaDetalle)}
+          puedeEliminarArchivo={admin || tareaDetalle.user_crea?.id === currentUser?.id}
+          showNotif={showNotif}
         />
       )}
 
