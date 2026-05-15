@@ -68,6 +68,55 @@ function fileLabel(mime) {
   return 'FILE';
 }
 
+// ─── Descarga forzada (cross-origin) ─────────────────────────────────────────
+
+async function descargarArchivo(url, nombre) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
+// ─── Modal de confirmación ────────────────────────────────────────────────────
+
+function ConfirmModal({ mensaje, onConfirmar, onCancelar }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4" onClick={onCancelar}>
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+            <ExclamationTriangleIcon className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900 leading-snug">{mensaje}</p>
+            <p className="text-xs text-gray-400 mt-1">Esta acción no se puede deshacer.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button onClick={onCancelar}
+            className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+            Cancelar
+          </button>
+          <button onClick={onConfirmar}
+            className="px-4 py-2 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-sm">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Timer en vivo ────────────────────────────────────────────────────────────
 
 function useTiempoVivo(timer) {
@@ -435,6 +484,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
   const [archivosPendientes, setArchivosPendientes] = useState([]);
   const [preview, setPreview] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [confirmEliminarArchivo, setConfirmEliminarArchivo] = useState(null);
   const fileInputRef = useRef(null);
   const miTimer = tarea.mi_timer ?? null;
   const timerActivo = miTimer?.timer_activo ?? false;
@@ -462,7 +512,6 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
   };
 
   const handleEliminarArchivo = async (archivoId) => {
-    if (!window.confirm('¿Eliminar este archivo?')) return;
     try {
       await eliminarArchivo(tarea.id, archivoId);
       setArchivos(p => p.filter(a => a.id !== archivoId));
@@ -630,11 +679,11 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                         {(esImagen || esPDF) && (
                           <button onClick={() => setPreview(a)} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0 text-[10px] font-semibold">Ver</button>
                         )}
-                        <a href={url} download={a.nombre_original} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0" title="Descargar">
+                        <button onClick={() => descargarArchivo(url, a.nombre_original)} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0" title="Descargar">
                           <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                        </a>
+                        </button>
                         {puedeEliminarArchivo && (
-                          <button onClick={() => handleEliminarArchivo(a.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+                          <button onClick={() => setConfirmEliminarArchivo(a.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
                             <TrashIcon className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -717,9 +766,9 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                               {(esPDF || esImagen) && (
                                 <button onClick={() => setPreview(a)} className="text-[10px] font-semibold text-[#7B1FA2] hover:underline flex-shrink-0">Ver</button>
                               )}
-                              <a href={url} download={a.nombre_original} className="flex-shrink-0 text-gray-400 hover:text-[#7B1FA2]">
+                              <button onClick={() => descargarArchivo(url, a.nombre_original)} className="flex-shrink-0 text-gray-400 hover:text-[#7B1FA2]">
                                 <ArrowDownTrayIcon className="w-3 h-3" />
-                              </a>
+                              </button>
                             </div>
                           </div>
                         );
@@ -797,10 +846,10 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
             <p className="text-sm font-semibold text-gray-700 truncate">{preview.nombre_original}</p>
             <div className="flex items-center gap-2">
-              <a href={`${SERVER_BASE_URL}${preview.url}`} download={preview.nombre_original}
+              <button onClick={() => descargarArchivo(`${SERVER_BASE_URL}${preview.url}`, preview.nombre_original)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200">
                 <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Descargar
-              </a>
+              </button>
               <button onClick={() => setPreview(null)} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400">
                 <XMarkIcon className="w-5 h-5" />
               </button>
@@ -817,6 +866,15 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
           </div>
         </div>
       </div>
+    )}
+
+    {/* Confirm eliminar archivo */}
+    {confirmEliminarArchivo && (
+      <ConfirmModal
+        mensaje="¿Eliminar este archivo adjunto?"
+        onConfirmar={() => { handleEliminarArchivo(confirmEliminarArchivo); setConfirmEliminarArchivo(null); }}
+        onCancelar={() => setConfirmEliminarArchivo(null)}
+      />
     )}
     </>
   );
@@ -1181,6 +1239,7 @@ export default function CentroOperativo() {
   const [tareaDetalle, setTareaDetalle] = useState(null);
   const [mostrarReporte, setMostrarReporte] = useState(false);
   const [mostrarColumnas, setMostrarColumnas] = useState(false);
+  const [confirmEliminarTarea, setConfirmEliminarTarea] = useState(null);
   const [notif, setNotif] = useState({ show: false, message: '', type: 'success' });
   const [isDragging, setIsDragging] = useState(false);
   const [colDragOver, setColDragOver] = useState(null);
@@ -1363,8 +1422,11 @@ export default function CentroOperativo() {
     return tarea;
   };
 
-  const handleEliminar = async (id) => {
-    if (!window.confirm('¿Eliminar esta tarea?')) return;
+  const handleEliminar = (id) => {
+    setConfirmEliminarTarea(id);
+  };
+
+  const ejecutarEliminarTarea = async (id) => {
     try {
       await eliminarTarea(id);
       showNotif('Tarea eliminada');
@@ -1917,6 +1979,14 @@ export default function CentroOperativo() {
           onCerrar={() => setMostrarColumnas(false)}
           onActualizar={cargar}
           showNotif={showNotif}
+        />
+      )}
+
+      {confirmEliminarTarea && (
+        <ConfirmModal
+          mensaje="¿Eliminar esta tarea?"
+          onConfirmar={() => { ejecutarEliminarTarea(confirmEliminarTarea); setConfirmEliminarTarea(null); setTareaDetalle(null); }}
+          onCancelar={() => setConfirmEliminarTarea(null)}
         />
       )}
     </div>

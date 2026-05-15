@@ -119,14 +119,6 @@ const menuSections = [
     ],
   },
   {
-    title: 'CENTRO OPERATIVO',
-    icon: RectangleGroupIcon,
-    roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION, ROLES.TERAPEUTA, ROLES.RECURSOS_HUMANOS],
-    items: [
-      { text: 'Centro Operativo', path: '/intranet/centro-operativo', icon: RectangleGroupIcon },
-    ],
-  },
-  {
     title: 'RRHH',
     icon: UsersIcon,
     roles: [ROLES.ADMINISTRADOR, ROLES.RECURSOS_HUMANOS],
@@ -473,29 +465,35 @@ const Sidebar = () => {
           `}</style>
 
           <div className="space-y-0.5">
-            {/* Centro Operativo — temporalmente oculto */}
-            {/* {(userRole === ROLES.ADMINISTRADOR || userRole === ROLES.ADMISION || userRole === ROLES.TERAPEUTA || userRole === ROLES.RECURSOS_HUMANOS) && (
-              <Link
-                to="/intranet/centro-operativo"
-                className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-200 group outline-none ${
-                  location.pathname === '/intranet/centro-operativo'
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/80 hover:text-white hover:bg-white/10'
-                } ${isCollapsed ? 'justify-center' : ''}`}
-                title={isCollapsed ? 'Centro Operativo' : ''}
-              >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  location.pathname === '/intranet/centro-operativo' ? 'bg-white/10' : 'group-hover:bg-white/10'
-                }`}>
-                  <BuildingOfficeIcon className="w-5 h-5" />
-                </div>
-                {!isCollapsed && <span className="font-bold text-[16px] flex-1">Centro Operativo</span>}
-              </Link>
-            )} */}
+            {/* Centro Operativo — link directo, primero */}
+            {[ROLES.ADMINISTRADOR, ROLES.ADMISION, ROLES.TERAPEUTA, ROLES.RECURSOS_HUMANOS].includes(userRole) && (() => {
+              const isActive = location.pathname.startsWith('/intranet/centro-operativo');
+              return (
+                <Link
+                  to="/intranet/centro-operativo"
+                  className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-200 group outline-none ${
+                    isActive ? 'bg-white/10 text-white' : 'text-white/80 hover:text-white hover:bg-white/10'
+                  } ${isCollapsed ? 'justify-center' : ''}`}
+                  title={isCollapsed ? 'Centro Operativo' : ''}
+                >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                    isActive ? 'bg-white/10' : 'group-hover:bg-white/10'
+                  }`}>
+                    <BuildingOfficeIcon className="w-5 h-5" />
+                  </div>
+                  {!isCollapsed && (
+                    <>
+                      <span className="font-bold text-[15px] flex-1 text-left leading-snug">Centro Operativo</span>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0" />}
+                    </>
+                  )}
+                </Link>
+              );
+            })()}
 
             {/* Label menú principal */}
             {!isCollapsed && (
-              <p className="text-[10px] font-bold uppercase tracking-wider px-2.5 pt-4 pb-1 select-none" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider px-2.5 pt-3 pb-1 select-none" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 Menú Principal
               </p>
             )}

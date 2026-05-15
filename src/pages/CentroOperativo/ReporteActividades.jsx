@@ -386,7 +386,7 @@ export default function ReporteActividades() {
     <div className="flex flex-col bg-gray-50 min-h-screen lg:min-h-[calc(100vh-56px)]">
 
       {/* Header */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-100 shadow-sm">
+      <div className="flex-shrink-0">
         <div className="px-4 lg:px-8 pt-16 lg:pt-5 pb-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => navigate('/intranet/centro-operativo')}
