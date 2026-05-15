@@ -17,50 +17,49 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
-// Caché de GPS para no bloquearse en cada request
+// Caché de GPS — nunca bloquea requests, se actualiza en background
 let _gpsCache = null;
 let _gpsCacheAt = 0;
-const GPS_TTL = 60_000; // reusar la ubicación por 60 segundos
+let _gpsInflight = null;
+const GPS_TTL = 60_000;
 
-const obtenerGpsCacheado = async () => {
+const refrescarGpsBackground = () => {
+  if (_gpsInflight) return;
+  _gpsInflight = obtenerUbicacionActual()
+    .then(loc => { _gpsCache = loc; _gpsCacheAt = Date.now(); })
+    .catch(() => {})
+    .finally(() => { _gpsInflight = null; });
+};
+
+const obtenerGpsCacheado = () => {
   const ahora = Date.now();
-  if (_gpsCache && ahora - _gpsCacheAt < GPS_TTL) return _gpsCache;
-  try {
-    _gpsCache = await obtenerUbicacionActual();
-    _gpsCacheAt = ahora;
-  } catch {
-    // si falla, seguimos sin coordenadas
+  if (!_gpsCache || ahora - _gpsCacheAt >= GPS_TTL) {
+    refrescarGpsBackground();
   }
-  return _gpsCache;
+  return _gpsCache; // devuelve lo que haya en caché ahora mismo (puede ser null)
 };
 
 // Interceptor para agregar el token Y coordenadas GPS en cada petición
 api.interceptors.request.use(
-  async (config) => {
+  (config) => {
     // 1. Agregar token de autenticación
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 2. Agregar coordenadas GPS (cacheadas, no bloquea si falla)
-    try {
-      if (localStorage.getItem('user')) {
-        const ubicacion = await obtenerGpsCacheado();
-        if (ubicacion) {
-          config.headers['x-user-latitude'] = ubicacion.lat.toString();
-          config.headers['x-user-longitude'] = ubicacion.lng.toString();
-        }
+    // 2. Agregar coordenadas GPS sin bloquear — usa caché sincrónica
+    if (localStorage.getItem('user')) {
+      const ubicacion = obtenerGpsCacheado();
+      if (ubicacion) {
+        config.headers['x-user-latitude'] = ubicacion.lat.toString();
+        config.headers['x-user-longitude'] = ubicacion.lng.toString();
       }
-    } catch {
-      // nunca bloquear el request por GPS
     }
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Interceptor para manejar errores de autenticación Y geofencing

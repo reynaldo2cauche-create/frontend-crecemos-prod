@@ -7,7 +7,6 @@ import {
   CalendarDaysIcon,
   UserGroupIcon,
   DocumentChartBarIcon,
-  UsersIcon,
   BellAlertIcon,
   BriefcaseIcon,
   DocumentCheckIcon,
@@ -20,9 +19,9 @@ import {
   ClockIcon,
   ChartBarIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   CalendarIcon,
   ShieldCheckIcon,
-  AcademicCapIcon,
   ClipboardDocumentCheckIcon,
   GiftIcon,
   CubeIcon,
@@ -33,8 +32,10 @@ import {
   ShoppingCartIcon,
   SparklesIcon,
   RectangleGroupIcon,
+  BuildingOfficeIcon,
+  UsersIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline';
-import { Campaign } from '@mui/icons-material';
 
 export const SidebarContext = createContext();
 
@@ -53,25 +54,28 @@ export const SidebarProvider = ({ children }) => {
   );
 };
 
+// Cada sección tiene su propio ícono y es un item colapsable
 const menuSections = [
   {
-    title: 'ADMISIÓN Y VENTA',
+    title: 'Admisión y Ventas',
+    icon: ShoppingCartIcon,
     roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION],
     items: [
-      { text: 'Venta de servicios', path: '/intranet/ventas/servicios', icon: ShoppingCartIcon },
-      { text: 'Promociones', path: '/intranet/promociones', icon: SparklesIcon },
-      { text: 'Convenios', path: '/intranet/convenios', icon: ShieldCheckIcon },
-      { text: 'Certificaciones', path: '/intranet/archivos-oficiales', icon: DocumentCheckIcon },
-      { text: 'Venta de productos', path: '/intranet/ventas/productos', icon: CubeIcon },
-      { text: 'Tarifario', path: '/intranet/tarifario', icon: CurrencyDollarIcon },
-      { text: 'Historial de ventas', path: '/intranet/ventas/historial', icon: ClipboardDocumentCheckIcon },
+      { text: 'Venta de servicios',  path: '/intranet/ventas/servicios',  icon: ShoppingCartIcon },
+      { text: 'Promociones',         path: '/intranet/promociones',        icon: SparklesIcon },
+      { text: 'Convenios',           path: '/intranet/convenios',          icon: ShieldCheckIcon },
+      { text: 'Certificaciones',     path: '/intranet/archivos-oficiales', icon: DocumentCheckIcon },
+      { text: 'Venta de productos',  path: '/intranet/ventas/productos',   icon: CubeIcon },
+      { text: 'Tarifario',           path: '/intranet/tarifario',          icon: CurrencyDollarIcon },
+      { text: 'Historial de ventas', path: '/intranet/ventas/historial',   icon: ClipboardDocumentCheckIcon },
     ],
   },
   {
-    title: 'OPERACIONES CLÍNICAS',
+    title: 'Operaciones Clínicas',
+    icon: CalendarDaysIcon,
     roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION, ROLES.TERAPEUTA],
     items: [
-      { text: 'Agenda', path: '/intranet/agenda', icon: CalendarDaysIcon },
+      { text: 'Agenda',    path: '/intranet/agenda',         icon: CalendarDaysIcon },
       { text: 'Pacientes', path: '/intranet/lista-pacientes', icon: UserGroupIcon },
       {
         text: 'Informes', path: '/intranet/informes', icon: DocumentChartBarIcon,
@@ -81,21 +85,21 @@ const menuSections = [
         text: 'Asistencias', icon: ClipboardDocumentCheckIcon, isDropdown: true,
         roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION],
         subItems: [
-          { text: 'Por Terapeuta', path: '/intranet/asistencias/terapeuta', icon: UserIcon },
-          { text: 'Por Paciente', path: '/intranet/asistencias/paciente', icon: UserGroupIcon },
-          { text: 'Inconsistencias', path: '/intranet/asistencias/inconsistencias', icon: ShieldCheckIcon, adminOnly: true },
-          { text: 'Sesiones', path: '/intranet/asistencias/sesiones', icon: ChartBarIcon, adminOnly: true },
+          { text: 'Por Terapeuta',    path: '/intranet/asistencias/terapeuta',        icon: UserIcon },
+          { text: 'Por Paciente',     path: '/intranet/asistencias/paciente',          icon: UserGroupIcon },
+          { text: 'Inconsistencias',  path: '/intranet/asistencias/inconsistencias',   icon: ShieldCheckIcon, adminOnly: true },
+          { text: 'Sesiones',         path: '/intranet/asistencias/sesiones',          icon: ChartBarIcon,    adminOnly: true },
         ],
       },
       {
         text: 'Inventario', icon: CubeIcon, isDropdown: true,
         roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION],
         subItems: [
-          { text: 'Productos', path: '/intranet/inventario/productos', icon: CubeIcon },
-          { text: 'Categorías', path: '/intranet/inventario/categorias', icon: TagIcon },
-          { text: 'Proveedores', path: '/intranet/inventario/proveedores', icon: TruckIcon },
-          { text: 'Reposición de Stock', path: '/intranet/inventario/reposicion', icon: ArrowPathIcon },
-          { text: 'Servicios', path: '/intranet/inventario/servicios', icon: BanknotesIcon },
+          { text: 'Productos',          path: '/intranet/inventario/productos',  icon: CubeIcon },
+          { text: 'Categorías',         path: '/intranet/inventario/categorias', icon: TagIcon },
+          { text: 'Proveedores',        path: '/intranet/inventario/proveedores', icon: TruckIcon },
+          { text: 'Reposición de Stock',path: '/intranet/inventario/reposicion', icon: ArrowPathIcon },
+          { text: 'Servicios',          path: '/intranet/inventario/servicios',  icon: BanknotesIcon },
         ],
       },
       {
@@ -105,24 +109,18 @@ const menuSections = [
     ],
   },
   {
-    title: 'ADMINISTRACIÓN Y FINANZAS',
-    roles: [ROLES.ADMINISTRADOR],
-    items: [
-      { text: 'Reporte Financiero', path: '/intranet/ventas/reportes', icon: ChartBarIcon },
-      { text: 'Auditoría', path: '/intranet/auditoria', icon: ShieldCheckIcon },
-    ],
-  },
-  {
-    title: 'MARKETING',
+    title: 'Marketing',
+    icon: BellAlertIcon,
     roles: [ROLES.ADMINISTRADOR],
     items: [
       { text: 'Popup Inicio', path: '/intranet/popup-promocional', icon: BellAlertIcon },
-      { text: 'Sorteo', path: '/intranet/sorteo', icon: GiftIcon },
-      { text: 'Campañas', path: '/intranet/campanas', icon: Campaign },
+      { text: 'Sorteo',       path: '/intranet/sorteo',            icon: GiftIcon },
+      { text: 'Campañas',     path: '/intranet/campanas',          icon: MegaphoneIcon },
     ],
   },
   {
     title: 'CENTRO OPERATIVO',
+    icon: RectangleGroupIcon,
     roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION, ROLES.TERAPEUTA, ROLES.RECURSOS_HUMANOS],
     items: [
       { text: 'Centro Operativo', path: '/intranet/centro-operativo', icon: RectangleGroupIcon },
@@ -130,59 +128,87 @@ const menuSections = [
   },
   {
     title: 'RRHH',
+    icon: UsersIcon,
     roles: [ROLES.ADMINISTRADOR, ROLES.RECURSOS_HUMANOS],
     items: [
-      { text: 'Postulaciones', path: '/intranet/postulaciones', icon: BriefcaseIcon },
-      { text: 'Empleados', path: '/intranet/rrhh/empleados', icon: UserIcon },
-      { text: 'Gratificaciones', path: '/intranet/rrhh/gratificaciones', icon: CurrencyDollarIcon },
-      { text: 'Vacaciones', path: '/intranet/rrhh/vacaciones', icon: CalendarIcon },
-      { text: 'Historial de Pagos', path: '/intranet/rrhh/historial', icon: ClockIcon },
-      { text: 'Cumpleaños', path: '/intranet/rrhh/cumpleanos', icon: GiftIcon },
-      { text: 'Dashboard RRHH', path: '/intranet/rrhh/dashboard', icon: ChartBarIcon },
+      { text: 'Postulaciones',      path: '/intranet/postulaciones',        icon: BriefcaseIcon },
+      { text: 'Empleados',          path: '/intranet/rrhh/empleados',       icon: UserIcon },
+      { text: 'Gratificaciones',    path: '/intranet/rrhh/gratificaciones', icon: CurrencyDollarIcon },
+      { text: 'Vacaciones',         path: '/intranet/rrhh/vacaciones',      icon: CalendarIcon },
+      { text: 'Historial de Pagos', path: '/intranet/rrhh/historial',       icon: ClockIcon },
+      { text: 'Cumpleaños',         path: '/intranet/rrhh/cumpleanos',      icon: GiftIcon },
+      { text: 'Dashboard RRHH',     path: '/intranet/rrhh/dashboard',       icon: ChartBarIcon },
+    ],
+  },
+  {
+    title: 'Administración y Finanzas',
+    icon: BanknotesIcon,
+    roles: [ROLES.ADMINISTRADOR],
+    items: [
+      { text: 'Reporte Financiero', path: '/intranet/ventas/reportes', icon: ChartBarIcon },
+      { text: 'Auditoría',          path: '/intranet/auditoria',       icon: ShieldCheckIcon },
     ],
   },
 ];
 
 const externalItems = [
   {
-    text: 'Reclamaciones', path: '/intranet/libro-reclamaciones',
-    icon: ClipboardDocumentCheckIcon, isReclamaciones: true,
+    text: 'Libro de Reclamaciones',
+    path: '/intranet/libro-reclamaciones',
+    isReclamaciones: true,
     fullLogo: '/assets/img/librito.png',
     roles: [ROLES.ADMINISTRADOR],
   },
   {
-    text: 'Webmail', path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi',
-    isExternal: true, isWebmail: true, fullLogo: '/assets/img/webmail-logo.webp',
+    text: 'Webmail',
+    path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi',
+    isExternal: true,
+    isWebmail: true,
+    fullLogo: '/assets/img/webmail-logo.webp',
   },
   {
-    text: 'Izipay', path: 'https://secure.micuentaweb.pe/vads-merchant/loginAction.do',
-    isExternal: true, isIzipay: true, fullLogo: '/assets/img/index/izipay.png',
+    text: 'Izipay',
+    path: 'https://secure.micuentaweb.pe/vads-merchant/loginAction.do',
+    isExternal: true,
+    isIzipay: true,
+    fullLogo: '/assets/img/index/izipay.png',
     roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION],
   },
 ];
 
+const SIDEBAR_BG = '#1a0533';
+
 const Sidebar = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const user      = JSON.parse(localStorage.getItem('user') || '{}');
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [openSections, setOpenSections] = useState({});
   const [openDropdowns, setOpenDropdowns] = useState({});
-  const [openSections, setOpenSections] = useState(() =>
-    Object.fromEntries(menuSections.map(s => [s.title, false]))
-  );
 
-  const rolesConGeofencing = [ROLES.TERAPEUTA, ROLES.ADMISION];
-  const requiereGeofencing = rolesConGeofencing.includes(user?.rol?.id);
+  const rolesConGeofencing  = [ROLES.TERAPEUTA, ROLES.ADMISION];
+  const requiereGeofencing  = rolesConGeofencing.includes(user?.rol?.id);
   const { dentroDelPerimetro, distancia } = useGeofencing(requiereGeofencing, 60000);
-
   const rutasPermitidasFuera = ['/intranet/agenda', 'webmail'];
 
+  // Auto-abrir la sección que contiene la ruta activa
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--sidebar-width',
-      isCollapsed ? '80px' : '256px'
-    );
+    const updates = {};
+    menuSections.forEach(section => {
+      const hasActive = section.items.some(item =>
+        item.path === location.pathname ||
+        item.subItems?.some(sub => sub.path === location.pathname)
+      );
+      if (hasActive) updates[section.title] = true;
+    });
+    if (Object.keys(updates).length) {
+      setOpenSections(prev => ({ ...prev, ...updates }));
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', isCollapsed ? '80px' : '256px');
   }, [isCollapsed]);
 
   useEffect(() => { setIsMobileOpen(false); }, [location.pathname]);
@@ -202,22 +228,21 @@ const Sidebar = () => {
   const getFilteredSections = () => {
     if (!userRole) return menuSections;
     return menuSections
-      .filter(section => section.roles.includes(userRole))
-      .map(section => ({
-        ...section,
-        items: section.items
+      .filter(s => s.roles.includes(userRole))
+      .map(s => ({
+        ...s,
+        items: s.items
           .filter(item => !item.roles || item.roles.includes(userRole))
           .map(item => ({
             ...item,
             subItems: item.subItems?.filter(sub => !(sub.adminOnly && userRole !== ROLES.ADMINISTRADOR)),
           })),
       }))
-      .filter(section => section.items.length > 0);
+      .filter(s => s.items.length > 0);
   };
 
-  const getFilteredExternalItems = () => {
-    return externalItems.filter(item => !item.roles || item.roles.includes(userRole));
-  };
+  const getFilteredExternalItems = () =>
+    externalItems.filter(item => !item.roles || item.roles.includes(userRole));
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -225,7 +250,7 @@ const Sidebar = () => {
     navigate('/intranet');
   };
 
-  const filteredSections = getFilteredSections();
+  const filteredSections     = getFilteredSections();
   const filteredExternalItems = getFilteredExternalItems();
 
   const isItemBlocked = (item) =>
@@ -233,281 +258,262 @@ const Sidebar = () => {
     !dentroDelPerimetro &&
     !rutasPermitidasFuera.some(r => item.path?.includes(r) || item.text?.toLowerCase().includes(r));
 
-  const handleBlockedClick = (item) => {
+  const handleBlockedClick = () => {
     alert(`⛔ Acceso Restringido\n\nEstás a ${distancia}m del centro.\nEsta sección solo está disponible dentro del centro de labores (100m).\n\nPuedes acceder a:\n- Agenda\n- Webmail`);
   };
 
-  const renderDropdown = (item, globalIndex) => {
-    const Icon = item.icon;
-    const isOpen = openDropdowns[item.text];
-    const isAnySubActive = item.subItems?.some(s => location.pathname === s.path);
+  const isSectionActive = (section) =>
+    section.items.some(item =>
+      item.path === location.pathname ||
+      item.subItems?.some(sub => sub.path === location.pathname)
+    );
+
+  // ── Render: item hijo dentro de una sección ─────────────────────────────────
+  const renderSubItem = (item, key) => {
+    if (item.isDropdown) {
+      const isOpen      = openDropdowns[item.text];
+      const anySubActive = item.subItems?.some(s => location.pathname === s.path);
+      return (
+        <div key={key}>
+          <button
+            onClick={() => setOpenDropdowns(p => ({ ...p, [item.text]: !p[item.text] }))}
+            className={`w-full flex items-center gap-2 pl-4 pr-2.5 py-2 rounded-xl transition-all duration-150 outline-none group ${
+              anySubActive ? 'text-white font-bold' : 'text-white/60 hover:text-white hover:font-semibold'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0 opacity-60" />
+            <span className="text-[14px] flex-1 text-left">{item.text}</span>
+            <ChevronDownIcon className={`w-3.5 h-3.5 opacity-60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {isOpen && (
+            <div className="ml-6 space-y-0.5 mt-0.5">
+              {item.subItems.map(sub => {
+                const isActive = location.pathname === sub.path;
+                return (
+                  <Link
+                    key={sub.path}
+                    to={sub.path}
+                    className={`flex items-center gap-2 pl-3 pr-2.5 py-1.5 rounded-lg transition-all duration-150 outline-none ${
+                      isActive ? 'text-white font-bold' : 'text-white/50 hover:text-white hover:font-semibold'
+                    }`}
+                  >
+                    <span className="w-1 h-1 rounded-full bg-current flex-shrink-0 opacity-60" />
+                    <span className="text-[13px]">{sub.text}</span>
+                    {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#A3C644]" />}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const isActive    = location.pathname === item.path;
+    const bloqueado   = isItemBlocked(item);
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        onClick={bloqueado ? (e) => { e.preventDefault(); handleBlockedClick(); } : undefined}
+        className={`flex items-center gap-2 pl-4 pr-2.5 py-2 rounded-xl transition-all duration-150 outline-none ${
+          bloqueado   ? 'opacity-40 cursor-not-allowed text-white/50' :
+          isActive    ? 'text-white font-bold' :
+          'text-white/60 hover:text-white hover:font-semibold'
+        }`}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0 opacity-60" />
+        <span className="text-[14px] flex-1">{item.text}</span>
+        {isActive && !bloqueado && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#A3C644]" />}
+        {bloqueado && <span className="text-xs">🔒</span>}
+      </Link>
+    );
+  };
+
+  // ── Render: sección como item colapsable con ícono ───────────────────────────
+  const renderSection = (section, idx) => {
+    const Icon     = section.icon;
+    const isActive = isSectionActive(section);
+    const isOpen   = isCollapsed || openSections[section.title];
 
     return (
-      <div key={item.text}>
+      <div key={section.title}>
         <button
-          onClick={() => setOpenDropdowns(prev => ({ ...prev, [item.text]: !prev[item.text] }))}
-          className={`menu-item w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
-            isAnySubActive ? 'text-gray-900' : 'text-gray-600 hover:text-gray-900'
+          onClick={() => {
+            if (!isCollapsed) setOpenSections(p => ({ ...p, [section.title]: !p[section.title] }));
+          }}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-200 group outline-none ${
+            isActive
+              ? 'bg-white/10 text-white'
+              : 'text-white/80 hover:text-white hover:bg-white/10'
           } ${isCollapsed ? 'justify-center' : ''}`}
-          title={isCollapsed ? item.text : ''}
-          style={{ animation: `fadeIn 0.4s ease-out ${globalIndex * 0.05}s both` }}
+          title={isCollapsed ? section.title : ''}
+          style={{ animation: `fadeIn 0.3s ease-out ${idx * 0.05}s both` }}
         >
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-            isAnySubActive
-              ? 'bg-[#7B1FA2] text-white shadow-md scale-105'
-              : 'bg-transparent text-gray-500 group-hover:text-[#7B1FA2] group-hover:bg-purple-50 group-hover:scale-110'
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+            isActive ? 'bg-white/10' : 'group-hover:bg-white/10'
           }`}>
-            <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
+            <Icon className="w-5 h-5" />
           </div>
-          <span className={`font-semibold text-sm flex-1 text-left transition-all duration-500 overflow-hidden ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
-            {item.text}
-          </span>
           {!isCollapsed && (
-            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            <>
+              <span className="font-bold text-[16px] flex-1 text-left leading-snug">{section.title}</span>
+              <ChevronRightIcon className={`w-4 h-4 opacity-60 flex-shrink-0 transition-transform duration-300 ${openSections[section.title] ? 'rotate-90' : ''}`} />
+            </>
           )}
         </button>
 
-        {!isCollapsed && isOpen && (
-          <div className="ml-4 mt-1 space-y-1">
-            {item.subItems.map(subItem => {
-              const SubIcon = subItem.icon;
-              const isSubActive = location.pathname === subItem.path;
-              return (
-                <Link
-                  key={subItem.text}
-                  to={subItem.path}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-300 group outline-none ${
-                    isSubActive ? 'bg-purple-50 text-[#7B1FA2]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <SubIcon className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-medium text-sm">{subItem.text}</span>
-                  {isSubActive && <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0 ml-auto"></div>}
-                </Link>
-              );
-            })}
+        {/* Sub-items */}
+        {!isCollapsed && openSections[section.title] && (
+          <div className="mt-0.5 mb-1 space-y-0.5">
+            {section.items.map((item, i) => renderSubItem(item, item.path || `${section.title}-${i}`))}
           </div>
         )}
       </div>
     );
   };
 
-  const renderRegularItem = (item, globalIndex) => {
-    const Icon = item.icon;
-    const isActive = location.pathname === item.path;
-    const itemBloqueado = isItemBlocked(item);
+  // ── Render: acceso rápido como tarjeta blanca ────────────────────────────────
+  const renderExternalItem = (item, idx) => {
+    const bloqueado = isItemBlocked(item);
+    const cardClass = `flex items-center justify-center px-3 py-2.5 rounded-xl bg-white shadow-sm transition-all duration-200 ${
+      bloqueado ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md hover:bg-gray-50 cursor-pointer'
+    }`;
 
-    return (
-      <Link
-        key={item.text}
-        to={item.path}
-        className={`menu-item w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-300 group relative outline-none ${
-          itemBloqueado
-            ? 'opacity-40 cursor-not-allowed'
-            : isActive
-            ? 'text-gray-900 cursor-pointer'
-            : 'text-gray-600 hover:text-gray-900 cursor-pointer'
-        } ${isCollapsed ? 'justify-center' : ''}`}
-        title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : (isCollapsed ? item.text : '')}
-        style={{ animation: `fadeIn 0.4s ease-out ${globalIndex * 0.05}s both` }}
-        onClick={itemBloqueado ? (e) => { e.preventDefault(); handleBlockedClick(item); } : undefined}
-      >
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-          itemBloqueado
-            ? 'bg-gray-200 text-gray-400'
-            : isActive
-            ? 'bg-[#7B1FA2] text-white shadow-md scale-105'
-            : 'bg-transparent text-gray-500 group-hover:text-[#7B1FA2] group-hover:bg-purple-50 group-hover:scale-110'
-        }`}>
-          <Icon className={`w-5 h-5 transition-transform duration-300 ${itemBloqueado ? '' : 'group-hover:scale-110'}`} />
-        </div>
-        <span
-          className={`font-semibold text-sm flex-1 text-left transition-all duration-500 overflow-hidden ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}
-          style={{ animation: !isCollapsed ? `slideIn 0.5s ease-out ${0.2 + globalIndex * 0.05}s both` : 'none' }}
-        >
-          {item.text}
-        </span>
-        {!isCollapsed && isActive && !itemBloqueado && (
-          <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644] flex-shrink-0"></div>
-        )}
-        {itemBloqueado && !isCollapsed && (
-          <div className="flex items-center gap-1 text-red-500 flex-shrink-0">
-            <span className="text-xs">🔒</span>
-          </div>
-        )}
-      </Link>
+    const inner = (
+      <>
+        <img
+          src={item.fullLogo} alt={item.text}
+          className={`object-contain flex-shrink-0 ${isCollapsed ? 'w-7 h-7' : 'h-8 w-full max-h-9'}`}
+          style={{ filter: bloqueado ? 'grayscale(100%)' : 'none' }}
+        />
+      </>
     );
-  };
-
-  const renderExternalItem = (item, globalIndex) => {
-    const itemBloqueado = isItemBlocked(item);
 
     if (item.isWebmail || item.isIzipay) {
       return (
-        <a
-          key={item.text}
-          href={itemBloqueado ? undefined : item.path}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={itemBloqueado ? (e) => { e.preventDefault(); handleBlockedClick(item); } : undefined}
-          className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
-            itemBloqueado ? 'opacity-40 cursor-not-allowed' : 'bg-transparent hover:bg-purple-50 cursor-pointer'
-          } ${isCollapsed ? 'px-2' : ''}`}
-          title={itemBloqueado ? `🔒 Bloqueado - Estás a ${distancia}m del centro` : item.text}
-          style={{ animation: `fadeIn 0.4s ease-out ${globalIndex * 0.05}s both` }}
-        >
-          <img
-            src={item.fullLogo}
-            alt={item.text}
-            className={`transition-all duration-300 ${itemBloqueado ? '' : 'group-hover:scale-105'} ${isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'}`}
-            style={{ objectFit: 'contain', filter: itemBloqueado ? 'grayscale(100%)' : 'none' }}
-          />
-          {itemBloqueado && !isCollapsed && (
-            <div className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">🔒</span>
-            </div>
-          )}
-        </a>
+        <a key={item.text} href={bloqueado ? undefined : item.path}
+          target="_blank" rel="noopener noreferrer"
+          onClick={bloqueado ? e => { e.preventDefault(); handleBlockedClick(); } : undefined}
+          className={cardClass}
+          style={{ animation: `fadeIn 0.3s ease-out ${idx * 0.05}s both` }}
+          title={item.text}
+        >{inner}</a>
       );
     }
-
     if (item.isReclamaciones) {
       return (
-        <Link
-          key={item.text}
-          to={item.path}
-          onClick={itemBloqueado ? (e) => { e.preventDefault(); handleBlockedClick(item); } : undefined}
-          className={`menu-item w-full flex items-center justify-center px-2.5 py-3 rounded-xl transition-all duration-300 group relative outline-none ${
-            itemBloqueado ? 'opacity-40 cursor-not-allowed' : 'bg-transparent hover:bg-purple-50 cursor-pointer'
-          }`}
+        <Link key={item.text} to={item.path}
+          onClick={bloqueado ? e => { e.preventDefault(); handleBlockedClick(); } : undefined}
+          className={cardClass}
+          style={{ animation: `fadeIn 0.3s ease-out ${idx * 0.05}s both` }}
           title={item.text}
-          style={{ animation: `fadeIn 0.4s ease-out ${globalIndex * 0.05}s both`, pointerEvents: itemBloqueado ? 'none' : undefined }}
-        >
-          <img
-            src={item.fullLogo}
-            alt={item.text}
-            className={`transition-all duration-300 ${itemBloqueado ? '' : 'group-hover:scale-105'} ${isCollapsed ? 'w-6 h-auto' : 'w-full h-auto max-w-[140px]'}`}
-            style={{ objectFit: 'contain', filter: itemBloqueado ? 'grayscale(100%)' : 'none' }}
-          />
-        </Link>
+        >{inner}</Link>
       );
     }
-
     return null;
   };
 
   return (
     <>
+      {/* Hamburger móvil */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="mobile-hamburger fixed top-4 left-4 z-50 lg:hidden w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all active:scale-95"
-        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', cursor: 'pointer', minWidth: '48px', minHeight: '48px' }}
+        className="mobile-hamburger fixed top-4 left-4 z-50 lg:hidden w-12 h-12 rounded-xl shadow-md flex items-center justify-center text-white transition-all active:scale-95"
+        style={{ backgroundColor: SIDEBAR_BG, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minWidth: '48px', minHeight: '48px' }}
       >
-        {isMobileOpen ? <XMarkIcon className="w-6 h-6 pointer-events-none" /> : <Bars3Icon className="w-6 h-6 pointer-events-none" />}
+        {isMobileOpen
+          ? <XMarkIcon className="w-6 h-6 pointer-events-none" />
+          : <Bars3Icon className="w-6 h-6 pointer-events-none" />}
       </button>
 
       {isMobileOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity" onClick={() => setIsMobileOpen(false)} />
+        <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setIsMobileOpen(false)} />
       )}
 
       <div
-        className={`mobile-sidebar fixed top-0 left-0 h-screen transition-all duration-500 ease-in-out z-50 flex flex-col shadow-lg ${isCollapsed ? 'w-20' : 'w-64'} ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
-        style={{ backgroundColor: '#f8f9fa', borderRight: '1px solid #e9ecef', transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease' }}
+        className={`mobile-sidebar fixed top-0 left-0 h-screen z-50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        style={{
+          backgroundColor: SIDEBAR_BG,
+          borderRight: '1px solid rgba(255,255,255,0.08)',
+          transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.3s ease',
+        }}
       >
-        {/* Header */}
-        <div className="p-3" style={{ borderBottom: '1px solid #e9ecef' }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center overflow-hidden">
-              <div className={`transition-all duration-500 ease-in-out ${isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0'}`}>
-                {isCollapsed && (
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center">
-                    <img src="/videologo.png" alt="Logo" className="w-12 h-12 object-contain transition-transform duration-500 hover:scale-110" />
-                  </div>
-                )}
-              </div>
-              <div className={`transition-all duration-500 ease-in-out ${!isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0 absolute'}`}>
-                {!isCollapsed && <img src="/logo-text-short.png" alt="Logo Crecemos" className="h-10 w-auto object-contain transition-transform duration-500 hover:scale-105" />}
-              </div>
+        {/* Logo — tarjeta blanca sobre fondo morado */}
+        <div className="p-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          {isCollapsed ? (
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto shadow-sm overflow-hidden">
+              <img src="/videologo.png" alt="Logo" className="w-10 h-10 object-contain" />
             </div>
-            {(userRole === ROLES.ADMINISTRADOR || userRole === ROLES.ADMISION || userRole === ROLES.TERAPEUTA) && (
-              <div className="flex-shrink-0"><NotificacionesGlobales /></div>
-            )}
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl px-3 py-2 flex items-center justify-center shadow-sm overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+              <img src="/logo-text-short.png" alt="Logo Crecemos" className="h-11 w-auto object-contain" />
+            </div>
+          )}
         </div>
 
-        {/* Toggle Button */}
+        {/* Collapse toggle (desktop) */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex absolute top-7 -right-3 w-6 h-6 bg-white rounded-full items-center justify-center text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 hover:scale-110 transition-all duration-300 shadow-md hover:shadow-lg outline-none"
-          style={{ border: '1px solid #e5e7eb', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="hidden lg:flex absolute top-7 -right-3 w-6 h-6 rounded-full items-center justify-center text-white/50 hover:text-white transition-all duration-300 shadow-md outline-none"
+          style={{ backgroundColor: '#2d0a52', border: '1px solid rgba(255,255,255,0.15)' }}
         >
-          <svg className={`w-3 h-3 transition-transform duration-500 ease-in-out ${isCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-3 h-3 transition-transform duration-400 ${isCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
           <style>{`
-            nav::-webkit-scrollbar { width: 6px; }
+            nav::-webkit-scrollbar { width: 4px; }
             nav::-webkit-scrollbar-track { background: transparent; }
-            nav::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-            nav::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-            .menu-item { background: transparent; border: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-            .menu-item:hover { background-color: #e9ecef; transform: translateX(2px); }
-            .menu-item.active { background-color: #e9ecef; }
-            @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+            nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
 
           <div className="space-y-0.5">
-            {filteredSections.map((section, sectionIndex) => {
-              let globalIndex = filteredSections
-                .slice(0, sectionIndex)
-                .reduce((acc, s) => acc + s.items.length, 0);
-              const isSectionOpen = isCollapsed || openSections[section.title];
-
-              return (
-                <div key={section.title}>
-                  {/* Section header */}
-                  {!isCollapsed ? (
-                    <button
-                      onClick={() => setOpenSections(prev => ({ ...prev, [section.title]: !prev[section.title] }))}
-                      className={`w-full flex items-center justify-between px-2.5 pb-1 ${sectionIndex === 0 ? 'pt-1' : 'pt-4'} group outline-none`}
-                    >
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 group-hover:text-[#7B1FA2] transition-colors duration-200">
-                        {section.title}
-                      </span>
-                      <ChevronDownIcon
-                        className={`w-3 h-3 text-gray-400 group-hover:text-[#7B1FA2] transition-all duration-300 ${openSections[section.title] ? '' : '-rotate-90'}`}
-                      />
-                    </button>
-                  ) : (
-                    sectionIndex > 0 && <div className="my-2 mx-3 border-t border-gray-200" />
-                  )}
-
-                  <div
-                    className="space-y-0.5 overflow-hidden transition-all duration-300"
-                    style={{ maxHeight: isSectionOpen ? '1000px' : '0px', opacity: isSectionOpen ? 1 : 0 }}
-                  >
-                    {section.items.map((item, itemIndex) => {
-                      const idx = globalIndex + itemIndex;
-                      if (item.isDropdown) return renderDropdown(item, idx);
-                      return renderRegularItem(item, idx);
-                    })}
-                  </div>
+            {/* Centro Operativo — temporalmente oculto */}
+            {/* {(userRole === ROLES.ADMINISTRADOR || userRole === ROLES.ADMISION || userRole === ROLES.TERAPEUTA || userRole === ROLES.RECURSOS_HUMANOS) && (
+              <Link
+                to="/intranet/centro-operativo"
+                className={`flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-200 group outline-none ${
+                  location.pathname === '/intranet/centro-operativo'
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                } ${isCollapsed ? 'justify-center' : ''}`}
+                title={isCollapsed ? 'Centro Operativo' : ''}
+              >
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  location.pathname === '/intranet/centro-operativo' ? 'bg-white/10' : 'group-hover:bg-white/10'
+                }`}>
+                  <BuildingOfficeIcon className="w-5 h-5" />
                 </div>
-              );
-            })}
+                {!isCollapsed && <span className="font-bold text-[16px] flex-1">Centro Operativo</span>}
+              </Link>
+            )} */}
 
-            {/* External items */}
-            {filteredExternalItems.length > 0 && (
+            {/* Label menú principal */}
+            {!isCollapsed && (
+              <p className="text-[10px] font-bold uppercase tracking-wider px-2.5 pt-4 pb-1 select-none" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Menú Principal
+              </p>
+            )}
+            {isCollapsed && <div className="my-2 mx-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }} />}
+
+            {/* Secciones colapsables */}
+            <div className="space-y-0.5">
+              {filteredSections.map((section, idx) => renderSection(section, idx))}
+            </div>
+
+            {/* Accesos rápidos — solo cuando está expandido */}
+            {filteredExternalItems.length > 0 && !isCollapsed && (
               <div>
-                {!isCollapsed
-                  ? <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2.5 pb-1 pt-4">ACCESOS</p>
-                  : <div className="my-2 mx-3 border-t border-gray-200" />
-                }
-                <div className="space-y-0.5">
+                <div className="my-3 mx-1" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }} />
+                <p className="text-[10px] font-bold uppercase tracking-wider px-2.5 pb-2 select-none" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Accesos Rápidos
+                </p>
+                <div className="space-y-2 px-1">
                   {filteredExternalItems.map((item, i) => renderExternalItem(item, i))}
                 </div>
               </div>
@@ -515,71 +521,51 @@ const Sidebar = () => {
           </div>
         </nav>
 
-        {/* User Profile */}
-        <div className="p-3" style={{ borderTop: '1px solid #e9ecef' }}>
+        {/* Perfil de usuario */}
+        <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           {isCollapsed ? (
             <div className="flex flex-col items-center gap-2">
-              <Link
-                to="/intranet/mi-perfil"
-                className="w-full flex items-center justify-center p-2.5 text-gray-500 rounded-xl transition-all duration-300 outline-none hover:scale-110 hover:bg-purple-50"
-                style={{ border: 'none', background: 'transparent', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-                title={user.nombres ? `${user.nombres} ${user.apellidos}` : 'Mi Perfil'}
+              <Link to="/intranet/mi-perfil"
+                className="w-full flex items-center justify-center p-2.5 rounded-xl hover:bg-white/10 transition-all outline-none"
+                title={`${user.nombres} ${user.apellidos}`}
               >
                 <div className="relative">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center font-bold text-white text-xs shadow-md hover:shadow-lg transition-all duration-300">
-                    {user.nombres?.[0] || ''}{user.apellidos?.[0] || ''}
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center font-bold text-white text-xs shadow-md">
+                    {user.nombres?.[0]}{user.apellidos?.[0]}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#A3C644] rounded-full animate-pulse" style={{ border: '2px solid white' }}></div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#A3C644] rounded-full animate-pulse" style={{ border: '2px solid #1a0533' }} />
                 </div>
               </Link>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center p-2.5 text-gray-500 rounded-xl transition-all duration-300 outline-none hover:scale-110 hover:rotate-6"
-                style={{ border: 'none', background: 'transparent', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#6b7280'; }}
+              <button onClick={handleLogout}
+                className="w-full flex items-center justify-center p-2.5 rounded-xl transition-all outline-none text-white/40 hover:text-red-400 hover:bg-red-500/10"
                 title="Cerrar sesión"
               >
-                <ArrowRightOnRectangleIcon className="w-5 h-5 transition-transform duration-300" />
+                <ArrowRightOnRectangleIcon className="w-5 h-5" />
               </button>
             </div>
           ) : (
             <div className="space-y-2">
-              <Link
-                to="/intranet/mi-perfil"
-                className="w-full flex items-center gap-3 p-2.5 text-gray-600 rounded-xl transition-all duration-300 group outline-none hover:scale-[1.02]"
-                style={{ border: 'none', background: 'transparent', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e9ecef'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              <Link to="/intranet/mi-perfil"
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-all group outline-none"
               >
                 <div className="relative flex-shrink-0">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center font-bold text-white text-sm shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-110">
-                    {user.nombres?.[0] || ''}{user.apellidos?.[0] || ''}
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center font-bold text-white text-sm shadow-md">
+                    {user.nombres?.[0]}{user.apellidos?.[0]}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#A3C644] rounded-full animate-pulse" style={{ border: '2px solid white' }}></div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#A3C644] rounded-full animate-pulse" style={{ border: '2px solid #1a0533' }} />
                 </div>
-                <div className="flex-1 min-w-0 text-left transition-all duration-500 overflow-hidden">
-                  <p className="font-semibold text-sm text-gray-900 truncate transition-all duration-300 group-hover:text-[#7B1FA2]">
-                    {user.nombres} {user.apellidos}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate transition-all duration-300">
-                    {ROLES_NAMES[user.rol?.id] || 'Sin rol'}
-                  </p>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="font-semibold text-sm text-white truncate">{user.nombres} {user.apellidos}</p>
+                  <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{ROLES_NAMES[user.rol?.id] || 'Sin rol'}</p>
                 </div>
-                <UserCircleIcon className="w-4 h-4 text-gray-400 group-hover:text-[#7B1FA2] flex-shrink-0 transition-all duration-300 group-hover:scale-125" />
+                <UserCircleIcon className="w-4 h-4 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }} />
               </Link>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 text-gray-500 rounded-xl transition-all duration-300 outline-none hover:scale-[1.02]"
-                  style={{ border: 'none', background: 'transparent', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#6b7280'; }}
-                >
-                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                  <span className="text-xs font-medium">Cerrar sesión</span>
-                </button>
-              </div>
+              <button onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl transition-all outline-none text-white/40 hover:text-red-400 hover:bg-red-500/10"
+              >
+                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                <span className="text-xs font-medium">Cerrar sesión</span>
+              </button>
             </div>
           )}
         </div>
@@ -590,41 +576,77 @@ const Sidebar = () => {
 
 export const SidebarContentWrapper = ({ children }) => {
   const { isCollapsed } = useSidebar();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (
     <>
       <style>{`
         @media (min-width: 1024px) {
-          .sidebar-content-wrapper {
-            margin-left: var(--sidebar-width, 256px);
-            transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-          }
+          .sidebar-content-wrapper { margin-left: var(--sidebar-width, 256px); transition: margin-left 0.4s cubic-bezier(0.4,0,0.2,1); }
+          .intranet-topbar { left: var(--sidebar-width, 256px); transition: left 0.4s cubic-bezier(0.4,0,0.2,1); }
         }
         @media (max-width: 1023px) {
           .sidebar-content-wrapper { margin-left: 0; }
+          .intranet-topbar { display: none !important; }
         }
       `}</style>
+
+      {/* Top bar */}
+      <div
+        className="intranet-topbar fixed top-0 right-0 z-30 h-14 flex items-center justify-end px-6 gap-3"
+        style={{
+          background: '#ffffff',
+          borderBottom: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Campana */}
+        <div className="flex items-center">
+          <NotificacionesGlobales panelClassName="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-2xl z-50 border border-purple-100 flex flex-col overflow-hidden" />
+        </div>
+
+        {/* Separador */}
+        <div className="w-px h-5 flex-shrink-0 bg-gray-200" />
+
+        {/* Perfil */}
+        <Link
+          to="/intranet/mi-perfil"
+          className="flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors duration-150 hover:bg-gray-50 group"
+        >
+          {/* Avatar */}
+          <div className="relative flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center font-semibold text-white text-xs">
+              {user.nombres?.[0]}{user.apellidos?.[0]}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-[#A3C644] rounded-full" style={{ border: '1.5px solid white' }} />
+          </div>
+
+          {/* Nombre + rol */}
+          <div className="text-left hidden xl:block leading-none">
+            <p className="text-sm font-semibold text-gray-800">{user.nombres} {user.apellidos}</p>
+            <p className="text-[11px] font-medium mt-0.5" style={{ color: '#9333ea' }}>{ROLES_NAMES[user.rol?.id] || 'Sin rol'}</p>
+          </div>
+
+          <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0 text-purple-400 group-hover:text-purple-600 transition-colors" />
+        </Link>
+      </div>
+
       <div className="sidebar-content-wrapper min-h-screen flex flex-col">
+        {/* Espaciado para el top bar en desktop */}
+        <div className="hidden lg:block h-14 flex-shrink-0" />
         <div className="flex-1">{children}</div>
         <footer className="mt-auto bg-gradient-to-br from-gray-50 to-gray-100 border-t border-gray-200 py-6 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644]"></div>
-                <p className="text-xs sm:text-sm text-gray-600 font-medium">
-                  © {new Date().getFullYear()} <span className="font-bold text-gray-900">Centro Crecemos</span>
-                </p>
-              </div>
-              <a
-                href="https://vaxasys.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 hover:bg-white border border-gray-200 transition-all hover:shadow-md"
-              >
-                <span className="text-xs sm:text-sm text-gray-500 group-hover:text-[#7B1FA2] transition-colors">Desarrollado por</span>
-                <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] bg-clip-text text-transparent">vaxa</span>
-              </a>
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#A3C644]" />
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">
+                © {new Date().getFullYear()} <span className="font-bold text-gray-900">Centro Crecemos</span>
+              </p>
             </div>
+            <a href="https://vaxasys.com" target="_blank" rel="noopener noreferrer"
+              className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 hover:bg-white border border-gray-200 transition-all hover:shadow-md">
+              <span className="text-xs sm:text-sm text-gray-500 group-hover:text-[#7B1FA2] transition-colors">Desarrollado por</span>
+              <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] bg-clip-text text-transparent">vaxa</span>
+            </a>
           </div>
         </footer>
       </div>

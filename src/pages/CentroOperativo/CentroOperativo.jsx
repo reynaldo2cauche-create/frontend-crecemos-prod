@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon, ClockIcon, PencilIcon, TrashIcon, ChatBubbleLeftIcon,
   PlayIcon, PauseIcon, ChartBarIcon, XMarkIcon, CheckIcon,
   ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon, Bars3Icon,
-  PaperClipIcon, ArrowDownTrayIcon, UserGroupIcon,
+  PaperClipIcon, ArrowDownTrayIcon, UserGroupIcon, EllipsisHorizontalIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import {
   listarTareas, obtenerColumnas, obtenerPrioridades, crearTarea,
@@ -188,7 +190,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <div className="flex items-center gap-0.5">
             {puedeTimer && (
               <button onClick={() => onToggleTimer(tarea)}
                 className={`p-1.5 rounded-lg transition-colors ${timerActivo ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
@@ -217,12 +219,12 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
 
 // ─── Modal crear/editar ───────────────────────────────────────────────────────
 
-function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsignaciones = [], onGuardar, onCerrar, showNotif, onRecargar }) {
+function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsignaciones = [], defaultColumnaId = null, onGuardar, onCerrar, showNotif, onRecargar }) {
   const [form, setForm] = useState({
     titulo: tarea?.titulo || '',
     descripcion: tarea?.descripcion || '',
     prioridad_id: tarea?.prioridad_id || 2,
-    columna_id: tarea?.columna_id || (columnas[0]?.id ?? 1),
+    columna_id: tarea?.columna_id || defaultColumnaId || (columnas[0]?.id ?? 1),
     fecha_limite: tarea?.fecha_limite ? tarea.fecha_limite.slice(0, 16) : '',
     asignaciones: tarea?.asignaciones?.map(a => ({
       tipo: a.usuario_id ? 'usuario' : 'rol',
@@ -269,9 +271,7 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
       if (archivosSeleccionados.length > 0 && tareaGuardada?.id) {
         try {
           const res = await subirArchivos(tareaGuardada.id, archivosSeleccionados);
-          console.log('[handleGuardar] subirArchivos OK:', res);
         } catch (e) {
-          console.error('[handleGuardar] subirArchivos ERROR:', e?.response?.status, e?.response?.data);
           showNotif(e?.response?.data?.message || 'Error al subir archivos', 'error');
         }
       }
@@ -427,23 +427,29 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
 
 // ─── Modal detalle + comentarios ──────────────────────────────────────────────
 
-function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, showNotif, currentUserId, esAdmin }) {
+function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, puedeEditar, puedeEliminarTarea, onEditar, onEliminar, showNotif, currentUserId, esAdmin }) {
   const [comentarios, setComentarios] = useState([]);
   const [nuevo, setNuevo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [archivos, setArchivos] = useState([]);
   const [archivosPendientes, setArchivosPendientes] = useState([]);
   const [preview, setPreview] = useState(null);
+  const [cargando, setCargando] = useState(true);
   const fileInputRef = useRef(null);
   const miTimer = tarea.mi_timer ?? null;
   const timerActivo = miTimer?.timer_activo ?? false;
   const tiempo = useTiempoVivo(miTimer);
 
   useEffect(() => {
-    listarComentarios(tarea.id).then(setComentarios).catch(() => {});
-    listarArchivos(tarea.id)
-      .then(data => { console.log('[DetalleModal] archivos cargados:', data); setArchivos(data); })
-      .catch(e => console.error('[DetalleModal] error cargando archivos:', e?.response?.status, e?.response?.data));
+    setCargando(true);
+    Promise.all([
+      listarComentarios(tarea.id).catch(() => []),
+      listarArchivos(tarea.id).then(data => Array.isArray(data) ? data : []).catch(() => []),
+    ]).then(([cms, archs]) => {
+      setComentarios(cms);
+      setArchivos(archs);
+      setCargando(false);
+    });
   }, [tarea.id]);
 
   const handleEliminarComentario = async (comentarioId) => {
@@ -508,9 +514,25 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                 )}
               </div>
             </div>
-            <button onClick={onCerrar} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 flex-shrink-0 transition-colors">
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {puedeEditar && (
+                <button onClick={() => { onCerrar(); onEditar(tarea); }}
+                  className="p-2 rounded-xl hover:bg-purple-50 text-gray-400 hover:text-[#7B1FA2] transition-colors"
+                  title="Editar tarea">
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+              )}
+              {puedeEliminarTarea && (
+                <button onClick={() => { onCerrar(); onEliminar(tarea.id); }}
+                  className="p-2 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                  title="Eliminar tarea">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              )}
+              <button onClick={onCerrar} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 flex-shrink-0 transition-colors">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -565,7 +587,25 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
           )}
 
           {/* Archivos de la tarea */}
-          {archivos.length > 0 && (
+          {cargando ? (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="w-4 h-4 bg-gray-200 rounded animate-pulse" />
+                <div className="w-20 h-3 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="space-y-1.5">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-gray-100 rounded-xl animate-pulse">
+                    <div className="w-7 h-7 rounded-lg bg-gray-200 flex-shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-3 bg-gray-200 rounded w-3/4" />
+                      <div className="h-2 bg-gray-200 rounded w-1/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : archivos.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
                 <PaperClipIcon className="w-4 h-4 text-[#7B1FA2]" />
@@ -616,14 +656,28 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
             <p className="text-xs font-semibold text-gray-600 mb-2.5 flex items-center gap-1.5">
               <ChatBubbleLeftIcon className="w-4 h-4 text-[#7B1FA2]" />
               Comentarios
-              <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{comentarios.length}</span>
+              {!cargando && <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{comentarios.length}</span>}
             </p>
 
             <div className="space-y-2 mb-3">
-              {comentarios.length === 0 && (
-                <p className="text-xs text-gray-400 italic text-center py-3">Sin comentarios aún.</p>
-              )}
-              {comentarios.map(c => (
+              {cargando ? (
+                [1, 2, 3].map(i => (
+                  <div key={i} className="bg-gray-50 rounded-xl p-3 border border-gray-100 animate-pulse">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="h-2.5 bg-gray-200 rounded w-1/3" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="h-2 bg-gray-200 rounded w-full" />
+                      <div className="h-2 bg-gray-200 rounded w-2/3" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  {comentarios.length === 0 && (
+                    <p className="text-xs text-gray-400 italic text-center py-3">Sin comentarios aún.</p>
+                  )}
+                  {comentarios.map(c => (
                 <div key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-[11px] font-semibold text-[#7B1FA2]">
@@ -674,6 +728,8 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                   )}
                 </div>
               ))}
+                </>
+              )}
             </div>
 
             {/* Input comentario + adjuntar */}
@@ -1034,26 +1090,20 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
 
 // ─── Vista por persona (tipo agenda) ─────────────────────────────────────────
 
-function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onEliminar, onToggleTimer, onVerDetalle, onNuevaTarea, admin, currentUser, esAsignadoATarea }) {
-  const [seleccionada, setSeleccionada] = useState('');
-
-  // Lista de personas desde el catálogo completo (no de las asignaciones)
+function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onEliminar, onToggleTimer, onVerDetalle, admin, currentUser, esAsignadoATarea, esCreadorDeTarea, personaVista, onPersonaChange }) {
   const opciones = [
     ...usuarios.map(u => ({
       key: `u_${u.id}`, tipo: 'usuario', id: u.id,
       nombre: u.nombre_completo,
-      inicial: u.nombre_completo?.[0]?.toUpperCase() ?? 'U',
     })),
     ...roles.map(r => ({
       key: `r_${r.id}`, tipo: 'rol', id: r.id,
       nombre: `Rol: ${r.nombre}`,
-      inicial: r.nombre[0]?.toUpperCase() ?? 'R',
     })),
   ];
 
-  const persona = opciones.find(p => p.key === seleccionada) ?? null;
+  const persona = opciones.find(p => p.key === personaVista) ?? null;
 
-  // Tareas filtradas por la persona seleccionada
   const tareasPersona = persona
     ? tareas.filter(t => t.asignaciones?.some(a =>
         persona.tipo === 'usuario' ? a.usuario_id === persona.id : a.rol_id === persona.id
@@ -1062,114 +1112,55 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Barra unificada: selector + info persona (1 sola fila) */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-100 bg-white flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-          persona
-            ? persona.tipo === 'rol'
-              ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-bold'
-              : 'bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white text-sm font-bold'
-            : 'bg-gray-100 text-gray-400'
-        }`}>
-          {persona ? persona.inicial : <UserGroupIcon className="w-4 h-4" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <select
-            value={seleccionada}
-            onChange={e => setSeleccionada(e.target.value)}
-            className="w-full max-w-sm border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all bg-white"
-          >
-            <option value="">— Seleccionar trabajador o rol —</option>
-            <optgroup label="Trabajadores">
-              {usuarios.map(u => (
-                <option key={`u_${u.id}`} value={`u_${u.id}`}>{u.nombre_completo}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Por rol">
-              {roles.map(r => (
-                <option key={`r_${r.id}`} value={`r_${r.id}`}>Rol: {r.nombre}</option>
-              ))}
-            </optgroup>
-          </select>
-          {persona && (
-            <p className="text-[11px] text-gray-400 mt-0.5 px-1">
-              {tareasPersona.length} tarea{tareasPersona.length !== 1 ? 's' : ''}
-              {tareasPersona.filter(estaVencida).length > 0 && (
-                <span className="text-red-500 font-semibold ml-1">
-                  · {tareasPersona.filter(estaVencida).length} vencida{tareasPersona.filter(estaVencida).length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-        {persona && (
-          <button
-            onClick={() => onNuevaTarea(persona)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-md transition-all flex-shrink-0">
-            <PlusIcon className="w-3.5 h-3.5" /> Nueva tarea
-          </button>
-        )}
-      </div>
-
-      {/* Estado vacío */}
       {!persona ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
           <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-1">
             <UserGroupIcon className="w-7 h-7 text-gray-300" />
           </div>
-          <p className="text-gray-400 text-sm font-medium">Selecciona un trabajador o rol</p>
+          <p className="text-gray-400 text-sm font-medium">Selecciona un trabajador</p>
           <p className="text-gray-300 text-xs">para ver sus tareas asignadas</p>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
-
-          {/* Kanban con todos los estados — igual que el tablero principal */}
-          <div className="flex-1 overflow-x-auto overflow-y-hidden">
-            <div className="flex gap-1.5 px-4 py-4 h-full" style={{ minWidth: `${columnas.length * 222 + 32}px` }}>
-              {columnas.map(col => {
-                const tareasCol = tareasPersona.filter(t => t.columna_id === col.id);
-                return (
-                  <div key={col.id} className="flex-shrink-0 w-[210px] flex flex-col">
-                    {/* Header columna */}
-                    <div className="flex items-center justify-between mb-2 px-2 py-2 rounded-xl border border-transparent bg-white"
-                      style={{ borderTop: `3px solid ${col.color}` }}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-700 truncate">{col.nombre}</span>
-                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
-                          style={{ backgroundColor: col.color + '22', color: col.color }}>
-                          {tareasCol.length}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Área tarjetas */}
-                    <div className="flex-1 rounded-2xl p-2 border-2 border-dashed overflow-y-auto"
-                      style={{ backgroundColor: col.color + '08', borderColor: col.color + '30' }}>
-                      {tareasCol.length === 0 ? (
-                        <div className="h-full flex items-center justify-center py-10">
-                          <p className="text-xs text-gray-300 font-medium">Sin tareas</p>
-                        </div>
-                      ) : (
-                        tareasCol.map(t => (
-                          <TareaCard key={t.id} tarea={t}
-                            onEditar={onEditar}
-                            onEliminar={onEliminar}
-                            onToggleTimer={onToggleTimer}
-                            onVerDetalle={onVerDetalle}
-                            onDragStart={() => {}}
-                            onDragEnd={() => {}}
-                            isDragOver={false}
-                            puedeTimer={esAsignadoATarea(t)}
-                            puedeEditar={admin || t.user_crea?.id === currentUser?.id}
-                            puedeEliminar={admin} />
-                        ))
-                      )}
-                    </div>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="flex gap-1.5 px-4 py-3 h-full" style={{ minWidth: `${columnas.length * 222 + 32}px` }}>
+            {columnas.map(col => {
+              const tareasCol = tareasPersona.filter(t => t.columna_id === col.id);
+              return (
+                <div key={col.id} className="flex-shrink-0 w-[210px] flex flex-col">
+                  <div className="flex items-center gap-2 mb-2 px-2 py-2 rounded-xl bg-white border border-transparent"
+                    style={{ borderTop: `3px solid ${col.color}` }}>
+                    <span className="text-sm font-bold text-gray-700 truncate">{col.nombre}</span>
+                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
+                      style={{ backgroundColor: col.color + '22', color: col.color }}>
+                      {tareasCol.length}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="flex-1 rounded-2xl p-2 border-2 border-dashed overflow-y-auto"
+                    style={{ backgroundColor: col.color + '08', borderColor: col.color + '30' }}>
+                    {tareasCol.length === 0 ? (
+                      <div className="h-full flex items-center justify-center py-10">
+                        <p className="text-xs text-gray-300 font-medium">Sin tareas</p>
+                      </div>
+                    ) : (
+                      tareasCol.map(t => (
+                        <TareaCard key={t.id} tarea={t}
+                          onEditar={onEditar}
+                          onEliminar={onEliminar}
+                          onToggleTimer={onToggleTimer}
+                          onVerDetalle={onVerDetalle}
+                          onDragStart={() => {}}
+                          onDragEnd={() => {}}
+                          isDragOver={false}
+                          puedeTimer={esAsignadoATarea(t)}
+                          puedeEditar={admin || esCreadorDeTarea(t)}
+                          puedeEliminar={admin} />
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
         </div>
       )}
     </div>
@@ -1179,6 +1170,7 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function CentroOperativo() {
+  const navigate = useNavigate();
   const [tareas, setTareas] = useState([]);
   const [columnas, setColumnas] = useState([]);
   const [prioridades, setPrioridades] = useState([]);
@@ -1197,7 +1189,35 @@ export default function CentroOperativo() {
   const [dragOverTareaId, setDragOverTareaId] = useState(null);
   const colDragRef = useRef(null);
   const [vista, setVista] = useState('kanban');
+  const [personaVista, setPersonaVista] = useState('');
   const [asignadoDefault, setAsignadoDefault] = useState(null);
+  const [columnaCrearDefault, setColumnaCrearDefault] = useState(null);
+  const [menuAdmin, setMenuAdmin] = useState(false);
+  const menuAdminRef = useRef(null);
+  const [menuPersonas, setMenuPersonas] = useState(false);
+  const menuPersonasRef = useRef(null);
+  const [busqueda, setBusqueda] = useState('');
+  const [mostrarBuscar, setMostrarBuscar] = useState(false);
+  const [filtroFecha, setFiltroFecha] = useState('');
+  const [fechaCustom, setFechaCustom] = useState('');
+  const [comentariosTodos, setComentariosTodos] = useState({});
+  const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
+  const [archivosTodos, setArchivosTodos] = useState({});
+  const buscarRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuAdmin) return;
+    const close = (e) => { if (menuAdminRef.current && !menuAdminRef.current.contains(e.target)) setMenuAdmin(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuAdmin]);
+
+  useEffect(() => {
+    if (!menuPersonas) return;
+    const close = (e) => { if (menuPersonasRef.current && !menuPersonasRef.current.contains(e.target)) setMenuPersonas(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuPersonas]);
 
   const roles = [
     { id: 1, nombre: 'Administrador' },
@@ -1207,12 +1227,22 @@ export default function CentroOperativo() {
   ];
 
   const currentUser = getUser();
-  const admin = currentUser?.rol?.id === ROLES.ADMINISTRADOR;
+  // eslint-disable-next-line eqeqeq
+  const admin = currentUser?.rol?.id == ROLES.ADMINISTRADOR;
+
+  const esCreadorDeTarea = (t) => {
+    const myId = currentUser?.id;
+    if (myId == null) return false;
+    // eslint-disable-next-line eqeqeq
+    return t.user_crea?.id == myId || t.user_crea_id == myId;
+  };
 
   const esAsignadoATarea = (tarea) =>
     tarea.asignaciones?.some(a =>
-      a.usuario_id === currentUser?.id ||
-      a.rol_id === currentUser?.rol?.id
+      // eslint-disable-next-line eqeqeq
+      a.usuario_id == currentUser?.id ||
+      // eslint-disable-next-line eqeqeq
+      a.rol_id == currentUser?.rol?.id
     );
 
   const showNotif = (message, type = 'success') => {
@@ -1246,7 +1276,75 @@ export default function CentroOperativo() {
     api.get('/trabajadores/select').then(r => setUsuarios(r.data)).catch(() => {});
   }, []);
 
-  const tareasPorColumna = (colId) => tareas.filter(t => t.columna_id === colId);
+  useEffect(() => {
+    if (!mostrarBuscar || tareas.length === 0) return;
+    setCargandoBusqueda(true);
+    const toArr = (d) => Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+    const cmsCalls = tareas.map(t =>
+      listarComentarios(t.id).then(d => ({ tipo: 'cms', id: t.id, data: toArr(d) })).catch(() => ({ tipo: 'cms', id: t.id, data: [] }))
+    );
+    const archCalls = tareas.map(t =>
+      listarArchivos(t.id).then(d => ({ tipo: 'archs', id: t.id, data: toArr(d) })).catch(() => ({ tipo: 'archs', id: t.id, data: [] }))
+    );
+    Promise.allSettled([...cmsCalls, ...archCalls]).then(results => {
+      const mapaCms = {}, mapaArchs = {};
+      results.forEach(r => {
+        if (r.status === 'fulfilled') {
+          if (r.value.tipo === 'cms') mapaCms[r.value.id] = r.value.data;
+          else mapaArchs[r.value.id] = r.value.data;
+        }
+      });
+      setComentariosTodos(mapaCms);
+      setArchivosTodos(mapaArchs);
+      setCargandoBusqueda(false);
+    });
+  }, [mostrarBuscar, tareas]);
+
+  const pasaFecha = (t) => {
+    if (!filtroFecha) return true;
+    const fl = t.fecha_limite ? new Date(t.fecha_limite) : null;
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    if (filtroFecha === 'hoy') return fl && fl >= hoy && fl < new Date(hoy.getTime() + 86400000);
+    if (filtroFecha === 'semana') { const fin = new Date(hoy); fin.setDate(hoy.getDate() + 7); return fl && fl >= hoy && fl <= fin; }
+    if (filtroFecha === 'vencidas') return fl && fl < new Date();
+    if (filtroFecha === 'custom' && fechaCustom) { const c = new Date(fechaCustom); c.setHours(0, 0, 0, 0); return fl && fl >= c && fl < new Date(c.getTime() + 86400000); }
+    return true;
+  };
+  const tareasFiltered = tareas.filter(pasaFecha);
+
+  const q = busqueda.trim().toLowerCase();
+  const sugerencias = q.length < 2 ? [] : (() => {
+    const results = [];
+    for (const t of tareas) {
+      const cms = Array.isArray(comentariosTodos[t.id]) ? comentariosTodos[t.id] : [];
+      const archs = Array.isArray(archivosTodos[t.id]) ? archivosTodos[t.id] : [];
+
+      if (t.titulo?.toLowerCase().includes(q)) {
+        results.push({ tarea: t, tipo: 'tarea', contexto: null });
+      } else {
+        // Buscar en texto de comentarios
+        const cm = cms.find(c => c.contenido?.toLowerCase().includes(q));
+        // Buscar en archivos de la tarea
+        const ar = archs.find(a => (a.nombre_original || '').toLowerCase().includes(q));
+        // Buscar en archivos adjuntos de comentarios
+        let arCm = null;
+        if (!ar) {
+          for (const c of cms) {
+            const found = (c.archivos || []).find(a => (a.nombre_original || '').toLowerCase().includes(q));
+            if (found) { arCm = { archivo: found, comentario: c }; break; }
+          }
+        }
+
+        if (cm) results.push({ tarea: t, tipo: 'comentario', contexto: cm.contenido });
+        else if (ar) results.push({ tarea: t, tipo: 'archivo', contexto: ar.nombre_original });
+        else if (arCm) results.push({ tarea: t, tipo: 'archivo', contexto: arCm.archivo.nombre_original });
+      }
+      if (results.length >= 8) break;
+    }
+    return results;
+  })();
+
+  const tareasPorColumna = (colId) => tareasFiltered.filter(t => t.columna_id === colId);
 
   const handleNuevaTareaPersona = (persona) => {
     setAsignadoDefault(persona);
@@ -1355,70 +1453,253 @@ export default function CentroOperativo() {
   const completadas = tareas.filter(t => t.columna?.es_final && t.columna?.nombre === 'Completado').length;
   const enCurso = tareas.filter(t => !t.columna?.es_final).length;
 
+  const statChips = [
+    { label: tareas.length, sub: 'Total', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+    { label: enCurso, sub: 'En curso', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+    { label: completadas, sub: 'Listas', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
+    ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', color: '#B91C1C', bg: '#FFF5F5', border: '#FECACA' }] : []),
+  ];
+
   return (
-    <div className="flex flex-col bg-gray-50" style={{ height: '100vh' }}>
+    <div className="flex flex-col bg-gray-50 h-screen lg:h-[calc(100vh-56px)]">
       <Notificacion notif={notif} />
 
-      {/* Header */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 pt-24 lg:pt-6 pb-4">
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          {/* Título + stats */}
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
-              <BuildingOfficeIcon className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">Centro Operativo</h1>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {[
-                  { label: tareas.length, sub: 'Total', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
-                  { label: enCurso, sub: 'En curso', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-                  { label: completadas, sub: 'Completadas', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
-                  ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', color: '#B91C1C', bg: '#FFF5F5', border: '#FECACA' }] : []),
-                ].map(s => (
-                  <div key={s.sub} className="flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold"
-                    style={{ color: s.color, background: s.bg, borderColor: s.border }}>
-                    <span className="font-bold text-sm">{s.label}</span>
-                    <span className="font-medium opacity-75">{s.sub}</span>
-                  </div>
-                ))}
-              </div>
+      {/* Encabezado — integrado al tablero, sin barra separada */}
+      <div className="flex-shrink-0 px-4 lg:px-6 pt-16 lg:pt-5 pb-4 flex items-start justify-between gap-4">
+        {/* Título + stats inline */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+            <BuildingOfficeIcon className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 leading-tight">Centro Operativo</h1>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-xs text-gray-400 font-medium">{tareas.length} tareas</span>
+              {enCurso > 0 && <><span className="text-gray-300 text-xs">·</span><span className="text-xs text-blue-600 font-medium">{enCurso} en curso</span></>}
+              {completadas > 0 && <><span className="text-gray-300 text-xs">·</span><span className="text-xs text-green-600 font-medium">{completadas} listas</span></>}
+              {vencidas > 0 && <><span className="text-gray-300 text-xs">·</span><span className="text-xs text-red-500 font-semibold">{vencidas} vencidas ⚠</span></>}
             </div>
           </div>
+        </div>
 
-          {/* Acciones */}
+        {/* Acciones — reducidas a 3 elementos */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {admin && (
+            <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
+              <button onClick={() => { setVista('kanban'); setPersonaVista(''); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'kanban' ? 'bg-[#7B1FA2] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                Tablero
+              </button>
+              <div className="relative" ref={menuPersonasRef}>
+                <button
+                  onClick={() => { setVista('personas'); setMenuPersonas(m => !m); }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'personas' ? 'bg-[#7B1FA2] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <UserGroupIcon className="w-3.5 h-3.5" />
+                  {vista === 'personas' && personaVista
+                    ? usuarios.find(u => `u_${u.id}` === personaVista)?.nombre_completo?.split(' ')[0]
+                      ?? roles.find(r => `r_${r.id}` === personaVista)?.nombre
+                      ?? 'Personas'
+                    : 'Personas'}
+                </button>
+                {menuPersonas && vista === 'personas' && (
+                  <div className="absolute left-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 w-52 max-h-72 flex flex-col">
+                    {personaVista && (
+                      <>
+                        <button onClick={() => { setPersonaVista(''); setMenuPersonas(false); }}
+                          className="flex-shrink-0 w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors">
+                          <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
+                          <span>Ver todos</span>
+                        </button>
+                        <div className="border-t border-gray-100 flex-shrink-0" />
+                      </>
+                    )}
+                    <div className="overflow-y-auto flex-1">
+                      <p className="px-3.5 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Trabajadores</p>
+                      {usuarios.map(u => (
+                        <button key={`u_${u.id}`}
+                          onClick={() => { setPersonaVista(`u_${u.id}`); setMenuPersonas(false); }}
+                          className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium transition-colors ${personaVista === `u_${u.id}` ? 'text-[#7B1FA2] bg-purple-50' : 'text-gray-700 hover:bg-gray-50'}`}>
+                          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                            {u.nombre_completo?.[0]?.toUpperCase()}
+                          </span>
+                          <span className="truncate text-left">{u.nombre_completo}</span>
+                        </button>
+                      ))}
+                      <div className="border-t border-gray-100 my-1" />
+                      <p className="px-3.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Por rol</p>
+                      {roles.map(r => (
+                        <button key={`r_${r.id}`}
+                          onClick={() => { setPersonaVista(`r_${r.id}`); setMenuPersonas(false); }}
+                          className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium transition-colors ${personaVista === `r_${r.id}` ? 'text-[#7B1FA2] bg-purple-50' : 'text-gray-700 hover:bg-gray-50'}`}>
+                          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                            {r.nombre[0]}
+                          </span>
+                          <span className="truncate text-left">{r.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Búsqueda rápida */}
+          <button onClick={() => { setMostrarBuscar(m => !m); setBusqueda(''); setFiltroFecha(''); setFechaCustom(''); }}
+            className={`w-8 h-8 flex items-center justify-center rounded-xl border shadow-sm transition-colors ${mostrarBuscar ? 'bg-purple-50 border-[#7B1FA2] text-[#7B1FA2]' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+            title="Buscar tarea o archivo">
+            <MagnifyingGlassIcon className="w-4 h-4" />
+          </button>
+
+          {/* Menú de opciones secundarias */}
+          {admin && (
+            <div className="relative" ref={menuAdminRef}>
+              <button
+                onClick={() => setMenuAdmin(m => !m)}
+                className={`w-8 h-8 flex items-center justify-center rounded-xl border shadow-sm transition-colors ${menuAdmin ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}>
+                <EllipsisHorizontalIcon className="w-4.5 h-4.5" />
+              </button>
+              {menuAdmin && (
+                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-44 z-20">
+                  <button onClick={() => { navigate('/intranet/centro-operativo/reporte'); setMenuAdmin(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    <ChartBarIcon className="w-4 h-4 text-gray-400" /> Reporte de actividades
+                  </button>
+                  <button onClick={() => { setMostrarColumnas(true); setMenuAdmin(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Bars3Icon className="w-4 h-4 text-gray-400" /> Gestionar columnas
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button onClick={() => {
+              if (vista === 'personas' && personaVista) {
+                const opcs = [
+                  ...usuarios.map(u => ({ key: `u_${u.id}`, tipo: 'usuario', id: u.id })),
+                  ...roles.map(r => ({ key: `r_${r.id}`, tipo: 'rol', id: r.id })),
+                ];
+                const p = opcs.find(o => o.key === personaVista);
+                if (p) { handleNuevaTareaPersona(p); return; }
+              }
+              setModalCrear(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all">
+            <PlusIcon className="w-3.5 h-3.5" /> Nueva tarea
+          </button>
+        </div>
+      </div>
+
+      {/* Panel de búsqueda */}
+      {mostrarBuscar && (
+        <div className="flex-shrink-0 px-4 lg:px-6 pb-3 space-y-2">
+          {/* Input de texto + sugerencias */}
+          <div className="relative" ref={buscarRef}>
+            <MagnifyingGlassIcon className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              autoFocus
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') { setMostrarBuscar(false); setBusqueda(''); setFiltroFecha(''); setFechaCustom(''); } }}
+              placeholder="Buscar tarea, archivo o comentario..."
+              className="w-full pl-9 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 shadow-sm transition-all"
+            />
+            {busqueda && (
+              <button onClick={() => setBusqueda('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            )}
+            {/* Sugerencias dropdown */}
+            {q.length >= 2 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-100 z-30 overflow-hidden">
+                {cargandoBusqueda ? (
+                  <div className="px-4 py-3 text-xs text-gray-400 flex items-center gap-2">
+                    <span className="w-3 h-3 border-2 border-gray-300 border-t-[#7B1FA2] rounded-full animate-spin" />
+                    Buscando en comentarios y archivos...
+                  </div>
+                ) : sugerencias.length === 0 ? (
+                  <div className="px-4 py-3 text-xs text-gray-400">Sin resultados para &ldquo;{busqueda}&rdquo;</div>
+                ) : (
+                  <>
+                    {sugerencias.map((s, i) => (
+                      <button key={i}
+                        onClick={() => { setTareaDetalle(s.tarea); setBusqueda(''); }}
+                        className="w-full flex items-start gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {s.tipo === 'comentario'
+                            ? <ChatBubbleLeftIcon className="w-4 h-4 text-blue-400" />
+                            : s.tipo === 'archivo'
+                              ? <PaperClipIcon className="w-4 h-4 text-orange-400" />
+                              : <CheckIcon className="w-4 h-4 text-purple-400" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-gray-800 truncate">{s.tarea.titulo}</div>
+                          {s.contexto && (
+                            <div className="text-[11px] text-gray-400 truncate mt-0.5">{s.contexto}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    {cargandoBusqueda === false && (
+                      <div className="px-4 py-1.5 text-[10px] text-gray-300 border-t border-gray-50">
+                        Clic para abrir la tarea
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Filtros de fecha */}
           <div className="flex items-center gap-2 flex-wrap">
-            {admin && (
-              <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
-                <button onClick={() => setVista('kanban')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'kanban' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-                  Tablero
-                </button>
-                <button onClick={() => setVista('personas')}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'personas' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
-                  <UserGroupIcon className="w-3.5 h-3.5" /> Por persona
-                </button>
-              </div>
+            {[
+              { key: 'hoy', label: 'Hoy' },
+              { key: 'semana', label: 'Esta semana' },
+              { key: 'vencidas', label: 'Vencidas' },
+            ].map(f => (
+              <button key={f.key}
+                onClick={() => setFiltroFecha(filtroFecha === f.key ? '' : f.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  filtroFecha === f.key
+                    ? 'bg-[#7B1FA2] text-white border-transparent shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}>
+                {f.label}
+              </button>
+            ))}
+            <input
+              type="date"
+              value={fechaCustom}
+              onChange={e => { setFechaCustom(e.target.value); setFiltroFecha(e.target.value ? 'custom' : ''); }}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-200 bg-white text-gray-600 outline-none focus:border-[#7B1FA2] transition-all cursor-pointer"
+            />
+            {(filtroFecha || fechaCustom) && (
+              <button onClick={() => { setFiltroFecha(''); setFechaCustom(''); }}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                <XMarkIcon className="w-3.5 h-3.5" /> Quitar filtro
+              </button>
             )}
-            {admin && (
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => setMostrarReporte(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-                  <ChartBarIcon className="w-3.5 h-3.5" /> Reporte
-                </button>
-                <button onClick={() => setMostrarColumnas(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-                  <Bars3Icon className="w-3.5 h-3.5" /> Columnas
-                </button>
-              </div>
-            )}
-            <button onClick={() => setModalCrear(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-lg transition-all shadow-sm">
-              <PlusIcon className="w-4 h-4" /> Nueva tarea
+          </div>
+
+        </div>
+      )}
+
+      {/* Banner filtro activo */}
+      {filtroFecha && (
+        <div className="flex-shrink-0 px-4 lg:px-6 pb-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-100 rounded-lg text-xs text-[#7B1FA2] font-medium">
+            <CalendarDaysIcon className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Mostrando {tareasFiltered.length} de {tareas.length} tareas</span>
+            <button onClick={() => { setFiltroFecha(''); setFechaCustom(''); }}
+              className="ml-auto text-[#7B1FA2] hover:text-purple-900 flex items-center gap-1">
+              <XMarkIcon className="w-3 h-3" /> Quitar
             </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tablero */}
       {cargando ? (
@@ -1442,7 +1723,7 @@ export default function CentroOperativo() {
         </div>
       ) : vista === 'personas' ? (
         <VistaPorPersonas
-          tareas={tareas}
+          tareas={tareasFiltered}
           columnas={columnas}
           usuarios={usuarios}
           roles={roles}
@@ -1454,6 +1735,9 @@ export default function CentroOperativo() {
           admin={admin}
           currentUser={currentUser}
           esAsignadoATarea={esAsignadoATarea}
+          esCreadorDeTarea={esCreadorDeTarea}
+          personaVista={personaVista}
+          onPersonaChange={setPersonaVista}
         />
       ) : columnas.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center">
@@ -1520,9 +1804,9 @@ export default function CentroOperativo() {
                       </span>
                       {tieneVencidas && <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />}
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); setModalCrear(true); }}
+                    <button onClick={(e) => { e.stopPropagation(); setColumnaCrearDefault(col.id); setModalCrear(true); }}
                       className="p-1.5 rounded-lg text-gray-300 hover:text-[#7B1FA2] hover:bg-purple-50 transition-all"
-                      title="Añadir tarea">
+                      title="Añadir tarea en esta columna">
                       <PlusIcon className="w-4 h-4" />
                     </button>
                   </div>
@@ -1557,7 +1841,7 @@ export default function CentroOperativo() {
                           onDragOverCard={(tarea) => { dragOverTareaRef.current = tarea; setDragOverTareaId(tarea.id); }}
                           isDragOver={isDragging && dragOverTareaId === t.id && draggedTareaRef.current?.id !== t.id}
                           puedeTimer={esAsignadoATarea(t)}
-                          puedeEditar={admin || t.user_crea?.id === currentUser?.id}
+                          puedeEditar={admin || esCreadorDeTarea(t)}
                           puedeEliminar={admin} />
                       ))
                     )}
@@ -1602,8 +1886,9 @@ export default function CentroOperativo() {
           usuarios={usuarios}
           roles={roles}
           defaultAsignaciones={asignadoDefault ? [{ tipo: asignadoDefault.tipo, id: asignadoDefault.id }] : []}
+          defaultColumnaId={columnaCrearDefault}
           onGuardar={tareaEditar ? handleEditar : handleCrear}
-          onCerrar={() => { setModalCrear(false); setTareaEditar(null); setAsignadoDefault(null); }}
+          onCerrar={() => { setModalCrear(false); setTareaEditar(null); setAsignadoDefault(null); setColumnaCrearDefault(null); }}
           showNotif={showNotif}
           onRecargar={cargar}
         />
@@ -1614,7 +1899,11 @@ export default function CentroOperativo() {
           tarea={tareaDetalle}
           onCerrar={() => setTareaDetalle(null)}
           puedeCommentar={admin || esAsignadoATarea(tareaDetalle)}
-          puedeEliminarArchivo={admin || tareaDetalle.user_crea?.id === currentUser?.id}
+          puedeEliminarArchivo={admin || esCreadorDeTarea(tareaDetalle)}
+          puedeEditar={admin || esCreadorDeTarea(tareaDetalle)}
+          puedeEliminarTarea={admin}
+          onEditar={setTareaEditar}
+          onEliminar={handleEliminar}
           showNotif={showNotif}
           currentUserId={currentUser?.id}
           esAdmin={admin}

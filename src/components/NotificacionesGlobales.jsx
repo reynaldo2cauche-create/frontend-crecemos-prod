@@ -269,20 +269,13 @@ const useNotificaciones = () => {
         nuevosFiltros.tipo  || undefined,
       );
 
-      console.log('🔍 [DEBUG] Respuesta del backend:', response);
-      console.log('🔍 [DEBUG] Notificaciones recibidas:', response.notificaciones?.length || 0);
-      console.log('🔍 [DEBUG] Total no leídas del backend:', response.total_no_leidas);
-
       const notificacionesNormalizadas = (response.notificaciones || []).map(normalizarNotif);
-      console.log('🔍 [DEBUG] Después de normalizar:', notificacionesNormalizadas.length);
-      console.log('🔍 [DEBUG] Primeras 3 notificaciones:', notificacionesNormalizadas.slice(0, 3));
-
       setNotificaciones(notificacionesNormalizadas);
       setHayMas(response.tiene_mas || false);
       setTotalNoLeidasReal(response.total_no_leidas || 0);
       offsetRef.current = LIMIT;
     } catch (error) {
-      console.error('❌ [DEBUG] Error al cargar notificaciones:', error);
+      console.error('Error al cargar notificaciones:', error);
       setError('No se pudieron cargar las notificaciones');
     } finally {
       setCargando(false);
@@ -373,10 +366,6 @@ const useNotificaciones = () => {
       leidas:   notificaciones.filter(n =>  n.leida),
     };
 
-    console.log('🔍 [DEBUG] Total notificaciones:', notificaciones.length);
-    console.log('🔍 [DEBUG] No leídas filtradas:', result.noLeidas.length);
-    console.log('🔍 [DEBUG] Leídas filtradas:', result.leidas.length);
-
     return result;
   }, [notificaciones]);
 
@@ -392,7 +381,7 @@ const useNotificaciones = () => {
 
 // ─── componente principal ─────────────────────────────────────────────────────
 
-const NotificacionesGlobales = () => {
+const NotificacionesGlobales = ({ sidebarMode = false, isCollapsed = false, panelClassName }) => {
   const [mostrarPanel, setMostrarPanel]     = useState(false);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const cargaInicialHecha                   = useRef(false);
@@ -427,30 +416,53 @@ const NotificacionesGlobales = () => {
   const limpiarFiltros = () => aplicarFiltros(FILTROS_INICIALES);
 
   return (
-    <div className="relative inline-block">
+    <div className={`relative ${sidebarMode ? 'inline-block w-full' : 'inline-block'}`}>
 
       {/* Botón campana */}
-      <button
-        onClick={() => mostrarPanel ? setMostrarPanel(false) : abrirPanel()}
-        className="relative p-2 rounded-lg hover:bg-purple-50 transition-colors"
-        title={`${totalNoLeidasReal} notificación${totalNoLeidasReal !== 1 ? 'es' : ''} sin leer`}
-      >
-        <Bell className={`w-6 h-6 transition-colors ${
-          totalNoLeidasReal > 0 ? 'text-purple-600 animate-pulse' : 'text-gray-600'
-        }`} />
-        {totalNoLeidasReal > 0 && (
-          <span className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center animate-pulse">
-            {totalNoLeidasReal > 99 ? '99+' : totalNoLeidasReal}
-          </span>
-        )}
-      </button>
+      {sidebarMode ? (
+        <button
+          onClick={() => mostrarPanel ? setMostrarPanel(false) : abrirPanel()}
+          className={`relative w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all ${isCollapsed ? 'justify-center' : ''}`}
+          title={`${totalNoLeidasReal} notificación${totalNoLeidasReal !== 1 ? 'es' : ''} sin leer`}
+        >
+          <Bell className="w-5 h-5 text-white/80 flex-shrink-0" />
+          {!isCollapsed && (
+            <span className="font-bold text-[16px] text-white/80 flex-1 text-left">Notificaciones</span>
+          )}
+          {totalNoLeidasReal > 0 && !isCollapsed && (
+            <span className="bg-[#e040fb] text-white text-xs font-bold rounded-full px-2 py-0.5 flex-shrink-0">
+              {totalNoLeidasReal > 99 ? '99+' : totalNoLeidasReal}
+            </span>
+          )}
+          {totalNoLeidasReal > 0 && isCollapsed && (
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              {totalNoLeidasReal > 9 ? '9+' : totalNoLeidasReal}
+            </span>
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={() => mostrarPanel ? setMostrarPanel(false) : abrirPanel()}
+          className="relative p-2 rounded-lg hover:bg-purple-50 transition-colors"
+          title={`${totalNoLeidasReal} notificación${totalNoLeidasReal !== 1 ? 'es' : ''} sin leer`}
+        >
+          <Bell className={`w-6 h-6 transition-colors ${
+            totalNoLeidasReal > 0 ? 'text-purple-600 animate-pulse' : 'text-gray-600'
+          }`} />
+          {totalNoLeidasReal > 0 && (
+            <span className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center animate-pulse">
+              {totalNoLeidasReal > 99 ? '99+' : totalNoLeidasReal}
+            </span>
+          )}
+        </button>
+      )}
 
       {mostrarPanel && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMostrarPanel(false)} />
 
           <div
-            className="absolute left-full top-0 ml-2 w-96 bg-white rounded-xl shadow-2xl z-50 border border-gray-200 flex flex-col overflow-hidden"
+            className={panelClassName || 'absolute left-full top-0 ml-2 w-96 bg-white rounded-xl shadow-2xl z-50 border border-gray-200 flex flex-col overflow-hidden'}
             style={{ maxHeight: '560px' }}
           >
             {/* Header */}

@@ -89,6 +89,7 @@ import GestorCampanas from '../pages/Campanas/GestorCampanas';
 import { Campanas } from '../pages/Campanas/Campanas';
 import GestionInformesPage from '../pages/Informes/GestionInformesPage';
 import CentroOperativo from '../pages/CentroOperativo/CentroOperativo';
+import ReporteActividades from '../pages/CentroOperativo/ReporteActividades';
 
 export const AppRouter = () => {
   return (
@@ -511,6 +512,16 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <CentroOperativo />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/centro-operativo/reporte" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ReporteActividades />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
