@@ -44,11 +44,13 @@ export const useGeofencing = (activar = true, intervalo = 60000) => {
 
       return resultado;
     } catch (error) {
-      console.error('❌ Error al verificar ubicación:', error.message);
+      if (error.message === 'Permiso de ubicación denegado') {
+        console.warn('⚠️ Geolocalización: permiso denegado por el usuario');
+      }
 
       setEstado({
         cargando: false,
-        dentroDelPerimetro: true, // En caso de error, permitir acceso
+        dentroDelPerimetro: true, // En caso de error técnico, permitir acceso
         distancia: null,
         ubicacion: null,
         error: error.message,

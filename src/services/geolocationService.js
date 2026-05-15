@@ -39,47 +39,42 @@ const calcularDistancia = (lat1, lon1, lat2, lon2) => {
  * Obtener la ubicación actual del usuario
  * @returns {Promise<{lat: number, lng: number, accuracy: number}>}
  */
-export const obtenerUbicacionActual = () => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocalización no soportada por el navegador'));
-      return;
-    }
-
+const intentarGeolocalizacion = (opciones) =>
+  new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy // precisión en metros
-        });
-      },
-      (error) => {
-        let mensaje = 'Error al obtener ubicación';
-
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            mensaje = 'Permiso de ubicación denegado';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            mensaje = 'Ubicación no disponible';
-            break;
-          case error.TIMEOUT:
-            mensaje = 'Tiempo de espera agotado';
-            break;
-          default:
-            mensaje = 'Error desconocido al obtener ubicación';
-        }
-
-        reject(new Error(mensaje));
-      },
-      {
-        enableHighAccuracy: true, // Usar GPS si está disponible
-        timeout: 10000, // 10 segundos
-        maximumAge: 0 // No usar ubicación en caché
-      }
+      (pos) => resolve({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      }),
+      (error) => reject(error),
+      opciones
     );
   });
+
+export const obtenerUbicacionActual = async () => {
+  if (!navigator.geolocation) {
+    throw new Error('Geolocalización no soportada por el navegador');
+  }
+
+  // Intento 1: alta precisión, caché 30s
+  try {
+    return await intentarGeolocalizacion({ enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+  } catch (_) { /* continuar */ }
+
+  // Intento 2: baja precisión (WiFi/IP), caché 2min — mejor opción en desktop/Mac
+  try {
+    return await intentarGeolocalizacion({ enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 });
+  } catch (_) { /* continuar */ }
+
+  // Intento 3: aceptar cualquier posición cacheada por el OS, sin importar la edad
+  try {
+    return await intentarGeolocalizacion({ enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity });
+  } catch (e) {
+    // Solo propagar si es denegación explícita del usuario — lo demás se maneja arriba
+    if (e.code === 1) throw new Error('Permiso de ubicación denegado');
+    throw new Error('Ubicación no disponible');
+  }
 };
 
 /**
@@ -113,7 +108,6 @@ export const verificarPerimetro = async () => {
       radioPermitido: RADIO_PERMITIDO
     };
   } catch (error) {
-    console.error('❌ Error al verificar perímetro:', error.message);
     throw error;
   }
 };
@@ -156,9 +150,9 @@ export const monitorearUbicacion = (callback) => {
       console.error('❌ Error al monitorear ubicación:', error.message);
     },
     {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 30000 // Actualizar cada 30 segundos
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 60000
     }
   );
 

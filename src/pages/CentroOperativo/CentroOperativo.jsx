@@ -3,14 +3,14 @@ import {
   PlusIcon, ClockIcon, PencilIcon, TrashIcon, ChatBubbleLeftIcon,
   PlayIcon, PauseIcon, ChartBarIcon, XMarkIcon, CheckIcon,
   ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon, Bars3Icon,
-  PaperClipIcon, ArrowDownTrayIcon,
+  PaperClipIcon, ArrowDownTrayIcon, UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import {
   listarTareas, obtenerColumnas, obtenerPrioridades, crearTarea,
   actualizarTarea, eliminarTarea, moverColumna, iniciarTimer,
   pausarTimer, listarComentarios, agregarComentario, obtenerReporteMensual,
   crearColumna, eliminarColumna, reordenarColumnas,
-  subirArchivos, eliminarArchivo,
+  subirArchivos, listarArchivos, eliminarArchivo, reordenarTareas, eliminarComentario,
 } from '../../services/centroOperativoService';
 import { SERVER_BASE_URL } from '../../services/api';
 import { ROLES } from '../../constants/roles';
@@ -25,7 +25,7 @@ function formatTiempo(segundos) {
   const h = Math.floor(segundos / 3600);
   const m = Math.floor((segundos % 3600) / 60);
   const s = segundos % 60;
-  if (h > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 }
@@ -68,20 +68,20 @@ function fileLabel(mime) {
 
 // ─── Timer en vivo ────────────────────────────────────────────────────────────
 
-function useTiempoVivo(tarea) {
-  const [seg, setSeg] = useState(tarea?.tiempo_acumulado || 0);
+function useTiempoVivo(timer) {
+  const [seg, setSeg] = useState(timer?.tiempo_acumulado || 0);
   useEffect(() => {
-    if (!tarea?.timer_activo || !tarea?.timer_inicio) {
-      setSeg(tarea?.tiempo_acumulado || 0);
+    if (!timer?.timer_activo || !timer?.timer_inicio) {
+      setSeg(timer?.tiempo_acumulado || 0);
       return;
     }
-    const base = tarea.tiempo_acumulado || 0;
-    const inicio = new Date(tarea.timer_inicio).getTime();
-    const tick = () => setSeg(base + Math.floor((Date.now() - inicio) / 1000));
+    const base = timer.tiempo_acumulado || 0;
+    const inicio = new Date(timer.timer_inicio).getTime();
+    const tick = () => setSeg(Math.max(0, base + Math.floor((Date.now() - inicio) / 1000)));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [tarea?.timer_activo, tarea?.timer_inicio, tarea?.tiempo_acumulado]);
+  }, [timer?.timer_activo, timer?.timer_inicio, timer?.tiempo_acumulado]);
   return seg;
 }
 
@@ -103,9 +103,11 @@ function Notificacion({ notif }) {
 
 // ─── Tarjeta de tarea ─────────────────────────────────────────────────────────
 
-function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, puedeTimer, puedeEditar, puedeEliminar }) {
+function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, onDragOverCard, puedeTimer, puedeEditar, puedeEliminar, isDragOver }) {
   const vencida = estaVencida(tarea);
-  const tiempo = useTiempoVivo(tarea);
+  const miTimer = tarea.mi_timer ?? null;
+  const tiempo = useTiempoVivo(miTimer);
+  const timerActivo = miTimer?.timer_activo ?? false;
   const dias = diasRestantes(tarea.fecha_limite);
 
   return (
@@ -113,12 +115,14 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
       draggable
       onDragStart={(e) => { e.dataTransfer.setData('dragType', 'tarea'); onDragStart(tarea); }}
       onDragEnd={() => onDragEnd()}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); onDragOverCard?.(tarea); }}
       onClick={() => onVerDetalle(tarea)}
       className={`rounded-xl p-3.5 mb-2.5 cursor-grab active:cursor-grabbing border transition-all hover:shadow-md ${
-        vencida
-          ? 'bg-red-50 border-red-200 hover:border-red-300'
-          : 'bg-white border-gray-200 hover:border-purple-200'
+        isDragOver
+          ? 'border-t-2 border-t-[#7B1FA2] shadow-md'
+          : vencida
+            ? 'bg-red-50 border-red-200 hover:border-red-300'
+            : 'bg-white border-gray-200 hover:border-purple-200'
       }`}
     >
       {/* Prioridad + badge vencida */}
@@ -147,7 +151,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
           : 'text-gray-400'
         }`}>
           <CalendarDaysIcon className="w-3 h-3 flex-shrink-0" />
-          {new Date(tarea.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+          {new Date(tarea.fecha_limite).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
           {!vencida && dias !== null && dias <= 3 && (
             <span className="ml-1">({dias === 0 ? 'hoy' : `${dias}d`})</span>
           )}
@@ -171,10 +175,10 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
       {/* Timer + acciones */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-1 text-[11px] font-medium ${tarea.timer_activo ? 'text-green-600' : 'text-gray-400'}`}>
+          <div className={`flex items-center gap-1 text-[11px] font-medium ${timerActivo ? 'text-green-600' : 'text-gray-400'}`}>
             <ClockIcon className="w-3 h-3" />
             {formatTiempo(tiempo)}
-            {tarea.timer_activo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-0.5" />}
+            {timerActivo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-0.5" />}
           </div>
           {tarea.archivos?.length > 0 && (
             <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
@@ -185,9 +189,9 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
         <div className="flex items-center gap-1">
           {puedeTimer && (
             <button onClick={() => onToggleTimer(tarea)}
-              className={`p-1 rounded-lg transition-colors ${tarea.timer_activo ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
-              title={tarea.timer_activo ? 'Pausar' : 'Iniciar'}>
-              {tarea.timer_activo ? <PauseIcon className="w-3.5 h-3.5" /> : <PlayIcon className="w-3.5 h-3.5" />}
+              className={`p-1 rounded-lg transition-colors ${timerActivo ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
+              title={timerActivo ? 'Pausar mi tiempo' : 'Iniciar mi tiempo'}>
+              {timerActivo ? <PauseIcon className="w-3.5 h-3.5" /> : <PlayIcon className="w-3.5 h-3.5" />}
             </button>
           )}
           {puedeEditar && (
@@ -210,17 +214,17 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
 
 // ─── Modal crear/editar ───────────────────────────────────────────────────────
 
-function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, onCerrar, showNotif }) {
+function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsignaciones = [], onGuardar, onCerrar, showNotif, onRecargar }) {
   const [form, setForm] = useState({
     titulo: tarea?.titulo || '',
     descripcion: tarea?.descripcion || '',
     prioridad_id: tarea?.prioridad_id || 2,
-    columna_id: tarea?.columna_id || 1,
+    columna_id: tarea?.columna_id || (columnas[0]?.id ?? 1),
     fecha_limite: tarea?.fecha_limite ? tarea.fecha_limite.slice(0, 16) : '',
     asignaciones: tarea?.asignaciones?.map(a => ({
       tipo: a.usuario_id ? 'usuario' : 'rol',
       id: a.usuario_id || a.rol_id,
-    })) || [],
+    })) ?? defaultAsignaciones,
   });
   const [guardando, setGuardando] = useState(false);
   const [nuevaAsig, setNuevaAsig] = useState({ tipo: 'usuario', id: '' });
@@ -261,11 +265,14 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
       });
       if (archivosSeleccionados.length > 0 && tareaGuardada?.id) {
         try {
-          await subirArchivos(tareaGuardada.id, archivosSeleccionados);
+          const res = await subirArchivos(tareaGuardada.id, archivosSeleccionados);
+          console.log('[handleGuardar] subirArchivos OK:', res);
         } catch (e) {
+          console.error('[handleGuardar] subirArchivos ERROR:', e?.response?.status, e?.response?.data);
           showNotif(e?.response?.data?.message || 'Error al subir archivos', 'error');
         }
       }
+      onRecargar?.();
       onCerrar();
     } catch (e) {
       showNotif(e?.response?.data?.message || 'Error al guardar la tarea', 'error');
@@ -370,9 +377,22 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
           {/* Archivos adjuntos al crear/editar */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Archivos adjuntos</label>
+
+            {/* Archivos ya subidos (solo al editar) */}
+            {tarea?.archivos?.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {tarea.archivos.map(a => (
+                  <span key={a.id} className="flex items-center gap-1 text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-full border border-gray-200">
+                    <PaperClipIcon className="w-2.5 h-2.5 flex-shrink-0" />
+                    {a.nombre_original}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <label className="flex items-center gap-2 w-fit px-3.5 py-2 border border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#7B1FA2] hover:bg-purple-50 transition-all text-sm text-gray-500 hover:text-[#7B1FA2]">
               <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
-              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s) seleccionado(s)` : 'Seleccionar archivos'}
+              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s) seleccionado(s)` : 'Agregar archivos'}
               <input ref={fileModalRef} type="file" multiple className="hidden"
                 onChange={e => setArchivosSeleccionados(Array.from(e.target.files))} />
             </label>
@@ -406,19 +426,33 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, onGuardar, 
 
 // ─── Modal detalle + comentarios ──────────────────────────────────────────────
 
-function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, showNotif }) {
+function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, showNotif, currentUserId, esAdmin }) {
   const [comentarios, setComentarios] = useState([]);
   const [nuevo, setNuevo] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [archivos, setArchivos] = useState(tarea.archivos || []);
+  const [archivos, setArchivos] = useState([]);
   const [archivosPendientes, setArchivosPendientes] = useState([]);
   const [preview, setPreview] = useState(null);
   const fileInputRef = useRef(null);
-  const tiempo = useTiempoVivo(tarea);
+  const miTimer = tarea.mi_timer ?? null;
+  const timerActivo = miTimer?.timer_activo ?? false;
+  const tiempo = useTiempoVivo(miTimer);
 
   useEffect(() => {
     listarComentarios(tarea.id).then(setComentarios).catch(() => {});
+    listarArchivos(tarea.id)
+      .then(data => { console.log('[DetalleModal] archivos cargados:', data); setArchivos(data); })
+      .catch(e => console.error('[DetalleModal] error cargando archivos:', e?.response?.status, e?.response?.data));
   }, [tarea.id]);
+
+  const handleEliminarComentario = async (comentarioId) => {
+    try {
+      await eliminarComentario(comentarioId);
+      setComentarios(p => p.filter(c => c.id !== comentarioId));
+    } catch (e) {
+      if (showNotif) showNotif(e?.response?.data?.message || 'Error al eliminar', 'error');
+    }
+  };
 
   const handleEliminarArchivo = async (archivoId) => {
     if (!window.confirm('¿Eliminar este archivo?')) return;
@@ -430,7 +464,6 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
 
   const enviar = async () => {
     if (!nuevo.trim() && archivosPendientes.length === 0) return;
-    console.log('[enviar] archivosPendientes:', archivosPendientes.length, archivosPendientes.map(f => ({ name: f.name, size: f.size, type: f.type })));
     setEnviando(true);
     try {
       const c = await agregarComentario(tarea.id, nuevo.trim() || ' ', archivosPendientes);
@@ -448,11 +481,12 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="p-5 border-b border-gray-200">
+        <div className="px-5 pt-4 pb-3 border-b border-gray-200">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
@@ -477,7 +511,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
 
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 pt-3 pb-5 space-y-3">
           {tarea.descripcion && (
             <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-xl p-3">{tarea.descripcion}</p>
           )}
@@ -490,18 +524,18 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5">Fecha límite</p>
                   <p className="text-xs font-medium">
-                    {new Date(tarea.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(tarea.fecha_limite).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
             )}
-            <div className={`flex items-center gap-2 p-3 rounded-xl border ${tarea.timer_activo ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
+            <div className={`flex items-center gap-2 p-3 rounded-xl border ${timerActivo ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
               <ClockIcon className="w-4 h-4 flex-shrink-0" />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5">Tiempo</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5">Mi tiempo</p>
                 <p className="text-xs font-bold">{formatTiempo(tiempo)}</p>
               </div>
-              {tarea.timer_activo && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto" />}
+              {timerActivo && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto" />}
             </div>
           </div>
 
@@ -527,32 +561,81 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
             </p>
           )}
 
-          {/* Actividad: comentarios + archivos */}
+          {/* Archivos de la tarea */}
+          {archivos.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
+                <PaperClipIcon className="w-4 h-4 text-[#7B1FA2]" />
+                Adjuntos
+                <span className="bg-purple-50 text-[#7B1FA2] px-1.5 py-0.5 rounded-full text-[10px] font-bold">{archivos.length}</span>
+              </p>
+              <div className="space-y-1.5">
+                {archivos.map(a => {
+                  const url = `${SERVER_BASE_URL}${a.url}`;
+                  const esImagen = a.tipo_mime?.startsWith('image/');
+                  const esPDF = a.tipo_mime === 'application/pdf';
+                  return (
+                    <div key={a.id} className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                      <div className="flex items-center gap-2.5 px-3 py-2">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold ${fileColor(a.tipo_mime)}`}>
+                          {fileLabel(a.tipo_mime)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-700 truncate">{a.nombre_original}</p>
+                          {a.tamanio && <p className="text-[10px] text-gray-400">{formatFileSize(a.tamanio)}</p>}
+                        </div>
+                        {(esImagen || esPDF) && (
+                          <button onClick={() => setPreview(a)} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0 text-[10px] font-semibold">Ver</button>
+                        )}
+                        <a href={url} download={a.nombre_original} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0" title="Descargar">
+                          <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                        </a>
+                        {puedeEliminarArchivo && (
+                          <button onClick={() => handleEliminarArchivo(a.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {esImagen && (
+                        <button onClick={() => setPreview(a)} className="block w-full text-left">
+                          <img src={url} alt={a.nombre_original} className="w-full max-h-40 object-cover border-t border-gray-100 hover:opacity-90 transition-opacity" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Comentarios */}
           <div>
             <p className="text-xs font-semibold text-gray-600 mb-2.5 flex items-center gap-1.5">
               <ChatBubbleLeftIcon className="w-4 h-4 text-[#7B1FA2]" />
-              Actividad
+              Comentarios
               <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{comentarios.length}</span>
-              {archivos.length > 0 && (
-                <span className="bg-purple-50 text-[#7B1FA2] px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5">
-                  <PaperClipIcon className="w-2.5 h-2.5" />{archivos.length}
-                </span>
-              )}
             </p>
 
-            {/* Lista de comentarios */}
             <div className="space-y-2 mb-3">
-              {comentarios.length === 0 && archivos.length === 0 && (
-                <p className="text-xs text-gray-400 italic text-center py-3">Sin actividad aún.</p>
+              {comentarios.length === 0 && (
+                <p className="text-xs text-gray-400 italic text-center py-3">Sin comentarios aún.</p>
               )}
               {comentarios.map(c => (
                 <div key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <p className="text-[11px] font-semibold text-[#7B1FA2] mb-1">
-                    {c.user_crea?.nombres} {c.user_crea?.apellidos}
-                    <span className="font-normal text-gray-400 ml-1.5">
-                      {new Date(c.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[11px] font-semibold text-[#7B1FA2]">
+                      {c.user_crea?.nombres} {c.user_crea?.apellidos}
+                      <span className="font-normal text-gray-400 ml-1.5">
+                        {new Date(c.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </p>
+                    {(esAdmin || c.user_crea_id === currentUserId) && (
+                      <button onClick={() => handleEliminarComentario(c.id)}
+                        className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+                        <TrashIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                   {c.contenido?.trim() && (
                     <p className="text-xs text-gray-700 leading-relaxed mb-2">{c.contenido}</p>
                   )}
@@ -566,8 +649,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                           <div key={a.id} className="rounded-lg overflow-hidden border border-gray-200">
                             {esImagen && (
                               <button onClick={() => setPreview(a)} className="block w-full">
-                                <img src={url} alt={a.nombre_original}
-                                  className="w-full max-h-48 object-cover hover:opacity-90 transition-opacity" />
+                                <img src={url} alt={a.nombre_original} className="w-full max-h-48 object-cover hover:opacity-90 transition-opacity" />
                               </button>
                             )}
                             <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white">
@@ -576,13 +658,9 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                               </div>
                               <span className="text-[11px] text-gray-600 truncate flex-1">{a.nombre_original}</span>
                               {(esPDF || esImagen) && (
-                                <button onClick={() => setPreview(a)}
-                                  className="text-[10px] font-semibold text-[#7B1FA2] hover:underline flex-shrink-0">
-                                  Ver
-                                </button>
+                                <button onClick={() => setPreview(a)} className="text-[10px] font-semibold text-[#7B1FA2] hover:underline flex-shrink-0">Ver</button>
                               )}
-                              <a href={url} download={a.nombre_original}
-                                className="flex-shrink-0 text-gray-400 hover:text-[#7B1FA2]">
+                              <a href={url} download={a.nombre_original} className="flex-shrink-0 text-gray-400 hover:text-[#7B1FA2]">
                                 <ArrowDownTrayIcon className="w-3 h-3" />
                               </a>
                             </div>
@@ -594,55 +672,6 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                 </div>
               ))}
             </div>
-
-            {/* Lista de archivos */}
-            {archivos.length > 0 && (
-              <div className="space-y-1.5 mb-3">
-                {archivos.map(a => {
-                  const url = `${SERVER_BASE_URL}${a.url}`;
-                  const esImagen = a.tipo_mime?.startsWith('image/');
-                  const esPDF = a.tipo_mime === 'application/pdf';
-                  const puedePrevisualizr = esImagen || esPDF;
-                  return (
-                    <div key={a.id} className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
-                      <div className="flex items-center gap-2.5 px-3 py-2">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold ${fileColor(a.tipo_mime)}`}>
-                          {fileLabel(a.tipo_mime)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-700 truncate">{a.nombre_original}</p>
-                          {a.tamanio && <p className="text-[10px] text-gray-400">{formatFileSize(a.tamanio)}</p>}
-                        </div>
-                        {puedePrevisualizr && (
-                          <button onClick={() => setPreview(a)}
-                            className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0 text-[10px] font-semibold">
-                            Ver
-                          </button>
-                        )}
-                        <a href={url} download={a.nombre_original}
-                          className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0"
-                          title="Descargar">
-                          <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                        </a>
-                        {puedeEliminarArchivo && (
-                          <button onClick={() => handleEliminarArchivo(a.id)}
-                            className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
-                            <TrashIcon className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                      {/* Miniatura inline para imágenes */}
-                      {esImagen && (
-                        <button onClick={() => setPreview(a)} className="block w-full text-left">
-                          <img src={url} alt={a.nombre_original}
-                            className="w-full max-h-40 object-cover border-t border-gray-100 hover:opacity-90 transition-opacity" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
 
             {/* Input comentario + adjuntar */}
             {puedeCommentar && (
@@ -666,8 +695,9 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                   multiple
                   className="hidden"
                   onChange={e => {
-                    setArchivosPendientes(p => [...p, ...Array.from(e.target.files)]);
+                    const nuevos = Array.from(e.target.files);
                     e.target.value = '';
+                    setArchivosPendientes(p => [...p, ...nuevos]);
                   }}
                 />
                 <div className="flex gap-2 items-center">
@@ -697,37 +727,39 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
             )}
           </div>
 
-          {/* Preview overlay */}
-          {preview && (
-            <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-              <div className="relative w-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
-                  <p className="text-sm font-semibold text-gray-700 truncate">{preview.nombre_original}</p>
-                  <div className="flex items-center gap-2">
-                    <a href={`${SERVER_BASE_URL}${preview.url}`} download={preview.nombre_original}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200">
-                      <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Descargar
-                    </a>
-                    <button onClick={() => setPreview(null)} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400">
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-50">
-                  {preview.tipo_mime?.startsWith('image/') ? (
-                    <img src={`${SERVER_BASE_URL}${preview.url}`} alt={preview.nombre_original}
-                      className="max-w-full max-h-full object-contain p-4" />
-                  ) : preview.tipo_mime === 'application/pdf' ? (
-                    <embed src={`${SERVER_BASE_URL}${preview.url}`} type="application/pdf"
-                      className="w-full" style={{ height: '75vh' }} />
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
+
+    {/* Preview overlay — fuera del overflow para cubrir toda la pantalla */}
+    {preview && (
+      <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-2" onClick={() => setPreview(null)}>
+        <div className="relative w-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col" style={{ height: '92vh' }} onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+            <p className="text-sm font-semibold text-gray-700 truncate">{preview.nombre_original}</p>
+            <div className="flex items-center gap-2">
+              <a href={`${SERVER_BASE_URL}${preview.url}`} download={preview.nombre_original}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200">
+                <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Descargar
+              </a>
+              <button onClick={() => setPreview(null)} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-50">
+            {preview.tipo_mime?.startsWith('image/') ? (
+              <img src={`${SERVER_BASE_URL}${preview.url}`} alt={preview.nombre_original}
+                className="max-w-full max-h-full object-contain p-4" />
+            ) : preview.tipo_mime === 'application/pdf' ? (
+              <embed src={`${SERVER_BASE_URL}${preview.url}`} type="application/pdf"
+                className="w-full h-full" />
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -971,6 +1003,142 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
   );
 }
 
+// ─── Vista por persona (tipo agenda) ─────────────────────────────────────────
+
+function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onEliminar, onToggleTimer, onVerDetalle, onNuevaTarea, admin, currentUser, esAsignadoATarea }) {
+  const [seleccionada, setSeleccionada] = useState('');
+
+  // Lista de personas desde el catálogo completo (no de las asignaciones)
+  const opciones = [
+    ...usuarios.map(u => ({
+      key: `u_${u.id}`, tipo: 'usuario', id: u.id,
+      nombre: u.nombre_completo,
+      inicial: u.nombre_completo?.[0]?.toUpperCase() ?? 'U',
+    })),
+    ...roles.map(r => ({
+      key: `r_${r.id}`, tipo: 'rol', id: r.id,
+      nombre: `Rol: ${r.nombre}`,
+      inicial: r.nombre[0]?.toUpperCase() ?? 'R',
+    })),
+  ];
+
+  const persona = opciones.find(p => p.key === seleccionada) ?? null;
+
+  // Tareas filtradas por la persona seleccionada
+  const tareasPersona = persona
+    ? tareas.filter(t => t.asignaciones?.some(a =>
+        persona.tipo === 'usuario' ? a.usuario_id === persona.id : a.rol_id === persona.id
+      ))
+    : [];
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Selector */}
+      <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-gray-100 bg-white">
+        <select
+          value={seleccionada}
+          onChange={e => setSeleccionada(e.target.value)}
+          className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all bg-white min-w-[260px]"
+        >
+          <option value="">— Seleccionar trabajador o rol —</option>
+          <optgroup label="Trabajadores">
+            {usuarios.map(u => (
+              <option key={`u_${u.id}`} value={`u_${u.id}`}>{u.nombre_completo}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Por rol">
+            {roles.map(r => (
+              <option key={`r_${r.id}`} value={`r_${r.id}`}>Rol: {r.nombre}</option>
+            ))}
+          </optgroup>
+        </select>
+      </div>
+
+      {/* Estado vacío */}
+      {!persona ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+          <UserGroupIcon className="w-12 h-12 text-gray-200" />
+          <p className="text-gray-400 text-sm">Selecciona un trabajador o rol para ver sus tareas</p>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Header persona */}
+          <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-white">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${
+              persona.tipo === 'rol' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+              'bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0]'
+            }`}>
+              {persona.inicial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-800 leading-tight">{persona.nombre}</p>
+              <p className="text-[11px] text-gray-400">
+                {tareasPersona.length} tarea{tareasPersona.length !== 1 ? 's' : ''}
+                {tareasPersona.filter(estaVencida).length > 0 && (
+                  <span className="text-red-500 font-semibold ml-1">
+                    · {tareasPersona.filter(estaVencida).length} vencida{tareasPersona.filter(estaVencida).length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => onNuevaTarea(persona)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-md transition-all flex-shrink-0">
+              <PlusIcon className="w-3.5 h-3.5" /> Nueva tarea
+            </button>
+          </div>
+
+          {/* Kanban con todos los estados — igual que el tablero principal */}
+          <div className="flex-1 overflow-x-auto overflow-y-hidden">
+            <div className="flex gap-1.5 px-4 py-4 h-full" style={{ minWidth: `${columnas.length * 222 + 32}px` }}>
+              {columnas.map(col => {
+                const tareasCol = tareasPersona.filter(t => t.columna_id === col.id);
+                return (
+                  <div key={col.id} className="flex-shrink-0 w-[210px] flex flex-col">
+                    {/* Header columna */}
+                    <div className="flex items-center gap-2 mb-2 px-1.5 py-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: col.color }} />
+                      <span className="text-sm font-bold text-gray-700 truncate">{col.nombre}</span>
+                      <span className="text-[11px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ml-auto">
+                        {tareasCol.length}
+                      </span>
+                    </div>
+                    {/* Área tarjetas */}
+                    <div className="flex-1 rounded-2xl p-2 border-2 border-dashed overflow-y-auto"
+                      style={{ backgroundColor: col.color + '0d', borderColor: col.color + '40' }}>
+                      {tareasCol.length === 0 ? (
+                        <div className="h-full flex items-center justify-center py-10">
+                          <p className="text-xs text-gray-300 font-medium">Sin tareas</p>
+                        </div>
+                      ) : (
+                        tareasCol.map(t => (
+                          <TareaCard key={t.id} tarea={t}
+                            onEditar={onEditar}
+                            onEliminar={onEliminar}
+                            onToggleTimer={onToggleTimer}
+                            onVerDetalle={onVerDetalle}
+                            onDragStart={() => {}}
+                            onDragEnd={() => {}}
+                            isDragOver={false}
+                            puedeTimer={esAsignadoATarea(t)}
+                            puedeEditar={admin || t.user_crea?.id === currentUser?.id}
+                            puedeEliminar={admin} />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function CentroOperativo() {
@@ -988,7 +1156,11 @@ export default function CentroOperativo() {
   const [isDragging, setIsDragging] = useState(false);
   const [colDragOver, setColDragOver] = useState(null);
   const draggedTareaRef = useRef(null);
+  const dragOverTareaRef = useRef(null);
+  const [dragOverTareaId, setDragOverTareaId] = useState(null);
   const colDragRef = useRef(null);
+  const [vista, setVista] = useState('kanban');
+  const [asignadoDefault, setAsignadoDefault] = useState(null);
 
   const roles = [
     { id: 1, nombre: 'Administrador' },
@@ -1015,10 +1187,7 @@ export default function CentroOperativo() {
     const av = estaVencida(a) ? 0 : 1;
     const bv = estaVencida(b) ? 0 : 1;
     if (av !== bv) return av - bv;
-    if (!a.fecha_limite && !b.fecha_limite) return 0;
-    if (!a.fecha_limite) return 1;
-    if (!b.fecha_limite) return -1;
-    return new Date(a.fecha_limite) - new Date(b.fecha_limite);
+    return (a.orden ?? 0) - (b.orden ?? 0);
   });
 
   const cargar = useCallback(async () => {
@@ -1042,17 +1211,20 @@ export default function CentroOperativo() {
 
   const tareasPorColumna = (colId) => tareas.filter(t => t.columna_id === colId);
 
+  const handleNuevaTareaPersona = (persona) => {
+    setAsignadoDefault(persona);
+    setModalCrear(true);
+  };
+
   const handleCrear = async (payload) => {
     const tarea = await crearTarea(payload);
     showNotif('Tarea creada correctamente');
-    cargar();
     return tarea;
   };
 
   const handleEditar = async (payload) => {
     const tarea = await actualizarTarea(tareaEditar.id, payload);
     showNotif('Tarea actualizada');
-    cargar();
     return tarea;
   };
 
@@ -1095,15 +1267,46 @@ export default function CentroOperativo() {
 
   const handleDropTarea = async (e, colId) => {
     const tarea = draggedTareaRef.current;
+    const targetTarea = dragOverTareaRef.current;
     draggedTareaRef.current = null;
+    dragOverTareaRef.current = null;
+    setDragOverTareaId(null);
     setIsDragging(false);
-    if (!tarea || tarea.columna_id === colId) return;
-    await handleMoverColumna(tarea, colId);
+    if (!tarea) return;
+
+    if (tarea.columna_id === colId) {
+      // Reordenar dentro de la misma columna
+      if (!targetTarea || targetTarea.id === tarea.id) return;
+      const enColumna = tareas
+        .filter(t => t.columna_id === colId)
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+      const fromIdx = enColumna.findIndex(t => t.id === tarea.id);
+      const toIdx = enColumna.findIndex(t => t.id === targetTarea.id);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+      const reordenadas = [...enColumna];
+      const [item] = reordenadas.splice(fromIdx, 1);
+      reordenadas.splice(toIdx, 0, item);
+      // Actualización optimista
+      setTareas(prev => {
+        const nuevas = prev.map(t => {
+          const idx = reordenadas.findIndex(r => r.id === t.id);
+          return idx !== -1 ? { ...t, orden: idx } : t;
+        });
+        return ordenarTareas(nuevas);
+      });
+      try {
+        await reordenarTareas(reordenadas.map(t => t.id));
+      } catch {
+        cargar();
+      }
+    } else {
+      await handleMoverColumna(tarea, colId);
+    }
   };
 
   const handleToggleTimer = async (tarea) => {
     try {
-      if (tarea.timer_activo) await pausarTimer(tarea.id);
+      if (tarea.mi_timer?.timer_activo) await pausarTimer(tarea.id);
       else await iniciarTimer(tarea.id);
       cargar();
     } catch {
@@ -1148,10 +1351,25 @@ export default function CentroOperativo() {
               ))}
             </div>
             <div className="w-px h-6 bg-gray-200" />
-            <button onClick={() => setMostrarReporte(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-              <ChartBarIcon className="w-4 h-4" /> Reporte
-            </button>
+            {admin && (
+              <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
+                <button onClick={() => setVista('kanban')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'kanban' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+                  Tablero
+                </button>
+                <button onClick={() => setVista('personas')}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'personas' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <UserGroupIcon className="w-3.5 h-3.5" /> Por persona
+                </button>
+              </div>
+            )}
+            <div className="w-px h-6 bg-gray-200" />
+            {admin && (
+              <button onClick={() => setMostrarReporte(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
+                <ChartBarIcon className="w-4 h-4" /> Reporte
+              </button>
+            )}
             {admin && (
               <button onClick={() => setMostrarColumnas(true)}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
@@ -1166,12 +1384,27 @@ export default function CentroOperativo() {
         </div>
       </div>
 
-      {/* Tablero Kanban */}
+      {/* Tablero */}
       {cargando ? (
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin mb-3" />
           <p className="text-gray-500 text-sm font-medium">Cargando tareas...</p>
         </div>
+      ) : vista === 'personas' ? (
+        <VistaPorPersonas
+          tareas={tareas}
+          columnas={columnas}
+          usuarios={usuarios}
+          roles={roles}
+          onEditar={setTareaEditar}
+          onEliminar={handleEliminar}
+          onToggleTimer={handleToggleTimer}
+          onVerDetalle={setTareaDetalle}
+          onNuevaTarea={handleNuevaTareaPersona}
+          admin={admin}
+          currentUser={currentUser}
+          esAsignadoATarea={esAsignadoATarea}
+        />
       ) : columnas.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
@@ -1263,8 +1496,10 @@ export default function CentroOperativo() {
                           onToggleTimer={handleToggleTimer}
                           onVerDetalle={setTareaDetalle}
                           onDragStart={(tarea) => { draggedTareaRef.current = tarea; setIsDragging(true); }}
-                          onDragEnd={() => { draggedTareaRef.current = null; setIsDragging(false); }}
-                          puedeTimer={admin || esAsignadoATarea(t)}
+                          onDragEnd={() => { draggedTareaRef.current = null; dragOverTareaRef.current = null; setDragOverTareaId(null); setIsDragging(false); }}
+                          onDragOverCard={(tarea) => { dragOverTareaRef.current = tarea; setDragOverTareaId(tarea.id); }}
+                          isDragOver={isDragging && dragOverTareaId === t.id && draggedTareaRef.current?.id !== t.id}
+                          puedeTimer={esAsignadoATarea(t)}
                           puedeEditar={admin || t.user_crea?.id === currentUser?.id}
                           puedeEliminar={admin} />
                       ))
@@ -1309,9 +1544,11 @@ export default function CentroOperativo() {
           prioridades={prioridades}
           usuarios={usuarios}
           roles={roles}
+          defaultAsignaciones={asignadoDefault ? [{ tipo: asignadoDefault.tipo, id: asignadoDefault.id }] : []}
           onGuardar={tareaEditar ? handleEditar : handleCrear}
-          onCerrar={() => { setModalCrear(false); setTareaEditar(null); }}
+          onCerrar={() => { setModalCrear(false); setTareaEditar(null); setAsignadoDefault(null); }}
           showNotif={showNotif}
+          onRecargar={cargar}
         />
       )}
 
@@ -1322,6 +1559,8 @@ export default function CentroOperativo() {
           puedeCommentar={admin || esAsignadoATarea(tareaDetalle)}
           puedeEliminarArchivo={admin || tareaDetalle.user_crea?.id === currentUser?.id}
           showNotif={showNotif}
+          currentUserId={currentUser?.id}
+          esAdmin={admin}
         />
       )}
 
