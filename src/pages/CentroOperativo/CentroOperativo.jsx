@@ -90,13 +90,15 @@ function useTiempoVivo(timer) {
 function Notificacion({ notif }) {
   if (!notif.show) return null;
   return (
-    <div className={`fixed top-5 right-5 z-[999] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white transition-all ${
-      notif.type === 'error' ? 'bg-red-500' : 'bg-green-500'
-    }`}>
-      {notif.type === 'error'
-        ? <ExclamationTriangleIcon className="w-5 h-5 flex-shrink-0" />
-        : <CheckIcon className="w-5 h-5 flex-shrink-0" />}
-      <p className="font-medium">{notif.message}</p>
+    <div className={`fixed top-5 right-5 z-[999] flex items-center gap-3 px-4 py-3 rounded-xl text-white transition-all ${
+      notif.type === 'error' ? 'bg-red-500' : 'bg-[#2E7D32]'
+    }`} style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}>
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${notif.type === 'error' ? 'bg-red-600' : 'bg-[#1B5E20]'}`}>
+        {notif.type === 'error'
+          ? <ExclamationTriangleIcon className="w-4 h-4" />
+          : <CheckIcon className="w-4 h-4" />}
+      </div>
+      <p className="font-medium text-sm">{notif.message}</p>
     </div>
   );
 }
@@ -117,95 +119,96 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
       onDragEnd={() => onDragEnd()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); onDragOverCard?.(tarea); }}
       onClick={() => onVerDetalle(tarea)}
-      className={`rounded-xl p-3.5 mb-2.5 cursor-grab active:cursor-grabbing border transition-all hover:shadow-md ${
-        isDragOver
-          ? 'border-t-2 border-t-[#7B1FA2] shadow-md'
-          : vencida
-            ? 'bg-red-50 border-red-200 hover:border-red-300'
-            : 'bg-white border-gray-200 hover:border-purple-200'
+      className={`group relative mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-md rounded-xl overflow-hidden ${
+        isDragOver ? 'shadow-md ring-1 ring-[#7B1FA2]/40 scale-[1.01]' : ''
       }`}
+      style={{
+        background: vencida ? '#FFF5F5' : '#ffffff',
+        border: vencida ? '1px solid #FECACA' : '1px solid #E5E7EB',
+        borderLeft: `3px solid ${vencida ? '#EF4444' : (tarea.prioridad?.color || '#D1D5DB')}`,
+      }}
     >
-      {/* Prioridad + badge vencida */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: tarea.prioridad?.color + '22', color: tarea.prioridad?.color }}>
-          {tarea.prioridad?.nombre}
-        </span>
+      <div className="p-3">
+        {/* Título */}
+        <p className={`text-sm font-semibold leading-snug mb-2 ${vencida ? 'text-red-800' : 'text-gray-800'}`}>
+          {tarea.titulo}
+        </p>
+
+        {/* Badge vencida */}
         {vencida && (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+          <div className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full w-fit mb-2">
             <ExclamationTriangleIcon className="w-3 h-3" /> VENCIDA
-          </span>
-        )}
-      </div>
-
-      {/* Título */}
-      <p className={`text-sm font-semibold leading-snug mb-2.5 ${vencida ? 'text-red-700' : 'text-gray-800'}`}>
-        {tarea.titulo}
-      </p>
-
-      {/* Fecha límite */}
-      {tarea.fecha_limite && (
-        <div className={`flex items-center gap-1 text-[11px] mb-2 ${
-          vencida ? 'text-red-500 font-semibold'
-          : dias !== null && dias <= 2 ? 'text-amber-600 font-medium'
-          : 'text-gray-400'
-        }`}>
-          <CalendarDaysIcon className="w-3 h-3 flex-shrink-0" />
-          {new Date(tarea.fecha_limite).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          {!vencida && dias !== null && dias <= 3 && (
-            <span className="ml-1">({dias === 0 ? 'hoy' : `${dias}d`})</span>
-          )}
-        </div>
-      )}
-
-      {/* Asignados */}
-      {tarea.asignaciones?.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2.5">
-          {tarea.asignaciones.slice(0, 3).map(a => (
-            <span key={a.id} className="text-[10px] bg-purple-50 text-[#7B1FA2] px-1.5 py-0.5 rounded-full font-medium border border-purple-100">
-              {a.usuario ? `${a.usuario.nombres} ${a.usuario.apellidos}`.split(' ').slice(0, 2).join(' ') : `Rol: ${a.rol?.nombre}`}
-            </span>
-          ))}
-          {tarea.asignaciones.length > 3 && (
-            <span className="text-[10px] text-gray-400">+{tarea.asignaciones.length - 3}</span>
-          )}
-        </div>
-      )}
-
-      {/* Timer + acciones */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-1 text-[11px] font-medium ${timerActivo ? 'text-green-600' : 'text-gray-400'}`}>
-            <ClockIcon className="w-3 h-3" />
-            {formatTiempo(tiempo)}
-            {timerActivo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-0.5" />}
           </div>
-          {tarea.archivos?.length > 0 && (
-            <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-              <PaperClipIcon className="w-3 h-3" />{tarea.archivos.length}
+        )}
+
+        {/* Fecha límite */}
+        {tarea.fecha_limite && (
+          <div className={`flex items-center gap-1 text-[11px] mb-2 ${
+            vencida ? 'text-red-500 font-semibold'
+            : dias !== null && dias <= 2 ? 'text-amber-600 font-medium'
+            : 'text-gray-400'
+          }`}>
+            <CalendarDaysIcon className="w-3 h-3 flex-shrink-0" />
+            {new Date(tarea.fecha_limite).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            {!vencida && dias !== null && dias <= 3 && (
+              <span className="ml-1 font-semibold">({dias === 0 ? 'hoy' : `${dias}d`})</span>
+            )}
+          </div>
+        )}
+
+        {/* Asignados */}
+        {tarea.asignaciones?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {tarea.asignaciones.slice(0, 2).map(a => (
+              <span key={a.id} className="text-[10px] bg-purple-50 text-[#7B1FA2] px-1.5 py-0.5 rounded-full font-medium border border-purple-100">
+                {a.usuario ? `${a.usuario.nombres} ${a.usuario.apellidos}`.split(' ').slice(0, 2).join(' ') : `${a.rol?.nombre}`}
+              </span>
+            ))}
+            {tarea.asignaciones.length > 2 && (
+              <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full font-medium">+{tarea.asignaciones.length - 2}</span>
+            )}
+          </div>
+        )}
+
+        {/* Footer: prioridad + timer + acciones hover */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{ backgroundColor: tarea.prioridad?.color + '22', color: tarea.prioridad?.color }}>
+              {tarea.prioridad?.nombre}
             </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          {puedeTimer && (
-            <button onClick={() => onToggleTimer(tarea)}
-              className={`p-1 rounded-lg transition-colors ${timerActivo ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
-              title={timerActivo ? 'Pausar mi tiempo' : 'Iniciar mi tiempo'}>
-              {timerActivo ? <PauseIcon className="w-3.5 h-3.5" /> : <PlayIcon className="w-3.5 h-3.5" />}
-            </button>
-          )}
-          {puedeEditar && (
-            <button onClick={() => onEditar(tarea)}
-              className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
-              <PencilIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {puedeEliminar && (
-            <button onClick={() => onEliminar(tarea.id)}
-              className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-              <TrashIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
+            <div className={`flex items-center gap-1 text-[11px] font-medium tabular-nums ${timerActivo ? 'text-green-600' : 'text-gray-400'}`}>
+              <ClockIcon className="w-3 h-3" />
+              {formatTiempo(tiempo)}
+              {timerActivo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />}
+            </div>
+            {tarea.archivos?.length > 0 && (
+              <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                <PaperClipIcon className="w-3 h-3" />{tarea.archivos.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {puedeTimer && (
+              <button onClick={() => onToggleTimer(tarea)}
+                className={`p-1.5 rounded-lg transition-colors ${timerActivo ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
+                title={timerActivo ? 'Pausar tiempo' : 'Iniciar tiempo'}>
+                {timerActivo ? <PauseIcon className="w-3.5 h-3.5" /> : <PlayIcon className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            {puedeEditar && (
+              <button onClick={() => onEditar(tarea)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
+                <PencilIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {puedeEliminar && (
+              <button onClick={() => onEliminar(tarea.id)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <TrashIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -283,49 +286,48 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         {/* Header modal */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-xl flex items-center justify-center">
-              <BuildingOfficeIcon className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">{tarea ? 'Editar tarea' : 'Nueva tarea'}</h2>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">{tarea ? 'Editar tarea' : 'Nueva tarea'}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{tarea ? 'Modifica los detalles de la tarea' : 'Completa los datos para crear la tarea'}</p>
           </div>
-          <button onClick={onCerrar} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
+          <button onClick={onCerrar} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Título */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Título *</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Título <span className="text-red-500">*</span></label>
             <input value={form.titulo} onChange={e => set('titulo', e.target.value)}
               placeholder="¿Qué hay que hacer?"
+              autoFocus
               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all" />
           </div>
 
           {/* Descripción */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Descripción</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Descripción</label>
             <textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)}
-              rows={3} placeholder="Detalles adicionales..."
+              rows={2} placeholder="Detalles adicionales (opcional)..."
               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] resize-none transition-all" />
           </div>
 
-          {/* Prioridad + Columna */}
+          {/* Prioridad + Columna + Fecha */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Prioridad</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Prioridad</label>
               <select value={form.prioridad_id} onChange={e => set('prioridad_id', e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#7B1FA2] bg-white">
                 {prioridades.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Columna</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Columna</label>
               <select value={form.columna_id} onChange={e => set('columna_id', e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#7B1FA2] bg-white">
                 {columnas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -333,16 +335,15 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
             </div>
           </div>
 
-          {/* Fecha límite */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Fecha límite</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fecha límite</label>
             <input type="datetime-local" value={form.fecha_limite} onChange={e => set('fecha_limite', e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] transition-all" />
           </div>
 
           {/* Asignaciones */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Asignar a</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Asignar a</label>
             <div className="flex gap-2 mb-2">
               <select value={nuevaAsig.tipo} onChange={e => setNuevaAsig(p => ({ ...p, tipo: e.target.value, id: '' }))}
                 className="border border-gray-200 rounded-xl px-2.5 py-2 text-sm outline-none focus:border-[#7B1FA2] bg-white">
@@ -361,24 +362,24 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
                 +
               </button>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {form.asignaciones.map((a, i) => (
-                <span key={i} className="flex items-center gap-1 text-xs bg-purple-50 text-[#7B1FA2] px-2.5 py-1 rounded-full font-medium border border-purple-100">
-                  {nombreAsig(a)}
-                  <button onClick={() => set('asignaciones', form.asignaciones.filter((_, j) => j !== i))}
-                    className="hover:text-red-500 transition-colors ml-0.5">
-                    <XMarkIcon className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
+            {form.asignaciones.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {form.asignaciones.map((a, i) => (
+                  <span key={i} className="flex items-center gap-1 text-xs bg-purple-50 text-[#7B1FA2] px-2.5 py-1 rounded-full font-medium border border-purple-100">
+                    {nombreAsig(a)}
+                    <button onClick={() => set('asignaciones', form.asignaciones.filter((_, j) => j !== i))}
+                      className="hover:text-red-500 transition-colors ml-0.5">
+                      <XMarkIcon className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Archivos adjuntos al crear/editar */}
+          {/* Archivos adjuntos */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Archivos adjuntos</label>
-
-            {/* Archivos ya subidos (solo al editar) */}
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Archivos adjuntos</label>
             {tarea?.archivos?.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {tarea.archivos.map(a => (
@@ -389,10 +390,9 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
                 ))}
               </div>
             )}
-
             <label className="flex items-center gap-2 w-fit px-3.5 py-2 border border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#7B1FA2] hover:bg-purple-50 transition-all text-sm text-gray-500 hover:text-[#7B1FA2]">
               <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
-              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s) seleccionado(s)` : 'Agregar archivos'}
+              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s) seleccionado(s)` : 'Adjuntar archivos'}
               <input ref={fileModalRef} type="file" multiple className="hidden"
                 onChange={e => setArchivosSeleccionados(Array.from(e.target.files))} />
             </label>
@@ -410,8 +410,9 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-5 pb-5">
-          <button onClick={onCerrar} className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+        {/* Footer sticky */}
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100 flex-shrink-0 bg-gray-50 rounded-b-2xl">
+          <button onClick={onCerrar} className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-200 rounded-xl transition-colors font-medium">
             Cancelar
           </button>
           <button onClick={handleGuardar} disabled={guardando || !form.titulo.trim()}
@@ -486,10 +487,12 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="px-5 pt-4 pb-3 border-b border-gray-200">
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0"
+          style={{ borderLeft: `4px solid ${tarea.prioridad?.color || '#7B1FA2'}` }}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <h2 className="text-base font-bold text-gray-900 leading-snug mb-2">{tarea.titulo}</h2>
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                   style={{ backgroundColor: tarea.prioridad?.color + '22', color: tarea.prioridad?.color }}>
                   {tarea.prioridad?.nombre}
@@ -499,16 +502,16 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, s
                   {tarea.columna?.nombre}
                 </span>
                 {estaVencida(tarea) && (
-                  <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">VENCIDA</span>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                    <ExclamationTriangleIcon className="w-3 h-3" /> VENCIDA
+                  </span>
                 )}
               </div>
-              <h2 className="text-base font-bold text-gray-900 leading-snug">{tarea.titulo}</h2>
             </div>
-            <button onClick={onCerrar} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 flex-shrink-0 transition-colors">
+            <button onClick={onCerrar} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 flex-shrink-0 transition-colors">
               <XMarkIcon className="w-5 h-5" />
             </button>
           </div>
-
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pt-3 pb-5 space-y-3">
@@ -938,16 +941,21 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Gestionar columnas</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Arrastra <Bars3Icon className="w-3 h-3 inline" /> para reordenar</p>
+            <h2 className="text-base font-bold text-gray-900">Gestionar columnas</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Arrastra para reordenar · {listaLocal.length} columna{listaLocal.length !== 1 ? 's' : ''}</p>
           </div>
-          <button onClick={onCerrar} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400"><XMarkIcon className="w-5 h-5" /></button>
+          <button onClick={onCerrar} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
         </div>
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
-          {/* Lista de columnas existentes con drag-to-reorder */}
-          <div className="space-y-1.5">
+
+        <div className="flex-1 overflow-y-auto">
+          {/* Lista de columnas con drag-to-reorder */}
+          <div className="px-5 pt-4 pb-2 space-y-1.5">
             {listaLocal.map(col => (
               <div
                 key={col.id}
@@ -956,45 +964,66 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
                 onDragOver={(e) => handleDragOver(e, col)}
                 onDragLeave={() => setDragOver(null)}
                 onDrop={(e) => handleDrop(e, col)}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl border-l-[3px] transition-all cursor-grab active:cursor-grabbing ${
                   dragOver === col.id
-                    ? 'border-[#7B1FA2] bg-purple-50 shadow-sm'
-                    : 'border-gray-100 bg-gray-50'
+                    ? 'bg-purple-50 shadow-sm ring-1 ring-[#7B1FA2]/20'
+                    : 'bg-gray-50 hover:bg-gray-100'
                 }`}
+                style={{ borderLeftColor: col.color }}
               >
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <Bars3Icon className="w-4 h-4 text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0" />
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: col.color }} />
-                  <span className="text-sm font-medium text-gray-700 truncate">{col.nombre}</span>
-                  {col.es_final && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Final</span>}
+                  <Bars3Icon className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-gray-700 truncate">{col.nombre}</span>
+                  {col.es_final && (
+                    <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">Final</span>
+                  )}
                 </div>
-                <button onClick={() => handleEliminar(col)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 ml-2">
+                <button onClick={() => handleEliminar(col)}
+                  className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 ml-2">
                   <TrashIcon className="w-4 h-4" />
                 </button>
               </div>
             ))}
           </div>
+
           {/* Crear nueva columna */}
-          <div className="border-t border-gray-100 pt-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nueva columna</p>
-            <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+          <div className="mx-5 mb-5 mt-3 border border-gray-200 rounded-2xl p-4 space-y-3 bg-gray-50">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Nueva columna</p>
+            <input
+              value={form.nombre}
+              onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
               placeholder="Nombre de la columna"
-              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2]" />
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-gray-600">Color</label>
-                <input type="color" value={form.color} onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
-                  className="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer" />
+              onKeyDown={e => e.key === 'Enter' && handleCrear()}
+              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all bg-white"
+            />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2.5">
+                <label className="text-xs font-semibold text-gray-600">Color</label>
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={form.color}
+                    onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
+                    className="w-9 h-9 rounded-lg border border-gray-200 cursor-pointer p-0.5 bg-white"
+                  />
+                </div>
+                <div className="w-5 h-5 rounded-md border border-gray-200" style={{ backgroundColor: form.color }} />
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.es_final} onChange={e => setForm(p => ({ ...p, es_final: e.target.checked }))}
-                  className="w-4 h-4 accent-[#7B1FA2]" />
-                <span className="text-xs font-medium text-gray-600">Es columna final</span>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.es_final}
+                  onChange={e => setForm(p => ({ ...p, es_final: e.target.checked }))}
+                  className="w-4 h-4 accent-[#7B1FA2] rounded"
+                />
+                <span className="text-xs font-semibold text-gray-600">Es columna final</span>
               </label>
             </div>
-            <button onClick={handleCrear} disabled={guardando || !form.nombre.trim()}
+            <button
+              onClick={handleCrear}
+              disabled={guardando || !form.nombre.trim()}
               className="w-full py-2.5 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-sm font-semibold hover:shadow-md disabled:opacity-50 transition-all">
-              {guardando ? 'Creando...' : 'Crear columna'}
+              {guardando ? 'Creando...' : '+ Crear columna'}
             </button>
           </div>
         </div>
@@ -1033,61 +1062,66 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Selector */}
-      <div className="flex-shrink-0 px-4 pt-3 pb-3 border-b border-gray-100 bg-white">
-        <select
-          value={seleccionada}
-          onChange={e => setSeleccionada(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all bg-white min-w-[260px]"
-        >
-          <option value="">— Seleccionar trabajador o rol —</option>
-          <optgroup label="Trabajadores">
-            {usuarios.map(u => (
-              <option key={`u_${u.id}`} value={`u_${u.id}`}>{u.nombre_completo}</option>
-            ))}
-          </optgroup>
-          <optgroup label="Por rol">
-            {roles.map(r => (
-              <option key={`r_${r.id}`} value={`r_${r.id}`}>Rol: {r.nombre}</option>
-            ))}
-          </optgroup>
-        </select>
+      {/* Barra unificada: selector + info persona (1 sola fila) */}
+      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-100 bg-white flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+          persona
+            ? persona.tipo === 'rol'
+              ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-bold'
+              : 'bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white text-sm font-bold'
+            : 'bg-gray-100 text-gray-400'
+        }`}>
+          {persona ? persona.inicial : <UserGroupIcon className="w-4 h-4" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <select
+            value={seleccionada}
+            onChange={e => setSeleccionada(e.target.value)}
+            className="w-full max-w-sm border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all bg-white"
+          >
+            <option value="">— Seleccionar trabajador o rol —</option>
+            <optgroup label="Trabajadores">
+              {usuarios.map(u => (
+                <option key={`u_${u.id}`} value={`u_${u.id}`}>{u.nombre_completo}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Por rol">
+              {roles.map(r => (
+                <option key={`r_${r.id}`} value={`r_${r.id}`}>Rol: {r.nombre}</option>
+              ))}
+            </optgroup>
+          </select>
+          {persona && (
+            <p className="text-[11px] text-gray-400 mt-0.5 px-1">
+              {tareasPersona.length} tarea{tareasPersona.length !== 1 ? 's' : ''}
+              {tareasPersona.filter(estaVencida).length > 0 && (
+                <span className="text-red-500 font-semibold ml-1">
+                  · {tareasPersona.filter(estaVencida).length} vencida{tareasPersona.filter(estaVencida).length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+        {persona && (
+          <button
+            onClick={() => onNuevaTarea(persona)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-md transition-all flex-shrink-0">
+            <PlusIcon className="w-3.5 h-3.5" /> Nueva tarea
+          </button>
+        )}
       </div>
 
       {/* Estado vacío */}
       {!persona ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
-          <UserGroupIcon className="w-12 h-12 text-gray-200" />
-          <p className="text-gray-400 text-sm">Selecciona un trabajador o rol para ver sus tareas</p>
+          <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-1">
+            <UserGroupIcon className="w-7 h-7 text-gray-300" />
+          </div>
+          <p className="text-gray-400 text-sm font-medium">Selecciona un trabajador o rol</p>
+          <p className="text-gray-300 text-xs">para ver sus tareas asignadas</p>
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-
-          {/* Header persona */}
-          <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-white">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${
-              persona.tipo === 'rol' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
-              'bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0]'
-            }`}>
-              {persona.inicial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-800 leading-tight">{persona.nombre}</p>
-              <p className="text-[11px] text-gray-400">
-                {tareasPersona.length} tarea{tareasPersona.length !== 1 ? 's' : ''}
-                {tareasPersona.filter(estaVencida).length > 0 && (
-                  <span className="text-red-500 font-semibold ml-1">
-                    · {tareasPersona.filter(estaVencida).length} vencida{tareasPersona.filter(estaVencida).length !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </p>
-            </div>
-            <button
-              onClick={() => onNuevaTarea(persona)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-md transition-all flex-shrink-0">
-              <PlusIcon className="w-3.5 h-3.5" /> Nueva tarea
-            </button>
-          </div>
 
           {/* Kanban con todos los estados — igual que el tablero principal */}
           <div className="flex-1 overflow-x-auto overflow-y-hidden">
@@ -1097,16 +1131,19 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
                 return (
                   <div key={col.id} className="flex-shrink-0 w-[210px] flex flex-col">
                     {/* Header columna */}
-                    <div className="flex items-center gap-2 mb-2 px-1.5 py-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: col.color }} />
-                      <span className="text-sm font-bold text-gray-700 truncate">{col.nombre}</span>
-                      <span className="text-[11px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ml-auto">
-                        {tareasCol.length}
-                      </span>
+                    <div className="flex items-center justify-between mb-2 px-2 py-2 rounded-xl border border-transparent bg-white"
+                      style={{ borderTop: `3px solid ${col.color}` }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-700 truncate">{col.nombre}</span>
+                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
+                          style={{ backgroundColor: col.color + '22', color: col.color }}>
+                          {tareasCol.length}
+                        </span>
+                      </div>
                     </div>
                     {/* Área tarjetas */}
                     <div className="flex-1 rounded-2xl p-2 border-2 border-dashed overflow-y-auto"
-                      style={{ backgroundColor: col.color + '0d', borderColor: col.color + '40' }}>
+                      style={{ backgroundColor: col.color + '08', borderColor: col.color + '30' }}>
                       {tareasCol.length === 0 ? (
                         <div className="h-full flex items-center justify-center py-10">
                           <p className="text-xs text-gray-300 font-medium">Sin tareas</p>
@@ -1324,33 +1361,33 @@ export default function CentroOperativo() {
 
       {/* Header */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 pt-24 lg:pt-6 pb-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          {/* Título */}
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          {/* Título + stats */}
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg">
-              <BuildingOfficeIcon className="w-6 h-6 text-white" />
+            <div className="w-11 h-11 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
+              <BuildingOfficeIcon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Centro Operativo</h1>
-              <p className="text-sm text-gray-500">Gestión y seguimiento de tareas internas</p>
+              <h1 className="text-xl font-bold text-gray-900 leading-tight">Centro Operativo</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {[
+                  { label: tareas.length, sub: 'Total', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+                  { label: enCurso, sub: 'En curso', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+                  { label: completadas, sub: 'Completadas', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
+                  ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', color: '#B91C1C', bg: '#FFF5F5', border: '#FECACA' }] : []),
+                ].map(s => (
+                  <div key={s.sub} className="flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold"
+                    style={{ color: s.color, background: s.bg, borderColor: s.border }}>
+                    <span className="font-bold text-sm">{s.label}</span>
+                    <span className="font-medium opacity-75">{s.sub}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Stats + acciones */}
+          {/* Acciones */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              {[
-                { label: tareas.length, sub: 'Total', cls: 'text-gray-700 bg-gray-50 border-gray-200' },
-                { label: enCurso, sub: 'En curso', cls: 'text-blue-700 bg-blue-50 border-blue-100' },
-                { label: completadas, sub: 'Listas', cls: 'text-green-700 bg-green-50 border-green-100' },
-                ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', cls: 'text-red-700 bg-red-50 border-red-100' }] : []),
-              ].map(s => (
-                <div key={s.sub} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold ${s.cls}`}>
-                  <span className="font-bold">{s.label}</span> {s.sub}
-                </div>
-              ))}
-            </div>
-            <div className="w-px h-6 bg-gray-200" />
             {admin && (
               <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
                 <button onClick={() => setVista('kanban')}
@@ -1363,18 +1400,17 @@ export default function CentroOperativo() {
                 </button>
               </div>
             )}
-            <div className="w-px h-6 bg-gray-200" />
             {admin && (
-              <button onClick={() => setMostrarReporte(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-                <ChartBarIcon className="w-4 h-4" /> Reporte
-              </button>
-            )}
-            {admin && (
-              <button onClick={() => setMostrarColumnas(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
-                <PlusIcon className="w-4 h-4" /> Columnas
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setMostrarReporte(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
+                  <ChartBarIcon className="w-3.5 h-3.5" /> Reporte
+                </button>
+                <button onClick={() => setMostrarColumnas(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 bg-white">
+                  <Bars3Icon className="w-3.5 h-3.5" /> Columnas
+                </button>
+              </div>
             )}
             <button onClick={() => setModalCrear(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-xs font-semibold hover:shadow-lg transition-all shadow-sm">
@@ -1386,9 +1422,23 @@ export default function CentroOperativo() {
 
       {/* Tablero */}
       {cargando ? (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin mb-3" />
-          <p className="text-gray-500 text-sm font-medium">Cargando tareas...</p>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="flex gap-3 px-4 py-4 h-full">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="flex-shrink-0 w-[262px] flex flex-col gap-2">
+                <div className="h-8 bg-gray-100 rounded-xl animate-pulse" />
+                <div className="flex-1 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 p-2 space-y-2">
+                  {[1, 2, 3].map(j => (
+                    <div key={j} className="bg-white rounded-xl p-3 border border-gray-200 space-y-2 animate-pulse">
+                      <div className="h-3 bg-gray-100 rounded-full w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded-full w-1/2" />
+                      <div className="h-2 bg-gray-100 rounded-full w-1/3 mt-3" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : vista === 'personas' ? (
         <VistaPorPersonas
@@ -1450,43 +1500,50 @@ export default function CentroOperativo() {
                         handleDropColumna(Number(e.dataTransfer.getData('columnaId')), col.id);
                       }
                     }}
-                    className={`flex items-center justify-between mb-2 px-1.5 py-1.5 rounded-xl border-2 transition-all ${
+                    className={`flex items-center justify-between mb-2 px-2 py-2 rounded-xl border transition-all ${
                       admin ? 'cursor-grab active:cursor-grabbing' : ''
                     } ${
                       colDragOver === col.id
                         ? 'border-[#7B1FA2] bg-purple-50 shadow-sm'
-                        : 'border-transparent hover:bg-gray-100'
+                        : 'border-transparent bg-white hover:bg-gray-50'
                     }`}
+                    style={{ borderTop: `3px solid ${col.color}` }}
                   >
                     <div className="flex items-center gap-2">
                       {admin && (
                         <Bars3Icon className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" title="Arrastra para reordenar" />
                       )}
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: col.color }} />
                       <span className="text-sm font-bold text-gray-700">{col.nombre}</span>
-                      <span className="text-[11px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                      <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
+                        style={{ backgroundColor: col.color + '22', color: col.color }}>
                         {tareasCol.length}
                       </span>
-                      {tieneVencidas && <ExclamationTriangleIcon className="w-3 h-3 text-red-500" />}
+                      {tieneVencidas && <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />}
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); setModalCrear(true); }}
-                      className="p-1 rounded-lg hover:bg-white text-gray-300 hover:text-[#7B1FA2] transition-colors">
-                      <PlusIcon className="w-3.5 h-3.5" />
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-[#7B1FA2] hover:bg-purple-50 transition-all"
+                      title="Añadir tarea">
+                      <PlusIcon className="w-4 h-4" />
                     </button>
                   </div>
 
                   {/* Área de tarjetas */}
                   <div
                     className="flex-1 rounded-2xl p-2 border-2 border-dashed transition-all overflow-y-auto"
-                    style={{ backgroundColor: col.color + '0d', borderColor: col.color + (isDragging ? 'aa' : '40') }}
+                    style={{ backgroundColor: col.color + '08', borderColor: col.color + (isDragging ? '80' : '30') }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.getData('dragType') === 'tarea') handleDropTarea(e, col.id); }}
                   >
                     {tareasCol.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center py-10 text-center">
-                        <p className="text-xs text-gray-300 font-medium">
-                          {isDragging ? 'Soltar aquí' : 'Sin tareas'}
-                        </p>
+                      <div className="h-full flex flex-col items-center justify-center py-10 text-center gap-2">
+                        {isDragging ? (
+                          <div className="px-3 py-2 rounded-xl border-2 border-dashed text-xs font-semibold"
+                            style={{ borderColor: col.color, color: col.color, background: col.color + '11' }}>
+                            Soltar aquí
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-300 font-medium">Sin tareas</p>
+                        )}
                       </div>
                     ) : (
                       tareasCol.map(t => (
@@ -1522,11 +1579,11 @@ export default function CentroOperativo() {
 
             {/* Columna fantasma para nueva columna al final */}
             {admin && (
-              <div className="flex-shrink-0 w-[200px] flex flex-col pt-9">
+              <div className="flex-shrink-0 w-[180px] flex flex-col pt-11">
                 <button onClick={() => setMostrarColumnas(true)}
-                  className="flex-1 min-h-[160px] rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-300 hover:border-[#7B1FA2] hover:text-[#7B1FA2] hover:bg-purple-50 transition-all">
-                  <div className="w-8 h-8 rounded-full border-2 border-dashed border-current flex items-center justify-center">
-                    <PlusIcon className="w-4 h-4" />
+                  className="flex-1 min-h-[140px] rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-300 hover:border-[#7B1FA2] hover:text-[#7B1FA2] hover:bg-purple-50 transition-all group">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 group-hover:bg-purple-100 flex items-center justify-center transition-colors">
+                    <PlusIcon className="w-5 h-5" />
                   </div>
                   <span className="text-xs font-semibold">Nueva columna</span>
                 </button>
