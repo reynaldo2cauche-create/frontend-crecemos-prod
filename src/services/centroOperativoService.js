@@ -87,3 +87,6 @@ export const subirArchivos = (tareaId, files) => {
 
 export const eliminarArchivo = (tareaId, archivoId) =>
   api.delete(`/tareas/${tareaId}/archivos/${archivoId}`).then(r => r.data);
+
+export const verificarTareasVencidas = () =>
+  api.post('/notificaciones/forzar-verificacion-tareas-vencidas').catch(() => {});

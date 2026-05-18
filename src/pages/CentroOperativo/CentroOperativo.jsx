@@ -43,6 +43,16 @@ function diasRestantes(fecha) {
   return Math.ceil((new Date(fecha) - new Date()) / (1000 * 60 * 60 * 24));
 }
 
+function toDatetimeLocalLima(isoUtc) {
+  if (!isoUtc) return '';
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Lima',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  }).format(new Date(isoUtc)).replace(' ', 'T');
+}
+
 function formatFileSize(bytes) {
   if (!bytes) return '';
   if (bytes < 1024) return `${bytes} B`;
@@ -271,7 +281,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
             : 'text-gray-400'
           }`}>
             <CalendarDaysIcon className="w-3 h-3 flex-shrink-0" />
-            {new Date(tarea.fecha_limite).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            {new Date(tarea.fecha_limite).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
             {!vencida && dias !== null && dias <= 3 && (
               <span className="ml-1 font-semibold">({dias === 0 ? 'hoy' : `${dias}d`})</span>
             )}
@@ -345,7 +355,7 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
     descripcion: tarea?.descripcion || '',
     prioridad_id: tarea?.prioridad_id || 2,
     columna_id: tarea?.columna_id || defaultColumnaId || (columnas[0]?.id ?? 1),
-    fecha_limite: tarea?.fecha_limite ? tarea.fecha_limite.slice(0, 16) : '',
+    fecha_limite: toDatetimeLocalLima(tarea?.fecha_limite),
     asignaciones: tarea?.asignaciones?.map(a => ({
       tipo: a.usuario_id ? 'usuario' : 'rol',
       id: a.usuario_id || a.rol_id,
@@ -383,7 +393,7 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
         descripcion: form.descripcion || null,
         prioridad_id: Number(form.prioridad_id),
         columna_id: Number(form.columna_id),
-        fecha_limite: form.fecha_limite || null,
+        fecha_limite: form.fecha_limite ? form.fecha_limite + ':00-05:00' : null,
         asignaciones: form.asignaciones.map(a =>
           a.tipo === 'usuario' ? { usuario_id: a.id } : { rol_id: a.id }
         ),
@@ -669,7 +679,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5">Fecha límite</p>
                   <p className="text-xs font-medium">
-                    {new Date(tarea.fecha_limite).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(tarea.fecha_limite).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
