@@ -7,14 +7,12 @@ import api from './api';
  * @param {string} tipo - Filtro de tipo de notificación (opcional)
  * @returns {Promise} Respuesta con notificaciones
  */
-export const obtenerNotificacionesRecientes = async (limite = 15, offset = 0, fecha = undefined, tipo = undefined) => {
+export const obtenerNotificacionesRecientes = async (limite = 15, offset = 0, fecha = undefined, tipo = undefined, leida = undefined) => {
   try {
     const params = { limite, offset };
-
-    // Solo agregar filtros si tienen valor
     if (fecha) params.fecha = fecha;
-    if (tipo) params.tipo = tipo;
-
+    if (tipo)  params.tipo  = tipo;
+    if (leida !== undefined) params.leida = leida;
     const response = await api.get('notificaciones/recientes', { params });
     return response.data;
   } catch (error) {

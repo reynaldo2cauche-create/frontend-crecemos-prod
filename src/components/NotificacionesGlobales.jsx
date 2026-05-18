@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Bell, X, TriangleAlert, Info, Calendar, Cake, Trash,
   Clock, PenSquare, FileText, Loader2, PartyPopper,
@@ -206,7 +206,9 @@ const useNotificaciones = () => {
 
   const offsetRef  = useRef(0);
   const filtrosRef = useRef(filtros);
+  const tabRef     = useRef(tabActivo);
   filtrosRef.current = filtros;
+  tabRef.current     = tabActivo;
 
   // ── 1. Badge instantáneo al montar — usa /count (una sola query simple) ──
   // Se ejecuta inmediatamente, mucho más rápido que /recientes
@@ -234,10 +236,10 @@ const useNotificaciones = () => {
     const pollNovedades = async () => {
       try {
         const f = filtrosRef.current;
-        // Solo mergear novedades si no hay filtros activos
         if (f.fecha || f.tipo) return;
 
-        const response = await obtenerNotificacionesRecientes(LIMIT, 0);
+        const leidaParam = tabRef.current === 'leidas' ? 'true' : 'false';
+        const response = await obtenerNotificacionesRecientes(LIMIT, 0, undefined, undefined, leidaParam);
         const nuevas = (response.notificaciones || []).map(normalizarNotif);
 
         setNotificaciones(prev => {
@@ -259,18 +261,20 @@ const useNotificaciones = () => {
     };
   }, []);
 
-  // ── 3. Carga del panel — solo cuando el usuario lo abre ──
+  // ── 3. Carga del panel — cada tab pide sus propios datos ──
   const cargarDesdeInicio = useCallback(async (nuevosFiltros = filtros, nuevoTab = tabActivo) => {
     setCargando(true);
     setError(null);
     offsetRef.current = 0;
 
+    const leidaParam = nuevoTab === 'leidas' ? 'true' : 'false';
+
     try {
       const response = await obtenerNotificacionesRecientes(
-        LIMIT,
-        0,
+        LIMIT, 0,
         nuevosFiltros.fecha || undefined,
         nuevosFiltros.tipo  || undefined,
+        leidaParam,
       );
 
       const notificacionesNormalizadas = (response.notificaciones || []).map(normalizarNotif);
@@ -291,12 +295,15 @@ const useNotificaciones = () => {
     if (cargandoMas || !hayMas) return;
     setCargandoMas(true);
 
+    const leidaParam = tabRef.current === 'leidas' ? 'true' : 'false';
+
     try {
       const response = await obtenerNotificacionesRecientes(
         LIMIT,
         offsetRef.current,
         filtrosRef.current.fecha || undefined,
         filtrosRef.current.tipo  || undefined,
+        leidaParam,
       );
 
       const nuevas = (response.notificaciones || []).map(normalizarNotif);
@@ -323,15 +330,9 @@ const useNotificaciones = () => {
 
   const marcarUnaComoLeida = useCallback(async (notificacionId) => {
     try {
-      // PRIMERO: llamar al backend (sin optimistic update)
       const response = await marcarComoLeida(notificacionId);
-
-      // SEGUNDO: actualizar local solo después de confirmación del backend
-      setNotificaciones(prev =>
-        prev.map(n => n.id === notificacionId ? { ...n, leida: true } : n)
-      );
-
-      // Actualizar contador con el valor del backend
+      // En tab "no_leidas" la quitamos de la lista; en "leidas" ya no aparece
+      setNotificaciones(prev => prev.filter(n => n.id !== notificacionId));
       if (response.nuevo_conteo !== undefined) {
         setTotalNoLeidasReal(response.nuevo_conteo);
       } else {
@@ -339,21 +340,17 @@ const useNotificaciones = () => {
       }
     } catch (error) {
       console.error('Error al marcar como leída:', error);
-      // No hacer nada - la notificación sigue no leída
     }
   }, []);
 
   const marcarTodasComoLeidas = useCallback(async () => {
     try {
-      // PRIMERO: llamar al backend
       await marcarLeidasAPI();
-
-      // SEGUNDO: actualizar local después de confirmación
-      setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
+      setNotificaciones([]);
+      setHayMas(false);
       setTotalNoLeidasReal(0);
     } catch (error) {
       console.error('Error al marcar todas como leídas:', error);
-      // Recargar si falla para sincronizar
       cargarDesdeInicio(filtros, tabActivo);
     }
   }, [filtros, tabActivo, cargarDesdeInicio]);
@@ -364,17 +361,8 @@ const useNotificaciones = () => {
     cargarDesdeInicio(filtros, nuevoTab);
   }, [filtros, cargarDesdeInicio]);
 
-  const { noLeidas, leidas } = useMemo(() => {
-    const result = {
-      noLeidas: notificaciones.filter(n => !n.leida),
-      leidas:   notificaciones.filter(n =>  n.leida),
-    };
-
-    return result;
-  }, [notificaciones]);
-
   return {
-    noLeidas, leidas, totalNoLeidasReal,
+    notificaciones, totalNoLeidasReal,
     cargando, cargandoMas, hayMas, error,
     filtros, tabActivo, cambiarTab,
     cargarDesdeInicio, cargarMas,
@@ -391,7 +379,7 @@ const NotificacionesGlobales = ({ sidebarMode = false, isCollapsed = false, pane
   const cargaInicialHecha                   = useRef(false);
 
   const {
-    noLeidas, leidas, totalNoLeidasReal,
+    notificaciones, totalNoLeidasReal,
     cargando, cargandoMas, hayMas, error,
     filtros, tabActivo, cambiarTab,
     cargarDesdeInicio, cargarMas,
@@ -400,7 +388,7 @@ const NotificacionesGlobales = ({ sidebarMode = false, isCollapsed = false, pane
   } = useNotificaciones();
 
   const hayFiltros  = Boolean(filtros.fecha || filtros.tipo);
-  const listaActiva = tabActivo === 'no_leidas' ? noLeidas : leidas;
+  const listaActiva = notificaciones;
 
   const abrirPanel = () => {
     setMostrarPanel(true);
