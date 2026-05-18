@@ -14,7 +14,7 @@ import {
   crearColumna, eliminarColumna, reordenarColumnas,
   subirArchivos, listarArchivos, eliminarArchivo, reordenarTareas, eliminarComentario,
 } from '../../services/centroOperativoService';
-import { SERVER_BASE_URL } from '../../services/api';
+import { SERVER_BASE_URL, API_BASE_URL } from '../../services/api';
 import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
 
@@ -68,6 +68,21 @@ function fileLabel(mime) {
   return 'FILE';
 }
 
+// ─── Detección de tipo de archivo ────────────────────────────────────────────
+
+const EXT_IMG = /\.(jpe?g|png|gif|webp|bmp|svg|avif|tiff?)$/i;
+const EXT_PDF = /\.pdf$/i;
+
+function esArchivoImagen(archivo) {
+  if (archivo?.tipo_mime?.startsWith('image/')) return true;
+  return EXT_IMG.test(archivo?.nombre_original || '');
+}
+
+function esArchivoPDF(archivo) {
+  if (archivo?.tipo_mime === 'application/pdf') return true;
+  return EXT_PDF.test(archivo?.nombre_original || '');
+}
+
 // ─── Descarga forzada (cross-origin) ─────────────────────────────────────────
 
 async function descargarArchivo(url, nombre) {
@@ -85,6 +100,62 @@ async function descargarArchivo(url, nombre) {
   } catch {
     window.open(url, '_blank');
   }
+}
+
+// ─── Vista previa blob (cross-origin) ────────────────────────────────────────
+
+function PreviewContenido({ url, esImagen, esPdf }) {
+  const [imgError, setImgError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState(null);
+  const [pdfCargando, setPdfCargando] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+
+  useEffect(() => {
+    if (!esPdf) return;
+    let revocado = false;
+    setPdfCargando(true);
+    setPdfError(false);
+    setBlobUrl(null);
+    fetch(url)
+      .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+      .then(blob => { if (!revocado) setBlobUrl(URL.createObjectURL(blob)); })
+      .catch(() => { if (!revocado) setPdfError(true); })
+      .finally(() => { if (!revocado) setPdfCargando(false); });
+    return () => { revocado = true; };
+  }, [url, esPdf]);
+
+  if (esImagen) {
+    if (imgError) return (
+      <div className="text-center text-gray-400 p-8">
+        <ExclamationTriangleIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+        <p className="text-sm font-medium">No se pudo cargar la imagen</p>
+      </div>
+    );
+    return (
+      <img src={url} alt="Vista previa"
+        className="max-w-full max-h-full object-contain p-4"
+        onError={() => setImgError(true)} />
+    );
+  }
+
+  if (esPdf) {
+    if (pdfCargando) return (
+      <div className="flex flex-col items-center gap-3 text-gray-400">
+        <div className="w-8 h-8 border-2 border-gray-300 border-t-[#A3C644] rounded-full animate-spin" />
+        <p className="text-xs">Cargando PDF…</p>
+      </div>
+    );
+    if (pdfError || !blobUrl) return (
+      <div className="text-center text-gray-400 p-8">
+        <ExclamationTriangleIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+        <p className="text-sm font-medium">No se pudo cargar el PDF</p>
+        <p className="text-xs mt-1">Usa el botón Descargar para abrirlo</p>
+      </div>
+    );
+    return <iframe src={blobUrl} className="w-full h-full border-0" title="Vista previa PDF" />;
+  }
+
+  return null;
 }
 
 // ─── Modal de confirmación ────────────────────────────────────────────────────
@@ -664,8 +735,8 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
               <div className="space-y-1.5">
                 {archivos.map(a => {
                   const url = `${SERVER_BASE_URL}${a.url}`;
-                  const esImagen = a.tipo_mime?.startsWith('image/');
-                  const esPDF = a.tipo_mime === 'application/pdf';
+                  const esImg = esArchivoImagen(a);
+                  const esPdf = esArchivoPDF(a);
                   return (
                     <div key={a.id} className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
                       <div className="flex items-center gap-2.5 px-3 py-2">
@@ -676,7 +747,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                           <p className="text-xs font-medium text-gray-700 truncate">{a.nombre_original}</p>
                           {a.tamanio && <p className="text-[10px] text-gray-400">{formatFileSize(a.tamanio)}</p>}
                         </div>
-                        {(esImagen || esPDF) && (
+                        {(esImg || esPdf) && (
                           <button onClick={() => setPreview(a)} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0 text-[10px] font-semibold">Ver</button>
                         )}
                         <button onClick={() => descargarArchivo(url, a.nombre_original)} className="p-1 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors flex-shrink-0" title="Descargar">
@@ -688,9 +759,18 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                           </button>
                         )}
                       </div>
-                      {esImagen && (
+                      {esImg && (
                         <button onClick={() => setPreview(a)} className="block w-full text-left">
-                          <img src={url} alt={a.nombre_original} className="w-full max-h-40 object-cover border-t border-gray-100 hover:opacity-90 transition-opacity" />
+                          <img src={url} alt={a.nombre_original}
+                            className="w-full max-h-40 object-cover border-t border-gray-100 hover:opacity-90 transition-opacity"
+                            onError={e => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextSibling?.classList.remove('hidden');
+                            }} />
+                          <div className="hidden border-t border-gray-100 px-3 py-2 text-[11px] text-gray-400 flex items-center gap-1.5">
+                            <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                            No se pudo cargar la imagen
+                          </div>
                         </button>
                       )}
                     </div>
@@ -749,13 +829,22 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                     <div className="space-y-1 mt-1">
                       {c.archivos.map(a => {
                         const url = `${SERVER_BASE_URL}${a.url}`;
-                        const esImagen = a.tipo_mime?.startsWith('image/');
-                        const esPDF = a.tipo_mime === 'application/pdf';
+                        const esImg = esArchivoImagen(a);
+                        const esPdf = esArchivoPDF(a);
                         return (
                           <div key={a.id} className="rounded-lg overflow-hidden border border-gray-200">
-                            {esImagen && (
+                            {esImg && (
                               <button onClick={() => setPreview(a)} className="block w-full">
-                                <img src={url} alt={a.nombre_original} className="w-full max-h-48 object-cover hover:opacity-90 transition-opacity" />
+                                <img src={url} alt={a.nombre_original}
+                                  className="w-full max-h-48 object-cover hover:opacity-90 transition-opacity"
+                                  onError={e => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextSibling?.classList.remove('hidden');
+                                  }} />
+                                <div className="hidden px-3 py-2 text-[11px] text-gray-400 flex items-center gap-1.5 bg-gray-50">
+                                  <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                                  No se pudo cargar la imagen
+                                </div>
                               </button>
                             )}
                             <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white">
@@ -763,7 +852,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                                 {fileLabel(a.tipo_mime)}
                               </div>
                               <span className="text-[11px] text-gray-600 truncate flex-1">{a.nombre_original}</span>
-                              {(esPDF || esImagen) && (
+                              {(esPdf || esImg) && (
                                 <button onClick={() => setPreview(a)} className="text-[10px] font-semibold text-[#7B1FA2] hover:underline flex-shrink-0">Ver</button>
                               )}
                               <button onClick={() => descargarArchivo(url, a.nombre_original)} className="flex-shrink-0 text-gray-400 hover:text-[#7B1FA2]">
@@ -856,13 +945,18 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
             </div>
           </div>
           <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-50">
-            {preview.tipo_mime?.startsWith('image/') ? (
-              <img src={`${SERVER_BASE_URL}${preview.url}`} alt={preview.nombre_original}
-                className="max-w-full max-h-full object-contain p-4" />
-            ) : preview.tipo_mime === 'application/pdf' ? (
-              <embed src={`${SERVER_BASE_URL}${preview.url}`} type="application/pdf"
-                className="w-full h-full" />
-            ) : null}
+            {(esArchivoImagen(preview) || esArchivoPDF(preview)) ? (
+              <PreviewContenido
+                url={`${SERVER_BASE_URL}${preview.url}`}
+                esImagen={esArchivoImagen(preview)}
+                esPdf={esArchivoPDF(preview)}
+              />
+            ) : (
+              <div className="text-center text-gray-400 p-8">
+                <p className="text-sm font-medium">Vista previa no disponible</p>
+                <p className="text-xs mt-1">Usa el botón Descargar para abrir el archivo</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

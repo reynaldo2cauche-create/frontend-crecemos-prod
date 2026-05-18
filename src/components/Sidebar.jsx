@@ -591,7 +591,7 @@ export const SidebarContentWrapper = ({ children }) => {
 
       {/* Top bar */}
       <div
-        className="intranet-topbar fixed top-0 right-0 z-30 h-14 flex items-center justify-end px-6 gap-3"
+        className="intranet-topbar fixed top-0 right-0 z-40 h-14 flex items-center justify-end px-6 gap-3"
         style={{
           background: '#ffffff',
           borderBottom: '1px solid #f0f0f0',
