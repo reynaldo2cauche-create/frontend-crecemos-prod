@@ -3,7 +3,8 @@ import {
   Bell, X, TriangleAlert, Info, Calendar, Cake, Trash,
   Clock, PenSquare, FileText, Loader2, PartyPopper,
   Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown, ClipboardList, FileUp, UserCog,
-  FileCheck, UserMinus, KanbanSquare, MessageSquare, CircleCheckBig, CalendarClock
+  FileCheck, UserMinus, KanbanSquare, MessageSquare, CircleCheckBig, CalendarClock,
+  ArrowRightCircle, Paperclip, Trophy,
 } from 'lucide-react';
 import {
   obtenerNotificacionesRecientes,
@@ -45,10 +46,13 @@ const TIPO_CONFIG = {
   CAMBIO_ESTADO_SERVICIO:   { icono: UserCog,       color: 'text-amber-500',  borde: 'border-amber-400',  label: 'Cambio estado servicio' },
   SOLICITUD_INFORME:        { icono: FileCheck,     color: 'text-violet-600', borde: 'border-violet-500', label: 'Solicitud de informe' },
   SERVICIO_INACTIVO:        { icono: UserMinus,     color: 'text-red-500',    borde: 'border-red-400',    label: 'Servicio inactivo'    },
-  TAREA_ASIGNADA:           { icono: KanbanSquare,  color: 'text-purple-600', borde: 'border-purple-500', label: 'Tarea asignada'       },
-  TAREA_COMENTADA:          { icono: MessageSquare, color: 'text-sky-500',    borde: 'border-sky-400',    label: 'Comentario en tarea'  },
-  TAREA_COMPLETADA:         { icono: CircleCheckBig,color: 'text-emerald-500',borde: 'border-emerald-400',label: 'Tarea completada'     },
-  TAREA_VENCIDA:            { icono: CalendarClock, color: 'text-rose-500',   borde: 'border-rose-400',   label: 'Tarea vencida'        },
+  TAREA_ASIGNADA:           { icono: KanbanSquare,      color: 'text-purple-600', borde: 'border-purple-500', label: 'Tarea asignada'        },
+  TAREA_COMENTADA:          { icono: MessageSquare,     color: 'text-sky-500',    borde: 'border-sky-400',    label: 'Comentario en tarea'   },
+  TAREA_COMPLETADA:         { icono: CircleCheckBig,    color: 'text-emerald-500',borde: 'border-emerald-400',label: 'Tarea completada'      },
+  TAREA_VENCIDA:            { icono: CalendarClock,     color: 'text-rose-500',   borde: 'border-rose-400',   label: 'Tarea vencida'         },
+  TAREA_MOVIDA:             { icono: ArrowRightCircle,  color: 'text-amber-500',  borde: 'border-amber-400',  label: 'Tarea movida'          },
+  TAREA_ARCHIVO_SUBIDO:     { icono: Paperclip,         color: 'text-cyan-500',   borde: 'border-cyan-400',   label: 'Archivo en tarea'      },
+  SESIONES_TERAPIA_24:      { icono: Trophy,            color: 'text-yellow-500', borde: 'border-yellow-400', label: '24 sesiones de terapia' },
   DEFAULT:                  { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
 };
 
