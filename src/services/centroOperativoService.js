@@ -90,3 +90,11 @@ export const eliminarArchivo = (tareaId, archivoId) =>
 
 export const verificarTareasVencidas = () =>
   api.post('/notificaciones/forzar-verificacion-tareas-vencidas').catch(() => {});
+
+// ─── Archivadas ───────────────────────────────────────────────────────────────
+
+export const listarArchivadas = (params = {}) =>
+  api.get('/tareas/archivadas', { params }).then(r => r.data);
+
+export const restaurarTarea = (id) =>
+  api.patch(`/tareas/${id}/restaurar`).then(r => r.data);

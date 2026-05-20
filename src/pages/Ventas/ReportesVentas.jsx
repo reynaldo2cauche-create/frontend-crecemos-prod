@@ -12,7 +12,8 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getReportes, getVentasSinCita , getHistorialVentasExcel } from '../../services/ventasService';
+import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById } from '../../services/ventasService';
+import DetalleVentaModal from '../../components/Ventas/DetalleVentaModal';
 import {
   exportarMetricas,
   exportarTendencia,
@@ -54,7 +55,22 @@ const ReportesVentas = () => {
   const [loadingSinCita, setLoadingSinCita] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
   const [exportando, setExportando] = useState(null);
+  const [ventaDetalle, setVentaDetalle] = useState(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const filasPorPagina = 10;
+
+  const abrirDetalle = async (ventaId) => {
+    if (!ventaId || cargandoDetalle) return;
+    setCargandoDetalle(true);
+    try {
+      const venta = await getVentaServicioById(ventaId);
+      setVentaDetalle(venta);
+    } catch (e) {
+      console.error('Error al cargar detalle de venta:', e);
+    } finally {
+      setCargandoDetalle(false);
+    }
+  };
 
   const exportar = (key, fn) => {
     setExportando(key);
@@ -254,6 +270,7 @@ const ReportesVentas = () => {
   };
 
   return (
+    <>
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
 
       {/* Header */}
@@ -519,7 +536,17 @@ const ReportesVentas = () => {
                 {ventasPaginadas.map((row, i) => (
                   <tr key={i} className="hover:bg-amber-50/40 transition-colors">
                     <td className="px-4 py-2.5 text-sm text-gray-700 whitespace-nowrap">{formatFecha(row.fecha_venta)}</td>
-                    <td className="px-4 py-2.5 text-sm font-mono text-gray-600">{row.codigo_comprobante || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {row.codigo_comprobante ? (
+                        <button
+                          onClick={() => abrirDetalle(row.venta_id)}
+                          disabled={cargandoDetalle}
+                          className="text-sm font-mono text-[#7B1FA2] hover:underline hover:text-[#6A1B9A] disabled:opacity-50 transition-colors"
+                        >
+                          {row.codigo_comprobante}
+                        </button>
+                      ) : '—'}
+                    </td>
                     <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{row.paciente || '—'}</td>
                     <td className="px-4 py-2.5 text-sm text-gray-600">{row.descripcion_linea || row.motivo_cita || '—'}</td>
                     <td className="px-4 py-2.5 text-center">
@@ -598,6 +625,15 @@ const ReportesVentas = () => {
           </div>
       </div>
     </div>
+
+    {ventaDetalle && (
+      <DetalleVentaModal
+        venta={ventaDetalle}
+        tipo="servicio"
+        onClose={() => setVentaDetalle(null)}
+      />
+    )}
+    </>
   );
 };
 
