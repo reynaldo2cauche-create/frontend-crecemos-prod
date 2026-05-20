@@ -98,3 +98,6 @@ export const listarArchivadas = (params = {}) =>
 
 export const restaurarTarea = (id) =>
   api.patch(`/tareas/${id}/restaurar`).then(r => r.data);
+
+export const archivarTarea = (id) =>
+  api.patch(`/tareas/${id}/archivar`).then(r => r.data);

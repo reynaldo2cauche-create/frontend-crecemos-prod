@@ -5,7 +5,7 @@ import {
   PlayIcon, PauseIcon, ChartBarIcon, XMarkIcon, CheckIcon,
   ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon, Bars3Icon,
   PaperClipIcon, ArrowDownTrayIcon, UserGroupIcon, EllipsisHorizontalIcon,
-  MagnifyingGlassIcon,
+  MagnifyingGlassIcon, ArchiveBoxArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import {
   listarTareas, obtenerColumnas, obtenerPrioridades, crearTarea,
@@ -13,7 +13,7 @@ import {
   pausarTimer, listarComentarios, agregarComentario, obtenerReporteMensual,
   crearColumna, eliminarColumna, reordenarColumnas,
   subirArchivos, listarArchivos, eliminarArchivo, reordenarTareas, eliminarComentario,
-  listarArchivadas, restaurarTarea,
+  listarArchivadas, restaurarTarea, archivarTarea,
 } from '../../services/centroOperativoService';
 import { SERVER_BASE_URL, API_BASE_URL } from '../../services/api';
 import { ROLES } from '../../constants/roles';
@@ -35,7 +35,7 @@ function formatTiempo(segundos) {
 
 function estaVencida(tarea) {
   if (!tarea.fecha_limite) return false;
-  if (tarea.columna?.es_final) return false;
+  if (tarea.columna?.es_final || Number(tarea.columna?.es_final) === 1) return false;
   return new Date(tarea.fecha_limite) < new Date();
 }
 
@@ -238,7 +238,7 @@ function Notificacion({ notif }) {
 
 // ─── Tarjeta de tarea ─────────────────────────────────────────────────────────
 
-function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, onDragOverCard, puedeTimer, puedeEditar, puedeEliminar, isDragOver }) {
+function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, onDragOverCard, puedeTimer, puedeEditar, puedeEliminar, isDragOver }) {
   const vencida = estaVencida(tarea);
   const miTimer = tarea.mi_timer ?? null;
   const tiempo = useTiempoVivo(miTimer);
@@ -333,6 +333,13 @@ function TareaCard({ tarea, onEditar, onEliminar, onToggleTimer, onVerDetalle, o
               <button onClick={() => onEditar(tarea)}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
                 <PencilIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {puedeEliminar && (
+              <button onClick={() => onArchivar?.(tarea.id)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                title="Archivar tarea">
+                <ArchiveBoxArrowDownIcon className="w-3.5 h-3.5" />
               </button>
             )}
             {puedeEliminar && (
@@ -474,7 +481,17 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
 
           {/* Asignaciones */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Asignar a</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Asignar a</label>
+              <button type="button" onClick={() => {
+                const nuevos = usuarios
+                  .filter(u => !form.asignaciones.some(a => a.tipo === 'usuario' && Number(a.id) === Number(u.id)))
+                  .map(u => ({ tipo: 'usuario', id: u.id }));
+                set('asignaciones', [...form.asignaciones, ...nuevos]);
+              }} className="text-[10px] font-semibold text-[#7B1FA2] hover:underline">
+                + Asignar a todos
+              </button>
+            </div>
             <div className="flex gap-2 mb-2">
               <select value={nuevaAsig.tipo} onChange={e => setNuevaAsig(p => ({ ...p, tipo: e.target.value, id: '' }))}
                 className="border border-gray-200 rounded-xl px-2.5 py-2 text-sm outline-none focus:border-[#7B1FA2] bg-white">
@@ -558,7 +575,7 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
 
 // ─── Modal detalle + comentarios ──────────────────────────────────────────────
 
-function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, puedeEditar, puedeEliminarTarea, onEditar, onEliminar, showNotif, currentUserId, esAdmin }) {
+function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, puedeEditar, puedeEliminarTarea, onEditar, onEliminar, onArchivar, showNotif, currentUserId, esAdmin }) {
   const [comentarios, setComentarios] = useState([]);
   const [nuevo, setNuevo] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -651,6 +668,13 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                   className="p-2 rounded-xl hover:bg-purple-50 text-gray-400 hover:text-[#7B1FA2] transition-colors"
                   title="Editar tarea">
                   <PencilIcon className="w-4 h-4" />
+                </button>
+              )}
+              {puedeEliminarTarea && (
+                <button onClick={() => { onCerrar(); onArchivar?.(tarea.id); }}
+                  className="p-2 rounded-xl hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-colors"
+                  title="Archivar tarea">
+                  <ArchiveBoxArrowDownIcon className="w-4 h-4" />
                 </button>
               )}
               {puedeEliminarTarea && (
@@ -1253,7 +1277,7 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
 
 // ─── Vista por persona (tipo agenda) ─────────────────────────────────────────
 
-function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onEliminar, onToggleTimer, onVerDetalle, admin, currentUser, esAsignadoATarea, esCreadorDeTarea, personaVista, onPersonaChange }) {
+function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onEliminar, onArchivar, onToggleTimer, onVerDetalle, admin, currentUser, esAsignadoATarea, esCreadorDeTarea, personaVista, onPersonaChange }) {
   const opciones = [
     ...usuarios.map(u => ({
       key: `u_${u.id}`, tipo: 'usuario', id: u.id,
@@ -1267,10 +1291,21 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
 
   const persona = opciones.find(p => p.key === personaVista) ?? null;
 
+  const userIdsDelRol = persona?.tipo === 'rol'
+    // eslint-disable-next-line eqeqeq
+    ? new Set(usuarios.filter(u => u.rol_id == persona.id).map(u => u.id))
+    : null;
+
   const tareasPersona = persona
-    ? tareas.filter(t => t.asignaciones?.some(a =>
-        persona.tipo === 'usuario' ? a.usuario_id === persona.id : a.rol_id === persona.id
-      ))
+    ? tareas.filter(t => t.asignaciones?.some(a => {
+        if (persona.tipo === 'usuario') {
+          // eslint-disable-next-line eqeqeq
+          return a.usuario_id == persona.id;
+        }
+        // Para rol: verificar por rol_id en la asignación O por usuario_id de usuarios con ese rol
+        // eslint-disable-next-line eqeqeq
+        return a.rol_id == persona.id || (userIdsDelRol && userIdsDelRol.has(a.usuario_id));
+      }))
     : [];
 
   return (
@@ -1287,7 +1322,7 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-1.5 px-4 py-3 h-full" style={{ minWidth: `${columnas.length * 222 + 32}px` }}>
             {columnas.map(col => {
-              const tareasCol = tareasPersona.filter(t => t.columna_id === col.id);
+              const tareasCol = tareasPersona.filter(t => Number(t.columna_id) === Number(col.id));
               return (
                 <div key={col.id} className="flex-shrink-0 w-[210px] flex flex-col">
                   <div className="flex items-center gap-2 mb-2 px-2 py-2 rounded-xl bg-white border border-transparent"
@@ -1309,6 +1344,7 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
                         <TareaCard key={t.id} tarea={t}
                           onEditar={onEditar}
                           onEliminar={onEliminar}
+                          onArchivar={onArchivar}
                           onToggleTimer={onToggleTimer}
                           onVerDetalle={onVerDetalle}
                           onDragStart={() => {}}
@@ -1438,10 +1474,19 @@ function ArchivadasModal({ prioridades, onCerrar, onRestaurar, showNotif }) {
                           {t.prioridad_nombre}
                         </span>
                       )}
+                      {t.columna_nombre && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                          style={{ backgroundColor: (t.columna_color || '#6B7280') + '22', color: t.columna_color || '#6B7280' }}>
+                          {t.columna_nombre}
+                        </span>
+                      )}
                     </div>
                     {t.descripcion && <p className="text-xs text-gray-400 truncate mb-1">{t.descripcion}</p>}
                     <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                      <span>Completada {t.fecha_completado ? new Date(t.fecha_completado).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
+                      <span>Archivada el {(() => {
+                        const fecha = t.fecha_completado || t.updated_at;
+                        return fecha ? new Date(fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                      })()}</span>
                       {t.crea_nombres && <span>· Creada por {t.crea_nombres} {t.crea_apellidos}</span>}
                     </div>
                   </div>
@@ -1678,7 +1723,27 @@ export default function CentroOperativo() {
     return results;
   })();
 
-  const tareasPorColumna = (colId) => tareasFiltered.filter(t => t.columna_id === colId);
+  const tareasBase = (() => {
+    if (vista === 'personas' && personaVista) {
+      const tipo = personaVista.startsWith('u_') ? 'usuario' : 'rol';
+      const id = Number(personaVista.slice(2));
+      const userIdsDelRolStat = tipo === 'rol'
+        // eslint-disable-next-line eqeqeq
+        ? new Set(usuarios.filter(u => u.rol_id == id).map(u => u.id))
+        : null;
+      return tareasFiltered.filter(t => t.asignaciones?.some(a => {
+        if (tipo === 'usuario') {
+          // eslint-disable-next-line eqeqeq
+          return a.usuario_id == id;
+        }
+        // eslint-disable-next-line eqeqeq
+        return a.rol_id == id || (userIdsDelRolStat && userIdsDelRolStat.has(a.usuario_id));
+      }));
+    }
+    return tareasFiltered;
+  })();
+
+  const tareasPorColumna = (colId) => tareasBase.filter(t => Number(t.columna_id) === Number(colId));
 
   const handleNuevaTareaPersona = (persona) => {
     setAsignadoDefault(persona);
@@ -1708,6 +1773,17 @@ export default function CentroOperativo() {
       cargar();
     } catch {
       showNotif('Error al eliminar', 'error');
+    }
+  };
+
+  const handleArchivar = async (id) => {
+    try {
+      await archivarTarea(id);
+      showNotif('Tarea archivada');
+      setTareaDetalle(null);
+      cargar();
+    } catch {
+      showNotif('Error al archivar', 'error');
     }
   };
 
@@ -1786,16 +1862,9 @@ export default function CentroOperativo() {
     }
   };
 
-  const vencidas = tareas.filter(estaVencida).length;
-  const completadas = tareas.filter(t => t.columna?.es_final && t.columna?.nombre === 'Completado').length;
-  const enCurso = tareas.filter(t => !t.columna?.es_final).length;
-
-  const statChips = [
-    { label: tareas.length, sub: 'Total', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
-    { label: enCurso, sub: 'En curso', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-    { label: completadas, sub: 'Listas', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
-    ...(vencidas > 0 ? [{ label: vencidas, sub: 'Vencidas', color: '#B91C1C', bg: '#FFF5F5', border: '#FECACA' }] : []),
-  ];
+  const totalEnTablero = columnas.reduce((sum, c) => sum + tareasPorColumna(c.id).length, 0);
+  const completadas = columnas.filter(c => c.es_final).reduce((sum, c) => sum + tareasPorColumna(c.id).length, 0);
+  const vencidas = columnas.filter(c => !c.es_final).reduce((sum, c) => sum + tareasPorColumna(c.id).filter(estaVencida).length, 0);
 
   return (
     <div className="flex flex-col bg-gray-50 h-screen lg:h-[calc(100vh-56px)]">
@@ -1811,10 +1880,21 @@ export default function CentroOperativo() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">Centro Operativo</h1>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className="text-xs text-gray-400 font-medium">{tareas.length} tareas</span>
-              {enCurso > 0 && <><span className="text-gray-300 text-xs">·</span><span className="text-xs text-blue-600 font-medium">{enCurso} en curso</span></>}
-              {completadas > 0 && <><span className="text-gray-300 text-xs">·</span><span className="text-xs text-green-600 font-medium">{completadas} listas</span></>}
-              {vencidas > 0 && <><span className="text-gray-300 text-xs">·</span><span className="text-xs text-red-500 font-semibold">{vencidas} vencidas ⚠</span></>}
+              {columnas
+                .map(c => {
+                  const ts = tareasPorColumna(c.id);
+                  return { ...c, count: ts.length, hayVencidas: !c.es_final && ts.some(estaVencida) };
+                })
+                .filter(c => c.count > 0)
+                .map((c, i) => (
+                  <React.Fragment key={c.id}>
+                    {i > 0 && <span className="text-gray-300 text-xs">·</span>}
+                    <span className="text-xs font-semibold" style={{ color: c.color }}>{c.count} {c.nombre}</span>
+                    {c.hayVencidas && <span className="text-[10px] text-red-500 font-bold">⚠</span>}
+                  </React.Fragment>
+                ))
+              }
+              {totalEnTablero === 0 && <span className="text-xs text-gray-300 font-medium">Sin tareas</span>}
             </div>
           </div>
         </div>
@@ -2072,6 +2152,7 @@ export default function CentroOperativo() {
           roles={roles}
           onEditar={setTareaEditar}
           onEliminar={handleEliminar}
+          onArchivar={handleArchivar}
           onToggleTimer={handleToggleTimer}
           onVerDetalle={setTareaDetalle}
           onNuevaTarea={handleNuevaTareaPersona}
@@ -2177,6 +2258,7 @@ export default function CentroOperativo() {
                         <TareaCard key={t.id} tarea={t}
                           onEditar={setTareaEditar}
                           onEliminar={handleEliminar}
+                          onArchivar={handleArchivar}
                           onToggleTimer={handleToggleTimer}
                           onVerDetalle={setTareaDetalle}
                           onDragStart={(tarea) => { draggedTareaRef.current = tarea; setIsDragging(true); }}
@@ -2247,6 +2329,7 @@ export default function CentroOperativo() {
           puedeEliminarTarea={admin}
           onEditar={setTareaEditar}
           onEliminar={handleEliminar}
+          onArchivar={handleArchivar}
           showNotif={showNotif}
           currentUserId={currentUser?.id}
           esAdmin={admin}
