@@ -121,30 +121,24 @@ const HistorialVentasTab = () => {
   };
 
   const handleClickEditar = async (venta) => {
+    let detallesProtegidos = false;
     if (venta.tipo === 'servicio') {
       try {
-        const { tieneCitas, mensaje } = await verificarVentaServicioTieneCitas(venta.id);
-        if (tieneCitas) {
-          setFeedback({ tipo: 'error', mensaje: `❌ No se puede editar: ${mensaje || 'Esta venta tiene citas asociadas'}` });
-          return;
-        }
-      } catch {
-        setFeedback({ tipo: 'error', mensaje: 'Error al verificar la venta' });
-        return;
-      }
-      const { tieneSolicitud, mensaje: msgInforme } = await verificarSolicitudInforme(venta.id);
-      if (tieneSolicitud) {
-        setFeedback({ tipo: 'error', mensaje: `❌ No se puede editar: ${msgInforme || 'Esta venta tiene una solicitud de informe asociada'}` });
-        return;
-      }
+        const { tieneCitas } = await verificarVentaServicioTieneCitas(venta.id);
+        if (tieneCitas) detallesProtegidos = true;
+      } catch { /* continuar sin el flag */ }
+      try {
+        const { tieneSolicitud } = await verificarSolicitudInforme(venta.id);
+        if (tieneSolicitud) detallesProtegidos = true;
+      } catch { /* continuar sin el flag */ }
     }
     try {
       const ventaCompleta = venta.tipo === 'servicio'
         ? await getVentaServicioById(venta.id)
         : await getVentaProductoById(venta.id);
-      setVentaEditar({ ...ventaCompleta, tipo: venta.tipo });
+      setVentaEditar({ ...ventaCompleta, tipo: venta.tipo, tieneCitas: detallesProtegidos });
     } catch {
-      setVentaEditar(venta);
+      setVentaEditar({ ...venta, tieneCitas: detallesProtegidos });
     }
   };
 
@@ -580,6 +574,7 @@ const HistorialVentasTab = () => {
         <EditarVentaModal
           venta={ventaEditar}
           tipo={ventaEditar.tipo}
+          tieneCitas={ventaEditar.tieneCitas}
           onGuardar={handleEditarVenta}
           onClose={() => setVentaEditar(null)}
           loading={procesando}

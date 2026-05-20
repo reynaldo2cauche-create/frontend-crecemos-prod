@@ -146,6 +146,7 @@ const PanelPromociones = ({ promocionesAplicadas, totalDescuento, calculando }) 
 const VenderServiciosTab = ({
   modoEdicion = false,
   ventaExistente = null,
+  tieneCitas = false,
   onGuardarEdicion = null,
   onCancelarEdicion = null,
 }) => {
@@ -864,6 +865,7 @@ const VenderServiciosTab = ({
       if (totalDescuentoPromo > 0) payload.descuento_promocion = parseFloat(totalDescuentoPromo.toFixed(2));
 
       if (modoEdicion && onGuardarEdicion) {
+        if (tieneCitas) delete payload.detalles;
         onGuardarEdicion(payload);
         return;
       }
@@ -1037,7 +1039,7 @@ const VenderServiciosTab = ({
                   <input type="text" value={busqueda}
                     onChange={(e) => { setBusqueda(e.target.value); setMostrarResultados(true); }}
                     onFocus={() => setMostrarResultados(true)}
-                    disabled={!!ventaGuardada && !modoEdicion}
+                    disabled={!!ventaGuardada && !modoEdicion || tieneCitas}
                     placeholder="Buscar servicio, documento o paquete combo..."
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
@@ -1105,6 +1107,14 @@ const VenderServiciosTab = ({
 
             </div>
           </div>
+
+          {/* Aviso de solo lectura en líneas cuando hay citas */}
+          {tieneCitas && (
+            <div className="mx-6 mb-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-center gap-2">
+              <span className="font-semibold">⚠️</span>
+              <span>Los servicios no se pueden modificar porque esta venta tiene citas asignadas. Solo puedes editar pagos, descuentos, notas y datos del pagador.</span>
+            </div>
+          )}
 
           {/* Tabla de líneas */}
           <div className="overflow-x-auto">
@@ -1180,7 +1190,7 @@ const VenderServiciosTab = ({
                           getItemLabel={(p) => `${p.nombres} ${p.apellido_paterno} ${p.apellido_materno || ''}`.trim()}
                           getItemValue={(p) => p.id}
                           getItemSearchText={(p) => `${p.numero_documento || ''} ${p.nombres} ${p.apellido_paterno}`.toLowerCase()}
-                          disabled={!!ventaGuardada && !modoEdicion}
+                          disabled={!!ventaGuardada && !modoEdicion || tieneCitas}
                         />
                       </td>
 
@@ -1191,17 +1201,17 @@ const VenderServiciosTab = ({
                         ) : linea.tipo_venta_servicio_id === TIPOS_VENTA_SERVICIO.PAQUETE ? (
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} disabled={!!ventaGuardada || tieneCitas} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
                               <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
-                              <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                              <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} disabled={!!ventaGuardada || tieneCitas} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
                             </div>
                             <div className="text-xs text-purple-600 mt-1">Paquete {linea.paquete_nombre} (mín. {linea.sesiones_por_paquete})</div>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
+                            <button onClick={() => setSesiones(linea.id, linea.sesiones - 1)} disabled={!!ventaGuardada || tieneCitas} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><MinusIcon className="w-4 h-4 text-gray-600" /></button>
                             <span className="w-12 text-center font-semibold">{linea.sesiones}</span>
-                            <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} disabled={!!ventaGuardada} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
+                            <button onClick={() => setSesiones(linea.id, linea.sesiones + 1)} disabled={!!ventaGuardada || tieneCitas} className="p-1 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"><PlusIcon className="w-4 h-4 text-gray-600" /></button>
                           </div>
                         )}
                       </td>
@@ -1223,13 +1233,13 @@ const VenderServiciosTab = ({
                         ) : (
                           <div className="flex items-center justify-end gap-1">
                             <select value={linea.descuento_tipo} onChange={(e) => setDescuentoLinea(linea.id, e.target.value, linea.descuento_valor)}
-                              disabled={!!ventaGuardada}
+                              disabled={!!ventaGuardada || tieneCitas}
                               className="px-2 py-1 text-xs border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
                               <option value="">-</option><option value="%">%</option><option value="S/">S/</option>
                             </select>
                             <input type="number" step="0.01" min="0" value={linea.descuento_valor}
                               onChange={(e) => setDescuentoLinea(linea.id, linea.descuento_tipo, e.target.value)}
-                              disabled={!!ventaGuardada}
+                              disabled={!!ventaGuardada || tieneCitas}
                               className="w-16 px-2 py-1 text-xs text-right border border-gray-200 rounded disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="0" />
                           </div>
                         )}
@@ -1273,7 +1283,7 @@ const VenderServiciosTab = ({
 
                       {/* Columna Eliminar */}
                       <td className="px-4 py-4">
-                        <button onClick={() => eliminarLinea(linea.id)} disabled={!!ventaGuardada} className="p-1 hover:bg-red-50 rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /></button>
+                        <button onClick={() => eliminarLinea(linea.id)} disabled={!!ventaGuardada || tieneCitas} className="p-1 hover:bg-red-50 rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   );

@@ -4,7 +4,7 @@ import { PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import VenderServiciosTab from '../../pages/Ventas/VenderServiciosTab';
 import VenderProductosTab from '../../pages/Ventas/VenderProductosTab';
 
-const EditarVentaModal = ({ venta, tipo, onGuardar, onClose, loading }) => {
+const EditarVentaModal = ({ venta, tipo, tieneCitas = false, onGuardar, onClose, loading }) => {
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col">
@@ -17,6 +17,11 @@ const EditarVentaModal = ({ venta, tipo, onGuardar, onClose, loading }) => {
             {venta.codigo_comprobante && (
               <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
                 {venta.codigo_comprobante}
+              </span>
+            )}
+            {tieneCitas && (
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">
+                Tiene citas asignadas
               </span>
             )}
           </div>
@@ -34,6 +39,7 @@ const EditarVentaModal = ({ venta, tipo, onGuardar, onClose, loading }) => {
             <VenderServiciosTab
               modoEdicion={true}
               ventaExistente={venta}
+              tieneCitas={tieneCitas}
               onGuardarEdicion={onGuardar}
               onCancelarEdicion={onClose}
             />
