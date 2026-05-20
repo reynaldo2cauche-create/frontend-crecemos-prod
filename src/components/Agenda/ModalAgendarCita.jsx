@@ -452,12 +452,16 @@ const ModalAgendarCita = ({
                 esCitaFinal = true;
                 if (esSesionUnitaria) {
                   mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la ${infoVenta.sesiones_totales === 1 ? 'sesión adquirida' : `última de las *${infoVenta.sesiones_totales} sesiones* adquiridas`}. En caso deseen continuar con sus terapias, les recomendamos coordinar una nueva contratación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+                } else if (infoVenta.informe_verbal_pendiente) {
+                  mensajeUltimaSesion = `\n\n📌 Con esta cita se completan las sesiones de *Evaluación* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Recuerden que aún queda pendiente agendar el *Informe Verbal* incluido en el paquete. Les recomendamos coordinarlo pronto.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
                 } else {
                   mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la última sesión del paquete contratado (${infoVenta.sesiones_totales} sesiones). En caso deseen continuar con sus terapias y mantener su horario habitual, les recomendamos coordinar la renovación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
                 }
-              } else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2) {
+              } else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2 && restantes > 0) {
                 if (esSesionUnitaria) {
                   mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* de las ${infoVenta.sesiones_totales} sesiones adquiridas. Le recomendamos ir coordinando la contratación de más sesiones para continuar con su proceso.`;
+                } else if (infoVenta.informe_verbal_pendiente) {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más de Evaluación* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total), además del *Informe Verbal* incluido en el paquete.`;
                 } else {
                   mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
                 }
