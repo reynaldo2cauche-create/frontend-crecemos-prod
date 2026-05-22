@@ -7,6 +7,9 @@ import {
   CalendarIcon,
   ArrowDownTrayIcon,
   TagIcon,
+  ReceiptPercentIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -58,6 +61,10 @@ const ReportesVentas = () => {
   const [ventaDetalle, setVentaDetalle] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const filasPorPagina = 10;
+
+  const [ticketsHoy, setTicketsHoy] = useState([]);
+  const [loadingHoy, setLoadingHoy] = useState(true);
+  const [expandirHoy, setExpandirHoy] = useState(false);
 
   const abrirDetalle = async (ventaId) => {
     if (!ventaId || cargandoDetalle) return;
@@ -116,6 +123,15 @@ const ReportesVentas = () => {
       }
     };
     cargarSinCita();
+  }, []);
+
+  useEffect(() => {
+    const hoy = new Date().toISOString().split('T')[0];
+    setLoadingHoy(true);
+    getHistorialVentasExcel({ fechaInicio: hoy, fechaFin: hoy, tipo: 'general' })
+      .then(data => setTicketsHoy(Array.isArray(data?.data) ? data.data : []))
+      .catch(() => setTicketsHoy([]))
+      .finally(() => setLoadingHoy(false));
   }, []);
 
   const cargarReportes = async () => {
@@ -199,6 +215,23 @@ const ReportesVentas = () => {
     );
   };
 
+  const getNombreCliente = (v) => {
+    if (v.paciente) return `${v.paciente.nombres || ''} ${v.paciente.apellido_paterno || ''}`.trim();
+    if (v.responsable) return `${v.responsable.nombres || ''} ${v.responsable.apellido_paterno || ''}`.trim();
+    if (v.comprador_externo) return v.comprador_externo.nombre_completo || v.comprador_externo.nombre || '—';
+    return '—';
+  };
+
+  const getResumenItems = (v) => {
+    const detalles = v.detalles || [];
+    if (detalles.length === 0) return 'Sin detalle';
+    const d0 = detalles[0];
+    const desc = d0.descripcionLinea || d0.descripcion_linea
+      || d0.servicio_tarifa?.servicio?.nombre
+      || d0.producto?.nombre || '—';
+    return detalles.length === 1 ? desc : `${desc} +${detalles.length - 1} más`;
+  };
+
   const metricCards = [
     {
       label: 'Total ventas',
@@ -277,6 +310,117 @@ const ReportesVentas = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">Reportes de ventas</h1>
         <p className="text-gray-500 text-sm">Análisis de factibilidad y métricas del negocio</p>
+      </div>
+
+      {/* Tickets de hoy */}
+      <div className="bg-white rounded-2xl shadow-sm border border-indigo-200 overflow-hidden">
+        <div className="px-6 py-4 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ReceiptPercentIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-indigo-900">Tickets generados hoy</h3>
+              <p className="text-xs text-indigo-400 font-medium">
+                {new Date().toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            {!loadingHoy && (
+              <span className="ml-2 px-3 py-1 rounded-full text-sm font-bold bg-indigo-600 text-white">
+                {ticketsHoy.length} ticket{ticketsHoy.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {!loadingHoy && ticketsHoy.length > 0 && (
+            <button
+              onClick={() => setExpandirHoy(e => !e)}
+              className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:text-indigo-800 transition-colors"
+            >
+              {expandirHoy ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+              {expandirHoy ? 'Ocultar' : 'Ver detalle'}
+            </button>
+          )}
+        </div>
+
+        {loadingHoy ? (
+          <div className="flex items-center justify-center py-6 gap-2 text-sm text-gray-400">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-indigo-500 rounded-full animate-spin" />
+            Cargando...
+          </div>
+        ) : ticketsHoy.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">No hay tickets generados hoy</p>
+        ) : (
+          <>
+            {/* Resumen compacto siempre visible */}
+            <div className="px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 border-b border-indigo-50">
+              <div className="text-center">
+                <p className="text-3xl font-black text-indigo-700">{ticketsHoy.length}</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Tickets</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black text-green-600">
+                  {formatCurrency(ticketsHoy.reduce((s, t) => s + parseFloat(t.total || 0), 0))}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total recaudado</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black text-indigo-500">
+                  {ticketsHoy.filter(t => t.tipo === 'servicio').length}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Servicios</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black text-amber-500">
+                  {ticketsHoy.filter(t => t.tipo === 'producto').length}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Productos</p>
+              </div>
+            </div>
+
+            {/* Lista detallada expandible */}
+            {expandirHoy && (
+              <div className="divide-y divide-gray-50">
+                {ticketsHoy.map((v, i) => {
+                  const buyer = getNombreCliente(v);
+                  const hora = v.created_at
+                    ? new Date(v.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                    : '—';
+                  const resumen = getResumenItems(v);
+                  return (
+                    <div key={i} className="px-6 py-3 flex items-start gap-4 hover:bg-indigo-50/40 transition-colors">
+                      <span className="text-xs text-gray-400 font-mono mt-0.5 flex-shrink-0 w-11">{hora}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {v.tipo === 'servicio' && v.id ? (
+                            <button
+                              onClick={() => abrirDetalle(v.id)}
+                              disabled={cargandoDetalle}
+                              className="text-sm font-mono font-bold text-[#7B1FA2] hover:underline disabled:opacity-50"
+                            >
+                              {v.codigo_comprobante || '—'}
+                            </button>
+                          ) : (
+                            <span className="text-sm font-mono font-bold text-gray-700">
+                              {v.codigo_comprobante || '—'}
+                            </span>
+                          )}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-semibold">
+                            {v.tipo_comprobante?.nombre || (v.tipo === 'servicio' ? 'Servicio' : 'Producto')}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-800">{buyer}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{resumen}</p>
+                      </div>
+                      <span className="text-sm font-bold text-green-700 flex-shrink-0 whitespace-nowrap">
+                        {formatCurrency(v.total)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Filtros */}

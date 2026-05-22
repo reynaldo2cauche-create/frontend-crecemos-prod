@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftIcon, ArrowDownTrayIcon, ChevronDownIcon, ChevronRightIcon,
   CalendarDaysIcon, ChartBarIcon, UserIcon, ExclamationTriangleIcon,
-  CheckCircleIcon, ClockIcon, BuildingOfficeIcon,
+  CheckCircleIcon, ClockIcon, BuildingOfficeIcon, BoltIcon,
 } from '@heroicons/react/24/outline';
 import XLSXStyle from 'xlsx-js-style';
 import { listarTareas } from '../../services/centroOperativoService';
@@ -33,24 +33,23 @@ function tareasDeTrabajador(tareas, usuarioId) {
   );
 }
 
+const fmtLimaDate = (d) =>
+  new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(d);
+
 function filtrarPorMes(tareas, mes, anio) {
   return tareas.filter(t => {
-    const fecha = t.fecha_limite || t.created_at;
-    if (!fecha) return false;
-    const d = new Date(fecha);
-    return d.getMonth() + 1 === mes && d.getFullYear() === anio;
+    if (!t.created_at) return false;
+    const str = fmtLimaDate(new Date(t.created_at));
+    const [y, m] = str.split('-').map(Number);
+    return m === mes && y === anio;
   });
 }
 
 function filtrarPorDia(tareas, fechaStr) {
   if (!fechaStr) return [];
-  const [y, m, d] = fechaStr.split('-').map(Number);
-  const dia = new Date(y, m - 1, d);
-  const diaSig = new Date(y, m - 1, d + 1);
   return tareas.filter(t => {
-    if (!t.fecha_limite) return false;
-    const fl = new Date(t.fecha_limite);
-    return fl >= dia && fl < diaSig;
+    if (!t.created_at) return false;
+    return fmtLimaDate(new Date(t.created_at)) === fechaStr;
   });
 }
 
@@ -157,7 +156,7 @@ function exportarExcel({ vista, label, trabajadores, tareasBase }) {
   ws[`A${row}`] = C('Trabajador', S.thL);
   ws[`B${row}`] = C('Estado', S.th);
   ws[`C${row}`] = C('Completadas', S.th);
-  ws[`D${row}`] = C('En progreso', S.th);
+  ws[`D${row}`] = C('Pendientes', S.th);
   ws[`E${row}`] = C('Vencidas', S.th);
   ws[`F${row}`] = C('Tarea', S.thL);
   ws[`G${row}`] = C('Vencimiento', S.th);
@@ -170,7 +169,7 @@ function exportarExcel({ vista, label, trabajadores, tareasBase }) {
     const semCfg = SEM[sem];
     const completadas = tw.filter(estaCompletada).length;
     const vencidas = tw.filter(estaVencida).length;
-    const enProgreso = tw.filter(t => !estaCompletada(t) && !estaVencida(t)).length;
+    const pendientes = tw.filter(t => !estaCompletada(t)).length;
     const nombre = nombreTrabajador(u);
     const isAlt = taskRow % 2 !== 0;
 
@@ -178,7 +177,7 @@ function exportarExcel({ vista, label, trabajadores, tareasBase }) {
       ws[`A${row}`] = C(nombre, S.workerH(semCfg.xlsx));
       ws[`B${row}`] = C(semCfg.label, S.num(semCfg.xlsx));
       ws[`C${row}`] = C(completadas, S.num(semCfg.xlsx));
-      ws[`D${row}`] = C(enProgreso, S.num(semCfg.xlsx));
+      ws[`D${row}`] = C(pendientes, S.num(semCfg.xlsx));
       ws[`E${row}`] = C(vencidas, S.num(semCfg.xlsx));
       ws[`F${row}`] = C('Sin tareas en este período', isAlt ? S.tdAlt : S.td);
       ws[`G${row}`] = C('—', isAlt ? S.tdAltC : S.tdC);
@@ -197,7 +196,7 @@ function exportarExcel({ vista, label, trabajadores, tareasBase }) {
           ws[`A${row}`] = C(nombre, S.workerH(semCfg.xlsx));
           ws[`B${row}`] = C(semCfg.label, S.num(semCfg.xlsx));
           ws[`C${row}`] = C(completadas, S.num(semCfg.xlsx));
-          ws[`D${row}`] = C(enProgreso, S.num(semCfg.xlsx));
+          ws[`D${row}`] = C(pendientes, S.num(semCfg.xlsx));
           ws[`E${row}`] = C(vencidas, S.num(semCfg.xlsx));
         } else {
           ws[`A${row}`] = C('', S.workerH(semCfg.xlsx));
@@ -250,7 +249,7 @@ function WorkerCard({ usuario, tareasW }) {
   const st = SEM[sem];
   const completadas = tareasW.filter(estaCompletada).length;
   const vencidas = tareasW.filter(estaVencida).length;
-  const enProgreso = tareasW.filter(t => !estaCompletada(t) && !estaVencida(t)).length;
+  const pendientes = tareasW.filter(t => !estaCompletada(t)).length;
   const nombre = nombreTrabajador(usuario);
 
   return (
@@ -280,8 +279,8 @@ function WorkerCard({ usuario, tareasW }) {
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Listas</p>
           </div>
           <div className="text-center">
-            <p className="text-xl font-black text-amber-500">{enProgreso}</p>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Progreso</p>
+            <p className="text-xl font-black text-amber-500">{pendientes}</p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Pendientes</p>
           </div>
           <div className="text-center">
             <p className="text-xl font-black text-red-500">{vencidas}</p>
@@ -346,6 +345,7 @@ export default function ReporteActividades() {
   const [trabajadores, setTrabajadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
+  const [expandirHoy, setExpandirHoy] = useState(false);
 
   useEffect(() => {
     setCargando(true);
@@ -367,11 +367,21 @@ export default function ReporteActividades() {
     ? `${MESES[mes - 1]} ${anio}`
     : new Date(fechaDia + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
-  // Estadísticas globales
-  const totalCompletas = tareas.filter(estaCompletada).length;
-  const totalVencidas = tareas.filter(estaVencida).length;
-  const totalProgreso = tareas.filter(t => !estaCompletada(t) && !estaVencida(t)).length;
-  const trabajadoresRojo = trabajadores.filter(u => calcularSemaforo(tareasDeTrabajador(tareasBase, u.id)) === 'rojo').length;
+  // Tareas creadas hoy — compara en zona horaria Lima para que coincida con el servidor
+  const fmtLima = (d) =>
+    new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(d);
+  const hoyLimaStr = fmtLima(new Date());
+  const tareasCreadasHoy = tareas.filter(t => {
+    if (!t.created_at) return false;
+    return fmtLima(new Date(t.created_at)) === hoyLimaStr;
+  });
+
+  // Estadísticas del período seleccionado — cuenta por columna como se ve en el tablero
+  const totalCompletas = tareasBase.filter(estaCompletada).length;
+  const totalVencidas  = tareasBase.filter(estaVencida).length;
+  const totalEnProceso = tareasBase.filter(t =>
+    t.columna?.nombre?.toLowerCase() === 'en proceso'
+  ).length;
 
   const handleExportar = () => {
     setExportando(true);
@@ -448,16 +458,70 @@ export default function ReporteActividades() {
       {!cargando && (
         <div className="flex-shrink-0 px-4 lg:px-8 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Tareas del período', value: tareasBase.length, color: 'text-[#7B1FA2]', bg: 'bg-purple-50', border: 'border-purple-100' },
-            { label: 'Completadas (total)', value: totalCompletas, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-100' },
-            { label: 'En progreso', value: totalProgreso, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-            { label: 'Con vencidas', value: trabajadoresRojo, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100', sub: 'trabajadores' },
+            { label: 'Total tablero', value: tareasBase.length,  color: 'text-[#7B1FA2]', bg: 'bg-purple-50', border: 'border-purple-100' },
+            { label: 'Completadas',  value: totalCompletas,   color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-100' },
+            { label: 'En proceso',   value: totalEnProceso,   color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-100' },
+            { label: 'Vencidas',     value: totalVencidas,    color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-100' },
           ].map(s => (
             <div key={s.label} className={`rounded-2xl border ${s.border} ${s.bg} px-4 py-3 text-center`}>
               <p className={`text-3xl font-black ${s.color}`}>{s.value}</p>
               <p className="text-[11px] font-semibold text-gray-500 mt-0.5">{s.label}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Tareas creadas hoy */}
+      {!cargando && (
+        <div className="flex-shrink-0 px-4 lg:px-8 pb-2">
+          <div className="rounded-2xl border border-blue-200 bg-white overflow-hidden shadow-sm">
+            <button
+              onClick={() => setExpandirHoy(e => !e)}
+              className="w-full flex items-center justify-between px-5 py-3 bg-blue-50 hover:bg-blue-100 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <BoltIcon className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-bold text-blue-900">Tickets creados hoy en el tablero</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white">
+                  {tareasCreadasHoy.length}
+                </span>
+              </div>
+              {expandirHoy
+                ? <ChevronDownIcon className="w-4 h-4 text-blue-500" />
+                : <ChevronRightIcon className="w-4 h-4 text-blue-500" />}
+            </button>
+
+            {expandirHoy && (
+              tareasCreadasHoy.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-5">No se crearon tareas hoy en el tablero</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {tareasCreadasHoy.map(t => {
+                    const completada = estaCompletada(t);
+                    const vencida = estaVencida(t);
+                    const hora = new Date(t.created_at).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <div key={t.id} className="flex items-center gap-3 px-5 py-2.5">
+                        <span className="text-[10px] text-gray-400 font-mono flex-shrink-0 w-10">{hora}</span>
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${completada ? 'bg-green-500' : vencida ? 'bg-red-500' : 'bg-amber-400'}`} />
+                        <span className="flex-1 text-sm text-gray-800 font-medium truncate min-w-0">{t.titulo}</span>
+                        {t.prioridad && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: t.prioridad.color + '22', color: t.prioridad.color }}>
+                            {t.prioridad.nombre}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: (t.columna?.color || '#888') + '22', color: t.columna?.color || '#888' }}>
+                          {t.columna?.nombre || '—'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </div>
         </div>
       )}
 
@@ -489,7 +553,7 @@ export default function ReporteActividades() {
 
             {/* Cards por trabajador */}
             {trabajadores.map(u => {
-              const tw = tareasDeTrabajador(tareasBase, u.id);
+              const tw = tareasDeTrabajador(tareas, u.id);
               return <WorkerCard key={u.id} usuario={u} tareasW={tw} />;
             })}
           </div>

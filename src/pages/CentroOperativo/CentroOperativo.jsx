@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon, ClockIcon, PencilIcon, TrashIcon, ChatBubbleLeftIcon,
   PlayIcon, PauseIcon, ChartBarIcon, XMarkIcon, CheckIcon,
   ExclamationTriangleIcon, CalendarDaysIcon, BuildingOfficeIcon, Bars3Icon,
   PaperClipIcon, ArrowDownTrayIcon, UserGroupIcon, EllipsisHorizontalIcon,
-  MagnifyingGlassIcon, ArchiveBoxArrowDownIcon,
+  MagnifyingGlassIcon, ArchiveBoxArrowDownIcon, ShieldCheckIcon,
+  FunnelIcon, ChevronLeftIcon, ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import {
   listarTareas, obtenerColumnas, obtenerPrioridades, crearTarea,
@@ -15,6 +17,7 @@ import {
   subirArchivos, listarArchivos, eliminarArchivo, reordenarTareas, eliminarComentario,
   listarArchivadas, restaurarTarea, archivarTarea,
 } from '../../services/centroOperativoService';
+import { obtenerHistorial } from '../../services/auditoriaService';
 import { SERVER_BASE_URL, API_BASE_URL } from '../../services/api';
 import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
@@ -52,6 +55,15 @@ function toDatetimeLocalLima(isoUtc) {
     hour: '2-digit', minute: '2-digit',
     hour12: false,
   }).format(new Date(isoUtc)).replace(' ', 'T');
+}
+
+function tiempoRelativo(fechaIso) {
+  if (!fechaIso) return '';
+  const diff = Math.floor((Date.now() - new Date(fechaIso).getTime()) / 1000);
+  if (diff < 60) return 'hace un momento';
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)}min`;
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
+  return `hace ${Math.floor(diff / 86400)}d`;
 }
 
 function formatFileSize(bytes) {
@@ -240,8 +252,10 @@ function Notificacion({ notif }) {
 
 function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onVerDetalle, onDragStart, onDragEnd, onDragOverCard, puedeTimer, puedeEditar, puedeEliminar, isDragOver }) {
   const vencida = estaVencida(tarea);
+  const completada = tarea.columna?.es_final === true;
   const miTimer = tarea.mi_timer ?? null;
-  const tiempo = useTiempoVivo(miTimer);
+  const tiempoMio = useTiempoVivo(miTimer);
+  const tiempoTotal = (tarea.tiempo_otros ?? 0) + tiempoMio;
   const timerActivo = miTimer?.timer_activo ?? false;
   const dias = diasRestantes(tarea.fecha_limite);
 
@@ -254,7 +268,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onV
       onClick={() => onVerDetalle(tarea)}
       className={`group relative mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-md rounded-xl overflow-hidden ${
         isDragOver ? 'shadow-md ring-1 ring-[#7B1FA2]/40 scale-[1.01]' : ''
-      }`}
+      } ${completada ? 'opacity-50 hover:opacity-80' : ''}`}
       style={{
         background: vencida ? '#FFF5F5' : '#ffffff',
         border: vencida ? '1px solid #FECACA' : '1px solid #E5E7EB',
@@ -263,7 +277,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onV
     >
       <div className="p-3">
         {/* Título */}
-        <p className={`text-sm font-semibold leading-snug mb-2 ${vencida ? 'text-red-800' : 'text-gray-800'}`}>
+        <p className={`text-sm font-semibold leading-snug mb-2 break-words ${vencida ? 'text-red-800' : 'text-gray-800'}`}>
           {tarea.titulo}
         </p>
 
@@ -303,6 +317,38 @@ function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onV
           </div>
         )}
 
+        {/* Creado por (solo admin) */}
+        {esAdmin() && tarea.user_crea && (
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 mb-1">
+            <span>Por:</span>
+            <span className="font-medium text-gray-500">
+              {tarea.user_crea.nombres} {tarea.user_crea.apellidos.split(' ')[0]}
+            </span>
+          </div>
+        )}
+
+        {/* Fecha de creación */}
+        {tarea.created_at && (
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 mb-1">
+            <span>Creada:</span>
+            <span className="font-medium text-gray-500">
+              {new Date(tarea.created_at).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        )}
+
+        {/* Último movimiento */}
+        {tarea.user_actua && (
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 mb-1">
+            <span>Movido por</span>
+            <span className="font-medium text-gray-500">
+              {tarea.user_actua.nombres} {tarea.user_actua.apellidos.split(' ')[0]}
+            </span>
+            <span>·</span>
+            <span>{tiempoRelativo(tarea.updated_at)}</span>
+          </div>
+        )}
+
         {/* Footer: prioridad + timer + acciones hover */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-2">
@@ -312,7 +358,7 @@ function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onV
             </span>
             <div className={`flex items-center gap-1 text-[11px] font-medium tabular-nums ${timerActivo ? 'text-green-600' : 'text-gray-400'}`}>
               <ClockIcon className="w-3 h-3" />
-              {formatTiempo(tiempo)}
+              {formatTiempo(tiempoTotal)}
               {timerActivo && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />}
             </div>
             {tarea.archivos?.length > 0 && (
@@ -357,6 +403,182 @@ function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onV
 
 // ─── Modal crear/editar ───────────────────────────────────────────────────────
 
+// ─── DateTimePicker ───────────────────────────────────────────────────────────
+
+const MESES_CAL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function DateTimePicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const pickerRef  = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const limaHoy  = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(new Date());
+  const fechaStr = value ? value.slice(0, 10) : '';
+  const timeStr  = value ? value.slice(11, 16) : '09:00';
+  const [hh, mm] = timeStr.split(':');
+
+  const [viewYear,  setViewYear]  = useState(() => fechaStr ? +fechaStr.slice(0, 4)     : new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => fechaStr ? +fechaStr.slice(5, 7) - 1 : new Date().getMonth());
+  const [calView, setCalView] = useState('day');
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (triggerRef.current?.contains(e.target) || pickerRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleOpen = () => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      const calW = 220;
+      const calH = 270;
+      const left = r.left + calW > window.innerWidth - 8 ? r.right - calW : r.left;
+      const openUp = r.bottom + 6 + calH > window.innerHeight - 8;
+      const top = openUp ? r.top - calH - 6 : r.bottom + 6;
+      setPos({ top: Math.max(8, top), left: Math.max(8, left), width: r.width });
+    }
+    setCalView('day');
+    setOpen(o => !o);
+  };
+
+  const primerDia = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+  const diasMes   = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const selDia = (d) => {
+    const s = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    onChange(`${s}T${timeStr}`);
+    setOpen(false);
+  };
+
+  const atajo = (dias) => {
+    const d = new Date(); d.setDate(d.getDate() + dias);
+    const s = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(d);
+    onChange(`${s}T${timeStr}`);
+    setOpen(false);
+  };
+
+  const prevMes = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); };
+  const nextMes = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); };
+
+  const labelDisplay = fechaStr
+    ? `${new Date(fechaStr + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · ${timeStr}`
+    : null;
+
+  const calendarPortal = open && createPortal(
+    <div ref={pickerRef} style={{ position: 'fixed', top: pos.top, left: pos.left, width: 220, zIndex: 9999 }}
+      className="rounded-xl border border-purple-100 shadow-xl bg-white p-1.5 select-none">
+
+      {/* Header navegación */}
+      <div className="flex items-center justify-between mb-1 px-0.5">
+        <button type="button" onClick={() => calView === 'day' ? prevMes() : setViewYear(y => y - 1)}
+          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 font-bold">‹</button>
+        <button type="button" onClick={() => setCalView(v => v === 'day' ? 'month' : 'day')}
+          className="text-xs font-bold text-gray-800 hover:text-[#7B1FA2] transition-colors px-1">
+          {calView === 'day' ? `${MESES_CAL[viewMonth]} ${viewYear}` : viewYear}
+        </button>
+        <button type="button" onClick={() => calView === 'day' ? nextMes() : setViewYear(y => y + 1)}
+          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 font-bold">›</button>
+      </div>
+
+      {calView === 'month' ? (
+        /* Vista meses */
+        <div className="grid grid-cols-3 gap-1 mb-2">
+          {MESES_CAL.map((m, i) => (
+            <button type="button" key={i} onClick={() => { setViewMonth(i); setCalView('day'); }}
+              className={`py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                i === viewMonth ? 'bg-[#7B1FA2] text-white' : 'hover:bg-purple-50 text-gray-700'
+              }`}>
+              {m.slice(0, 3)}
+            </button>
+          ))}
+        </div>
+      ) : (
+        /* Vista días */
+        <>
+          <div className="grid grid-cols-7">
+            {['L','M','M','J','V','S','D'].map((d, i) => (
+              <div key={i} className="text-center text-[9px] font-semibold text-gray-400 py-0.5">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-px mb-2">
+            {Array(primerDia).fill(null).map((_, i) => <div key={'e' + i} />)}
+            {Array.from({ length: diasMes }, (_, i) => i + 1).map(d => {
+              const dStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              const esSel = dStr === fechaStr;
+              const esHoy = dStr === limaHoy;
+              return (
+                <button type="button" key={d} onClick={() => selDia(d)}
+                  className={`w-full aspect-square flex items-center justify-center rounded text-[11px] font-medium transition-colors ${
+                    esSel ? 'bg-[#7B1FA2] text-white font-bold' :
+                    esHoy ? 'bg-purple-50 text-[#7B1FA2] font-bold ring-1 ring-purple-200' :
+                    'hover:bg-gray-100 text-gray-700'
+                  }`}>
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
+        <ClockIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+        <span className="text-xs text-gray-500 font-semibold flex-shrink-0">Hora</span>
+        <input type="text" inputMode="numeric" placeholder="--"
+          value={fechaStr ? parseInt(hh, 10) : ''}
+          onChange={e => {
+            if (!fechaStr) return;
+            const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+            const h = String(Math.min(23, parseInt(v) || 0)).padStart(2, '0');
+            onChange(`${fechaStr}T${h}:${mm}`);
+          }}
+          className="w-12 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:border-[#7B1FA2] bg-white placeholder-gray-300" />
+        <span className="text-gray-400 font-bold text-base">:</span>
+        <input type="text" inputMode="numeric" placeholder="--"
+          value={fechaStr ? parseInt(mm, 10) : ''}
+          onChange={e => {
+            if (!fechaStr) return;
+            const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+            const m = String(Math.min(59, parseInt(v) || 0)).padStart(2, '0');
+            onChange(`${fechaStr}T${hh}:${m}`);
+          }}
+          className="w-12 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:border-[#7B1FA2] bg-white placeholder-gray-300" />
+        <span className="text-[10px] text-gray-400 font-medium ml-auto">24h</span>
+      </div>
+    </div>,
+    document.body
+  );
+
+  return (
+    <div>
+      <button ref={triggerRef} type="button" onClick={handleOpen}
+        className={`w-full flex items-center gap-2.5 border rounded-xl px-3.5 py-2.5 text-sm text-left transition-all ${
+          open ? 'border-[#7B1FA2] ring-2 ring-purple-50' : 'border-gray-200 hover:border-gray-300'
+        }`}>
+        <CalendarDaysIcon className="w-4 h-4 flex-shrink-0 text-gray-400" />
+        <span className={`flex-1 ${labelDisplay ? 'text-gray-800' : 'text-gray-400'}`}>
+          {labelDisplay || 'Sin fecha límite'}
+        </span>
+        {fechaStr && (
+          <span role="button"
+            onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onChange(''); setOpen(false); }}
+            className="text-gray-300 hover:text-gray-500 flex-shrink-0 cursor-pointer">
+            <XMarkIcon className="w-3.5 h-3.5" />
+          </span>
+        )}
+      </button>
+      {calendarPortal}
+    </div>
+  );
+}
+
+// ─── Modal crear/editar tarea ─────────────────────────────────────────────────
+
 function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsignaciones = [], defaultColumnaId = null, onGuardar, onCerrar, showNotif, onRecargar }) {
   const [form, setForm] = useState({
     titulo: tarea?.titulo || '',
@@ -370,26 +592,32 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
     })) ?? defaultAsignaciones,
   });
   const [guardando, setGuardando] = useState(false);
-  const [nuevaAsig, setNuevaAsig] = useState({ tipo: 'usuario', id: '' });
   const [archivosSeleccionados, setArchivosSeleccionados] = useState([]);
   const fileModalRef = useRef(null);
+  const descRef = useRef(null);
+
+  useEffect(() => {
+    if (descRef.current) {
+      descRef.current.style.height = 'auto';
+      descRef.current.style.height = descRef.current.scrollHeight + 'px';
+    }
+  }, []);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const agregarAsignacion = () => {
-    if (!nuevaAsig.id) return;
-    const yaExiste = form.asignaciones.some(a => a.tipo === nuevaAsig.tipo && String(a.id) === String(nuevaAsig.id));
-    if (yaExiste) return;
-    set('asignaciones', [...form.asignaciones, { tipo: nuevaAsig.tipo, id: Number(nuevaAsig.id) }]);
-    setNuevaAsig(p => ({ ...p, id: '' }));
+  const updateAsig = (i, field, val) => {
+    const updated = form.asignaciones.map((a, j) =>
+      j !== i ? a : field === 'tipo' ? { tipo: val, id: '' } : { ...a, id: Number(val) || val }
+    );
+    set('asignaciones', updated);
   };
-
-  const nombreAsig = (a) => {
-    if (a.tipo === 'usuario') {
-      const u = usuarios.find(u => u.id === a.id);
-      return u ? u.nombre_completo : `Usuario #${a.id}`;
-    }
-    return `Rol: ${roles.find(r => r.id === a.id)?.nombre || a.id}`;
+  const removeAsig = (i) => set('asignaciones', form.asignaciones.filter((_, j) => j !== i));
+  const addAsig = () => set('asignaciones', [...form.asignaciones, { tipo: 'usuario', id: '' }]);
+  const addTodos = () => {
+    const nuevos = usuarios
+      .filter(u => !form.asignaciones.some(a => a.tipo === 'usuario' && Number(a.id) === Number(u.id)))
+      .map(u => ({ tipo: 'usuario', id: u.id }));
+    set('asignaciones', [...form.asignaciones, ...nuevos]);
   };
 
   const handleGuardar = async () => {
@@ -408,7 +636,8 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
       });
       if (archivosSeleccionados.length > 0 && tareaGuardada?.id) {
         try {
-          const res = await subirArchivos(tareaGuardada.id, archivosSeleccionados);
+          const esCreacion = !tarea;
+          await subirArchivos(tareaGuardada.id, archivosSeleccionados, esCreacion);
         } catch (e) {
           showNotif(e?.response?.data?.message || 'Error al subir archivos', 'error');
         }
@@ -423,143 +652,127 @@ function TareaModal({ tarea, columnas, prioridades, usuarios, roles, defaultAsig
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden" onClick={onCerrar}>
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
 
-        {/* Header modal */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="text-base font-bold text-gray-900">{tarea ? 'Editar tarea' : 'Nueva tarea'}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{tarea ? 'Modifica los detalles de la tarea' : 'Completa los datos para crear la tarea'}</p>
+            <p className="text-[11px] text-gray-400">{tarea ? 'Modifica los detalles de la tarea' : 'Completa los datos para crear la tarea'}</p>
           </div>
-          <button onClick={onCerrar} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
+          <button onClick={onCerrar} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-2 space-y-2">
+
           {/* Título */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Título <span className="text-red-500">*</span></label>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Título <span className="text-red-500">*</span></label>
             <input value={form.titulo} onChange={e => set('titulo', e.target.value)}
               placeholder="¿Qué hay que hacer?"
               autoFocus
-              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 transition-all" />
           </div>
 
-          {/* Descripción */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Descripción</label>
-            <textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)}
-              rows={2} placeholder="Detalles adicionales (opcional)..."
-              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] resize-none transition-all" />
-          </div>
-
-          {/* Prioridad + Columna + Fecha */}
+          {/* Prioridad + Columna */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Prioridad</label>
+              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Prioridad</label>
               <select value={form.prioridad_id} onChange={e => set('prioridad_id', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#7B1FA2] bg-white">
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#7B1FA2] bg-white">
                 {prioridades.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Columna</label>
+              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Columna</label>
               <select value={form.columna_id} onChange={e => set('columna_id', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#7B1FA2] bg-white">
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#7B1FA2] bg-white">
                 {columnas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
           </div>
 
+          {/* Fecha límite */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fecha límite</label>
-            <input type="datetime-local" value={form.fecha_limite} onChange={e => set('fecha_limite', e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-[#7B1FA2] transition-all" />
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Fecha límite</label>
+            <DateTimePicker value={form.fecha_limite} onChange={v => set('fecha_limite', v)} />
           </div>
 
-          {/* Asignaciones */}
+          {/* Descripción full-width */}
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Descripción</label>
+            <textarea ref={descRef} value={form.descripcion}
+              onChange={e => set('descripcion', e.target.value)}
+              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+              rows={2} placeholder="Detalles adicionales..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-purple-50 resize-none transition-all overflow-hidden" />
+          </div>
+
+          {/* Asignar a */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Asignar a</label>
-              <button type="button" onClick={() => {
-                const nuevos = usuarios
-                  .filter(u => !form.asignaciones.some(a => a.tipo === 'usuario' && Number(a.id) === Number(u.id)))
-                  .map(u => ({ tipo: 'usuario', id: u.id }));
-                set('asignaciones', [...form.asignaciones, ...nuevos]);
-              }} className="text-[10px] font-semibold text-[#7B1FA2] hover:underline">
-                + Asignar a todos
+              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Asignar a</label>
+              <button type="button" onClick={addTodos}
+                className="text-[10px] font-semibold text-[#7B1FA2] hover:underline">+ Todos</button>
+            </div>
+            <div className="space-y-1.5">
+              {form.asignaciones.map((a, i) => (
+                <div key={i} className="flex gap-1.5 items-center">
+                  <select value={a.tipo} onChange={e => updateAsig(i, 'tipo', e.target.value)}
+                    className="border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-[#7B1FA2] bg-white flex-shrink-0">
+                    <option value="usuario">Usuario</option>
+                    <option value="rol">Rol</option>
+                  </select>
+                  <select value={a.id} onChange={e => updateAsig(i, 'id', e.target.value)}
+                    className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-[#7B1FA2] bg-white">
+                    <option value="">Seleccionar...</option>
+                    {a.tipo === 'usuario'
+                      ? usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)
+                      : roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                  </select>
+                  <button type="button" onClick={() => removeAsig(i)}
+                    className="p-1.5 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                    <XMarkIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={addAsig}
+                className="w-full text-xs text-[#7B1FA2] border border-dashed border-purple-200 rounded-lg py-1.5 hover:bg-purple-50 transition-colors font-medium">
+                + Agregar
               </button>
             </div>
-            <div className="flex gap-2 mb-2">
-              <select value={nuevaAsig.tipo} onChange={e => setNuevaAsig(p => ({ ...p, tipo: e.target.value, id: '' }))}
-                className="border border-gray-200 rounded-xl px-2.5 py-2 text-sm outline-none focus:border-[#7B1FA2] bg-white">
-                <option value="usuario">Usuario</option>
-                <option value="rol">Rol</option>
-              </select>
-              <select value={nuevaAsig.id} onChange={e => setNuevaAsig(p => ({ ...p, id: e.target.value }))}
-                className="flex-1 border border-gray-200 rounded-xl px-2.5 py-2 text-sm outline-none focus:border-[#7B1FA2] bg-white">
-                <option value="">Seleccionar...</option>
-                {nuevaAsig.tipo === 'usuario'
-                  ? usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre_completo}</option>)
-                  : roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-              </select>
-              <button onClick={agregarAsignacion}
-                className="px-3.5 py-2 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-sm font-bold hover:shadow-md transition-all">
-                +
-              </button>
-            </div>
-            {form.asignaciones.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {form.asignaciones.map((a, i) => (
-                  <span key={i} className="flex items-center gap-1 text-xs bg-purple-50 text-[#7B1FA2] px-2.5 py-1 rounded-full font-medium border border-purple-100">
-                    {nombreAsig(a)}
-                    <button onClick={() => set('asignaciones', form.asignaciones.filter((_, j) => j !== i))}
-                      className="hover:text-red-500 transition-colors ml-0.5">
-                      <XMarkIcon className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Archivos adjuntos */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Archivos adjuntos</label>
-            {tarea?.archivos?.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {tarea.archivos.map(a => (
-                  <span key={a.id} className="flex items-center gap-1 text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-full border border-gray-200">
-                    <PaperClipIcon className="w-2.5 h-2.5 flex-shrink-0" />
-                    {a.nombre_original}
-                  </span>
-                ))}
-              </div>
-            )}
-            <label className="flex items-center gap-2 w-fit px-3.5 py-2 border border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#7B1FA2] hover:bg-purple-50 transition-all text-sm text-gray-500 hover:text-[#7B1FA2]">
-              <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
-              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s) seleccionado(s)` : 'Adjuntar archivos'}
+          {/* Archivos */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Archivos</label>
+            <label className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#7B1FA2] hover:bg-purple-50 transition-all text-xs text-gray-500 hover:text-[#7B1FA2]">
+              <PaperClipIcon className="w-3.5 h-3.5 flex-shrink-0" />
+              {archivosSeleccionados.length > 0 ? `${archivosSeleccionados.length} archivo(s)` : 'Adjuntar'}
               <input ref={fileModalRef} type="file" multiple className="hidden"
                 onChange={e => setArchivosSeleccionados(Array.from(e.target.files))} />
             </label>
-            {archivosSeleccionados.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {archivosSeleccionados.map((f, i) => (
-                  <span key={i} className="flex items-center gap-1 text-[10px] bg-purple-50 text-[#7B1FA2] px-2 py-1 rounded-full border border-purple-100">
-                    {f.name}
-                    <button type="button" onClick={() => setArchivosSeleccionados(p => p.filter((_, j) => j !== i))}
-                      className="hover:text-red-500 ml-0.5"><XMarkIcon className="w-3 h-3" /></button>
-                  </span>
-                ))}
-              </div>
-            )}
+            {tarea?.archivos?.map(a => (
+              <span key={a.id} className="flex items-center gap-1 text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-full border border-gray-200">
+                <PaperClipIcon className="w-2.5 h-2.5 flex-shrink-0" />
+                <span className="truncate max-w-[100px]">{a.nombre_original}</span>
+              </span>
+            ))}
+            {archivosSeleccionados.map((f, i) => (
+              <span key={i} className="flex items-center gap-1 text-[10px] bg-purple-50 text-[#7B1FA2] px-2 py-1 rounded-full border border-purple-100">
+                <span className="truncate max-w-[80px]">{f.name}</span>
+                <button type="button" onClick={() => setArchivosSeleccionados(p => p.filter((_, j) => j !== i))}
+                  className="hover:text-red-500 flex-shrink-0"><XMarkIcon className="w-2.5 h-2.5" /></button>
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Footer sticky */}
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100 flex-shrink-0 bg-gray-50 rounded-b-2xl">
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-100 flex-shrink-0 bg-gray-50 rounded-b-2xl">
           <button onClick={onCerrar} className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-200 rounded-xl transition-colors font-medium">
             Cancelar
           </button>
@@ -587,7 +800,8 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
   const fileInputRef = useRef(null);
   const miTimer = tarea.mi_timer ?? null;
   const timerActivo = miTimer?.timer_activo ?? false;
-  const tiempo = useTiempoVivo(miTimer);
+  const tiempoMio = useTiempoVivo(miTimer);
+  const tiempoTotal = (tarea.tiempo_otros ?? 0) + tiempoMio;
 
   useEffect(() => {
     setCargando(true);
@@ -637,15 +851,15 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
 
   return (
     <>
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden" onClick={onCerrar}>
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0"
           style={{ borderLeft: `4px solid ${tarea.prioridad?.color || '#7B1FA2'}` }}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold text-gray-900 leading-snug mb-2">{tarea.titulo}</h2>
+              <h2 className="text-base font-bold text-gray-900 leading-snug mb-2 break-words">{tarea.titulo}</h2>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                   style={{ backgroundColor: tarea.prioridad?.color + '22', color: tarea.prioridad?.color }}>
@@ -693,7 +907,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
 
         <div className="flex-1 overflow-y-auto px-5 pt-3 pb-5 space-y-3">
           {tarea.descripcion && (
-            <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-xl p-3">{tarea.descripcion}</p>
+            <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-xl p-3 break-words">{tarea.descripcion}</p>
           )}
 
           {/* Info grid */}
@@ -712,8 +926,8 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
             <div className={`flex items-center gap-2 p-3 rounded-xl border ${timerActivo ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
               <ClockIcon className="w-4 h-4 flex-shrink-0" />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5">Mi tiempo</p>
-                <p className="text-xs font-bold">{formatTiempo(tiempo)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5">Tiempo total</p>
+                <p className="text-xs font-bold">{formatTiempo(tiempoTotal)}</p>
               </div>
               {timerActivo && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto" />}
             </div>
@@ -737,7 +951,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
           {tarea.user_crea && (
             <p className="text-[11px] text-gray-400">
               Creado por <span className="font-semibold text-gray-600">{tarea.user_crea.nombres} {tarea.user_crea.apellidos}</span>
-              {' · '}{new Date(tarea.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {' · '}{new Date(tarea.created_at).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
 
@@ -858,7 +1072,7 @@ function DetalleModal({ tarea, onCerrar, puedeCommentar, puedeEliminarArchivo, p
                     )}
                   </div>
                   {c.contenido?.trim() && (
-                    <p className="text-xs text-gray-700 leading-relaxed mb-2">{c.contenido}</p>
+                    <p className="text-xs text-gray-700 leading-relaxed mb-2 break-words">{c.contenido}</p>
                   )}
                   {c.archivos?.length > 0 && (
                     <div className="space-y-1 mt-1">
@@ -1026,7 +1240,7 @@ function ReporteModal({ onCerrar }) {
   const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden" onClick={onCerrar}>
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -1120,6 +1334,7 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
   const [guardando, setGuardando] = useState(false);
   const [listaLocal, setListaLocal] = useState(columnas);
   const [dragOver, setDragOver] = useState(null);
+  const [confirmCol, setConfirmCol] = useState(null);
   const dragSrcRef = useRef(null);
 
   useEffect(() => { setListaLocal(columnas); }, [columnas]);
@@ -1139,13 +1354,15 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
     }
   };
 
-  const handleEliminar = async (col) => {
-    if (!window.confirm(`¿Eliminar la columna "${col.nombre}"? Solo se puede eliminar si no tiene tareas.`)) return;
+  const handleEliminar = async () => {
+    if (!confirmCol) return;
     try {
-      await eliminarColumna(col.id);
+      await eliminarColumna(confirmCol.id);
+      setConfirmCol(null);
       showNotif('Columna eliminada');
       onActualizar();
     } catch (e) {
+      setConfirmCol(null);
       showNotif(e?.response?.data?.message || 'No se puede eliminar, tiene tareas asignadas', 'error');
     }
   };
@@ -1182,7 +1399,7 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden" onClick={onCerrar}>
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -1221,7 +1438,7 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
                     <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">Final</span>
                   )}
                 </div>
-                <button onClick={() => handleEliminar(col)}
+                <button onClick={() => setConfirmCol(col)}
                   className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 ml-2">
                   <TrashIcon className="w-4 h-4" />
                 </button>
@@ -1271,6 +1488,36 @@ function ColumnasModal({ columnas, onCerrar, onActualizar, showNotif }) {
           </div>
         </div>
       </div>
+
+      {/* Modal confirmación eliminar columna */}
+      {confirmCol && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setConfirmCol(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <TrashIcon className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Eliminar columna</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              ¿Eliminar la columna <span className="font-semibold text-gray-900">"{confirmCol.nombre}"</span>? Solo se puede eliminar si no tiene tareas asignadas.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmCol(null)}
+                className="flex-1 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                Cancelar
+              </button>
+              <button onClick={handleEliminar}
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1540,6 +1787,208 @@ function ArchivadasModal({ prioridades, onCerrar, onRestaurar, showNotif }) {
           );
         })()}
       </div>
+    </div>
+  );
+}
+
+// ─── Vista Auditoría ──────────────────────────────────────────────────────────
+
+const MODULOS_AUDIT = [
+  { value: '', label: 'Todos los módulos' },
+  { value: 'TAREAS', label: 'Centro Operativo' },
+  { value: 'AUTH', label: 'Autenticación' },
+  { value: 'PACIENTES', label: 'Pacientes' },
+  { value: 'CITAS', label: 'Citas' },
+  { value: 'ARCHIVOS', label: 'Archivos' },
+  { value: 'RRHH', label: 'Recursos Humanos' },
+  { value: 'POSTULACIONES', label: 'Postulaciones' },
+  { value: 'AUDITORIA', label: 'Auditoría' },
+];
+
+const COLORES_MODULO = {
+  TAREAS:        'bg-violet-100 text-violet-700',
+  AUTH:          'bg-green-100 text-green-700',
+  PACIENTES:     'bg-blue-100 text-blue-700',
+  CITAS:         'bg-purple-100 text-purple-700',
+  ARCHIVOS:      'bg-cyan-100 text-cyan-700',
+  RRHH:          'bg-orange-100 text-orange-700',
+  POSTULACIONES: 'bg-emerald-100 text-emerald-700',
+  AUDITORIA:     'bg-red-100 text-red-700',
+};
+
+function AuditoriaView() {
+  const [registros, setRegistros]   = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [page, setPage]             = useState(1);
+  const [loading, setLoading]       = useState(false);
+  const [showFiltros, setShowFiltros] = useState(false);
+  const LIMIT = 20;
+
+  const [filtros, setFiltros] = useState({ modulo: '', busqueda: '', fechaInicio: '', fechaFin: '' });
+  const [tempFiltros, setTempFiltros] = useState({ ...filtros });
+
+  const cargar = useCallback(async (f, p) => {
+    setLoading(true);
+    try {
+      const res = await obtenerHistorial({ ...f, page: p, limit: LIMIT });
+      setRegistros(res.registros || []);
+      setTotal(res.total || 0);
+    } catch { /* silencioso */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { cargar(filtros, page); }, [filtros, page, cargar]);
+
+  const aplicar = () => { setFiltros({ ...tempFiltros }); setPage(1); setShowFiltros(false); };
+  const limpiar = () => { const vacio = { modulo: '', busqueda: '', fechaInicio: '', fechaFin: '' }; setTempFiltros(vacio); setFiltros(vacio); setPage(1); setShowFiltros(false); };
+
+  const totalPages = Math.ceil(total / LIMIT);
+
+  const fmt = (fecha) => {
+    if (!fecha) return '-';
+    const d = new Date(fecha);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
+      {/* Header + controles */}
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <ShieldCheckIcon className="w-5 h-5 text-[#7B1FA2]" />
+          <h2 className="text-base font-bold text-gray-900">Auditoría del sistema</h2>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{total} registros</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Búsqueda rápida */}
+          <div className="relative">
+            <MagnifyingGlassIcon className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input value={tempFiltros.busqueda}
+              onChange={e => setTempFiltros(p => ({ ...p, busqueda: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && aplicar()}
+              placeholder="Buscar usuario, acción..."
+              className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-[#7B1FA2] bg-white w-48" />
+          </div>
+          <button onClick={() => setShowFiltros(f => !f)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl text-xs font-medium transition-colors ${showFiltros ? 'bg-purple-50 border-[#7B1FA2] text-[#7B1FA2]' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+            <FunnelIcon className="w-3.5 h-3.5" /> Filtros
+          </button>
+          <button onClick={() => cargar(filtros, page)}
+            className="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
+            <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Panel de filtros */}
+      {showFiltros && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Módulo</label>
+            <select value={tempFiltros.modulo} onChange={e => setTempFiltros(p => ({ ...p, modulo: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#7B1FA2] bg-white">
+              {MODULOS_AUDIT.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Desde</label>
+            <input type="date" value={tempFiltros.fechaInicio} onChange={e => setTempFiltros(p => ({ ...p, fechaInicio: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#7B1FA2] bg-white" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Hasta</label>
+            <input type="date" value={tempFiltros.fechaFin} onChange={e => setTempFiltros(p => ({ ...p, fechaFin: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#7B1FA2] bg-white" />
+          </div>
+          <div className="flex items-end gap-2">
+            <button onClick={aplicar}
+              className="flex-1 py-1.5 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-lg text-xs font-semibold transition-all hover:shadow-md">
+              Aplicar
+            </button>
+            <button onClick={limpiar}
+              className="flex-1 py-1.5 border border-gray-200 text-gray-500 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors">
+              Limpiar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {loading && registros.length === 0 ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-8 h-8 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin" />
+          </div>
+        ) : registros.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+            <ShieldCheckIcon className="w-10 h-10 mb-2 text-gray-200" />
+            <p className="text-sm font-medium">Sin registros</p>
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Fecha</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Usuario</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Módulo</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Acción</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Descripción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {registros.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{fmt(r.fechaHora)}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                        {(r.trabajador?.nombres?.[0] || '?').toUpperCase()}
+                      </span>
+                      <span className="font-medium text-gray-700 truncate max-w-[120px]">
+                        {r.trabajador ? `${r.trabajador.nombres} ${r.trabajador.apellidos}` : `#${r.trabajadorId}`}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${COLORES_MODULO[r.modulo] || 'bg-gray-100 text-gray-600'}`}>
+                      {r.modulo}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 font-medium text-gray-700 whitespace-nowrap">{r.accion}</td>
+                  <td className="px-4 py-2.5 text-gray-500 max-w-[260px] truncate" title={r.descripcion}>{r.descripcion}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-xs text-gray-400">Página {page} de {totalPages} · {total} registros</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+              <ChevronLeftIcon className="w-3.5 h-3.5" />
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const p = page <= 3 ? i + 1 : page + i - 2;
+              if (p < 1 || p > totalPages) return null;
+              return (
+                <button key={p} onClick={() => setPage(p)}
+                  className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${p === page ? 'bg-[#7B1FA2] text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  {p}
+                </button>
+              );
+            })}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+              <ChevronRightIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1907,6 +2356,11 @@ export default function CentroOperativo() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'kanban' ? 'bg-[#7B1FA2] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                 Tablero
               </button>
+              <button onClick={() => { setVista('auditoria'); setPersonaVista(''); }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${vista === 'auditoria' ? 'bg-[#7B1FA2] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                <ShieldCheckIcon className="w-3.5 h-3.5" />
+                Auditoría
+              </button>
               <div className="relative" ref={menuPersonasRef}>
                 <button
                   onClick={() => { setVista('personas'); setMenuPersonas(m => !m); }}
@@ -2144,6 +2598,8 @@ export default function CentroOperativo() {
             ))}
           </div>
         </div>
+      ) : vista === 'auditoria' ? (
+        <AuditoriaView />
       ) : vista === 'personas' ? (
         <VistaPorPersonas
           tareas={tareasFiltered}

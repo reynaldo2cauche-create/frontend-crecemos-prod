@@ -77,10 +77,11 @@ export const eliminarColumna = (id) =>
 export const listarArchivos = (tareaId) =>
   api.get(`/tareas/${tareaId}/archivos`).then(r => r.data);
 
-export const subirArchivos = (tareaId, files) => {
+export const subirArchivos = (tareaId, files, skipNotification = false) => {
   const form = new FormData();
   files.forEach(f => form.append('archivos', f));
-  return api.post(`/tareas/${tareaId}/archivos`, form, {
+  const url = skipNotification ? `/tareas/${tareaId}/archivos?nonotif=1` : `/tareas/${tareaId}/archivos`;
+  return api.post(url, form, {
     headers: { 'Content-Type': undefined },
   }).then(r => r.data);
 };
