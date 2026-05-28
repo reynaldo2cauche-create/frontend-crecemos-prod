@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
@@ -144,6 +144,7 @@ const EditarPacientePage = () => {
   const [modalEliminarServicio, setModalEliminarServicio] = useState({ open: false, servicio: null });
   const [errorModal, setErrorModal] = useState({ open: false, message: '', title: 'Error' });
   const [mostrarErrorEnModal, setMostrarErrorEnModal] = useState(false);
+  const [nombreCopiado, setNombreCopiado] = useState(false);
   // ============== NUEVOS ESTADOS PARA CONVENIOS ==============
 const [conveniosDisponibles, setConveniosDisponibles] = useState([]);
 const [conveniosPaciente, setConveniosPaciente] = useState([]);
@@ -803,9 +804,27 @@ const handleEliminarConvenio = async () => {
       </div>
 
       <div className="min-w-0 flex-1">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5 break-words line-clamp-2">
-          {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
-        </h1>
+        <div className="flex items-center gap-2 mb-1.5">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 break-words line-clamp-2">
+            {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
+          </h1>
+          <button
+            onClick={() => {
+              const nombre = `${paciente.nombres} ${paciente.apellido_paterno} ${paciente.apellido_materno}`.trim();
+              navigator.clipboard.writeText(nombre).then(() => {
+                setNombreCopiado(true);
+                setTimeout(() => setNombreCopiado(false), 2000);
+              });
+            }}
+            className="flex-shrink-0 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+            title="Copiar nombre"
+          >
+            {nombreCopiado
+              ? <Check className="w-4 h-4 text-green-500" />
+              : <Copy className="w-4 h-4" />
+            }
+          </button>
+        </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
           <div className="flex items-center gap-1.5">
             <span className="font-medium text-gray-400">Edad:</span>

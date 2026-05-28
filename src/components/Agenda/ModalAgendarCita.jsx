@@ -425,52 +425,89 @@ const ModalAgendarCita = ({
 
         const saludo = obtenerSaludo();
 
-        // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
-       // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
+        // 🎯 VERIFICAR ÚLTIMA/PENÚLTIMA SESIÓN PARA TODAS LAS CITAS DEL DÍA
         let mensajeUltimaSesion = '';
         let esCitaFinal = false;
         try {
-          if (citaEditando.venta_servicio_detalle_id) {
-            const infoVenta = await getInfoVentaDeCita(citaEditando.id);
+          const citasConVenta = citasMismoDia.filter(c => c.venta_servicio_detalle_id);
+          if (citasConVenta.length > 0) {
+            const infoVentas = await Promise.all(
+              citasConVenta.map(c => getInfoVentaDeCita(c.id).catch(() => null))
+            );
 
-            console.log('🔍 DEBUG sesiones:', {
-              restantes: infoVenta?.sesiones_restantes,
-              totales: infoVenta?.sesiones_totales,
-              es_penultima: infoVenta?.es_penultima_cita,
-              es_ultima: infoVenta?.es_ultima_cita,
-              tipo_venta: infoVenta?.tipo_venta_id
-            });
-            if (infoVenta) {
-              const restantes = infoVenta.sesiones_restantes || 0;
+            const ultimasSesiones = [];
+            const penultimasSesiones = [];
+
+            infoVentas.forEach((infoVenta, idx) => {
+              if (!infoVenta) return;
+              const cita = citasConVenta[idx];
               const esSesionUnitaria = infoVenta.tipo_venta_id === 1;
-
-              const esPenultimaManual = !infoVenta.es_penultima_cita &&
-                                        !infoVenta.es_ultima_cita &&
-                                        restantes === 1;
+              const restantes = infoVenta.sesiones_restantes || 0;
+              const esPenultimaManual = !infoVenta.es_penultima_cita && !infoVenta.es_ultima_cita && restantes === 1;
 
               if (infoVenta.es_ultima_cita) {
-                esCitaFinal = true;
-                if (esSesionUnitaria) {
-                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la ${infoVenta.sesiones_totales === 1 ? 'sesión adquirida' : `última de las *${infoVenta.sesiones_totales} sesiones* adquiridas`}. En caso deseen continuar con sus terapias, les recomendamos coordinar una nueva contratación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
-                } else if (infoVenta.informe_verbal_pendiente) {
-                  mensajeUltimaSesion = `\n\n📌 Con esta cita se completan las sesiones de *Evaluación* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Recuerden que aún queda pendiente agendar el *Informe Verbal* incluido en el paquete. Les recomendamos coordinarlo pronto.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
-                } else {
-                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la última sesión del paquete contratado (${infoVenta.sesiones_totales} sesiones). En caso deseen continuar con sus terapias y mantener su horario habitual, les recomendamos coordinar la renovación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
-                }
+                ultimasSesiones.push({ infoVenta, cita, esSesionUnitaria });
               } else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2 && restantes > 0) {
-                if (esSesionUnitaria) {
-                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* de las ${infoVenta.sesiones_totales} sesiones adquiridas. Le recomendamos ir coordinando la contratación de más sesiones para continuar con su proceso.`;
-                } else if (infoVenta.informe_verbal_pendiente) {
-                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más de Evaluación* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total), además del *Informe Verbal* incluido en el paquete.`;
-                } else {
-                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
-                }
-              } else if (restantes > 0) {
+                penultimasSesiones.push({ infoVenta, cita, esSesionUnitaria });
+              } else if (restantes > 0 && citasMismoDia.length === 1) {
                 if (esSesionUnitaria) {
                   mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar de las ${infoVenta.sesiones_totales} sesiones adquiridas.`;
                 } else {
                   mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar del paquete contratado (${infoVenta.sesiones_totales} sesiones en total).`;
                 }
+              }
+            });
+
+            const hayVariasCitas = citasMismoDia.length > 1;
+
+            if (ultimasSesiones.length > 0) {
+              esCitaFinal = true;
+              if (ultimasSesiones.length === 1) {
+                const { infoVenta, cita, esSesionUnitaria } = ultimasSesiones[0];
+                const sujeto = hayVariasCitas ? `la cita de *${getServicioConMotivo(cita)}*` : 'esta';
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que ${sujeto} corresponde a la ${infoVenta.sesiones_totales === 1 ? 'sesión adquirida' : `última de las *${infoVenta.sesiones_totales} sesiones* adquiridas`}. En caso deseen continuar con sus terapias, les recomendamos coordinar una nueva contratación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+                } else if (infoVenta.informe_verbal_pendiente) {
+                  mensajeUltimaSesion = `\n\n📌 Con ${sujeto} se completan las sesiones de *Evaluación* del paquete contratado (${infoVenta.sesiones_totales} sesiones). Recuerden que aún queda pendiente agendar el *Informe Verbal* incluido en el paquete. Les recomendamos coordinarlo pronto.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que ${sujeto} corresponde a la última sesión del paquete contratado (${infoVenta.sesiones_totales} sesiones). En caso deseen continuar con sus terapias y mantener su horario habitual, les recomendamos coordinar la renovación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+                }
+              } else {
+                const listaUltimas = ultimasSesiones.map(({ infoVenta, cita, esSesionUnitaria }) => {
+                  const svc = getServicioConMotivo(cita);
+                  if (esSesionUnitaria) {
+                    return `• La cita de *${svc}* corresponde a la ${infoVenta.sesiones_totales === 1 ? 'sesión adquirida' : `última de las *${infoVenta.sesiones_totales} sesiones* adquiridas`}.`;
+                  } else if (infoVenta.informe_verbal_pendiente) {
+                    return `• Con la cita de *${svc}* se completan las sesiones de *Evaluación* del paquete (${infoVenta.sesiones_totales} sesiones). Aún queda pendiente el *Informe Verbal*.`;
+                  } else {
+                    return `• La cita de *${svc}* corresponde a la última sesión del paquete contratado (${infoVenta.sesiones_totales} sesiones).`;
+                  }
+                }).join('\n');
+                mensajeUltimaSesion = `\n\n📌 Le comentamos también que:\n${listaUltimas}\n\nEn caso deseen continuar con sus terapias y mantener su horario habitual, les recomendamos coordinar la renovación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+              }
+            } else if (penultimasSesiones.length > 0) {
+              if (penultimasSesiones.length === 1) {
+                const { infoVenta, cita, esSesionUnitaria } = penultimasSesiones[0];
+                const sujeto = hayVariasCitas ? `la cita de *${getServicioConMotivo(cita)}*` : 'esta cita';
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de ${sujeto}, solo quedará *1 sesión más* de las ${infoVenta.sesiones_totales} sesiones adquiridas. Le recomendamos ir coordinando la contratación de más sesiones para continuar con su proceso.`;
+                } else if (infoVenta.informe_verbal_pendiente) {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de ${sujeto}, solo quedará *1 sesión más de Evaluación* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total), además del *Informe Verbal* incluido en el paquete.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de ${sujeto}, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
+                }
+              } else {
+                const listaPenultimas = penultimasSesiones.map(({ infoVenta, cita, esSesionUnitaria }) => {
+                  const svc = getServicioConMotivo(cita);
+                  if (esSesionUnitaria) {
+                    return `• De las ${infoVenta.sesiones_totales} sesiones de *${svc}*, solo quedará *1 sesión más*.`;
+                  } else if (infoVenta.informe_verbal_pendiente) {
+                    return `• Del paquete de *${svc}* (${infoVenta.sesiones_totales} sesiones), solo quedará *1 sesión más de Evaluación* y el *Informe Verbal*.`;
+                  } else {
+                    return `• Del paquete de *${svc}* (${infoVenta.sesiones_totales} sesiones), solo quedará *1 sesión más* por agendar.`;
+                  }
+                }).join('\n');
+                mensajeUltimaSesion = `\n\n📌 *Recordatorio:*\n${listaPenultimas}`;
               }
             }
           }
