@@ -110,7 +110,7 @@ const GestionArchivosOficiales = () => {
       return {};
     }
   });
-  const [copiado, setCopiado] = useState(false);
+  const [copiadoId, setCopiadoId] = useState(null);
 
   useEffect(() => {
     if (datosInicializados) return;
@@ -380,13 +380,14 @@ const GestionArchivosOficiales = () => {
     handleMenuClose();
   };
 
-  // ✅ Función para copiar código de validación
-  const copiarCodigo = (codigo) => {
-    navigator.clipboard.writeText(codigo).then(() => {
-      setCopiado(true);
+  // ✅ Función para copiar texto con animación de confirmación por botón
+  const copiarTexto = (texto, id = 'default') => {
+    if (!texto) return;
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiadoId(id);
       setSuccess('Código copiado al portapapeles');
       setTimeout(() => {
-        setCopiado(false);
+        setCopiadoId((actual) => (actual === id ? null : actual));
         setSuccess('');
       }, 2000);
     }).catch(err => {
@@ -1247,14 +1248,15 @@ const GestionArchivosOficiales = () => {
                         <div className="flex items-center gap-3">
                           <p className="text-2xl font-mono font-bold text-green-600 flex-1">{codigoGeneradoPreview}</p>
                           <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(codigoGeneradoPreview);
-                              setSuccess('Código copiado');
-                              setTimeout(() => setSuccess(''), 3000);
-                            }}
-                            className="p-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
+                            onClick={() => copiarTexto(codigoGeneradoPreview, 'preview')}
+                            title="Copiar código"
+                            className={`p-2.5 rounded-lg transition-all ${copiadoId === 'preview' ? 'bg-green-600 text-white scale-110' : 'bg-green-500 text-white hover:bg-green-600'}`}
                           >
-                            <Copy className="w-4 h-4" />
+                            {copiadoId === 'preview' ? (
+                              <CheckCircle2 className="w-4 h-4" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -1723,12 +1725,12 @@ const GestionArchivosOficiales = () => {
                     <p className="text-3xl font-mono font-bold text-white">{modalVer.codigoValidacion}</p>
                   </div>
                   <button
-                    onClick={() => copiarCodigo(modalVer.codigoValidacion)}
+                    onClick={() => copiarTexto(modalVer.codigoValidacion, 'modalVer')}
                     className="ml-4 p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all group"
                     title="Copiar código"
                   >
-                    {copiado ? (
-                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    {copiadoId === 'modalVer' ? (
+                      <CheckCircle2 className="w-5 h-5 text-white scale-110 transition-transform" />
                     ) : (
                       <Copy className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
                     )}
@@ -2129,15 +2131,20 @@ const GestionArchivosOficiales = () => {
               </div>
 
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(codigoGenerado?.codigoValidacion);
-                  setSuccess('Código copiado');
-                  setTimeout(() => setSuccess(''), 3000);
-                }}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-200 transition-all mx-auto mb-4"
+                onClick={() => copiarTexto(codigoGenerado?.codigoValidacion, 'exito')}
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all mx-auto mb-4 ${copiadoId === 'exito' ? 'bg-green-100 text-green-700 scale-105' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               >
-                <Copy className="w-4 h-4" />
-                Copiar Código
+                {copiadoId === 'exito' ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    ¡Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copiar Código
+                  </>
+                )}
               </button>
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
