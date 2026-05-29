@@ -48,6 +48,8 @@ const HistorialVentasTab = () => {
   const [totalVentas, setTotalVentas]       = useState(0);
   const [totalMontoFiltrado, setTotalMontoFiltrado] = useState(0);
   const [totalMontoGlobal, setTotalMontoGlobal] = useState(0);
+  const [totalServicios, setTotalServicios] = useState(0);
+  const [totalProductos, setTotalProductos] = useState(0);
   const [loading, setLoading]               = useState(true);
   const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '', metodoPagoId: '' });
   const [modalidades, setModalidades]       = useState([]);
@@ -86,6 +88,24 @@ const HistorialVentasTab = () => {
       setTotalVentas(res.total || 0);
       setTotalMontoFiltrado(res.totalMonto || 0);
       setTotalMontoGlobal(res.totalMontoGlobal || 0);
+
+      // Totales por tipo sobre todo el conjunto filtrado (no solo la página visible)
+      if (res.totalServicios != null && res.totalProductos != null) {
+        setTotalServicios(res.totalServicios);
+        setTotalProductos(res.totalProductos);
+      } else if (filtros.tipo === 'servicios') {
+        setTotalServicios(res.total || 0);
+        setTotalProductos(0);
+      } else if (filtros.tipo === 'productos') {
+        setTotalServicios(0);
+        setTotalProductos(res.total || 0);
+      } else {
+        // 'todos': consulta ligera para contar servicios y deducir productos
+        const resServ = await getHistorialVentas({ ...params, tipo: 'servicios', page: 0, limit: 1 });
+        const servicios = resServ.total || 0;
+        setTotalServicios(servicios);
+        setTotalProductos(Math.max((res.total || 0) - servicios, 0));
+      }
     } catch (err) { console.error('Error cargando ventas:', err); }
     finally { setLoading(false); }
   };
@@ -226,8 +246,8 @@ const HistorialVentasTab = () => {
             {[
               { label: 'Total Ventas',   value: totalVentas,             icon: <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" />, bg: 'bg-[#7B1FA2]/10' },
               { label: 'Total Ingresos', value: formatMonto(totalMonto), icon: <span className="text-lg font-bold text-green-600">S/</span>, bg: 'bg-green-50' },
-              { label: 'Servicios',      value: historialData.filter(v => v.tipo === 'servicio').length, icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
-              { label: 'Productos',      value: historialData.filter(v => v.tipo === 'producto').length, icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
+              { label: 'Servicios',      value: totalServicios, icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+              { label: 'Productos',      value: totalProductos, icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
             ].map((s, i) => (
               <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
                 <div className="flex items-center gap-3">
