@@ -1,140 +1,94 @@
 // ============================================
 // src/utils/pdfWatermark.js
-// Utilidad para agregar marca de agua a PDFs
 // ============================================
 
-import { PDFDocument, rgb, degrees } from 'pdf-lib';
+import { PDFDocument, degrees } from 'pdf-lib';
 
-/**
- * Carga una imagen como bytes
- * @param {string} imagePath - Ruta de la imagen
- * @returns {Promise<ArrayBuffer>} - Bytes de la imagen
- */
 async function loadImageAsBytes(imagePath) {
   const response = await fetch(imagePath);
   return await response.arrayBuffer();
 }
 
-/**
- * Agrega marca de agua a un PDF
- * @param {ArrayBuffer} pdfBytes - Bytes del PDF original
- * @param {Object} options - Opciones de marca de agua
- * @returns {Uint8Array} - PDF con marca de agua
- */
-export async function addWatermarkToPDF(pdfBytes, options = {}) {
-  try {
-    const {
-      codigo = '',
-      opacity = 0.8,
-      logoPath = '/assets/img/documento-logo.webp',
-      logoWidth = 200,
-      logoHeight = 200,
-      distributeAcrossPage = true,
-      rotation = 45
-    } = options;
+function buildWatermarkGrid(width, height, logoWidth, logoHeight) {
+  const positions = [];
+  const cols = 4;
+  const rows = 5;
 
-    // Cargar el PDF
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pages = pdfDoc.getPages();
-
-    // Cargar el logo
-    let logo;
-    try {
-      const logoBytes = await loadImageAsBytes(logoPath);
-      logo = await pdfDoc.embedPng(logoBytes);
-    } catch (error) {
-      console.error('Error cargando logo, usando texto como fallback:', error);
-      logo = null;
+  for (let col = 0; col < cols; col++) {
+    for (let row = 0; row < rows; row++) {
+      positions.push({
+        x: (col / (cols - 1)) * width,
+        y: (row / (rows - 1)) * height,
+      });
     }
-
-    // Procesar cada página
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const { width, height } = page.getSize();
-
-      if (distributeAcrossPage && logo) {
-        // Marca de agua distribuida en diagonal profesional
-        // Patrón diagonal que cubre toda la página uniformemente
-        const diagonal = [
-          { x: width * 0.15, y: height * 0.75 },
-          { x: width * 0.50, y: height * 0.75 },
-          { x: width * 0.85, y: height * 0.75 },
-
-          { x: width * 0.15, y: height * 0.50 },
-          { x: width * 0.50, y: height * 0.50 },
-          { x: width * 0.85, y: height * 0.50 },
-
-          { x: width * 0.15, y: height * 0.25 },
-          { x: width * 0.50, y: height * 0.25 },
-          { x: width * 0.85, y: height * 0.25 },
-        ];
-
-        diagonal.forEach(pos => {
-          page.drawImage(logo, {
-            x: pos.x - (logoWidth / 2),
-            y: pos.y - (logoHeight / 2),
-            width: logoWidth,
-            height: logoHeight,
-            opacity: opacity,
-            rotate: degrees(rotation),
-          });
-        });
-      } else if (logo) {
-        // Marca de agua central única
-        const centerX = width / 2 - logoWidth / 2;
-        const centerY = height / 2 - logoHeight / 2;
-
-        page.drawImage(logo, {
-          x: centerX,
-          y: centerY,
-          width: logoWidth,
-          height: logoHeight,
-          opacity: opacity,
-          rotate: degrees(rotation),
-        });
-      }
-    }
-
-    // Retornar el PDF modificado
-    const modifiedPdfBytes = await pdfDoc.save();
-    return modifiedPdfBytes;
-
-  } catch (error) {
-    console.error('Error al agregar marca de agua:', error);
-    throw error;
   }
+
+  return positions;
 }
 
-/**
- * Agrega marca de agua y descarga el PDF
- * @param {Blob} pdfBlob - Blob del PDF original
- * @param {string} filename - Nombre del archivo
- * @param {Object} watermarkOptions - Opciones de marca de agua
- */
-export async function downloadPDFWithWatermark(pdfBlob, filename, watermarkOptions = {}) {
+export async function addWatermarkToPDF(pdfBytes, options = {}) {
+  const {
+    opacity              = 0.25,
+    logoPath             = '/assets/img/documento-logo.webp',
+    logoWidth            = 130,
+    logoHeight           = 130,
+    distributeAcrossPage = true,
+    rotation             = 40,
+  } = options;
+
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const pages  = pdfDoc.getPages();
+
+  // Cargar logo una sola vez
+  let logo = null;
   try {
-    // Convertir Blob a ArrayBuffer
-    const arrayBuffer = await pdfBlob.arrayBuffer();
-
-    // Agregar marca de agua
-    const modifiedPdfBytes = await addWatermarkToPDF(arrayBuffer, watermarkOptions);
-
-    // Crear nuevo Blob
-    const modifiedBlob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
-
-    // Descargar
-    const url = window.URL.createObjectURL(modifiedBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-    return { success: true, filename };
+    const logoBytes = await loadImageAsBytes(logoPath);
+    try {
+      logo = await pdfDoc.embedPng(logoBytes);
+    } catch {
+      logo = await pdfDoc.embedJpg(logoBytes);
+    }
   } catch (error) {
-    console.error('Error al descargar PDF con marca de agua:', error);
-    throw error;
+    console.error('Error cargando logo:', error);
   }
+
+  if (!logo) throw new Error('No se pudo cargar el logo para la marca de agua.');
+
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+
+    const positions = distributeAcrossPage
+      ? buildWatermarkGrid(width, height, logoWidth, logoHeight)
+      : [{ x: width / 2, y: height / 2 }];
+
+    for (const { x, y } of positions) {
+      page.drawImage(logo, {
+        x:       x - logoWidth  / 2,
+        y:       y - logoHeight / 2,
+        width:   logoWidth,
+        height:  logoHeight,
+        opacity: opacity,
+        rotate:  degrees(rotation),
+      });
+    }
+  }
+
+  return await pdfDoc.save();
+}
+
+export async function downloadPDFWithWatermark(pdfBlob, filename, watermarkOptions = {}) {
+  const arrayBuffer   = await pdfBlob.arrayBuffer();
+  const modifiedBytes = await addWatermarkToPDF(arrayBuffer, watermarkOptions);
+  const modifiedBlob  = new Blob([modifiedBytes], { type: 'application/pdf' });
+
+  const url  = window.URL.createObjectURL(modifiedBlob);
+  const link = document.createElement('a');
+  link.href  = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+
+  return { success: true, filename };
 }

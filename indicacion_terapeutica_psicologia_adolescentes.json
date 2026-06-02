@@ -1,0 +1,421 @@
+[
+  [],
+  [
+    null,
+    null,
+    "INDICACIÓN TERAPEUTICA",
+    null,
+    null,
+    null,
+    "Fecha:"
+  ],
+  [
+    null,
+    null,
+    "PSICOLOGÍA ADOLESCENTES",
+    null,
+    null,
+    null,
+    "Hora:"
+  ],
+  [],
+  [
+    "Paciente:"
+  ],
+  [],
+  [
+    "Terapeuta:"
+  ],
+  [],
+  [
+    "Especialidad:"
+  ],
+  [],
+  [
+    "Citas:"
+  ],
+  [
+    "TIPO:",
+    "EVALUACIÓN ",
+    null,
+    null,
+    null,
+    "TERAPIA"
+  ],
+  [],
+  [
+    "CANT. DE CITAS",
+    null,
+    null,
+    null,
+    "CANT. DE CITAS"
+  ],
+  [],
+  [
+    "FRECUENCIA:",
+    null,
+    null,
+    null,
+    "FRECUENCIA:"
+  ],
+  [],
+  [],
+  [],
+  [],
+  [
+    "Referencias:"
+  ],
+  [
+    "Internas:",
+    null,
+    null,
+    null,
+    "Externas:"
+  ],
+  [
+    false,
+    "Terapia de lenguaje",
+    null,
+    null,
+    false,
+    "Neuropediatra"
+  ],
+  [
+    false,
+    "Terapia ocupacional",
+    null,
+    null,
+    false,
+    "Neuropsicología"
+  ],
+  [
+    false,
+    "Psicología (Conducta / aprendizaje)",
+    null,
+    null,
+    false,
+    "Psiquiatria"
+  ],
+  [
+    false,
+    "Terapia de pareja / T.Familiar"
+  ],
+  [
+    false,
+    "Psicoterapia individual",
+    null,
+    null,
+    false,
+    "Otros:"
+  ],
+  [],
+  [],
+  [
+    "Recomendaciones:"
+  ],
+  [
+    "Asistir puntualmente a todas las sesiones para garantizar el progreso continuo del adolescente"
+  ],
+  [
+    "Evitar faltar sin previo aviso; las inasistencias afectan el ritmo del tratamiento."
+  ],
+  [
+    "Practicar en casa los ejercicios o actividades recomendadas por la terapeuta."
+  ],
+  [],
+  [
+    false,
+    "Evitar confrontaciones inmediatas después de la terapia; darle espacio para procesar la sesión."
+  ],
+  [
+    false,
+    "Respetar el espacio terapéutico del adolescente, evitando presionarlo a contar lo que trabaja en consulta."
+  ],
+  [
+    false,
+    "Tener paciencia y expectativas realistas; los cambios emocionales y conductuales son graduales."
+  ],
+  [
+    false,
+    "Informar sobre cualquier cambio emocional, médico o escolar relevante que pueda influir en el proceso terapéutico."
+  ],
+  [
+    false,
+    "Cumplir con las tareas o pautas sugeridas por el terapeuta, cuando estas involucren a la familia."
+  ],
+  [
+    false,
+    "Otros:"
+  ],
+  [],
+  [],
+  [
+    "Materiales:"
+  ],
+  [
+    false,
+    "Hojas bond",
+    null,
+    null,
+    false,
+    "Otros:"
+  ],
+  [
+    false,
+    "Plumones",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Lápiz y borrador",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Cartulina Duplex",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Cuaderno",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Folder",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Fotos",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Botella con agua"
+  ],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [],
+  [
+    null,
+    null,
+    "INDICACIÓN TERAPEUTICA",
+    null,
+    null,
+    null,
+    "Fecha:"
+  ],
+  [
+    null,
+    null,
+    "PSICOLOGÍA ADOLESCENTES",
+    null,
+    null,
+    null,
+    "Hora:"
+  ],
+  [],
+  [
+    "Paciente:"
+  ],
+  [],
+  [
+    "Terapeuta:"
+  ],
+  [],
+  [
+    "Especialidad:"
+  ],
+  [],
+  [
+    "Citas:"
+  ],
+  [
+    "TIPO:",
+    "EVALUACIÓN ",
+    null,
+    null,
+    null,
+    "TERAPIA"
+  ],
+  [],
+  [
+    "CANT. DE CITAS",
+    null,
+    null,
+    null,
+    "CANT. DE CITAS"
+  ],
+  [],
+  [
+    "FRECUENCIA:",
+    null,
+    null,
+    null,
+    "FRECUENCIA:"
+  ],
+  [],
+  [],
+  [],
+  [],
+  [
+    "Referencias:"
+  ],
+  [
+    "Internas:",
+    null,
+    null,
+    null,
+    "Externas:"
+  ],
+  [
+    false,
+    "Terapia de lenguaje",
+    null,
+    null,
+    false,
+    "Neuropediatra"
+  ],
+  [
+    false,
+    "Terapia ocupacional",
+    null,
+    null,
+    false,
+    "Nueropsicología"
+  ],
+  [
+    false,
+    "Psicología (Conducta / aprendizaje)",
+    null,
+    null,
+    false,
+    "Psiquiatria"
+  ],
+  [
+    false,
+    "Terapia de pareja / T.Familiar"
+  ],
+  [
+    false,
+    "Psicoterapia individual",
+    null,
+    null,
+    false,
+    "Otros:"
+  ],
+  [],
+  [],
+  [
+    "Recomendaciones:"
+  ],
+  [
+    "Asistir puntualmente a todas las sesiones para garantizar el progreso continuo del adolescente"
+  ],
+  [
+    "Evitar faltar sin previo aviso; las inasistencias afectan el ritmo del tratamiento."
+  ],
+  [
+    "Practicar en casa los ejercicios o actividades recomendadas por la terapeuta."
+  ],
+  [],
+  [
+    false,
+    "Evitar confrontaciones inmediatas después de la terapia; darle espacio para procesar la sesión."
+  ],
+  [
+    false,
+    "Respetar el espacio terapéutico del adolescente, evitando presionarlo a contar lo que trabaja en consulta."
+  ],
+  [
+    false,
+    "Tener paciencia y expectativas realistas; los cambios emocionales y conductuales son graduales."
+  ],
+  [
+    false,
+    "Informar sobre cualquier cambio emocional, médico o escolar relevante que pueda influir en el proceso terapéutico."
+  ],
+  [
+    false,
+    "Cumplir con las tareas o pautas sugeridas por el terapeuta, cuando estas involucren a la familia."
+  ],
+  [
+    false,
+    "Otros:"
+  ],
+  [],
+  [],
+  [
+    "Materiales:"
+  ],
+  [
+    false,
+    "Hojas bond",
+    null,
+    null,
+    false,
+    "Otros:"
+  ],
+  [
+    false,
+    "Plumones",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Lápiz y borrador",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Cartulina Duplex",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Cuaderno",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Folder",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Fotos",
+    null,
+    null,
+    false
+  ],
+  [
+    false,
+    "Botella con agua"
+  ]
+]

@@ -5,11 +5,18 @@ import { initializePageScripts } from '../utils/initScripts';
 
 export default function BlogPage() {
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
+  const [paginaActual, setPaginaActual] = useState(1);
+  const postsPorPagina = 9; // 3 filas x 3 columnas
 
   useEffect(() => {
     initializePageScripts();
     window.scrollTo(0, 0);
   }, []);
+
+  // Reset a página 1 cuando cambia la categoría
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [categoriaActiva]);
 
   const categoriasBlog = [
     {
@@ -64,6 +71,27 @@ export default function BlogPage() {
 
   // Obtener posts filtrados por categoría
   const postsFiltrados = getBlogsByCategory(categoriaActiva);
+
+  // Calcular paginación
+  const totalPaginas = Math.ceil(postsFiltrados.length / postsPorPagina);
+  const indexUltimoPost = paginaActual * postsPorPagina;
+  const indexPrimerPost = indexUltimoPost - postsPorPagina;
+  const postsPaginados = postsFiltrados.slice(indexPrimerPost, indexUltimoPost);
+
+  // Función para cambiar de página
+  const cambiarPagina = (numeroPagina) => {
+    setPaginaActual(numeroPagina);
+    // Scroll suave a la sección de posts
+    const element = document.getElementById('blog-posts');
+    if (element) {
+      const offset = 100; // offset para el header
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   return (
     <main className="main">
@@ -273,8 +301,8 @@ export default function BlogPage() {
           </div>
 
           <div className="row gy-4">
-            {postsFiltrados.length > 0 ? (
-              postsFiltrados.map((post, index) => (
+            {postsPaginados.length > 0 ? (
+              postsPaginados.map((post, index) => (
                 <div className="col-lg-4 col-md-6" key={post.id} data-aos="fade-up" data-aos-delay={index * 100}>
                   <article className="blog-card">
                     <div className="blog-card-img">
@@ -341,6 +369,67 @@ export default function BlogPage() {
               </div>
             )}
           </div>
+
+          {/* Paginación */}
+          {totalPaginas > 1 && (
+            <div className="row mt-5">
+              <div className="col-12">
+                <nav aria-label="Paginación del blog">
+                  <ul className="pagination-blog">
+                    {/* Botón Anterior */}
+                    <li className={paginaActual === 1 ? 'disabled' : ''}>
+                      <button
+                        onClick={() => cambiarPagina(paginaActual - 1)}
+                        disabled={paginaActual === 1}
+                        aria-label="Página anterior"
+                      >
+                        <i className="bi bi-chevron-left"></i>
+                      </button>
+                    </li>
+
+                    {/* Números de página */}
+                    {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((numero) => {
+                      // Mostrar siempre primera, última, actual y adyacentes
+                      if (
+                        numero === 1 ||
+                        numero === totalPaginas ||
+                        (numero >= paginaActual - 1 && numero <= paginaActual + 1)
+                      ) {
+                        return (
+                          <li key={numero} className={paginaActual === numero ? 'active' : ''}>
+                            <button
+                              onClick={() => cambiarPagina(numero)}
+                              aria-label={`Página ${numero}`}
+                              aria-current={paginaActual === numero ? 'page' : undefined}
+                            >
+                              {numero}
+                            </button>
+                          </li>
+                        );
+                      } else if (
+                        numero === paginaActual - 2 ||
+                        numero === paginaActual + 2
+                      ) {
+                        return <li key={numero} className="ellipsis"><span>...</span></li>;
+                      }
+                      return null;
+                    })}
+
+                    {/* Botón Siguiente */}
+                    <li className={paginaActual === totalPaginas ? 'disabled' : ''}>
+                      <button
+                        onClick={() => cambiarPagina(paginaActual + 1)}
+                        disabled={paginaActual === totalPaginas}
+                        aria-label="Página siguiente"
+                      >
+                        <i className="bi bi-chevron-right"></i>
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -516,6 +605,80 @@ export default function BlogPage() {
           transform: translateX(4px);
         }
 
+        .pagination-blog {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .pagination-blog li {
+          display: inline-block;
+        }
+
+        .pagination-blog li.ellipsis span {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 45px;
+          height: 45px;
+          color: #666;
+          font-weight: 600;
+        }
+
+        .pagination-blog button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 45px;
+          height: 45px;
+          padding: 0 16px;
+          background: white;
+          border: 2px solid #e9ecef;
+          border-radius: 12px;
+          color: #666;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .pagination-blog button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(194, 99, 249, 0.2);
+          border-color: #c263f9;
+          color: #c263f9;
+          background: white;
+        }
+
+        .pagination-blog li.active button {
+          background: linear-gradient(135deg, #c263f9 0%, #d99ffd 100%);
+          border-color: #c263f9;
+          color: white;
+          box-shadow: 0 4px 16px rgba(194, 99, 249, 0.3);
+        }
+
+        .pagination-blog li.active button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(194, 99, 249, 0.4);
+        }
+
+        .pagination-blog button:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+          background: #f8f9fa;
+          border-color: #e9ecef;
+          color: #adb5bd;
+        }
+
+        .pagination-blog button i {
+          font-size: 1.1rem;
+        }
+
         @media (max-width: 768px) {
           .categories-filter {
             gap: 8px;
@@ -542,6 +705,24 @@ export default function BlogPage() {
 
           .blog-card-title {
             font-size: 1.1rem;
+          }
+
+          .pagination-blog {
+            gap: 6px;
+          }
+
+          .pagination-blog button {
+            min-width: 40px;
+            height: 40px;
+            padding: 0 12px;
+            font-size: 0.85rem;
+            border-radius: 10px;
+          }
+
+          .pagination-blog li.ellipsis span {
+            width: 40px;
+            height: 40px;
+            font-size: 0.85rem;
           }
         }
       `}</style>

@@ -1,8 +1,13 @@
 import api from './api';
+import cacheManager from '../utils/cacheManager';
 
 // Obtener todos los trabajadores
 export const getTrabajadores = async () => {
+  const cacheKey = 'trabajadores:todos';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
   const response = await api.get('/trabajadores');
+  cacheManager.set(cacheKey, response.data, 10 * 60 * 1000); // 10 minutos
   return response.data;
 };
 
@@ -333,3 +338,8 @@ export const abrirArchivo = async (archivoNombre) => {
     }
   }
 };
+
+
+export const getSubordinados = (jefeId) =>
+  api.get(`/trabajadores/${jefeId}/subordinados`).then(r => r.data);
+

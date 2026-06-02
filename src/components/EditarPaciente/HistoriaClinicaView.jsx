@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Activity, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User, FileCheck } from 'lucide-react';
 import { guardarReporteEvolucion, actualizarReporteEvolucion, obtenerReporteEvolucion } from '../../services/historiaClinicaService';
 import { getServiciosPorPaciente } from '../../services/pacienteService';
 
@@ -8,6 +8,9 @@ import EntrevistaPadresView from './HistoriaClinicaView/components/EntrevistaPad
 import ReporteEvolucion from './HistoriaClinicaView/components/ReporteEvolucion';
 import { calcularEdad } from '../../utils/date';
 import EvaluacionTerapiaOcupacional from './HistoriaClinicaView/components/EvaluacionTOcupacionalView';
+import IndicacionTerapeuticaView from './HistoriaClinicaView/components/IndicacionTerapeuticaView';
+import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
+import SolicitudInformeView from './HistoriaClinicaView/components/SolicitudInformeView';
 
 const HistoriaClinicaView = ({ paciente, user }) => {
   const [serviciosPaciente, setServiciosPaciente] = useState([]);
@@ -287,7 +290,7 @@ const HistoriaClinicaView = ({ paciente, user }) => {
     switch (tabId) {
       case 'reporte-evolucion':
         return (
-          <ReporteEvolucion 
+          <ReporteEvolucion
             paciente={paciente}
             user={user}
             loading={loading}
@@ -305,8 +308,14 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         );
       case 'entrevista-padres':
         return <EntrevistaPadresView paciente={paciente} user={user} />;
+      case 'entrevista-adultos':
+        return <EntrevistaAdultos pacienteId={paciente?.id} usuarioId={user?.id} user={user} />;
       case 'evaluacion-terapia-ocupacional':
         return <EvaluacionTerapiaOcupacional pacienteId={paciente?.id} usuarioId={user?.id} user={user} />;
+      case 'indicacion-terapeutica':
+        return <IndicacionTerapeuticaView paciente={paciente} user={user} />;
+      case 'solicitud-informe':
+        return <SolicitudInformeView paciente={paciente} user={user} />;
       default:
         return <div>Contenido no encontrado</div>;
     }
@@ -336,12 +345,36 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       visible: visibleTabs.some(tab => tab.id === 'entrevista-padres')
     },
     {
+      id: 'entrevista-adultos',
+      title: 'Entrevista Psicológica para Adultos',
+      description: 'Registro completo de evaluación psicológica para pacientes adultos',
+      icon: User,
+      color: 'purple',
+      visible: true // Siempre visible
+    },
+    {
       id: 'evaluacion-terapia-ocupacional',
       title: 'Evaluación de Terapia Ocupacional',
       description: 'Evaluación completa de terapia ocupacional',
       icon: Activity,
       color: 'purple',
       visible: visibleTabs.some(tab => tab.id === 'evaluacion-terapia-ocupacional')
+    },
+    {
+      id: 'indicacion-terapeutica',
+      title: 'Indicación Terapéutica',
+      description: 'Prescripción de sesiones y recomendaciones terapéuticas',
+      icon: ClipboardList,
+      color: 'purple',
+      visible: true // Siempre visible
+    },
+    {
+      id: 'solicitud-informe',
+      title: 'Solicitud de Informe',
+      description: 'Gestión de solicitudes de informes terapéuticos',
+      icon: FileCheck,
+      color: 'purple',
+      visible: true // Siempre visible
     }
   ].filter(s => s.visible);
 

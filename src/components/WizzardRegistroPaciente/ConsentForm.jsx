@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Form, Button, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import { useFormContext } from 'react-hook-form';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { SERVER_BASE_URL } from '../../services/api';
 import '../../styles/global.css';
 
 const SITE_KEY = '6Lck2jErAAAAAPqJ463t1EaXqMjlyTO15JMVZSqs';
+const IS_DEV = SERVER_BASE_URL.includes('localhost');
 
 const ConsentForm = ({ onSubmit, onBack, captchaValue, setCaptchaValue }) => {
   const { register, formState: { errors }, watch, setValue, handleSubmit } = useFormContext();
@@ -13,6 +15,10 @@ const ConsentForm = ({ onSubmit, onBack, captchaValue, setCaptchaValue }) => {
 
   const handleFormSubmit = async (data) => {
     setCaptchaError('');
+    if (!IS_DEV && !captchaValue) {
+      setCaptchaError('Por favor completa la verificación reCAPTCHA antes de continuar.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onSubmit(data);
@@ -96,22 +102,24 @@ const ConsentForm = ({ onSubmit, onBack, captchaValue, setCaptchaValue }) => {
           </Form.Group>
         </div>
 
-        {/* reCAPTCHA */}
-        <div className="captcha-wrapper">
-          <ReCAPTCHA
-            sitekey={SITE_KEY}
-            onChange={value => {
-              setCaptchaValue(value);
-              setCaptchaError('');
-            }}
-            theme="light"
-          />
-          {captchaError && (
-            <Alert variant="danger" className="mt-2 mb-0">
-              {captchaError}
-            </Alert>
-          )}
-        </div>
+        {/* reCAPTCHA — solo en producción */}
+        {!IS_DEV && (
+          <div className="captcha-wrapper">
+            <ReCAPTCHA
+              sitekey={SITE_KEY}
+              onChange={value => {
+                setCaptchaValue(value);
+                setCaptchaError('');
+              }}
+              theme="light"
+            />
+            {captchaError && (
+              <Alert variant="danger" className="mt-2 mb-0">
+                {captchaError}
+              </Alert>
+            )}
+          </div>
+        )}
 
         {/* Info de seguridad */}
         <div className="security-badge">

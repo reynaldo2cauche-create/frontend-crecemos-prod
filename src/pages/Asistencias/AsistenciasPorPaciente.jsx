@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { UserGroupIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import api, { obtenerAsistenciasPorPaciente } from '../../services/api';
+import { UserGroupIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import api, { obtenerAsistenciasPorPaciente, modificarAsistenciaAdmin } from '../../services/api';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+
+const ESTADO_ASISTIO = 7;
+const ESTADO_SESION_DICTADA = 6;
 
 const AsistenciasPorPaciente = () => {
+  const currentUser = useCurrentUser();
   const [pacientes, setPacientes] = useState([]);
   const [pacienteFiltrado, setPacienteFiltrado] = useState([]);
   const [busquedaPaciente, setBusquedaPaciente] = useState('');
@@ -13,6 +18,8 @@ const AsistenciasPorPaciente = () => {
   const [fechaFin, setFechaFin] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [modalEditar, setModalEditar] = useState(null);
+  const [editando, setEditando] = useState(false);
   const [estadisticas, setEstadisticas] = useState({
     total: 0,
     completadas: 0,
@@ -23,7 +30,6 @@ const AsistenciasPorPaciente = () => {
   useEffect(() => {
     cargarPacientes();
 
-    // Establecer fechas por defecto (semana actual: lunes a sábado)
     const hoy = new Date();
     const diaSemana = hoy.getDay();
 
@@ -48,23 +54,47 @@ const AsistenciasPorPaciente = () => {
   useEffect(() => {
     if (busquedaPaciente.trim() === '') {
       setPacienteFiltrado([]);
+    } else if (pacienteSeleccionado && busquedaPaciente === pacienteSeleccionado.nombre_completo) {
+      setPacienteFiltrado([]);
     } else {
+      const busquedaLower = busquedaPaciente.toLowerCase().trim();
+      const terminos = busquedaLower.split(/\s+/).filter(t => t.length > 0);
+
       const filtrados = pacientes.filter(p => {
-        const nombreCompleto = p.nombre_completo || '';
         const documento = p.numero_documento || p.documento || '';
-        return (
-          nombreCompleto.toLowerCase().includes(busquedaPaciente.toLowerCase()) ||
-          documento.includes(busquedaPaciente)
-        );
+
+        // Si busca por documento
+        if (documento.includes(busquedaPaciente)) {
+          return true;
+        }
+
+        // Búsqueda inteligente por nombre (cada palabra en cualquier campo)
+        const nombres = (p.nombres || '').toLowerCase();
+        const apellidoPaterno = (p.apellido_paterno || '').toLowerCase();
+        const apellidoMaterno = (p.apellido_materno || '').toLowerCase();
+
+        // Si es un solo término, buscar en cualquier campo
+        if (terminos.length === 1) {
+          return nombres.includes(terminos[0]) ||
+                 apellidoPaterno.includes(terminos[0]) ||
+                 apellidoMaterno.includes(terminos[0]);
+        }
+
+        // Si son múltiples términos, cada uno debe estar en algún campo
+        return terminos.every(termino => {
+          return nombres.includes(termino) ||
+                 apellidoPaterno.includes(termino) ||
+                 apellidoMaterno.includes(termino);
+        });
       });
+
       setPacienteFiltrado(filtrados);
     }
-  }, [busquedaPaciente, pacientes]);
+  }, [busquedaPaciente, pacientes, pacienteSeleccionado]);
 
   const cargarPacientes = async () => {
     try {
       const response = await api.get('/pacientes');
-      // Agregar nombre_completo a cada paciente
       const pacientesConNombre = response.data.map(p => ({
         ...p,
         nombre_completo: `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.trim()
@@ -75,7 +105,17 @@ const AsistenciasPorPaciente = () => {
     }
   };
 
-  const cargarAsistencias = async (pacienteId) => {
+  const calcularEstadisticas = (data) => {
+    const total = data.length;
+    const completadas = data.filter(a => a.terapeuta_estado_id === 7 && a.recepcion_estado_id === 7).length;
+    const sesionDictada = data.filter(a => a.recepcion_estado_id === 6 || a.terapeuta_estado_id === 6).length;
+    // Pendiente = al menos uno de los dos no marcó
+    const pendientes = data.filter(a => !a.recepcion_marco || !a.terapeuta_marco).length;
+
+    setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
+  };
+
+  const cargarAsistencias = async (pacienteId, resetPage = true) => {
     if (!fechaInicio || !fechaFin) {
       alert('Seleccione un rango de fechas');
       return;
@@ -84,23 +124,21 @@ const AsistenciasPorPaciente = () => {
     setCargando(true);
     try {
       const data = await obtenerAsistenciasPorPaciente(pacienteId, fechaInicio, fechaFin);
-      setAsistencias(data.asistencias || []);
-      calcularEstadisticas(data.asistencias || []);
+
+      // ✅ Solo mostrar citas donde al menos uno marcó
+      const conRegistro = (data.asistencias || []).filter(
+        a => a.recepcion_marco == 1 || a.terapeuta_marco == 1
+      );
+
+      setAsistencias(conRegistro);
+      calcularEstadisticas(conRegistro);
+      if (resetPage) setPage(0);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
       alert('Error al cargar asistencias');
     } finally {
       setCargando(false);
     }
-  };
-
-  const calcularEstadisticas = (data) => {
-    const total = data.length;
-    const completadas = data.filter(a => a.terapeuta_estado_id === 7 && a.recepcion_estado_id === 7).length;
-    const sesionDictada = data.filter(a => a.recepcion_estado_id === 6 || a.terapeuta_estado_id === 6).length;
-    const pendientes = data.filter(a => !a.terapeuta_marco || !a.recepcion_marco).length;
-
-    setEstadisticas({ total, completadas, noAsistio: sesionDictada, pendientes });
   };
 
   const seleccionarPaciente = (paciente) => {
@@ -120,6 +158,33 @@ const AsistenciasPorPaciente = () => {
     }).replace(',', '');
   };
 
+  const abrirEditar = (asistencia) => {
+    setModalEditar({
+      citaId: asistencia.cita_id,
+      recepcion: asistencia.recepcion_marco == 1 ? (asistencia.recepcion_estado_id ?? '') : '',
+      terapeuta: asistencia.terapeuta_marco == 1 ? (asistencia.terapeuta_estado_id ?? '') : '',
+    });
+  };
+
+  const guardarEdicion = async () => {
+    if (!modalEditar) return;
+    setEditando(true);
+    try {
+      await modificarAsistenciaAdmin(
+        modalEditar.citaId,
+        modalEditar.recepcion === '' ? null : Number(modalEditar.recepcion),
+        modalEditar.terapeuta === '' ? null : Number(modalEditar.terapeuta),
+        currentUser?.id
+      );
+      setModalEditar(null);
+      await cargarAsistencias(pacienteSeleccionado.id, false);
+    } catch (err) {
+      alert('Error al guardar los cambios');
+    } finally {
+      setEditando(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -131,7 +196,6 @@ const AsistenciasPorPaciente = () => {
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Buscador de Paciente */}
           <div className="md:col-span-2 relative">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Buscar Paciente
@@ -142,18 +206,17 @@ const AsistenciasPorPaciente = () => {
                 value={busquedaPaciente}
                 onChange={(e) => setBusquedaPaciente(e.target.value)}
                 placeholder="Nombre o DNI del paciente"
-                className="w-full px-4 py-2.5 pl-10 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2.5 pr-10 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Dropdown de resultados */}
             {pacienteFiltrado.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {pacienteFiltrado.map(paciente => (
                   <button
                     key={paciente.id}
-                    onClick={() => seleccionarPaciente(paciente)}
+                    onMouseDown={(e) => { e.preventDefault(); seleccionarPaciente(paciente); }}
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
                   >
                     <p className="text-sm font-medium text-gray-900">{paciente.nombre_completo}</p>
@@ -166,7 +229,6 @@ const AsistenciasPorPaciente = () => {
             )}
           </div>
 
-          {/* Fecha Inicio */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Fecha Inicio
@@ -179,7 +241,6 @@ const AsistenciasPorPaciente = () => {
             />
           </div>
 
-          {/* Fecha Fin */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Fecha Fin
@@ -262,12 +323,13 @@ const AsistenciasPorPaciente = () => {
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recepción</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Terapeuta Marcó</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Estado Final</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Editar</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {asistencias.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                       {cargando ? 'Cargando...' : 'No hay registros en el rango seleccionado'}
                     </td>
                   </tr>
@@ -275,65 +337,74 @@ const AsistenciasPorPaciente = () => {
                   asistencias
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((asistencia) => (
-                    <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        #{asistencia.cita_id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {asistencia.terapeuta_nombre || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {asistencia.fecha_cita ? formatearFecha(asistencia.fecha_cita) : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.recepcion_marco ? (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            asistencia.recepcion_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {asistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.terapeuta_marco ? (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            asistencia.terapeuta_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {asistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {asistencia.recepcion_marco && asistencia.terapeuta_marco ? (
-                          asistencia.recepcion_estado_id === 7 && asistencia.terapeuta_estado_id === 7 ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                              ✓ Validado
+                      <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                          #{asistencia.cita_id}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {asistencia.terapeuta_nombre || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {asistencia.fecha_cita ? formatearFecha(asistencia.fecha_cita) : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.recepcion_marco == 1 ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                              asistencia.recepcion_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {asistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                              Inconsistencia
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Pendiente
                             </span>
-                          )
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
-                            Incompleto
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.terapeuta_marco == 1 ? (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                              asistencia.terapeuta_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {asistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {asistencia.recepcion_marco == 1 && asistencia.terapeuta_marco == 1 ? (
+                            asistencia.recepcion_estado_id === asistencia.terapeuta_estado_id ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                ✓ Validado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                Inconsistencia
+                              </span>
+                            )
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              Incompleto
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => abrirEditar(asistencia)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                            title="Editar asistencia"
+                          >
+                            <PencilSquareIcon className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                 )}
               </tbody>
             </table>
@@ -417,6 +488,84 @@ const AsistenciasPorPaciente = () => {
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
           <UserGroupIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 text-lg font-medium">Busque y seleccione un paciente para ver sus asistencias</p>
+        </div>
+      )}
+
+      {/* Modal editar asistencia */}
+      {modalEditar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Editar asistencia</h3>
+            <p className="text-sm text-gray-500 mb-5">Cita #{modalEditar.citaId}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Recepción</label>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Asistió', value: ESTADO_ASISTIO, color: 'green' },
+                    { label: 'Sesión dictada', value: ESTADO_SESION_DICTADA, color: 'orange' },
+                    { label: 'Desmarcar', value: '', color: 'gray' },
+                  ].map(({ label, value, color }) => (
+                    <button
+                      key={String(value)}
+                      onClick={() => setModalEditar(p => ({ ...p, recepcion: value }))}
+                      className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all ${
+                        modalEditar.recepcion === value
+                          ? color === 'green' ? 'bg-green-100 border-green-500 text-green-800'
+                          : color === 'orange' ? 'bg-orange-100 border-orange-500 text-orange-800'
+                          : 'bg-gray-100 border-gray-400 text-gray-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Terapeuta</label>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Asistió', value: ESTADO_ASISTIO, color: 'green' },
+                    { label: 'Sesión dictada', value: ESTADO_SESION_DICTADA, color: 'orange' },
+                    { label: 'Desmarcar', value: '', color: 'gray' },
+                  ].map(({ label, value, color }) => (
+                    <button
+                      key={String(value)}
+                      onClick={() => setModalEditar(p => ({ ...p, terapeuta: value }))}
+                      className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold border-2 transition-all ${
+                        modalEditar.terapeuta === value
+                          ? color === 'green' ? 'bg-green-100 border-green-500 text-green-800'
+                          : color === 'orange' ? 'bg-orange-100 border-orange-500 text-orange-800'
+                          : 'bg-gray-100 border-gray-400 text-gray-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setModalEditar(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarEdicion}
+                disabled={editando}
+                className="flex-1 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                {editando ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

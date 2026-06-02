@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheckIcon, PencilSquareIcon, CalendarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, PencilSquareIcon, CalendarIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { obtenerTodasAsistenciasAdmin, modificarAsistenciaAdmin } from '../../services/api';
 
 const GestionAsistenciasAdmin = () => {
@@ -14,6 +14,11 @@ const GestionAsistenciasAdmin = () => {
   const [guardando, setGuardando] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Estados para notificaciones - MISMO ESTILO QUE EN AGENDA
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   useEffect(() => {
     // Establecer fechas por defecto (semana actual: lunes a sábado)
@@ -48,7 +53,9 @@ const GestionAsistenciasAdmin = () => {
 
   const cargarAsistencias = async (inicio, fin) => {
     if (!inicio || !fin) {
-      alert('Seleccione un rango de fechas');
+      setSnackbarMessage('Seleccione un rango de fechas');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
       return;
     }
 
@@ -58,7 +65,9 @@ const GestionAsistenciasAdmin = () => {
       setAsistencias(data.asistencias || []);
     } catch (error) {
       console.error('Error al cargar asistencias:', error);
-      alert('Error al cargar asistencias');
+      setSnackbarMessage('Error al cargar asistencias');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     } finally {
       setCargando(false);
     }
@@ -87,7 +96,9 @@ const GestionAsistenciasAdmin = () => {
 
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) {
-      alert('No se pudo obtener información del usuario');
+      setSnackbarMessage('No se pudo obtener información del usuario');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
       return;
     }
 
@@ -100,12 +111,18 @@ const GestionAsistenciasAdmin = () => {
         user.id
       );
 
-      alert('Asistencia modificada correctamente');
+      // ✅ SNACKBAR DE ÉXITO - IGUAL QUE EN AGENDA
+      setSnackbarMessage(`✅ Asistencia #${asistenciaSeleccionada.cita_id} actualizada correctamente`);
+      setSnackbarSeverity('success');
+      setShowSnackbar(true);
+      
       cerrarModal();
       cargarAsistencias(fechaInicio, fechaFin);
     } catch (error) {
       console.error('Error al modificar asistencia:', error);
-      alert(error.response?.data?.message || 'Error al modificar asistencia');
+      setSnackbarMessage(error.response?.data?.message || 'Error al modificar asistencia');
+      setSnackbarSeverity('error');
+      setShowSnackbar(true);
     } finally {
       setGuardando(false);
     }
@@ -134,6 +151,21 @@ const GestionAsistenciasAdmin = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Snackbar de notificaciones - IDÉNTICO AL DE AGENDA */}
+      {showSnackbar && (
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
+          snackbarSeverity === 'success'
+            ? 'bg-white border-gray-100'
+            : 'bg-white border-red-100'
+        } flex items-center gap-2.5`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${snackbarSeverity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
+          <span className="text-xs font-medium text-gray-700">{snackbarMessage}</span>
+          <button onClick={() => setShowSnackbar(false)} className="ml-2">
+            <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
@@ -400,60 +432,72 @@ const GestionAsistenciasAdmin = () => {
 
               {/* Estado de Recepción */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Estado de Recepción/Admisión
                 </label>
+                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setEstadoRecepcion(7)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoRecepcion(estadoRecepcion === 7 ? null : 7)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoRecepcion === 7
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-green-600 text-white ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
                     }`}
                   >
                     ✓ Asistió
                   </button>
                   <button
-                    onClick={() => setEstadoRecepcion(6)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoRecepcion(estadoRecepcion === 6 ? null : 6)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoRecepcion === 6
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
                     }`}
                   >
                     ◆ Sesión Dictada
                   </button>
                 </div>
+                {estadoRecepcion === null && (
+                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                    Sin marcar — se guardará como pendiente
+                  </p>
+                )}
               </div>
 
               {/* Estado de Terapeuta */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Estado de Terapeuta
                 </label>
+                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setEstadoTerapeuta(7)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoTerapeuta(estadoTerapeuta === 7 ? null : 7)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoTerapeuta === 7
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-green-600 text-white ring-2 ring-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
                     }`}
                   >
                     ✓ Asistió
                   </button>
                   <button
-                    onClick={() => setEstadoTerapeuta(6)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ${
+                    onClick={() => setEstadoTerapeuta(estadoTerapeuta === 6 ? null : 6)}
+                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
                       estadoTerapeuta === 6
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
                     }`}
                   >
                     ◆ Sesión Dictada
                   </button>
                 </div>
+                {estadoTerapeuta === null && (
+                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                    Sin marcar — se guardará como pendiente
+                  </p>
+                )}
               </div>
 
               {/* Advertencia */}
@@ -474,7 +518,7 @@ const GestionAsistenciasAdmin = () => {
                 </button>
                 <button
                   onClick={handleGuardarCambios}
-                  disabled={guardando || (estadoRecepcion === null && estadoTerapeuta === null)}
+                  disabled={guardando}
                   className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-all disabled:opacity-50"
                 >
                   {guardando ? 'Guardando...' : 'Guardar Cambios'}

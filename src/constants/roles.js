@@ -29,4 +29,5 @@ export const canEditPatient = (user) => user?.rol?.id !== ROLES.TERAPEUTA;
 export const canManageServices = (user) => user?.rol?.id !== ROLES.TERAPEUTA;
 export const canViewContactInfo = (user) => user?.rol?.id !== ROLES.TERAPEUTA;
 export const canViewServiceInfo = (user) => user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION;
-export const canManagePatientStatus = (user) => user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION; 
+export const canManagePatientStatus = (user) => user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION;
+export const canManageConvenios = (user) => user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.ADMISION;

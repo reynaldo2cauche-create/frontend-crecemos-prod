@@ -187,6 +187,14 @@ export default function Footer() {
                     Reglamento Interno para Clientes
                   </a>
                 </li>
+                  <li>
+                  <a href="#" onClick={(e) => { 
+                    e.preventDefault(); 
+                    handleNavigate('/campanas');
+                  }}>
+                    Campañas
+                  </a>
+                </li>
               </ul>
             </div>
 
@@ -201,8 +209,8 @@ export default function Footer() {
         </p>
         <div className="credits">
           Desarrollado por Vaxa |{' '}
-          <a href="https://www.vaxa.com.pe" target="_blank" rel="noopener noreferrer">
-            www.vaxa.com.pe
+          <a href="https://www.vaxasys.com" target="_blank" rel="noopener noreferrer">
+            www.vaxasys.com
           </a>
         </div>
       </div>

@@ -122,363 +122,241 @@ const PoliticaPrivacidad = () => {
   return (
     <>
       <style>{`
-        .page-title-custom {
-          background: linear-gradient(135deg, #2d465e, #0d83fd);
-          padding: 140px 20px 80px;
-          color: #fff;
+        /* Header con imagen de fondo */
+        .page-header-custom {
           position: relative;
+          background: linear-gradient(135deg, rgba(45, 70, 94, 0.5), rgba(13, 131, 253, 0.9)),
+                      url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=2070') center/cover no-repeat;
+          padding: 150px 20px 80px;
+          color: #fff;
           overflow: hidden;
         }
 
-        .page-title-custom h1 {
-          font-size: 2.8rem;
-          font-weight: 700;
-          margin-bottom: 15px;
-          color: var(--contrast-color);
+        .page-header-custom::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.2);
+          z-index: 1;
         }
 
-        .page-title-custom .subtitle {
-          font-size: 1.1rem;
+        .page-header-custom .container {
+          position: relative;
+          z-index: 2;
+          max-width: 1100px;
+        }
+
+        .page-header-custom h1 {
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 10px;
+          color: #fff;
+          line-height: 1.2;
+        }
+
+        .page-header-custom .subtitle {
+          font-size: 1rem;
+          margin-bottom: 5px;
+          color: #fff;
           opacity: 0.95;
-          max-width: 800px;
-          margin: 0 auto 15px;
         }
 
-        .page-title-custom .update-date {
-          font-size: 0.95rem;
+        .page-header-custom .update-date {
+          font-size: 0.9rem;
           opacity: 0.85;
-          font-style: italic;
+          color: #fff;
         }
 
+        /* Sección de contenido */
         .politica-section {
-          padding: 80px 0;
-          background-color: var(--background-color);
+          padding: 40px 0;
+          background-color: #ffffff;
         }
 
-        .intro-box {
-          background: color-mix(in srgb, var(--accent-color), transparent 95%);
-          border-left: 5px solid var(--accent-color);
-          border-radius: 10px;
-          padding: 30px;
-          margin-bottom: 50px;
-          box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+        .content-wrapper {
+          max-width: 1100px;
+          margin: 0 auto;
         }
 
-        .intro-box p {
-          font-size: 1.05rem;
-          line-height: 1.8;
+        /* Intro */
+        .intro-text {
+          font-size: 0.95rem;
+          line-height: 1.6;
+          color: #333;
+          margin-bottom: 25px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .intro-text p {
           margin: 0;
-          color: var(--default-color);
         }
 
-        .intro-box strong {
-          color: var(--heading-color);
-          font-weight: 700;
+        .intro-text strong {
+          font-weight: 600;
+          color: #000;
         }
 
+        /* Items de política */
         .politica-item {
-          background: var(--surface-color);
-          border-radius: 15px;
-          padding: 40px;
-          margin-bottom: 30px;
-          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-          transition: all 0.3s ease;
-          border-left: 5px solid var(--accent-color);
-        }
-
-        .politica-item:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-        }
-
-        .politica-number {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 50px;
-          height: 50px;
-          background: var(--accent-color);
-          color: var(--contrast-color);
-          border-radius: 50%;
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin-bottom: 20px;
+          margin-bottom: 25px;
         }
 
         .politica-item h3 {
-          color: var(--heading-color);
-          font-size: 1.8rem;
+          color: #000;
+          font-size: 1.15rem;
           font-weight: 700;
-          margin-bottom: 25px;
-          font-family: var(--heading-font);
+          margin-bottom: 8px;
+          line-height: 1.3;
+        }
+
+        .politica-item h3::before {
+          content: attr(data-numero) ". ";
+          color: #000;
         }
 
         .politica-item p {
-          color: var(--default-color);
-          font-size: 1.05rem;
-          line-height: 1.8;
-          margin-bottom: 20px;
+          color: #333;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          margin-bottom: 8px;
         }
 
+        /* Lista */
         .politica-list {
           list-style: none;
           padding: 0;
-          margin: 0;
+          margin: 10px 0 10px 20px;
         }
 
         .politica-list li {
-          padding: 12px 0 12px 40px;
+          padding: 3px 0;
           position: relative;
-          color: var(--default-color);
-          font-size: 1.05rem;
-          line-height: 1.7;
+          color: #333;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          padding-left: 15px;
         }
 
-        .politica-list li:before {
+        .politica-list li::before {
           content: "•";
           position: absolute;
-          left: 15px;
-          color: var(--accent-color);
-          font-size: 1.5rem;
-          font-weight: bold;
+          left: 0;
+          color: #000;
+          font-size: 1rem;
         }
 
+        /* Nota */
+        .nota-text {
+          margin-top: 8px;
+          padding-left: 15px;
+          border-left: 2px solid #ccc;
+          font-style: italic;
+          color: #666;
+          font-size: 0.9rem;
+        }
+
+        /* Info box */
         .info-box {
-          background: color-mix(in srgb, var(--accent-color), transparent 92%);
-          border-radius: 10px;
-          padding: 25px;
-          margin: 20px 0;
+          margin-top: 8px;
+          padding: 10px 0 10px 15px;
+          border-left: 3px solid var(--accent-color);
         }
 
         .info-box p {
           margin: 0;
-          color: var(--heading-color);
           font-weight: 500;
-          font-size: 1.05rem;
-        }
-
-        .nota-box {
-          background: color-mix(in srgb, var(--accent-color), transparent 97%);
-          border-left: 3px solid var(--accent-color);
-          padding: 15px 20px;
-          margin-top: 15px;
-          border-radius: 5px;
-        }
-
-        .nota-box p {
-          margin: 0;
+          color: #000;
           font-size: 0.95rem;
-          font-style: italic;
-          color: var(--default-color);
         }
 
-        .empresa-info {
-          background: var(--heading-color);
-          color: var(--contrast-color);
-          border-radius: 15px;
-          padding: 35px;
-          margin-bottom: 40px;
-          text-align: center;
-        }
-
-        .empresa-info h4 {
-          color: var(--contrast-color);
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin-bottom: 20px;
-        }
-
-        .empresa-info p {
-          color: var(--contrast-color);
-          font-size: 1.05rem;
-          margin: 8px 0;
-          line-height: 1.8;
-        }
-
-        .empresa-info strong {
-          font-weight: 600;
-        }
-
-        .alert-section {
-          background: color-mix(in srgb, var(--accent-color), transparent 90%);
-          border-radius: 15px;
-          padding: 30px;
-          margin: 40px 0;
-          text-align: center;
-          border: 2px dashed var(--accent-color);
-        }
-
-        .alert-section i {
-          font-size: 3rem;
-          color: var(--accent-color);
-          margin-bottom: 15px;
-        }
-
-        .alert-section h4 {
-          color: var(--heading-color);
-          font-size: 1.6rem;
-          margin-bottom: 15px;
-          font-weight: 700;
-        }
-
-        .alert-section p {
-          color: var(--default-color);
-          font-size: 1.1rem;
-          margin: 0;
-          line-height: 1.7;
-        }
-
-        .cta-section {
-          background: color-mix(in srgb, var(--accent-color), transparent 95%);
-          padding: 60px 20px;
-          text-align: center;
-          margin-top: 40px;
-          border-radius: 15px;
-        }
-
-        .cta-section h3 {
-          color: var(--heading-color);
-          font-size: 2rem;
-          margin-bottom: 20px;
-          font-family: var(--heading-font);
-        }
-
-        .cta-section p {
-          font-size: 1.1rem;
-          color: var(--default-color);
-          margin-bottom: 30px;
-        }
-
-        .btn-custom {
-          background: var(--accent-color);
-          border: none;
-          color: var(--contrast-color);
-          padding: 15px 40px;
-          border-radius: 50px;
-          font-weight: 600;
-          text-decoration: none;
-          display: inline-block;
-          transition: all 0.3s ease;
-          font-size: 1.1rem;
-        }
-
-        .btn-custom:hover {
-          background: color-mix(in srgb, var(--accent-color), black 15%);
-          color: var(--contrast-color);
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(194, 99, 249, 0.4);
-        }
-
+        /* Responsive */
         @media (max-width: 768px) {
-          .page-title-custom h1 {
-            font-size: 2rem;
+          .page-header-custom {
+            padding: 120px 20px 60px;
           }
 
-          .politica-item {
-            padding: 25px;
+          .page-header-custom h1 {
+            font-size: 1.8rem;
           }
 
           .politica-item h3 {
-            font-size: 1.5rem;
-          }
-
-          .politica-list li {
-            font-size: 1rem;
-          }
-
-          .empresa-info {
-            padding: 25px;
+            font-size: 1.1rem;
           }
         }
       `}</style>
 
       <main className="main">
-        <div className="page-title-custom">
+        {/* Header con imagen de fondo */}
+        <div className="page-header-custom">
           <div className="container text-center">
-            <h1 data-aos="fade-down">Política de Privacidad y Tratamiento de Datos Personales</h1>
+            <h1 data-aos="fade-down">
+              Política de Privacidad y Tratamiento de Datos Personales
+            </h1>
             <p className="subtitle" data-aos="fade-up" data-aos-delay="100">
               Crecemos – Centro Integral de Terapias
             </p>
             <p className="update-date" data-aos="fade-up" data-aos-delay="150">
-              Fecha de actualización: 15/01/2026
+              Última actualización: 15 de enero de 2026
             </p>
           </div>
         </div>
 
+        {/* Contenido */}
         <section className="politica-section">
           <div className="container">
-            <div className="empresa-info" data-aos="fade-up">
-              <h4>
-                <i className="bi bi-building me-2"></i>
-                Responsable del Tratamiento
-              </h4>
-              <p><strong>CONTIGO CRECEMOS E.I.R.L.</strong></p>
-              <p>Nombre Comercial: <strong>Crecemos – Centro Integral de Terapias</strong></p>
-              <p><strong>RUC:</strong> 20601074380</p>
-              <p><strong>Web:</strong> www.crecemos.com.pe</p>
-            </div>
-
-            <div className="intro-box" data-aos="fade-up" data-aos-delay="100">
-              <p>
-                <strong>CONTIGO CRECEMOS E.I.R.L.</strong>, en adelante <strong>Crecemos – Centro Integral de Terapias</strong>, 
-                se compromete con la protección de los datos personales de sus pacientes y usuarios, conforme a lo establecido 
-                en la <strong>Ley N.º 29733 - Ley de Protección de Datos Personales</strong>, su reglamento, y demás normativa aplicable.
-              </p>
-            </div>
-
-            {politicas.map((politica, index) => (
-              <div 
-                key={politica.numero} 
-                className="politica-item" 
-                data-aos="fade-up" 
-                data-aos-delay={150 + (index * 50)}
-              >
-                <span className="politica-number">{politica.numero}</span>
-                <h3>{politica.titulo}</h3>
-                
-                {politica.contenido && <p>{politica.contenido}</p>}
-                
-                {politica.lista && (
-                  <ul className="politica-list">
-                    {politica.lista.map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
-                  </ul>
-                )}
-
-                {politica.nota && (
-                  <div className="nota-box">
-                    <p>{politica.nota}</p>
-                  </div>
-                )}
-                
-                {politica.infoBox && (
-                  <div className="info-box">
-                    <p>
-                      <i className="bi bi-check-circle-fill me-2"></i>
-                      El uso de nuestros servicios implica la aceptación de esta política de privacidad.
-                    </p>
-                  </div>
-                )}
+            <div className="content-wrapper">
+              
+              {/* Intro */}
+              <div className="intro-text" data-aos="fade-up">
+                <p>
+                  <strong>CONTIGO CRECEMOS E.I.R.L.</strong>, en adelante <strong>Crecemos – Centro Integral de Terapias</strong>, 
+                  se compromete con la protección de los datos personales de sus pacientes y usuarios, conforme a lo establecido 
+                  en la <strong>Ley N.º 29733 - Ley de Protección de Datos Personales</strong>, su reglamento, y demás normativa 
+                  aplicable en la República del Perú.
+                </p>
               </div>
-            ))}
 
-            <div className="alert-section" data-aos="fade-up" data-aos-delay="700">
-              <i className="bi bi-shield-check"></i>
-              <h4>Tu privacidad es nuestra prioridad</h4>
-              <p>
-                Cumplimos estrictamente con la Ley N.º 29733 de Protección de Datos Personales del Perú.
-                Tus datos están seguros con nosotros.
-              </p>
-            </div>
+              {/* Items de política */}
+              {politicas.map((politica, index) => (
+                <div 
+                  key={politica.numero} 
+                  className="politica-item" 
+                  data-aos="fade-up" 
+                  data-aos-delay={100 + (index * 20)}
+                >
+                  <h3 data-numero={politica.numero}>{politica.titulo}</h3>
+                  
+                  {politica.contenido && <p>{politica.contenido}</p>}
+                  
+                  {politica.lista && (
+                    <ul className="politica-list">
+                      {politica.lista.map((item, idx) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
 
-            <div className="cta-section" data-aos="fade-up" data-aos-delay="750">
-              <h3>¿Tienes dudas sobre tus datos?</h3>
-              <p>Contáctanos si necesitas ejercer tus derechos o tienes consultas sobre esta política.</p>
-              <a href="contactanos" className="btn-custom">
-                <i className="bi bi-envelope me-2"></i>
-                Contactar
-              </a>
+                  {politica.nota && (
+                    <div className="nota-text">
+                      <strong>Nota:</strong> {politica.nota}
+                    </div>
+                  )}
+                  
+                  {politica.infoBox && (
+                    <div className="info-box">
+                      <p>
+                        <i className="bi bi-check-circle-fill me-2"></i>
+                        El uso de nuestros servicios implica la aceptación de esta política de privacidad.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+
             </div>
           </div>
         </section>

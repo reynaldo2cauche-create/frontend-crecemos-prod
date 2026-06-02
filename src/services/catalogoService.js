@@ -61,8 +61,27 @@ export const getServicios = async () => {
   if (cached) return cached;
 
   const response = await api.get('/catalogos/servicios');
-  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
-  return response.data;
+
+  // Ordenar servicios: primero Infantil, luego Adultos
+  const serviciosOrdenados = response.data.sort((a, b) => {
+    const areaNombreA = (a.area?.nombre || '').toLowerCase().trim();
+    const areaNombreB = (b.area?.nombre || '').toLowerCase().trim();
+
+    // Verificar si es infantil (con variaciones posibles)
+    const esInfantilA = areaNombreA.includes('infantil');
+    const esInfantilB = areaNombreB.includes('infantil');
+
+    // Si A es Infantil y B no, A va primero
+    if (esInfantilA && !esInfantilB) return -1;
+    // Si B es Infantil y A no, B va primero
+    if (!esInfantilA && esInfantilB) return 1;
+    // Si ambos son del mismo tipo, mantener el orden original
+    return 0;
+  });
+
+
+  cacheManager.set(cacheKey, serviciosOrdenados, CATALOG_TTL);
+  return serviciosOrdenados;
 };
 
 export const getRelacionesResponsable = async () => {
@@ -103,4 +122,34 @@ export const getParentescos = async () => {
 export const getNivelesEducacion = async () => {
   const response = await api.get('/catalogos/nivel-educacion');
   return response.data;
-}; 
+};
+
+export const getModalidades = async () => {
+  const cacheKey = 'catalogos:modalidades';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
+
+  const response = await api.get('/catalogos/modalidades');
+  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
+  return response.data;
+};
+
+export const getFrecuencias = async () => {
+  const cacheKey = 'catalogos:frecuencias';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
+
+  const response = await api.get('/catalogos/frecuencias');
+  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
+  return response.data;
+};
+
+export const getTipoBloqueo = async () => {
+  const cacheKey = 'catalogos:tipo-bloqueo';
+  const cached = cacheManager.get(cacheKey);
+  if (cached) return cached;
+
+  const response = await api.get('/catalogos/tipo-bloqueo');
+  cacheManager.set(cacheKey, response.data, CATALOG_TTL);
+  return response.data;
+};

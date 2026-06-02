@@ -1,103 +1,66 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  verificarPerimetro,
-  monitorearUbicacion,
-  detenerMonitoreo
-} from '../services/geolocationService';
+import { useState, useEffect } from 'react';
+import { verificarPerimetro } from '../services/geolocationService';
 
-/**
- * Hook personalizado para geofencing
- * @param {boolean} activar - Si se debe activar el geofencing
- * @param {number} intervalo - Intervalo de verificación en milisegundos (default: 60000 = 1 minuto)
- * @returns {object} Estado del geofencing
- */
+// Estado global a nivel de módulo — persiste aunque el componente se desmonte/remonte
+let _cache = null;       // último resultado conocido
+let _intervalId = null;  // intervalo global único
+let _listeners = [];     // componentes suscritos
+let _verificando = false; // evita llamadas simultáneas
+
+const notificar = () => {
+  _listeners.forEach(fn => fn({ ..._cache }));
+};
+
+const verificar = async () => {
+  if (_verificando) return;
+  _verificando = true;
+  try {
+    const resultado = await verificarPerimetro();
+    _cache = {
+      cargando: false,
+      dentroDelPerimetro: resultado.dentroDelPerimetro,
+      distancia: resultado.distancia,
+      ubicacion: resultado.ubicacion,
+      error: null,
+      ultimaVerificacion: new Date()
+    };
+  } catch (error) {
+    // Si ya teníamos un resultado previo, mantener el último estado conocido
+    if (_cache) {
+      _cache = { ..._cache, ultimaVerificacion: new Date() };
+    } else {
+      _cache = {
+        cargando: false,
+        dentroDelPerimetro: true, // permitir acceso si no hay resultado previo
+        distancia: null,
+        ubicacion: null,
+        error: error.message,
+        ultimaVerificacion: new Date()
+      };
+    }
+  } finally {
+    _verificando = false;
+    notificar();
+  }
+};
+
+const iniciarMonitoreoGlobal = (intervalo) => {
+  if (_intervalId) return; // ya corriendo
+  verificar(); // primera vez
+  _intervalId = setInterval(verificar, intervalo);
+};
+
 export const useGeofencing = (activar = true, intervalo = 60000) => {
-  const [estado, setEstado] = useState({
-    cargando: true,
-    dentroDelPerimetro: true, // Por defecto permitir acceso
-    distancia: null,
-    ubicacion: null,
-    error: null,
-    ultimaVerificacion: null
-  });
-
-  // Verificar ubicación una vez
-  const verificarUbicacion = useCallback(async () => {
-    if (!activar) {
-      setEstado(prev => ({ ...prev, cargando: false, dentroDelPerimetro: true }));
-      return;
+  const [estado, setEstado] = useState(() =>
+    _cache || {
+      cargando: true,
+      dentroDelPerimetro: true,
+      distancia: null,
+      ubicacion: null,
+      error: null,
+      ultimaVerificacion: null
     }
-
-    try {
-      setEstado(prev => ({ ...prev, cargando: true, error: null }));
-
-      const resultado = await verificarPerimetro();
-
-      setEstado({
-        cargando: false,
-        dentroDelPerimetro: resultado.dentroDelPerimetro,
-        distancia: resultado.distancia,
-        ubicacion: resultado.ubicacion,
-        error: null,
-        ultimaVerificacion: new Date()
-      });
-
-      return resultado;
-    } catch (error) {
-      console.error('❌ Error al verificar ubicación:', error.message);
-
-      setEstado({
-        cargando: false,
-        dentroDelPerimetro: true, // En caso de error, permitir acceso
-        distancia: null,
-        ubicacion: null,
-        error: error.message,
-        ultimaVerificacion: new Date()
-      });
-
-      return null;
-    }
-  }, [activar]);
-
-  // Efecto para verificación periódica
-  useEffect(() => {
-    if (!activar) {
-      return;
-    }
-
-    // Verificar inmediatamente
-    verificarUbicacion();
-
-    // Configurar verificación periódica
-    const intervalId = setInterval(() => {
-      verificarUbicacion();
-    }, intervalo);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [activar, intervalo, verificarUbicacion]);
-
-  return {
-    ...estado,
-    verificar: verificarUbicacion
-  };
-};
-
-/**
- * Hook para monitoreo continuo de ubicación
- * @param {boolean} activar - Si se debe activar el monitoreo
- * @returns {object} Estado del geofencing
- */
-export const useGeofencingContinuo = (activar = true) => {
-  const [estado, setEstado] = useState({
-    cargando: true,
-    dentroDelPerimetro: true,
-    distancia: null,
-    ubicacion: null,
-    error: null,
-    ultimaActualizacion: null
-  });
+  );
 
   useEffect(() => {
     if (!activar) {
@@ -105,41 +68,25 @@ export const useGeofencingContinuo = (activar = true) => {
       return;
     }
 
-    let watchId = null;
+    // Suscribir este componente a las actualizaciones globales
+    _listeners.push(setEstado);
 
-    // Iniciar monitoreo
-    try {
-      watchId = monitorearUbicacion((resultado) => {
-        setEstado({
-          cargando: false,
-          dentroDelPerimetro: resultado.dentroDelPerimetro,
-          distancia: resultado.distancia,
-          ubicacion: resultado.ubicacion,
-          error: null,
-          ultimaActualizacion: new Date()
-        });
-      });
-    } catch (error) {
-      console.error('❌ Error al iniciar monitoreo:', error.message);
-      setEstado({
-        cargando: false,
-        dentroDelPerimetro: true,
-        distancia: null,
-        ubicacion: null,
-        error: error.message,
-        ultimaActualizacion: new Date()
-      });
+    // Si ya hay un resultado cacheado, aplicarlo de inmediato (sin loading)
+    if (_cache) {
+      setEstado({ ..._cache });
     }
 
-    // Limpiar al desmontar
-    return () => {
-      if (watchId) {
-        detenerMonitoreo(watchId);
-      }
-    };
-  }, [activar]);
+    // Arrancar el intervalo global (solo arranca una vez aunque haya varios componentes)
+    iniciarMonitoreoGlobal(intervalo);
 
-  return estado;
+    return () => {
+      _listeners = _listeners.filter(fn => fn !== setEstado);
+    };
+  }, [activar, intervalo]);
+
+  return { ...estado, verificar };
 };
+
+export const useGeofencingContinuo = useGeofencing;
 
 export default useGeofencing;

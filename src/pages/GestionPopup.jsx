@@ -29,6 +29,10 @@ const GestionPopup = () => {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
+  // Paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const itemsPorPagina = 12;
+
   // Estado del formulario
   const [formulario, setFormulario] = useState({
     titulo: '',
@@ -203,6 +207,15 @@ const GestionPopup = () => {
     try {
       await popupService.eliminarPopup(id);
       showNotification('Popup eliminado correctamente', 'success');
+
+      // Si eliminas el último de la página actual, retroceder una página
+      const indexInicio = (paginaActual - 1) * itemsPorPagina;
+      const indexFin = indexInicio + itemsPorPagina;
+      const popupsEnPaginaActual = popups.slice(indexInicio, indexFin);
+      if (popupsEnPaginaActual.length === 1 && paginaActual > 1) {
+        setPaginaActual(paginaActual - 1);
+      }
+
       await cargarPopups();
     } catch (error) {
       showNotification('Error al eliminar el popup', 'error');
@@ -311,36 +324,47 @@ const GestionPopup = () => {
         </div>
 
         {/* Lista de popups */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {popups.length === 0 ? (
-            <div className="col-span-full bg-white rounded-2xl shadow-sm border border-gray-200 p-12">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-10 h-10 text-gray-400" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {(() => {
+            const indexInicio = (paginaActual - 1) * itemsPorPagina;
+            const indexFin = indexInicio + itemsPorPagina;
+            const popupsPaginados = popups.slice(indexInicio, indexFin);
+            const totalPaginas = Math.ceil(popups.length / itemsPorPagina);
+
+            if (popups.length === 0) {
+              return (
+                <div className="col-span-full bg-white rounded-2xl shadow-sm border border-gray-200 p-12">
+                  <div className="text-center">
+                    <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Calendar className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      No hay popups programados
+                    </h3>
+                    <p className="text-gray-500 mb-6">Crea tu primer popup promocional para comenzar</p>
+                    <button
+                      onClick={() => {
+                        resetFormulario();
+                        setDialogoCrear(true);
+                      }}
+                      className="px-6 py-3 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all inline-flex items-center gap-2 shadow-sm"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Crear Primer Popup
+                    </button>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  No hay popups programados
-                </h3>
-                <p className="text-gray-500 mb-6">Crea tu primer popup promocional para comenzar</p>
-                <button
-                  onClick={() => {
-                    resetFormulario();
-                    setDialogoCrear(true);
-                  }}
-                  className="px-6 py-3 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all inline-flex items-center gap-2 shadow-sm"
-                >
-                  <Plus className="w-5 h-5" />
-                  Crear Primer Popup
-                </button>
-              </div>
-            </div>
-          ) : (
-            popups.map((popup) => {
+              );
+            }
+
+            return (
+              <>
+                {popupsPaginados.map((popup) => {
               const estado = getEstadoPopup(popup.fechaInicio, popup.fechaFin, popup.activo);
               return (
-                <div key={popup.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                <div key={popup.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                   {/* Imagen */}
-                  <div className="relative h-48 bg-gray-100">
+                  <div className="relative aspect-square bg-gray-100">
                     <img
                       src={`${API_BASE_URL}/popup/imagen/${popup.imagenUrl}`}
                       alt={popup.titulo}
@@ -350,12 +374,12 @@ const GestionPopup = () => {
                         e.target.parentElement.classList.add('flex', 'items-center', 'justify-center');
                       }}
                     />
-                    <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold ${estado.bg} ${estado.color}`}>
+                    <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold ${estado.bg} ${estado.color}`}>
                       {estado.texto}
                     </div>
                     {/* Indicador de WhatsApp */}
                     {popup.mensajeWhatsapp && (
-                      <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1">
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1">
                         <MessageCircle className="w-3 h-3" />
                         WhatsApp
                       </div>
@@ -363,65 +387,110 @@ const GestionPopup = () => {
                   </div>
 
                   {/* Contenido */}
-                  <div className="p-5">
-                    <h3 className="text-lg font-bold text-gray-900 mb-3">{popup.titulo}</h3>
+                  <div className="p-2.5">
+                    <h3 className="text-xs font-bold text-gray-900 mb-2 line-clamp-2 h-8">{popup.titulo}</h3>
 
-                    <div className="space-y-2 mb-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-[#7B1FA2]" />
-                        <span className="font-medium">Inicio:</span>
-                        <span>{formatearFecha(popup.fechaInicio)}</span>
+                    <div className="space-y-1 mb-2 text-xs text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-[#7B1FA2] flex-shrink-0" />
+                        <span className="text-xs truncate">{formatearFecha(popup.fechaInicio)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-[#7B1FA2]" />
-                        <span className="font-medium">Fin:</span>
-                        <span>{formatearFecha(popup.fechaFin)}</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-[#7B1FA2] flex-shrink-0" />
+                        <span className="text-xs truncate">{formatearFecha(popup.fechaFin)}</span>
                       </div>
                       {popup.mensajeWhatsapp && (
-                        <div className="flex items-start gap-2 mt-2 p-2 bg-green-50 rounded-lg">
-                          <MessageCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-xs text-green-700 line-clamp-2">{popup.mensajeWhatsapp}</span>
+                        <div className="flex items-center gap-1 p-1 bg-green-50 rounded">
+                          <MessageCircle className="w-2.5 h-2.5 text-green-600 flex-shrink-0" />
+                          <span className="text-xs text-green-700 truncate">WhatsApp</span>
                         </div>
                       )}
                     </div>
 
                     {/* Acciones */}
-                    <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-4 gap-1">
                       <button
                         onClick={() => handleToggleActivo(popup.id, popup.activo)}
-                        className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                        className={`col-span-4 px-2 py-1 rounded text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                           popup.activo
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
+                        title={popup.activo ? 'Activo' : 'Inactivo'}
                       >
-                        {popup.activo ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
-                        {popup.activo ? 'Activo' : 'Inactivo'}
+                        {popup.activo ? <Power className="w-3 h-3" /> : <PowerOff className="w-3 h-3" />}
+                        <span className="hidden sm:inline">{popup.activo ? 'Activo' : 'Inactivo'}</span>
                       </button>
                       <button
                         onClick={() => setVistaPrevia(popup)}
-                        className="px-4 py-2 bg-purple-50 text-[#7B1FA2] rounded-lg font-semibold hover:bg-purple-100 transition-all border border-purple-200"
+                        className="p-1.5 bg-purple-50 text-[#7B1FA2] rounded hover:bg-purple-100 transition-all border border-purple-200 flex items-center justify-center"
+                        title="Ver"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => abrirDialogoEditar(popup)}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100 transition-all border border-blue-200"
+                        className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-all border border-blue-200 flex items-center justify-center"
+                        title="Editar"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => handleEliminarPopup(popup.id)}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all border border-red-200"
+                        className="col-span-2 p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-all border border-red-200 flex items-center justify-center gap-1"
+                        title="Eliminar"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
+                        <span className="text-xs hidden sm:inline">Eliminar</span>
                       </button>
                     </div>
                   </div>
                 </div>
-              );
-            })
-          )}
+                  );
+                })}
+
+                {/* Paginación */}
+                {totalPaginas > 1 && (
+                  <div className="col-span-full flex items-center justify-center gap-2 mt-6">
+                    <button
+                      onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
+                      disabled={paginaActual === 1}
+                      className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Anterior
+                    </button>
+
+                    <div className="flex gap-1">
+                      {[...Array(totalPaginas)].map((_, idx) => {
+                        const numeroPagina = idx + 1;
+                        return (
+                          <button
+                            key={numeroPagina}
+                            onClick={() => setPaginaActual(numeroPagina)}
+                            className={`w-10 h-10 rounded-lg font-semibold transition-all ${
+                              paginaActual === numeroPagina
+                                ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-md'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {numeroPagina}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
+                      disabled={paginaActual === totalPaginas}
+                      className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Información útil */}
@@ -503,23 +572,51 @@ const GestionPopup = () => {
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Fecha y Hora de Inicio *
                   </label>
-                  <input
-                    type="datetime-local"
-                    value={formulario.fechaInicio}
-                    onChange={(e) => setFormulario(prev => ({ ...prev, fechaInicio: e.target.value }))}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#7B1FA2] focus:outline-none transition-colors"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={formulario.fechaInicio.split('T')[0] || ''}
+                      onChange={(e) => {
+                        const horaActual = formulario.fechaInicio.split('T')[1] || '00:00';
+                        setFormulario(prev => ({ ...prev, fechaInicio: `${e.target.value}T${horaActual}` }));
+                      }}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
+                    />
+                    <input
+                      type="time"
+                      value={formulario.fechaInicio.split('T')[1] || ''}
+                      onChange={(e) => {
+                        const fechaActual = formulario.fechaInicio.split('T')[0] || '';
+                        setFormulario(prev => ({ ...prev, fechaInicio: `${fechaActual}T${e.target.value}` }));
+                      }}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Fecha y Hora de Fin *
                   </label>
-                  <input
-                    type="datetime-local"
-                    value={formulario.fechaFin}
-                    onChange={(e) => setFormulario(prev => ({ ...prev, fechaFin: e.target.value }))}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#7B1FA2] focus:outline-none transition-colors"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={formulario.fechaFin.split('T')[0] || ''}
+                      onChange={(e) => {
+                        const horaActual = formulario.fechaFin.split('T')[1] || '00:00';
+                        setFormulario(prev => ({ ...prev, fechaFin: `${e.target.value}T${horaActual}` }));
+                      }}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
+                    />
+                    <input
+                      type="time"
+                      value={formulario.fechaFin.split('T')[1] || ''}
+                      onChange={(e) => {
+                        const fechaActual = formulario.fechaFin.split('T')[0] || '';
+                        setFormulario(prev => ({ ...prev, fechaFin: `${fechaActual}T${e.target.value}` }));
+                      }}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 

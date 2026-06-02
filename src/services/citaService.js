@@ -1,43 +1,43 @@
 import api from './api';
 import cacheManager from '../utils/cacheManager';
 
-export const listarCitas = async (params = {}) => {
+export const listarCitas = async (params = {}, { forceRefresh = false } = {}) => {
   const queryParams = new URLSearchParams();
 
-  // Agregar parámetros si existen
-  if (params.terapeuta_id) {
-    queryParams.append('terapeuta_id', params.terapeuta_id);
-  }
+  if (params.terapeuta_id) queryParams.append('terapeuta_id', params.terapeuta_id);
+  if (params.fecha_desde)  queryParams.append('fecha_desde',  params.fecha_desde);
+  if (params.fecha_hasta)  queryParams.append('fecha_hasta',  params.fecha_hasta);
 
-  if (params.fecha_desde) {
-    queryParams.append('fecha_desde', params.fecha_desde);
-  }
+  const cacheKey = `citas:lista:${params.terapeuta_id || 'all'}:${params.fecha_desde || ''}:${params.fecha_hasta || ''}`;
 
-  if (params.fecha_hasta) {
-    queryParams.append('fecha_hasta', params.fecha_hasta);
+  if (!forceRefresh) {
+    const cached = cacheManager.get(cacheKey);
+    if (cached) return cached;
   }
 
   const url = queryParams.toString() ? `/citas?${queryParams.toString()}` : '/citas';
   const response = await api.get(url);
+  cacheManager.set(cacheKey, response.data, 2 * 60 * 1000);
   return response.data;
 };
 
 export const crearCita = async (citaData) => {
   const response = await api.post('/citas', citaData);
-  // ✅ Limpiar caché para forzar recarga de listas
+  cacheManager.deleteByPrefix('citas:lista:');
   return response.data;
 };
 
-// 🆕 NUEVA FUNCIÓN PARA MÚLTIPLES CITAS
 export const crearMultiplesCitas = async (citasArray) => {
   const response = await api.post('/citas/multiples', { citas: citasArray });
+  cacheManager.deleteByPrefix('citas:lista:');
   return response.data;
 };
+
 export const actualizarCita = async (id, citaDto) => {
   try {
     const response = await api.put(`/citas/${id}`, citaDto);
-    // ✅ Invalidar caché de esta cita para forzar recarga
     cacheManager.delete(`cita:${id}`);
+    cacheManager.deleteByPrefix('citas:lista:');
     return response.data;
   } catch (error) {
     console.error('Error actualizando cita:', error);
@@ -52,6 +52,7 @@ export const eliminarCita = async (id, userId, motivoAccion) => {
       motivo_accion: motivoAccion
     }
   });
+  cacheManager.deleteByPrefix('citas:lista:');
   return response.data;
 };
 
@@ -121,3 +122,36 @@ export const getTiposCita = async () => {
   return response.data;
 };
 
+// Alias para compatibilidad
+export const getMotivoCita = getMotivosCita;
+
+// 🛒 OBTENER VENTAS/SESIONES DISPONIBLES DEL PACIENTE
+export const getVentasDisponibles = async (pacienteId, servicioId = null, motivoCitaId = null) => {
+  const params = new URLSearchParams();
+  if (servicioId) params.append('servicio_id', servicioId);
+  if (motivoCitaId) params.append('motivo_cita_id', motivoCitaId);
+
+  const url = params.toString()
+    ? `/citas/ventas-disponibles/${pacienteId}?${params.toString()}`
+    : `/citas/ventas-disponibles/${pacienteId}`;
+
+  const response = await api.get(url);
+  return response.data;
+};
+
+// 📋 OBTENER LISTADO DETALLADO DE CITAS POR PACIENTE
+export const getListadoCitasPorPaciente = async (pacienteId) => {
+  const response = await api.get(`/citas/listado-citas/${pacienteId}`);
+  return response.data;
+};
+
+export const getInfoVentaDeCita = async (citaId) => {
+  const response = await api.get(`/citas/${citaId}/info-venta`);
+  return response.data;
+};
+
+// 📊 OBTENER RESUMEN DE TERAPIAS POR PACIENTE
+export const getResumenTerapiasPorPaciente = async (pacienteId) => {
+  const response = await api.get(`/citas/resumen-terapias/${pacienteId}`);
+  return response.data;
+};

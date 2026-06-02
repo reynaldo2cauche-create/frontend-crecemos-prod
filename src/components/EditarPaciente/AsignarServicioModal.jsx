@@ -3,21 +3,32 @@ import { X, UserPlus, Loader2, Briefcase, User } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
 import { getTrabajadoresByServicio } from '../../services/trabajadorServicioService';
 
+const ORDEN_AREAS = ['infantil', 'adolescente', 'adulto'];
+const prioridadArea = (nombre = '') => {
+  const n = nombre.toLowerCase();
+  const idx = ORDEN_AREAS.findIndex(k => n.includes(k));
+  return idx === -1 ? ORDEN_AREAS.length : idx;
+};
+
 const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServicio, setNuevoServicio, onAsignar, serviciosActualesPaciente = [] }) => {
   const [saving, setSaving] = useState(false);
   const [terapeutasFiltrados, setTerapeutasFiltrados] = useState([]);
   const [loadingTerapeutas, setLoadingTerapeutas] = useState(false);
 
-  // Debug: ver qué servicios llegan
-  useEffect(() => {
-    console.log('Servicios recibidos:', servicios);
-    console.log('Servicios área 1:', servicios.filter(s => s.area?.id === 1));
-    console.log('Servicios área 2:', servicios.filter(s => s.area?.id === 2));
+  // Agrupar servicios por área en orden: Infantil → Adolescentes → Adultos → Otros
+  const serviciosPorArea = useMemo(() => {
+    const grupos = {};
+    servicios.forEach(s => {
+      const areaNombre = s.area?.nombre || 'Otros Servicios';
+      if (!grupos[areaNombre]) grupos[areaNombre] = [];
+      grupos[areaNombre].push(s);
+    });
+    return Object.entries(grupos).sort(([a], [b]) => prioridadArea(a) - prioridadArea(b));
   }, [servicios]);
 
-  // Encontrar el ID del servicio seleccionado
+  // Encontrar el servicio seleccionado por ID
   const servicioSeleccionado = useMemo(() => {
-    return servicios.find(s => s.nombre === nuevoServicio.servicio);
+    return servicios.find(s => s.id === parseInt(nuevoServicio.servicio));
   }, [servicios, nuevoServicio.servicio]);
 
   // Cargar terapeutas filtrados cuando se selecciona un servicio
@@ -100,45 +111,13 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
               className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] transition-colors bg-white"
             >
               <option value="">Seleccione un servicio</option>
-
-              {/* Área Infantil y Adolescentes */}
-              {servicios.filter(s => s.area?.id === 1).length > 0 && (
-                <optgroup label="📋 Área Infantil y Adolescentes">
-                  {servicios
-                    .filter(s => s.area?.id === 1)
-                    .map(s => (
-                      <option key={s.id} value={s.nombre}>
-                        {s.nombre}
-                      </option>
-                    ))}
+              {serviciosPorArea.map(([areaNombre, lista]) => (
+                <optgroup key={areaNombre} label={`📋 ${areaNombre}`}>
+                  {lista.map(s => (
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                  ))}
                 </optgroup>
-              )}
-
-              {/* Área Adultos */}
-              {servicios.filter(s => s.area?.id === 2).length > 0 && (
-                <optgroup label="📋 Área Adultos">
-                  {servicios
-                    .filter(s => s.area?.id === 2)
-                    .map(s => (
-                      <option key={s.id} value={s.nombre}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                </optgroup>
-              )}
-
-              {/* Servicios sin área definida */}
-              {servicios.filter(s => !s.area?.id || (s.area?.id !== 1 && s.area?.id !== 2)).length > 0 && (
-                <optgroup label="📋 Otros Servicios">
-                  {servicios
-                    .filter(s => !s.area?.id || (s.area?.id !== 1 && s.area?.id !== 2))
-                    .map(s => (
-                      <option key={s.id} value={s.nombre}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                </optgroup>
-              )}
+              ))}
             </select>
           </div>
 

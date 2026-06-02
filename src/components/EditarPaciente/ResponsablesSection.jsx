@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, Shield, Phone, Mail, FileText, AlertCircle, Save, X, Info, Loader2, User } from 'lucide-react';
-import { getResponsablesPorPaciente, getProcesosLegalesInfantiles } from '../../services/pacienteService';
+import { getResponsablesPorPaciente, getProcesosLegalesInfantiles, buscarResponsablePorDni } from '../../services/pacienteService';
 import { getRelacionesResponsable, getTiposDocumento } from '../../services/catalogoService';
 import api from '../../services/api';
 
-const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
+const ResponsablesSection = ({ pacienteId, canEdit, soloNombreYDni = false, onSuccess, onError }) => {
   const [responsables, setResponsables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,7 +22,9 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
   // ⛔️ ELIMINAR el estado [alert, setAlert] y todo su código relacionado
 
   useEffect(() => {
-    loadData();
+    if (pacienteId) {
+      loadData();
+    }
   }, [pacienteId]);
 
   const loadData = async () => {
@@ -69,11 +71,17 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
   };
 
   const handleSaveEdit = async () => {
+    if (!pacienteId) {
+      console.error('Error: pacienteId no está definido');
+      if (onError) onError('Error: ID de paciente no disponible');
+      return;
+    }
+
     try {
       setSaving(true);
-      
+
       const responsableId = editingId || 'null';
-      
+
       console.log('Guardando responsable...');
       const response = await api.put(
         `/pacientes/${pacienteId}/responsables/${responsableId}`,
@@ -104,6 +112,12 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
   const handleDelete = async (responsableId) => {
     if (!window.confirm('¿Está seguro de eliminar este responsable?')) return;
 
+    if (!pacienteId) {
+      console.error('Error: pacienteId no está definido');
+      if (onError) onError('Error: ID de paciente no disponible');
+      return;
+    }
+
     try {
       console.log('Eliminando responsable...');
       await api.delete(`/pacientes/${pacienteId}/responsables/${responsableId}`);
@@ -118,6 +132,12 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
   };
 
   const handleAddNew = async () => {
+    if (!pacienteId) {
+      console.error('Error: pacienteId no está definido');
+      if (onError) onError('Error: ID de paciente no disponible');
+      return;
+    }
+
     try {
       setSaving(true);
       console.log('Agregando nuevo responsable...');
@@ -211,16 +231,18 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
                     <h4 className="font-semibold text-gray-900 text-sm">
                       {`${responsable.nombres} ${responsable.apellido_paterno} ${responsable.apellido_materno || ''}`}
                     </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      {index === 0 && (
-                        <span className="px-2 py-0.5 bg-[#7B1FA2]/10 text-[#7B1FA2] text-xs font-semibold rounded-md">
-                          Principal
+                    {!soloNombreYDni && (
+                      <div className="flex items-center gap-2 mt-1">
+                        {index === 0 && (
+                          <span className="px-2 py-0.5 bg-[#7B1FA2]/10 text-[#7B1FA2] text-xs font-semibold rounded-md">
+                            Principal
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">
+                          {responsable.responsable_relacion?.nombre || 'N/A'}
                         </span>
-                      )}
-                      <span className="text-xs text-gray-500">
-                        {responsable.responsable_relacion?.nombre || 'N/A'}
-                      </span>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -255,23 +277,29 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 text-xs">
-                  <FileText className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-gray-500">{responsable.tipo_documento?.nombre || 'N/A'}:</span>
-                  <span className="font-medium text-gray-700">{responsable.numero_documento}</span>
-                </div>
+                {!soloNombreYDni && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <FileText className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-gray-500">{responsable.tipo_documento?.nombre || 'N/A'}:</span>
+                    <span className="font-medium text-gray-700">{responsable.numero_documento}</span>
+                  </div>
+                )}
 
-                <div className="flex items-center gap-2 text-xs">
-                  <Phone className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="font-medium text-gray-700">{responsable.telefono || 'N/A'}</span>
-                </div>
+                {!soloNombreYDni && (
+                  <>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-medium text-gray-700">{responsable.telefono || 'N/A'}</span>
+                    </div>
 
-                <div className="flex items-center gap-2 text-xs col-span-2">
-                  <Mail className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="font-medium text-gray-700 truncate">{responsable.email || 'N/A'}</span>
-                </div>
+                    <div className="flex items-center gap-2 text-xs col-span-2">
+                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-medium text-gray-700 truncate">{responsable.email || 'N/A'}</span>
+                    </div>
+                  </>
+                )}
 
-                <div className="flex items-center gap-2 col-span-2 pt-2 border-t border-gray-100">
+                <div className={`flex items-center gap-2 pt-2 border-t border-gray-100 ${soloNombreYDni ? 'col-span-2' : 'col-span-2'}`}>
                   <Shield className={`w-4 h-4 ${responsable.tiene_proceso_legal ? 'text-orange-500' : 'text-green-500'}`} />
                   <span className="text-xs font-medium text-gray-600">Proceso Legal:</span>
                   <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${
@@ -282,22 +310,22 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
                     {responsable.tiene_proceso_legal ? 'Sí' : 'No'}
                   </span>
                   {responsable.tiene_proceso_legal && responsable.procesoLegalInfantil && (
-                    <>
-                      <span className="text-xs text-gray-600">
-                        {responsable.procesoLegalInfantil.nombre}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleShowInfo(responsable.procesoLegalInfantil);
-                        }}
-                        className="p-1 hover:bg-orange-100 rounded-lg transition-colors ml-auto"
-                        title="Ver detalles"
-                      >
-                        <Info className="w-4 h-4 text-orange-600" />
-                      </button>
-                    </>
+                    <span className="text-xs text-gray-600">
+                      {responsable.procesoLegalInfantil.nombre}
+                    </span>
+                  )}
+                  {!soloNombreYDni && responsable.tiene_proceso_legal && responsable.procesoLegalInfantil && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleShowInfo(responsable.procesoLegalInfantil);
+                      }}
+                      className="p-1 hover:bg-orange-100 rounded-lg transition-colors ml-auto"
+                      title="Ver detalles"
+                    >
+                      <Info className="w-4 h-4 text-orange-600" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -311,7 +339,7 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
         <ResponsableModal
           title="Agregar Nuevo Responsable"
           formData={formData}
-          
+          pacienteId={pacienteId}
           setFormData={setFormData}
           onSave={handleAddNew}
           onClose={() => {
@@ -330,6 +358,7 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
         <ResponsableModal
           title="Editar Responsable"
           formData={formData}
+          pacienteId={pacienteId}
           setFormData={setFormData}
           onSave={handleSaveEdit}
           onClose={() => {
@@ -390,10 +419,12 @@ const ResponsablesSection = ({ pacienteId, canEdit, onSuccess, onError }) => {
 };
 
 // Modal unificado para agregar/editar responsable
-const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, saving, relaciones, tiposDocumento, procesosLegales }) => {
+const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, saving, relaciones, tiposDocumento, procesosLegales, pacienteId }) => {
+  const [buscandoDni, setBuscandoDni] = useState(false);
+  const [mensajeBusqueda, setMensajeBusqueda] = useState('');
 
-  // Función para manejar cambio de documento con límites
-  const handleNumeroDocumentoChange = (e) => {
+  // Función para manejar cambio de documento con límites y búsqueda automática
+  const handleNumeroDocumentoChange = async (e) => {
     let value = e.target.value.replace(/[^0-9]/g, '');
 
     // Limitar según tipo de documento
@@ -405,6 +436,34 @@ const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, savin
     }
 
     setFormData({...formData, numero_documento: value});
+
+    // ✅ AUTOCOMPLETAR estilo SUNAT: Si es DNI y tiene 8 dígitos, buscar
+    if (tipoDocumento === 1 && value.length === 8 && pacienteId) {
+      setBuscandoDni(true);
+      setMensajeBusqueda('Buscando responsable...');
+
+      const resultado = await buscarResponsablePorDni(pacienteId, value);
+
+      if (resultado.success && resultado.data) {
+        // ✅ Autocompletar SOLO nombre y apellidos
+        setFormData({
+          ...formData,
+          numero_documento: value,
+          nombres: resultado.data.nombres,
+          apellido_paterno: resultado.data.apellido_paterno,
+          apellido_materno: resultado.data.apellido_materno || '',
+          // ⚠️ telefono, email, relacion quedan vacíos - deben llenarse manualmente
+        });
+        setMensajeBusqueda('✓ Datos básicos encontrados. Complete teléfono, email y relación.');
+        setTimeout(() => setMensajeBusqueda(''), 3000);
+      } else {
+        setMensajeBusqueda('');
+      }
+
+      setBuscandoDni(false);
+    } else {
+      setMensajeBusqueda('');
+    }
   };
 
   // Función para manejar cambio de teléfono (solo 9 dígitos, empieza con 9)
@@ -531,11 +590,24 @@ const ResponsableModal = ({ title, formData, setFormData, onSave, onClose, savin
                   placeholder={formData.tipo_documento_id === 1 ? '8 dígitos' : formData.tipo_documento_id === 3 ? '9-12 dígitos' : 'Número'}
                   inputMode="numeric"
                 />
-                {formData.tipo_documento_id === 1 && (
+                {formData.tipo_documento_id === 1 && !mensajeBusqueda && (
                   <p className="text-xs text-gray-500 mt-1">DNI debe tener 8 dígitos</p>
                 )}
                 {formData.tipo_documento_id === 3 && (
                   <p className="text-xs text-gray-500 mt-1">Carnet de Extranjería: 9-12 dígitos</p>
+                )}
+                {/* Mensaje de búsqueda/resultado */}
+                {buscandoDni && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-blue-600">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>{mensajeBusqueda}</span>
+                  </div>
+                )}
+                {!buscandoDni && mensajeBusqueda && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-green-600 font-semibold">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{mensajeBusqueda}</span>
+                  </div>
                 )}
               </div>
             </div>

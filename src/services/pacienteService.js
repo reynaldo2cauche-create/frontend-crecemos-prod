@@ -100,6 +100,42 @@ export const getResponsablesPorPaciente = async (pacienteId) => {
   return response.data;
 }
 
+/**
+ * Buscar responsable por DNI (solo devuelve nombre y apellidos para autocompletar)
+ * Similar a SUNAT - autocompleta datos básicos pero el resto se llena manualmente
+ */
+export const buscarResponsablePorDni = async (pacienteId, dni) => {
+  try {
+    const response = await api.get(`/pacientes/${pacienteId}/responsables/buscar-por-dni/${dni}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al buscar responsable:', error);
+    return { success: false, data: null };
+  }
+}
+
+// 🆕 Obtener TODOS los responsables (para venta de servicios)
+export const getTodosLosResponsables = async () => {
+  try {
+    const response = await api.get('/responsables');
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener responsables:', error);
+    throw error;
+  }
+};
+
+// 🆕 Obtener pacientes a cargo de un responsable
+export const getPacientesPorResponsable = async (responsableId) => {
+  try {
+    const response = await api.get(`/responsables/${responsableId}/pacientes`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener pacientes del responsable:', error);
+    throw error;
+  }
+};
+
 export const getProcesosLegalesInfantiles = async () => {
   const response = await api.get('/procesos-legales-infantiles');
   return response.data;

@@ -75,6 +75,10 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
   }, []);
 
   const handleNumeroDocumentoChange = (e) => {
+    // 🔧 Prevenir cualquier acción por defecto (importante para iOS)
+    e.preventDefault();
+    e.stopPropagation();
+
     const rawValue = e.target.value;
     let value = rawValue.replace(/[^0-9]/g, '');
 
@@ -84,10 +88,8 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
       value = value.slice(0, 12);
     }
 
-    // Solo actualizar si el valor cambió después del filtrado
-    if (value !== rawValue) {
-      e.target.value = value;
-    }
+    // ✅ Actualizar react-hook-form con setValue
+    setValue('numeroDocumento', value, { shouldValidate: false });
 
     // Limpiar timeout anterior si existe
     if (validationTimeoutRef.current) {
@@ -158,12 +160,60 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
   }
 
   const onSubmit = (data) => {
-    // Validar que todos los campos estén completos antes de avanzar
+    // ❌ Bloquear si el documento ya está registrado
+    if (documentoExistente) {
+      if (setSnackbar) {
+        setSnackbar({
+          open: true,
+          message: 'No se puede continuar. El número de documento ya está registrado en el sistema.',
+          severity: 'error'
+        });
+      }
+      return; // NO permite avanzar
+    }
+
+    // ❌ Bloquear si aún está verificando el documento
+    if (checkingDocumento) {
+      if (setSnackbar) {
+        setSnackbar({
+          open: true,
+          message: 'Espere mientras verificamos el número de documento...',
+          severity: 'warning'
+        });
+      }
+      return;
+    }
+
+    // ✅ Todo OK, permitir avanzar
     onNext(data);
   };
 
+  // 🔧 Prevenir submit automático del formulario (fix para iOS)
+  const handleFormKeyDown = (e) => {
+    // Prevenir submit al presionar Enter en cualquier input
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  };
+
+  // 🔧 Prevenir submit no intencional (fix para iOS)
+  const handleFormSubmit = (e) => {
+    // Solo permitir submit si viene del botón "Siguiente"
+    if (e.nativeEvent.submitter?.type !== 'submit' && e.nativeEvent.submitter?.className?.includes('btn-next')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+    return handleSubmit(onSubmit)(e);
+  };
+
   return (
-    <Form onSubmit={handleSubmit(onSubmit)} className="personal-data-form">
+    <Form onSubmit={handleFormSubmit} onKeyDown={handleFormKeyDown} className="personal-data-form">
+      {/* Botón hidden para prevenir auto-submit en iOS */}
+      <button type="submit" disabled style={{ display: 'none' }} aria-hidden="true" />
+
       <div className="form-section">
         <h5 className="form-section-title">
           <i className="bi bi-person-badge me-2"></i>
@@ -292,13 +342,22 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
                         }
                         return true;
                       }
-                    },
-                    onChange: handleNumeroDocumentoChange
+                    }
                   })}
+                  value={watch('numeroDocumento') || ''}
+                  onChange={handleNumeroDocumentoChange}
+                  onBlur={(e) => e.preventDefault()}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
                   isInvalid={!!errors.numeroDocumento || documentoExistente}
                   disabled={!tipoDocumento || checkingDocumento}
                   inputMode="numeric"
                   placeholder="Número de documento"
+                  autoComplete="off"
                 />
                 {checkingDocumento && (
                   <Spinner
@@ -430,7 +489,7 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
               <Form.Control
                 type="text"
                 {...register('celular2', {
-                 
+
                   pattern: {
                     value: /^9\d{8}$/,
                     message: 'El celular debe tener 9 dígitos y comenzar con 9'
@@ -474,9 +533,29 @@ const PersonalDataForm = ({ onNext, setSnackbar }) => {
 
       {/* Botón Siguiente */}
       <div className="d-grid mt-4">
-        <Button variant="primary" type="submit" size="lg" className="btn-next">
-          Siguiente
-          <i className="bi bi-arrow-right ms-2"></i>
+        <Button
+          variant="primary"
+          type="submit"
+          size="lg"
+          className="btn-next"
+          disabled={documentoExistente || checkingDocumento}
+        >
+          {checkingDocumento ? (
+            <>
+              <Spinner animation="border" size="sm" className="me-2" />
+              Verificando documento...
+            </>
+          ) : documentoExistente ? (
+            <>
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              Documento duplicado
+            </>
+          ) : (
+            <>
+              Siguiente
+              <i className="bi bi-arrow-right ms-2"></i>
+            </>
+          )}
         </Button>
       </div>
     </Form>

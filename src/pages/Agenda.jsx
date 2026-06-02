@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -12,27 +12,30 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Ban
 } from 'lucide-react';
 
 // Componentes
 import ModalAgendarCita from '../components/Agenda/ModalAgendarCita';
 import CalendarioSemanal from '../components/Agenda/CalendarioSemanal';
 import EstadisticasCitas from '../components/Agenda/EstadisticasCitas';
+import ListaBloqueos from '../components/Agenda/ListaBloqueos';
 
 // Servicios
-import { 
-  listarCitas, 
-  crearCita, 
-  eliminarCita, 
+import {
+  listarCitas,
+  crearCita,
+  eliminarCita,
   getCitaById,
   crearMultiplesCitas,
   getMotivosCita,
-  getEstadosCita 
+  getEstadosCita
 } from '../services/citaService';
 import { getServicios } from '../services/catalogoService';
 import { getTrabajadores } from '../services/trabajadorService';
 import { actualizarCita } from '../services/citaService';
+import { obtenerBloqueosPorTerapeuta, obtenerBloqueosActivos } from '../services/bloqueoService';
 
 // Hooks y utilidades
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -52,6 +55,7 @@ const Agenda = () => {
     const ahora = new Date();
     return new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Lima' }));
   });
+  const cambioTerapeutaRef = useRef(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [slotSeleccionado, setSlotSeleccionado] = useState(null);
   const [terapeutaFiltro, setTerapeutaFiltro] = useState('');
@@ -72,18 +76,22 @@ const Agenda = () => {
     encargado: null,
     firma_documento: false,
     user_id_crea: null,
-    motivo_accion: '' // ✅ CAMPO PARA MOTIVO DE MODIFICACIÓN
+    motivo_accion: '', // ✅ CAMPO PARA MOTIVO DE MODIFICACIÓN
+    venta_servicio_detalle_id: null // ✅ CAMPO PARA VENTA ASOCIADA
   });
   
   // Estados para datos
   const [citas, setCitas] = useState([]);
   const [todasLasCitas, setTodasLasCitas] = useState([]); // Para validación de disponibilidad
+  const [bloqueos, setBloqueos] = useState([]); // Para bloqueos de horarios
   const [servicios, setServicios] = useState([]);
   const [motivos, setMotivos] = useState([]);
   const [estados, setEstados] = useState([]);
   const [trabajadores, setTrabajadores] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [cargandoCita, setCargandoCita] = useState(false); // ✅ Loading para abrir modal
+  // Cache stale-while-revalidate: clave = "terapeutaId-fechaDesde-fechaHasta"
+  const citasCache = useRef(new Map());
 
   // Estados para notificaciones
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -92,6 +100,10 @@ const Agenda = () => {
 
   // Estado para forzar recarga de estadísticas
   const [recargarEstadisticas, setRecargarEstadisticas] = useState(0);
+  const [recargarCitas, setRecargarCitas] = useState(0); // 🆕 Estado para forzar recarga de citas
+
+  // Estado para tabs
+  const [tabActivo, setTabActivo] = useState('calendario'); // 'calendario' | 'bloqueos'
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -148,76 +160,114 @@ const Agenda = () => {
 
   // Cargar citas
   useEffect(() => {
+    let cancelado = false;
+
     const cargarCitas = async () => {
-      try {
-        // ✅ Limpiar citas inmediatamente para evitar flickering
-        setCitas([]);
-        setTodasLasCitas([]);
-        setCargando(true);
+      let params = {};
 
-        let params = {};
+      if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+        params.terapeuta_id = currentUser.id;
+      } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+        params.terapeuta_id = terapeutaFiltro;
+      }
 
-        if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
-          params.terapeuta_id = currentUser.id;
-        } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
-          params.terapeuta_id = terapeutaFiltro;
+      const fecha = new Date(fechaActual);
+      const formatearFecha = (f) => {
+        const year = f.getFullYear();
+        const month = String(f.getMonth() + 1).padStart(2, '0');
+        const day = String(f.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+      const primerDiaExpandido = new Date(primerDiaMes);
+      primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
+      const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+      const ultimoDiaExpandido = new Date(ultimoDiaMes);
+      ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
+
+      params.fecha_desde = formatearFecha(primerDiaExpandido);
+      params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
+
+      const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+      const cachedData = citasCache.current.get(cacheKey);
+
+     const esCambioTerapeuta = cambioTerapeutaRef.current;
+      cambioTerapeutaRef.current = false; // resetear para la próxima
+
+      if (cachedData && !esCambioTerapeuta) {
+        // Misma semana/terapeuta: mostrar caché inmediato sin spinner
+        if (!cancelado) {
+          setCitas(cachedData);
+          setTodasLasCitas(cachedData);
+          setCargando(false);
         }
-
-        // Calcular el rango de fechas: incluir semanas completas que tocan el mes
-        const fecha = new Date(fechaActual);
-
-        // 🕐 LOG DETALLADO PARA DEBUGGING
-        console.log('🕐 DEBUGGING - Hora actual navegador:', new Date().toISOString());
-        console.log('🕐 DEBUGGING - fechaActual state:', fechaActual);
-        console.log('🕐 DEBUGGING - fecha usada para cálculo:', fecha);
-        console.log('🕐 DEBUGGING - Mes de fecha:', fecha.getMonth() + 1);
-        console.log('🕐 DEBUGGING - Año de fecha:', fecha.getFullYear());
-
-        // Formatear fechas como YYYY-MM-DD
-        const formatearFecha = (f) => {
-          const year = f.getFullYear();
-          const month = String(f.getMonth() + 1).padStart(2, '0');
-          const day = String(f.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        };
-
-        // 🔥 NUEVA LÓGICA: Expandir rango para incluir semanas completas
-        // Obtener el primer día del mes
-        const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-        // Retroceder hasta el lunes de esa semana (o hasta 7 días antes para incluir la semana anterior)
-        const primerDiaExpandido = new Date(primerDiaMes);
-        primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
-
-        // Obtener el último día del mes
-        const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
-        // Avanzar hasta 7 días después para incluir la siguiente semana
-        const ultimoDiaExpandido = new Date(ultimoDiaMes);
-        ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
-
-        params.fecha_desde = formatearFecha(primerDiaExpandido);
-        params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
-
-        console.log(`📅 Cargando citas del ${params.fecha_desde} al ${params.fecha_hasta} (expandido para incluir semanas completas)`);
-
-        // Cargar citas filtradas para mostrar en el calendario
+      } else {
+        // Cambio de terapeuta: ya limpiamos arriba, solo mantener spinner
+        if (!cancelado) {
+          setCargando(true);
+        }
+      }
+      // Siempre buscar la versión fresca en segundo plano
+      try {
         const citasRes = await listarCitas(params);
-        setCitas(citasRes);
-        setTodasLasCitas(citasRes);
-
+        if (!cancelado) {
+          citasCache.current.set(cacheKey, citasRes);
+          setCitas(citasRes);
+          setTodasLasCitas(citasRes);
+        }
       } catch (error) {
-        console.error('Error cargando citas:', error);
-        setSnackbarMessage('Error al cargar citas');
-        setSnackbarSeverity('error');
-        setShowSnackbar(true);
+        if (!cancelado) {
+          console.error('Error cargando citas:', error);
+          setSnackbarMessage('Error al cargar citas');
+          setSnackbarSeverity('error');
+          setShowSnackbar(true);
+        }
       } finally {
-        setCargando(false);
+        if (!cancelado) {
+          setCargando(false);
+        }
       }
     };
 
     if (currentUser) {
       cargarCitas();
     }
-  }, [currentUser, terapeutaFiltro, fechaActual]);
+
+    return () => { cancelado = true; };
+  }, [currentUser, terapeutaFiltro, fechaActual, recargarCitas]);
+
+  // Cargar bloqueos del terapeuta
+  useEffect(() => {
+    let cancelado = false;
+
+    const cargarBloqueos = async () => {
+      try {
+        let bloqueosRes = [];
+
+        if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+          bloqueosRes = await obtenerBloqueosPorTerapeuta(currentUser.id);
+        } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+          bloqueosRes = await obtenerBloqueosPorTerapeuta(terapeutaFiltro);
+        }
+
+        if (!cancelado) {
+          setBloqueos(bloqueosRes || []);
+        }
+      } catch (error) {
+        if (!cancelado) {
+          console.error('❌ Error cargando bloqueos:', error);
+          setBloqueos([]);
+        }
+      }
+    };
+
+    if (currentUser) {
+      cargarBloqueos();
+    }
+
+    return () => { cancelado = true; };
+  }, [currentUser, terapeutaFiltro]);
 
   // Determinar tipo de cita basado en motivo_id
   const determinarTipoCita = (motivoId) => {
@@ -245,8 +295,6 @@ const Agenda = () => {
     }
 
     const fecha = new Date(fechaActual);
-    const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-    const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
 
     const formatearFecha = (f) => {
       const year = f.getFullYear();
@@ -255,11 +303,52 @@ const Agenda = () => {
       return `${year}-${month}-${day}`;
     };
 
-    params.fecha_desde = formatearFecha(primerDiaMes);
-    params.fecha_hasta = formatearFecha(ultimoDiaMes);
+    // 🔥 USAR LA MISMA LÓGICA DE EXPANSIÓN QUE cargarCitas()
+    // Obtener el primer día del mes
+    const primerDiaMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+    // Retroceder 7 días para incluir semanas completas
+    const primerDiaExpandido = new Date(primerDiaMes);
+    primerDiaExpandido.setDate(primerDiaMes.getDate() - 7);
+
+    // Obtener el último día del mes
+    const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0);
+    // Avanzar 7 días para incluir semanas completas
+    const ultimoDiaExpandido = new Date(ultimoDiaMes);
+    ultimoDiaExpandido.setDate(ultimoDiaMes.getDate() + 7);
+
+    params.fecha_desde = formatearFecha(primerDiaExpandido);
+    params.fecha_hasta = formatearFecha(ultimoDiaExpandido);
 
     return params;
   };
+
+  // Polling silencioso cada 30s para ver citas creadas por otros usuarios
+  const obtenerParamsRef = useRef(obtenerParamsFechaActual);
+  const terapeutaFiltroRef = useRef(terapeutaFiltro);
+  useEffect(() => {
+    obtenerParamsRef.current = obtenerParamsFechaActual;
+    terapeutaFiltroRef.current = terapeutaFiltro;
+  });
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const intervalo = setInterval(async () => {
+      try {
+        const filtroAlInicio = terapeutaFiltroRef.current;
+        const params = obtenerParamsRef.current();
+        const citasFrescas = await listarCitas(params, { forceRefresh: true });
+        // descartar si el terapeuta cambió mientras esperábamos la respuesta
+        if (terapeutaFiltroRef.current !== filtroAlInicio) return;
+        const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+        citasCache.current.set(cacheKey, citasFrescas);
+        setCitas(citasFrescas);
+        setTodasLasCitas(citasFrescas);
+      } catch {
+        // silencioso — no interrumpir al usuario
+      }
+    }, 30 * 1000);
+    return () => clearInterval(intervalo);
+  }, [currentUser]);
 
   const abrirModalDesdeSlot = (dia, hora) => {
     const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA
@@ -288,7 +377,8 @@ const Agenda = () => {
       servicios_ids: [],
       encargado: null,
       firma_documento: false,
-      user_id_crea: currentUser?.id || null
+      user_id_crea: currentUser?.id || null,
+      venta_servicio_detalle_id: null
     });
 
     setCitaEditando(null);
@@ -296,10 +386,10 @@ const Agenda = () => {
   };
 
   const abrirModalNuevaCita = () => {
-    const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA 
-      ? currentUser.id 
+    const doctorId = currentUser?.rol?.id === ROLES.TERAPEUTA
+      ? currentUser.id
       : terapeutaFiltro;
-    
+
     setSlotSeleccionado(null);
     setFormularioCita({
       motivo_id: '',
@@ -315,7 +405,8 @@ const Agenda = () => {
       servicios_ids: [],
       encargado: null,
       firma_documento: false,
-      user_id_crea: currentUser?.id || null
+      user_id_crea: currentUser?.id || null,
+      venta_servicio_detalle_id: null
     });
     setCitaEditando(null);
     setModalAbierto(true);
@@ -332,7 +423,8 @@ const Agenda = () => {
       // Formatear datos para el formulario
       const paciente = citaCompleta.paciente ? {
         id: citaCompleta.paciente_id,
-        nombre_completo: `${citaCompleta.paciente.nombres || ''} ${citaCompleta.paciente.apellido_paterno || ''} ${citaCompleta.paciente.apellido_materno || ''}`.trim() || 'Paciente'
+        nombre_completo: `${citaCompleta.paciente.nombres || ''} ${citaCompleta.paciente.apellido_paterno || ''} ${citaCompleta.paciente.apellido_materno || ''}`.trim() || 'Paciente',
+        responsables: citaCompleta.paciente.responsables || [] // ✅ Incluir responsables para el recordatorio
       } : null;
 
       let fechasHoras = [];
@@ -375,7 +467,8 @@ const Agenda = () => {
         servicios_ids,
         encargado,
         firma_documento,
-        user_id_crea: citaCompleta.user_id_crea || currentUser?.id
+        user_id_crea: citaCompleta.user_id_crea || currentUser?.id,
+        venta_servicio_detalle_id: citaCompleta.venta_servicio_detalle_id || null
       });
 
       setModalAbierto(true);
@@ -408,7 +501,8 @@ const Agenda = () => {
       encargado: null,
       firma_documento: false,
       user_id_crea: null,
-      motivo_accion: '' // ✅ RESETEAR MOTIVO
+      motivo_accion: '', // ✅ RESETEAR MOTIVO
+      venta_servicio_detalle_id: null // ✅ RESETEAR VENTA
     });
   };
 
@@ -462,10 +556,6 @@ const guardarCita = async (datosFormulario = null) => {
     console.log('📅 Cantidad de fechas/horas:', datos.fechasHoras?.length);
 
     // Validaciones básicas
-    if (!datos.paciente_id) {
-      throw new Error('Se requiere seleccionar un paciente');
-    }
-
     if (!datos.motivo_id) {
       throw new Error('Se requiere seleccionar un motivo');
     }
@@ -483,16 +573,22 @@ const guardarCita = async (datosFormulario = null) => {
     const tipoCita = determinarTipoCita(datos.motivo_id);
     console.log('📋 Tipo de cita:', tipoCita);
 
+    // Validar paciente solo para citas normales y visitas escolares (NO para reuniones clínicas)
+    if (tipoCita !== 'REUNION_CLINICA' && !datos.paciente_id) {
+      throw new Error('Se requiere seleccionar un paciente');
+    }
+
     // Construir datos base comunes
     let datosBase = {
       motivo_id: parseInt(datos.motivo_id),
-      paciente_id: datos.paciente_id,
+      paciente_id: datos.paciente_id || null,
       estado_id: parseInt(datos.estado_id || 1),
       duracion_minutos: parseInt(datos.duracion || 40),
       nota: datos.nota || '',
       user_id_crea: currentUser.id,
-      motivo_accion: datos.motivo_accion || '' // ✅ INCLUIR MOTIVO DE ACCIÓN
-      
+      motivo_accion: datos.motivo_accion || '',
+ // ✅ INCLUIR MOTIVO DE ACCIÓN
+
     };
 
     // Agregar campos según tipo de cita
@@ -503,6 +599,11 @@ const guardarCita = async (datosFormulario = null) => {
       }
       if (datos.doctor_id) datosBase.doctor_id = parseInt(datos.doctor_id);
       if (datos.servicio_id) datosBase.servicio_id = parseInt(datos.servicio_id);
+
+      // 🛒 INCLUIR VENTA_SERVICIO_DETALLE_ID
+      if (datos.venta_servicio_detalle_id) {
+        datosBase.venta_servicio_detalle_id = parseInt(datos.venta_servicio_detalle_id);
+      }
     }
     else if (tipoCita === 'REUNION_CLINICA') {
       // 🔥 Solo validar cuando se CREA
@@ -565,6 +666,7 @@ const guardarCita = async (datosFormulario = null) => {
 
       await actualizarCita(citaEditando.id, citaDto);
       setSnackbarMessage('✅ Cita actualizada correctamente');
+      setSnackbarSeverity('success');
 
     } else {
       // ➕ MODO CREACIÓN - Detectar si hay múltiples fechas
@@ -602,11 +704,19 @@ const guardarCita = async (datosFormulario = null) => {
         // Mostrar mensaje según el resultado
         if (resultado.exitosas === resultado.total) {
           setSnackbarMessage(`✅ ${resultado.exitosas} citas creadas exitosamente`);
+          setSnackbarSeverity('success');
         } else if (resultado.exitosas > 0) {
-          setSnackbarMessage(`⚠️ ${resultado.exitosas} de ${resultado.total} citas creadas. ${resultado.fallidas} fallaron.`);
+          // Algunas fallaron — mostrar razón
+          const razones = (resultado.errores || []).map(e => e.error).filter(Boolean).join(' | ');
+          setSnackbarMessage(
+            `⚠️ ${resultado.exitosas} de ${resultado.total} citas creadas. ${razones || `${resultado.fallidas} fallaron.`}`
+          );
+          setSnackbarSeverity('error');
           console.error('❌ Errores:', resultado.errores);
         } else {
-          throw new Error('No se pudo crear ninguna cita');
+          // Ninguna se pudo crear — lanzar el error real del backend
+          const primerError = resultado.errores?.[0]?.error || 'No se pudo crear ninguna cita';
+          throw new Error(primerError);
         }
 
       } else {
@@ -627,10 +737,10 @@ const guardarCita = async (datosFormulario = null) => {
 
         await crearCita(citaDto);
         setSnackbarMessage('✅ Cita creada correctamente');
+        setSnackbarSeverity('success');
       }
     }
-    
-    setSnackbarSeverity('success');
+
     setShowSnackbar(true);
 
     // Recargar citas del mes actual visualizado
@@ -639,6 +749,8 @@ const guardarCita = async (datosFormulario = null) => {
     console.log(`🔄 Recargando citas del ${params.fecha_desde} al ${params.fecha_hasta}`);
 
     const citasActualizadas = await listarCitas(params);
+    const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+    citasCache.current.set(cacheKey, citasActualizadas);
     setCitas(citasActualizadas);
     setTodasLasCitas(citasActualizadas);
 
@@ -655,8 +767,10 @@ const guardarCita = async (datosFormulario = null) => {
     });
     
     let mensajeError = 'Error al guardar la cita';
-    if (error.response?.data?.message) {
-      mensajeError = error.response.data.message;
+    const responseMsg = error.response?.data?.message;
+    if (responseMsg) {
+      // NestJS puede devolver message como string o string[]
+      mensajeError = Array.isArray(responseMsg) ? responseMsg.join(', ') : responseMsg;
     } else if (error.message) {
       mensajeError = error.message;
     }
@@ -664,6 +778,7 @@ const guardarCita = async (datosFormulario = null) => {
     setSnackbarMessage(mensajeError);
     setSnackbarSeverity('error');
     setShowSnackbar(true);
+    throw error; // re-lanzar para que el modal también pueda mostrar el error
   } finally {
     setGuardando(false);
   }
@@ -683,6 +798,8 @@ const guardarCita = async (datosFormulario = null) => {
       // Recargar citas del mes actual visualizado
       const params = obtenerParamsFechaActual();
       const citasActualizadas = await listarCitas(params);
+      const cacheKey = `${params.terapeuta_id || 'todos'}-${params.fecha_desde}-${params.fecha_hasta}`;
+      citasCache.current.set(cacheKey, citasActualizadas);
       setCitas(citasActualizadas);
       setTodasLasCitas(citasActualizadas);
 
@@ -752,6 +869,16 @@ const guardarCita = async (datosFormulario = null) => {
 
   const debeSeleccionarTerapeuta = (currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && !terapeutaFiltro;
 
+  useEffect(() => {
+    if (terapeutaSeleccionadoMemo) {
+      const nombre = `${terapeutaSeleccionadoMemo.nombres || ''} ${terapeutaSeleccionadoMemo.apellidos || ''}`.trim();
+      document.title = `${nombre} - Agenda`;
+    } else {
+      document.title = 'Agenda';
+    }
+    return () => { document.title = 'Centro Crecemos'; };
+  }, [terapeutaSeleccionadoMemo]);
+
   // Duración de citas disponibles - memorizado para evitar re-renders
   const duraciones = useMemo(() => [
     { valor: '40', label: '40 minutos' },
@@ -791,7 +918,7 @@ const guardarCita = async (datosFormulario = null) => {
 
       {/* Snackbar de notificaciones */}
       {showSnackbar && (
-        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
+        <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
           snackbarSeverity === 'success'
             ? 'bg-white border-gray-100'
             : 'bg-white border-red-100'
@@ -812,8 +939,8 @@ const guardarCita = async (datosFormulario = null) => {
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda de Citas</h1>
-              <p className="text-gray-600">Gestiona y organiza las citas de tus pacientes</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda</h1>
+              <p className="text-gray-600">Gestiona citas y bloqueos de horarios</p>
             </div>
             {/* ✅ Indicador de modo optimizado para tablets */}
             {performanceConfig.device.shouldOptimize && (
@@ -825,6 +952,38 @@ const guardarCita = async (datosFormulario = null) => {
               </div>
             )}
           </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setTabActivo('calendario')}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                tabActivo === 'calendario'
+                  ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Calendario de Citas</span>
+            </button>
+
+           {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
+            <button
+              onClick={() => setTabActivo('bloqueos')}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                tabActivo === 'bloqueos'
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              <Ban className="w-5 h-5" />
+              <span>Horarios Bloqueados</span>
+            </button>
+          )}
+          </div>
+
+          {/* Estadísticas - solo en tab calendario */}
+          {tabActivo === 'calendario' && (
              <EstadisticasCitas
                 key={recargarEstadisticas}
                 fechaDesde={(() => {
@@ -853,10 +1012,14 @@ const guardarCita = async (datosFormulario = null) => {
                   return `${year}-${month}-${day}`;
                 })()}
               />
+          )}
         </div>
 
-        {/* Filtros */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+        {/* Contenido del tab Calendario */}
+        {tabActivo === 'calendario' && (
+          <>
+            {/* Filtros */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5 text-[#7B1FA2]" />
@@ -871,7 +1034,19 @@ const guardarCita = async (datosFormulario = null) => {
               </label>
               <select
                 value={terapeutaFiltro}
-                onChange={(e) => setTerapeutaFiltro(e.target.value)}
+                onChange={(e) => {
+                  cambioTerapeutaRef.current = true;
+                  // Limpiar citas inmediatamente para no mostrar datos del terapeuta anterior
+                  setCitas([]);
+                  setTodasLasCitas([]);
+                  setBloqueos([]);
+                  setCargando(true);
+                  setTerapeutaFiltro(e.target.value); // dispara el useEffect
+                  const hoy = new Date();
+                  const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+                  setFechaActual(hoyCL);
+                  setFechaCalendario(hoyCL);
+                }}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
@@ -904,6 +1079,7 @@ const guardarCita = async (datosFormulario = null) => {
         ) : (
           <CalendarioSemanal
             citas={citas}
+            bloqueos={bloqueos}
             onSlotClick={abrirModalDesdeSlot}
             onCitaClick={handleCitaClick}
             getEstadoColor={getEstadoColorCustom}
@@ -917,14 +1093,39 @@ const guardarCita = async (datosFormulario = null) => {
           />
         )}
 
-        {/* Botón flotante */}
-        {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
-          <button
-            onClick={abrirModalNuevaCita}
-            className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-2xl shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-110 transition-all z-40"
-          >
-            <Plus className="w-7 h-7" />
-          </button>
+            {/* Botón flotante - Agendar Cita */}
+            {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
+              <button
+                onClick={abrirModalNuevaCita}
+                className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-2xl shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-110 transition-all z-40"
+              >
+                <Plus className="w-7 h-7" />
+              </button>
+            )}
+          </>
+        )}
+
+        {/* Contenido del tab Bloqueos */}
+        {tabActivo === 'bloqueos' && (
+          <ListaBloqueos
+            terapeutas={terapeutasDisponibles}
+            userId={currentUser?.id}
+            onBloqueoChange={async () => {
+              // Recargar bloqueos cuando se crea o elimina uno
+              try {
+                let bloqueosRes = [];
+                if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
+                  bloqueosRes = await obtenerBloqueosPorTerapeuta(currentUser.id);
+                } else if ((currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && terapeutaFiltro) {
+                  bloqueosRes = await obtenerBloqueosPorTerapeuta(terapeutaFiltro);
+                }
+                console.log('🔄 Bloqueos recargados después de cambio:', bloqueosRes);
+                setBloqueos(bloqueosRes || []);
+              } catch (error) {
+                console.error('❌ Error recargando bloqueos:', error);
+              }
+            }}
+          />
         )}
 
         {/* Modal */}
@@ -946,6 +1147,7 @@ const guardarCita = async (datosFormulario = null) => {
           motivos={motivos}
           trabajadores={trabajadores}
           citas={todasLasCitas}
+          bloqueos={bloqueos}
         />
       </div>
     </div>

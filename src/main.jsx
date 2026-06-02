@@ -11,7 +11,7 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 // DESPUÉS tus estilos (para que sobrescriban Bootstrap)
 
 import "./styles/global.css";
-import './styles/intranet.css' 
+import './styles/intranet.css'; 
 
 // Fuentes
 import '@fontsource/open-sans/300.css'

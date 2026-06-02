@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
 import FiliacionView from '../components/EditarPaciente/FiliacionView';
 import HistoriaClinicaView from '../components/EditarPaciente/HistoriaClinicaView';
 import ArchivosDigitales from '../components/EditarPaciente/ArchivosDigitales';
+import ResumenTerapiasView from '../components/EditarPaciente/ResumenTerapiasView';
 import NotasEvolucion from '../components/EditarPaciente/NotasEvolucion';
 import AsignarServicioModal from '../components/EditarPaciente/AsignarServicioModal';
 import EditarTerapeutaModal from '../components/EditarPaciente/EditarTerapeutaModal';
@@ -15,7 +16,7 @@ import { useServicios } from '../hooks/useServicios';
 import { useTerapeutas } from '../hooks/useTerapeutas';
 import { calcularEdad, calcularEdadDetallada, formatearFechaParaInput, formatearFechaParaBackend } from '../utils/date';
 import { obtenerNotasEvolucionPorPaciente } from '../services/notaEvolucionService';
-import { ROLES, canManagePatientStatus } from '../constants/roles';
+import { ROLES, canManagePatientStatus, canManageConvenios } from '../constants/roles';
 import {
   getConvenios,
   getConveniosPorPaciente,
@@ -75,6 +76,33 @@ const getEstadoColor = (nombreEstado) => {
   return colorMap[nombreEstado] || colorMap['Inactivo'];
 };
 
+const ABREVIATURA_SERVICIO = {
+  1:  'TL',   // Terapia de Lenguaje Infantil
+  2:  'TO',   // Terapia Ocupacional
+  3:  'TA',   // Terapia de Aprendizaje
+  4:  'PS',   // Psicología Infantil
+  5:  'EPC',  // Evaluación Psicológica para Colegio
+  6:  'OV',   // Orientación Vocacional
+  7:  'PTI',  // Psicoterapia Individual
+  8:  'TP',   // Terapia de Pareja
+  9:  'TF',   // Terapia Familiar
+  10: 'TLA',  // Terapia de Lenguaje Adultos
+};
+
+const SKIP_WORDS = new Set(['de', 'del', 'la', 'el', 'y', 'en', 'con', 'para', 'a', 'o']);
+
+const getAbreviatura = (servicio) => {
+  if (!servicio) return '?';
+  if (ABREVIATURA_SERVICIO[servicio.id]) return ABREVIATURA_SERVICIO[servicio.id];
+  return (servicio.nombre || '')
+    .split(' ')
+    .filter(w => w && !SKIP_WORDS.has(w.toLowerCase()))
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 3) || '?';
+};
+
 const EditarPacientePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -111,6 +139,8 @@ const EditarPacientePage = () => {
   const [nuevoTerapeuta, setNuevoTerapeuta] = useState('');
   const [anchorEstado, setAnchorEstado] = useState(null);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [anchorServicio, setAnchorServicio] = useState(null); // { el, ps }
+  const [cambiandoEstadoServicio, setCambiandoEstadoServicio] = useState(false);
   const [modalEliminarServicio, setModalEliminarServicio] = useState({ open: false, servicio: null });
   const [errorModal, setErrorModal] = useState({ open: false, message: '', title: 'Error' });
   const [mostrarErrorEnModal, setMostrarErrorEnModal] = useState(false);
@@ -210,7 +240,10 @@ useEffect(() => {
       if (id) {
         try {
           let url = `/nota-evolucion/paciente/${id}`;
-          if (user?.rol?.id === ROLES.TERAPEUTA) {
+          // Los terapeutas (incluidos los jefes) envían su trabajador_id
+          // El backend filtra: si es jefe, devuelve sus notas + las de subordinados
+          const esTerapeuta = user?.rol?.id === ROLES.TERAPEUTA;
+          if (esTerapeuta) {
             url += `?trabajador_id=${user.id}`;
           }
           const notas = await obtenerNotasEvolucionPorPaciente(id, url);
@@ -325,9 +358,33 @@ useEffect(() => {
     }
   };
 
+  const handleCambiarEstadoServicio = async (pacienteServicioId, nuevoEstadoId) => {
+    setCambiandoEstadoServicio(true);
+    try {
+      const estadoSeleccionado = estadosPaciente.find(e => e.id === nuevoEstadoId);
+      await api.patch(`/paciente-servicio/${pacienteServicioId}`, {
+        estado_paciente_id: nuevoEstadoId
+      });
+      setPaciente(prev => ({
+        ...prev,
+        servicios: prev.servicios.map(ps =>
+          ps.id === pacienteServicioId
+            ? { ...ps, estado_paciente_id: nuevoEstadoId, estadoPaciente: estadoSeleccionado || null }
+            : ps
+        )
+      }));
+      setSnackbar({ open: true, message: `Estado actualizado a: ${estadoSeleccionado?.nombre}`, severity: 'success' });
+      setAnchorServicio(null);
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Error al cambiar el estado del servicio', severity: 'error' });
+    } finally {
+      setCambiandoEstadoServicio(false);
+    }
+  };
+
 const handleAsignarServicio = async () => {
   try {
-    const servicioSeleccionado = serviciosDisponibles.find(s => s.nombre === nuevoServicio.servicio);
+    const servicioSeleccionado = serviciosDisponibles.find(s => s.id === parseInt(nuevoServicio.servicio));
     if (!servicioSeleccionado) {
       throw new Error('Servicio no encontrado');
     }
@@ -783,21 +840,29 @@ const handleEliminarConvenio = async () => {
       </div>
     </div>
 
-    <button
-      onClick={canManagePatientStatus(user) ? (e) => setAnchorEstado(e.currentTarget) : undefined}
-      disabled={!canManagePatientStatus(user)}
-      className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl ${estadoColors.bg} ${
-        canManagePatientStatus(user) ? 'cursor-pointer hover:shadow-sm transition-all' : 'cursor-default'
-      } w-full sm:w-auto justify-center sm:justify-start`}
-    >
-      <div className={`w-2 h-2 rounded-full ${estadoColors.dot}`}></div>
-      <span className={`text-sm font-semibold ${estadoColors.text}`}>
-        {paciente.estado?.nombre || 'Sin estado'}
-      </span>
-      {canManagePatientStatus(user) && (
-        <ChevronDown className={`w-4 h-4 ${estadoColors.text}`} />
-      )}
-    </button>
+    <div className="flex flex-wrap gap-1.5 justify-end max-w-[260px]">
+      {(paciente.servicios || []).filter(ps => ps.activo).map(ps => {
+        const abrev = getAbreviatura(ps.servicio);
+        const estadoNombre = ps.estadoPaciente?.nombre
+          || estadosPaciente.find(e => e.id === ps.estado_paciente_id)?.nombre
+          || (ps.estado === 'INACTIVO' ? 'Inactivo' : ps.estado === 'FINALIZADO' ? 'Inactivo' : null)
+          || 'Sin estado';
+        const colors = getEstadoColor(estadoNombre);
+        return (
+          <button
+            key={ps.id}
+            onClick={canManagePatientStatus(user) ? (e) => setAnchorServicio({ el: e.currentTarget, ps }) : undefined}
+            disabled={!canManagePatientStatus(user)}
+            title={ps.servicio?.nombre}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${colors.bg} ${canManagePatientStatus(user) ? 'cursor-pointer hover:shadow-sm' : 'cursor-default'} transition-all`}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${colors.dot} flex-shrink-0`} />
+            <span className={`text-xs font-bold ${colors.text}`}>{abrev} - {estadoNombre}</span>
+            {canManagePatientStatus(user) && <ChevronDown className={`w-3 h-3 ${colors.text} opacity-50 flex-shrink-0`} />}
+          </button>
+        );
+      })}
+    </div>
   </div>
 
 <div className="mt-4 pt-4 border-t border-gray-100">
@@ -845,6 +910,21 @@ const handleEliminarConvenio = async () => {
           <HardDrive className="w-4 h-4" />
           Archivos
         </button>
+
+              {/* Después */}
+        {user?.rol?.id !== ROLES.TERAPEUTA && (
+          <button
+            onClick={() => setTabSeleccionado('terapias')}
+            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              tabSeleccionado === 'terapias'
+                ? 'bg-[#7B1FA2] text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            Terapias
+          </button>
+        )}
       </div>
     </div>
 
@@ -898,20 +978,22 @@ const handleEliminarConvenio = async () => {
 
                         <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-green-500" />
 
-                        <div
-                          className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalEliminarConvenio({ open: true, convenio: pc });
-                            }}
-                            className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
-                            title="Eliminar asignación"
+                        {canManageConvenios(user) && (
+                          <div
+                            className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
                           >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalEliminarConvenio({ open: true, convenio: pc });
+                              }}
+                              className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
+                              title="Eliminar asignación"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Nombre completo en múltiples líneas */}
@@ -924,13 +1006,15 @@ const handleEliminarConvenio = async () => {
               </div>
             )}
 
-            <button
-              onClick={() => setModalConvenio(true)}
-              className="w-10 h-10 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-110 shadow-sm flex-shrink-0"
-              title="Agregar convenio"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+            {canManageConvenios(user) && (
+              <button
+                onClick={() => setModalConvenio(true)}
+                className="w-10 h-10 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-110 shadow-sm flex-shrink-0"
+                title="Agregar convenio"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
       </div>
     </div>
@@ -956,6 +1040,28 @@ const handleEliminarConvenio = async () => {
             )}
             {tabSeleccionado === 'historia' && <HistoriaClinicaView paciente={paciente} user={user} />}
             {tabSeleccionado === 'archivos' && <ArchivosDigitales paciente={paciente} />}
+            {tabSeleccionado === 'terapias' && (
+              loadingData ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2.5 pb-3 border-b border-gray-100">
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 animate-pulse flex-shrink-0"></div>
+                    <div className="h-4 w-40 bg-gray-100 rounded animate-pulse"></div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse"></div>
+                    ))}
+                  </div>
+                  <div className="h-12 bg-gray-50 rounded-xl animate-pulse mt-1.5"></div>
+                </div>
+              ) : (
+                <ResumenTerapiasView
+                  pacienteId={paciente?.id}
+                  user={user}
+                  pacienteNombre={paciente ? `${paciente.nombres || ''} ${paciente.apellido_paterno || ''} ${paciente.apellido_materno || ''}`.trim() : ''}
+                />
+              )
+            )}
           </div>
 
           <div className="lg:col-span-5">
@@ -1026,6 +1132,40 @@ const handleEliminarConvenio = async () => {
                   <span className={`text-sm font-medium ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>
                     {estado.nombre}
                   </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {anchorServicio && canManagePatientStatus(user) && (
+        <div className="fixed inset-0 z-[80000]" onClick={() => setAnchorServicio(null)}>
+          <div
+            className="absolute bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 min-w-[200px]"
+            style={{
+              top: anchorServicio.el.getBoundingClientRect().bottom + 8,
+              left: anchorServicio.el.getBoundingClientRect().left
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[10px] font-semibold text-gray-400 px-3 py-1.5 uppercase tracking-wide border-b border-gray-100 mb-1">
+              {anchorServicio.ps.servicio?.nombre}
+            </p>
+            {estadosPaciente.filter(e => e.activo).map((estado) => {
+              const colors = getEstadoColor(estado.nombre);
+              const currentId = anchorServicio.ps.estadoPaciente?.id ?? anchorServicio.ps.estado_paciente_id;
+              const isActive = currentId === estado.id;
+              return (
+                <button
+                  key={estado.id}
+                  onClick={() => handleCambiarEstadoServicio(anchorServicio.ps.id, estado.id)}
+                  disabled={cambiandoEstadoServicio || isActive}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                  <span className={`text-sm font-medium ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>{estado.nombre}</span>
+                  {isActive && <CheckCircle className="w-3.5 h-3.5 text-gray-400 ml-auto" />}
                 </button>
               );
             })}

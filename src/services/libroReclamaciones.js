@@ -293,7 +293,7 @@ class LibroReclamacionesService {
   async eliminarDocumento(documentoId) {
     try {
       this.checkAuth();
-      
+
       const response = await fetch(`${API_BASE_URL}/libro-reclamaciones/documento/${documentoId}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders()
@@ -306,6 +306,68 @@ class LibroReclamacionesService {
       return await response.json();
     } catch (error) {
       console.error('Error eliminando documento:', error);
+      throw error;
+    }
+  }
+
+  // Obtener URL protegida de archivo con autenticación
+  obtenerUrlArchivoProtegida(rutaArchivo) {
+    this.checkAuth();
+    const token = localStorage.getItem('access_token');
+    // Retornamos la nueva ruta protegida con el token en el header
+    return {
+      url: `${API_BASE_URL}/libro-reclamaciones/admin/archivo/${rutaArchivo}`,
+      headers: this.getAuthHeaders()
+    };
+  }
+
+  // Descargar archivo protegido con autenticación
+  async descargarArchivoProtegido(rutaArchivo) {
+    try {
+      this.checkAuth();
+
+      const response = await fetch(`${API_BASE_URL}/libro-reclamaciones/admin/archivo/${rutaArchivo}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+          throw new Error('Sesión expirada. Por favor, inicie sesión nuevamente.');
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.blob();
+    } catch (error) {
+      console.error('Error descargando archivo:', error);
+      throw error;
+    }
+  }
+
+  // Visualizar archivo protegido (retorna blob para crear Object URL)
+  async visualizarArchivoProtegido(rutaArchivo) {
+    try {
+      this.checkAuth();
+
+      const response = await fetch(`${API_BASE_URL}/libro-reclamaciones/admin/archivo/${rutaArchivo}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+          throw new Error('Sesión expirada. Por favor, inicie sesión nuevamente.');
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error('Error visualizando archivo:', error);
       throw error;
     }
   }

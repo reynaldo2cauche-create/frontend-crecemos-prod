@@ -74,50 +74,47 @@ const archivosOficialesService = {
    * Descargar archivo
    * @param {number} id - ID del archivo
    */
-  descargarArchivo: async (id) => {
+  descargarArchivo: async (id, customFilename = null) => {
     try {
-      console.log('Iniciando descarga del archivo ID:', id);
       const response = await api.get(`${API_PATH}/${id}/descargar`, {
         responseType: 'blob',
       });
 
-      console.log('Respuesta recibida:', response);
-      console.log('Headers:', response.headers);
-
       const contentDisposition = response.headers['content-disposition'];
-      let filename = 'archivo_descargado';
+      const contentType = response.headers['content-type'] || 'application/octet-stream';
 
+      // Extraer extensión del header o del content-type
+      let extension = '';
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match?.[1]) {
+          const original = match[1].replace(/['"]/g, '');
+          const ext = original.match(/\.[^.]+$/);
+          if (ext) extension = ext[0];
         }
       }
+      if (!extension) {
+        if (contentType.includes('pdf'))                          extension = '.pdf';
+        else if (contentType.includes('png'))                     extension = '.png';
+        else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = '.jpg';
+        else if (contentType.includes('word') || contentType.includes('docx')) extension = '.docx';
+      }
 
-      console.log('Nombre del archivo:', filename);
+      const filename = customFilename ? `${customFilename}${extension}` : `archivo_descargado${extension}`;
 
-      const blob = new Blob([response.data], {
-        type: response.headers['content-type'] || 'application/octet-stream'
-      });
-
-      console.log('Blob creado, tamaño:', blob.size);
-
+      const blob = new Blob([response.data], { type: contentType });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      console.log('Descarga completada');
       return { success: true, filename };
     } catch (error) {
-      console.error('Error detallado al descargar:', error);
-      console.error('Error response:', error.response);
-      console.error('Error message:', error.message);
+      console.error('Error al descargar:', error);
       throw error.response?.data || error;
     }
   },
@@ -197,7 +194,7 @@ const archivosOficialesService = {
    * @param {number} id - ID del archivo
    * @param {string} codigo - Código del documento para la marca de agua
    */
-  descargarArchivoValidado: async (id, codigo = '') => {
+  descargarArchivoValidado: async (id, codigo = '', nombrePersonalizado = '') => {
     try {
       console.log('Descargando archivo validado ID:', id);
       const response = await api.get(`${API_PATH}/descargar-validado/${id}`, {
@@ -206,13 +203,15 @@ const archivosOficialesService = {
 
       console.log('Respuesta recibida:', response);
 
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = 'documento_oficial.pdf';
+      let filename = nombrePersonalizado ? `${nombrePersonalizado}.pdf` : 'documento_oficial.pdf';
 
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+      if (!nombrePersonalizado) {
+        const contentDisposition = response.headers['content-disposition'];
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, '');
+          }
         }
       }
 
@@ -228,10 +227,10 @@ const archivosOficialesService = {
       // Agregar marca de agua distribuida en todas las páginas
       const result = await downloadPDFWithWatermark(blob, filename, {
         codigo: codigo,
-        opacity: 0.8,
-        logoPath: '/assets/img/documento-logo.webp',
-        logoWidth: 200,
-        logoHeight: 200,
+        opacity: 0.08,
+        logoPath: '/videologo.png',
+        logoWidth: 180,
+        logoHeight: 180,
         rotation: 45,
         distributeAcrossPage: true
       });
@@ -255,6 +254,20 @@ const archivosOficialesService = {
       };
 
       throw errorInfo;
+    }
+  },
+
+  /**
+   * Marcar entrega del archivo (fisico o digital)
+   * @param {number} id - ID del archivo
+   * @param {'fisico'|'digital'} tipoEntrega - Tipo de entrega
+   */
+  marcarEntrega: async (id, tipoEntrega) => {
+    try {
+      const response = await api.patch(`${API_PATH}/${id}/entrega`, { tipoEntrega });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
     }
   },
 

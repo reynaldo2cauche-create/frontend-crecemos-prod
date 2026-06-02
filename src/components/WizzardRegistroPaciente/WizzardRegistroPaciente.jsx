@@ -24,6 +24,9 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   const [formData, setFormData] = useState(null);
   const [openSuccessDialog, setOpenSuccessDialog] = useState(false);
   const [captchaValue, setCaptchaValue] = useState(null);
+  const [submitError, setSubmitError] = useState('');
+  // 🆕 Estado para guardar datos procesados de cada paso
+  const [datosProceadosPorPaso, setDatosProcesadosPorPaso] = useState({});
 
   // Notificar cambio de paso a la página principal
   React.useEffect(() => {
@@ -73,8 +76,14 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   };
 
   const handleNext = (data) => {
-    // Simplemente avanzar al siguiente paso
-    // La validación ya se hizo en el formulario hijo
+    // 🆕 Guardar datos procesados del paso actual (ej: responsables con IDs existentes)
+    if (data) {
+      setDatosProcesadosPorPaso(prev => ({
+        ...prev,
+        [`step${activeStep}`]: data
+      }));
+    }
+    // Avanzar al siguiente paso
     setActiveStep((prevStep) => prevStep + 1);
   };
 
@@ -85,6 +94,7 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
   };
 
   const handleConfirmSubmit = async (data) => {
+    setSubmitError('');
     try {
       setLoading(true);
       // Calcular edad para saber si es menor de edad
@@ -105,33 +115,36 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
       // Verificar si es terapia de pareja
       const esTerapiaPareja = data.serviciosRequeridos === 8; // ID de Terapia de Pareja
 
-      // 🆕 Construir array de responsables desde los campos dinámicos
+      // 🆕 Usar responsables procesados del paso 1 (AdditionalInfo)
+      // Estos ya vienen con responsable_id si existen, evitando duplicados
+      const responsablesProcesados = datosProceadosPorPaso.step1?.responsables || [];
+
+      // Transformar al formato que espera el backend
       let responsables = [];
-      if (esMenor) {
-        // Buscar todos los campos de responsables en el formulario
-        Object.keys(data).forEach(key => {
-          if (key.startsWith('responsableNombre_')) {
-            const id = key.split('_')[1];
-            const responsable = {
-              nombre: data[`responsableNombre_${id}`],
-              apellido_paterno: data[`responsableApellidoPaterno_${id}`],
-              apellido_materno: data[`responsableApellidoMaterno_${id}`],
-              tipo_documento_id: parseInt(data[`responsableTipoDocumento_${id}`]),
-              numero_documento: data[`responsableNumeroDocumento_${id}`],
-              relacion_id: parseInt(data[`responsableRelacion_${id}`]),
-              telefono: data[`responsableTelefono_${id}`],
-              email: data[`responsableEmail_${id}`],
-              proceso_legal: data[`responsableProcesoLegal_${id}`] || 'NO',
-              tiene_proceso_legal: data[`responsableProcesoLegal_${id}`] === 'SI',
-              proceso_legal_infantil_id: data[`responsableProcesoLegal_${id}`] === 'SI'
-                ? (parseInt(data[`responsableProcesoLegalTipo_${id}`]) || null)
-                : null
+      if (esMenor && responsablesProcesados.length > 0) {
+        responsables = responsablesProcesados.map(r => {
+          // Si tiene responsable_id válido, es un responsable existente → NO DUPLICAR
+          if (r.responsable_id && r.responsable_id !== null) {
+            return {
+              responsable_id: r.responsable_id,
+              relacion_id: parseInt(r.relacion),
+              tiene_proceso_legal: r.proceso_legal === 'SI',
+              proceso_legal_infantil_id: r.proceso_legal === 'SI' ? parseInt(r.proceso_legal_tipo) : null
             };
-            // Solo agregar si tiene datos completos
-            if (responsable.nombre && responsable.apellido_paterno) {
-              responsables.push(responsable);
-            }
           }
+          // Si no, es un responsable nuevo → crear registro
+          return {
+            nombre: r.nombres,
+            apellido_paterno: r.apellido_paterno,
+            apellido_materno: r.apellido_materno,
+            tipo_documento_id: parseInt(r.tipo_documento),
+            numero_documento: r.numero_documento,
+            relacion_id: parseInt(r.relacion),
+            telefono: r.telefono,
+            email: r.email,
+            tiene_proceso_legal: r.proceso_legal === 'SI',
+            proceso_legal_infantil_id: r.proceso_legal === 'SI' ? parseInt(r.proceso_legal_tipo) : null
+          };
         });
       }
 
@@ -205,7 +218,11 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
       }, 2000);
     } catch (error) {
       console.error('Error al guardar el paciente:', error);
-      // Aquí podrías mostrar un modal de error si lo deseas
+      const msg = error?.response?.data?.message;
+      setSubmitError(
+        Array.isArray(msg) ? msg.join(', ') :
+        (msg || error?.message || 'Ocurrió un error al registrar. Por favor intenta de nuevo.')
+      );
     } finally {
       setLoading(false);
     }
@@ -233,7 +250,22 @@ const WizardRegistroPaciente = ({ onClose, isPageView = false, onStepChange }) =
           {activeStep === 0 && <PersonalDataForm onNext={handleNext} setSnackbar={handleSnackbar} />}
           {activeStep === 1 && <AdditionalInfo onNext={handleNext} onBack={handleBack} />}
           {activeStep === 2 && <MedicalInfo onNext={handleNext} onBack={handleBack} />}
-          {activeStep === 3 && <ConsentForm onSubmit={handleConfirmSubmit} onBack={handleBack} captchaValue={captchaValue} setCaptchaValue={setCaptchaValue} />}
+          {activeStep === 3 && (
+            <>
+              {submitError && (
+                <div style={{
+                  background: '#fef2f2', border: '1px solid #fca5a5',
+                  borderRadius: '12px', padding: '14px 18px',
+                  marginBottom: '16px', color: '#b91c1c',
+                  fontSize: '14px', display: 'flex', alignItems: 'flex-start', gap: '10px'
+                }}>
+                  <span style={{ fontSize: '18px', lineHeight: 1 }}>⚠️</span>
+                  <span>{submitError}</span>
+                </div>
+              )}
+              <ConsentForm onSubmit={handleConfirmSubmit} onBack={handleBack} captchaValue={captchaValue} setCaptchaValue={setCaptchaValue} />
+            </>
+          )}
         </div>
 
                {/* 🎉 MODAL DE ÉXITO MINIMALISTA */}

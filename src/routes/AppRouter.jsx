@@ -54,9 +54,11 @@ import EmpleadosPage from '../pages/rrhh/EmpleadosPage';
 import GratificacionesPage from '../pages/rrhh/GratificacionesPage';
 import HistorialPagosPage from '../pages/rrhh/HistorialPagosPage';
 import DashboardRRHH from '../pages/rrhh/DashboardRRHH';
+import CumpleanosTrabajadores from '../pages/rrhh/CumpleanosTrabajadores';
 import VacacionesPage from '../pages/rrhh/VacacionesPage';
 import ConveniosPage from '../pages/ConveniosPage';
 import GestionStaff from '../pages/GestionStaff';
+import SorteoPacientes from '../pages/SorteoPacientes';
 
 // Páginas de Auditoría
 import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
@@ -65,7 +67,27 @@ import HistorialAuditoria from '../pages/Auditoria/HistorialAuditoria';
 import AsistenciasPorTerapeuta from '../pages/Asistencias/AsistenciasPorTerapeuta';
 import AsistenciasPorPaciente from '../pages/Asistencias/AsistenciasPorPaciente';
 import Inconsistencias from '../pages/Asistencias/Inconsistencias';
+import SesionesPage from '../pages/Asistencias/SesionesPage';
 import GestionAsistenciasAdmin from '../pages/Asistencias/GestionAsistenciasAdmin';
+import ProductosTab from '../pages/Inventario/Productostab';
+import CategoriasTab from '../pages/Inventario/Categoriastab';
+import ProveedoresTab from '../pages/Inventario/Proveedorestab';
+import ReposicionTab from '../pages/Inventario/Reposiciontab';
+import VenderServiciosTab from '../pages/Ventas/VenderServiciosTab';
+import VenderProductosTab from '../pages/Ventas/VenderProductosTab';
+import HistorialVentasTab from '../pages/Ventas/HistorialVentasTab';
+import ReportesVentas from '../pages/Ventas/ReportesVentas';
+import TarifasTab from '../pages/Inventario/Tarifastab';
+import PromocionesPage from '../pages/Promociones/PromocionesPage';
+import TarifarioPage from '../pages/Tarifario/TarifarioPage';
+
+import RegistrarReclamo from '../pages/LibroReclamaciones/RegistrarReclamo';
+import ConsultarReclamo from '../pages/LibroReclamaciones/ConsultarReclamo';
+import PanelAdmin from '../pages/LibroReclamaciones/PanelAdmin';
+import Pagos from '../pages/Pagos';
+import GestorCampanas from '../pages/Campanas/GestorCampanas';
+import { Campanas } from '../pages/Campanas/Campanas';
+import GestionInformesPage from '../pages/Informes/GestionInformesPage';
 
 export const AppRouter = () => {
   return (
@@ -197,6 +219,17 @@ export const AppRouter = () => {
           </PrivateRoute>
         } />
 
+        <Route path="/intranet/rrhh/cumpleanos" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <CumpleanosTrabajadores />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
         <Route path="/intranet/auditoria" element={
           <PrivateRoute>
             <SidebarProvider>
@@ -242,7 +275,19 @@ export const AppRouter = () => {
           </PrivateRoute>
         } />
 
-        <Route path="/intranet/asistencias/admin" element={
+        <Route path="/intranet/asistencias/sesiones" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <SesionesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* Ruta desactivada - Funcionalidad integrada en Inconsistencias */}
+        {/* <Route path="/intranet/asistencias/admin" element={
           <PrivateRoute>
             <SidebarProvider>
               <Sidebar />
@@ -251,7 +296,7 @@ export const AppRouter = () => {
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>
-        } />
+        } /> */}
 
         <Route path="/intranet/popup-promocional" element={
           <PrivateRoute>
@@ -294,6 +339,170 @@ export const AppRouter = () => {
             </SidebarProvider>
           </PrivateRoute>
         } />
+        <Route path="/intranet/sorteo" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <SorteoPacientes />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+
+        
+        {/* ── INVENTARIO ────────────────────────────────────────── */}
+        <Route path="/intranet/inventario/productos" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ProductosTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/inventario/categorias" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <CategoriasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/inventario/proveedores" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ProveedoresTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/inventario/reposicion" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ReposicionTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+          <Route path="/intranet/inventario/servicios" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <TarifasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* ── PROMOCIONES ────────────────────────────────────────── */}
+        <Route path="/intranet/promociones" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <PromocionesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* ── TARIFARIO ────────────────────────────────────────── */}
+        <Route path="/intranet/tarifario" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <TarifarioPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        {/* ── VENTAS ────────────────────────────────────────── */}
+        <Route path="/intranet/ventas/servicios" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <VenderServiciosTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/ventas/productos" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <VenderProductosTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/ventas/historial" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <HistorialVentasTab />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/ventas/reportes" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <ReportesVentas />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/libro-reclamaciones" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <PanelAdmin />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/campanas" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestorCampanas />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/informes" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <GestionInformesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
         <Route path="/preguntas" element={<Preguntas />} />
         <Route path="/" element={<BasicLayout />}>
           <Route index element={<HomePage />} />
@@ -318,14 +527,20 @@ export const AppRouter = () => {
           <Route path="adulto-evaluacion-psicologica-universidad" element={<AdultoEvalPsicolUniverPage />} />
           <Route path="terminos-condiciones" element={<TerminosCondiciones />} />
           <Route path="mantenimiento" element={<Mantenimiento />} />
-          
+
           <Route path="reglamento-interno" element={<ReglamentoInterno />} />
           <Route path="politica-privacidad" element={<PoliticaPrivacidad />} />
           <Route path="trabaja-nosotros" element={<TrabajaNosotros />} />
           <Route path="registro-paciente" element={<RegistroPacientePage />} />
-          <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
           <Route path="verificar-documento" element={<VerificarDocumentos />} />
           <Route path="verificar-beneficios" element={<VerificarBeneficios />} />
+
+          {/* Libro de Reclamaciones */}
+          <Route path="libro-reclamaciones" element={<LibroReclamaciones />} />
+          <Route path="libro-reclamaciones/registrar" element={<RegistrarReclamo />} />
+          <Route path="libro-reclamaciones/consultar" element={<ConsultarReclamo />} />
+          <Route path="campanas" element={<Campanas />} />
+          <Route path="pagos" element={<Pagos />} />
           <Route path="loading" element={<Loading />} />
           <Route path="*" element={<ErrorPage />} />
         </Route>

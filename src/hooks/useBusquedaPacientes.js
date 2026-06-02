@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as pacienteService from '../services/pacienteService';
 
-export const useBusquedaPacientes = (query, delay = 200) => {
+export const useBusquedaPacientes = (query, delay = 400) => {
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

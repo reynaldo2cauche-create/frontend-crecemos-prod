@@ -18,7 +18,8 @@ import {
   AlertCircle,
   MessageCircle,
   Copy,
-  Check
+  Check,
+  Package
 } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
 import { useServicios } from '../../hooks/useServicios';
@@ -27,9 +28,11 @@ import { useHistorialCita } from '../../hooks/useHistorialCita';
 import { useTrabajadores } from '../../hooks/useTrabajadores';
 import { ROLES } from '../../constants/roles';
 import api from '../../services/api';
-
-// Importamos el hook de geofencing
 import { useGeofencing } from '../../hooks/useGeofencing';
+import { esFeriado, getNombreFeriado } from '../../constants/feriados';
+import { getVentasDisponibles, getListadoCitasPorPaciente, getInfoVentaDeCita } from '../../services/citaService';
+import { getVentaServicioById } from '../../services/ventasService';
+import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 const ModalAgendarCita = ({
   open,
@@ -46,7 +49,8 @@ const ModalAgendarCita = ({
   citaEditando = null,
   currentUser = null,
   guardando = false,
-  citas = []
+  citas = [],
+  bloqueos = []
 }) => {
   const [queryPaciente, setQueryPaciente] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -54,41 +58,93 @@ const ModalAgendarCita = ({
   const [motivoEliminacion, setMotivoEliminacion] = useState('');
   const [modalYaAbierto, setModalYaAbierto] = useState(false);
 
-  // Estado para el modal de alerta
   const [alertaAbierta, setAlertaAbierta] = useState(false);
   const [mensajeAlerta, setMensajeAlerta] = useState('');
+  const [tituloAlerta, setTituloAlerta] = useState('Campo Requerido');
+  const [tipoAlerta, setTipoAlerta] = useState('error'); // 'error', 'warning', 'feriado'
+  const [conflictoTerapeuta, setConflictoTerapeuta] = useState('');
 
-  // ✅ USAR motivoAccion DEL PADRE (formularioCita.motivo_accion)
   const motivoAccion = formularioCita.motivo_accion || '';
 
-  // Estados para tipos de cita
+  // Helper para mostrar alertas
+  const mostrarAlerta = (titulo, mensaje, tipo = 'error') => {
+    setTituloAlerta(titulo);
+    setMensajeAlerta(mensaje);
+    setTipoAlerta(tipo);
+    setAlertaAbierta(true);
+  };
+
   const [tipoCita, setTipoCita] = useState(null);
   const [terapeutasReunion, setTerapeutasReunion] = useState([]);
 
-  // Estados para asistencia
   const [seguimientoAsistencia, setSeguimientoAsistencia] = useState(null);
   const [cargandoAsistencia, setCargandoAsistencia] = useState(false);
   const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
 
-  // Estados para el tab de recordatorio
   const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [copiado, setCopiado] = useState(false);
+  const [cargandoRecordatorio, setCargandoRecordatorio] = useState(false);
 
-  // Determinar permisos
+  // 🛒 VENTAS DISPONIBLES
+  const [ventasDisponibles, setVentasDisponibles] = useState([]);
+  const [cargandoVentas, setCargandoVentas] = useState(false);
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+
+  // 📦 PAQUETE DE LA CITA
+  const [infoPaquete, setInfoPaquete] = useState(null);
+  const [cargandoPaquete, setCargandoPaquete] = useState(false);
+  const [ventaDetallePaquete, setVentaDetallePaquete] = useState(null);
+  const [cargandoVentaDetalle, setCargandoVentaDetalle] = useState(false);
+
   const esRecepcionista = currentUser?.rol?.id === ROLES.ADMISION;
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
-
-  // 🆕 Verificar geofencing SOLO para roles TERAPEUTA y ADMISIÓN
+  const esAdmin = currentUser?.rol?.id === ROLES.ADMINISTRADOR;
   const requiereGeofencing = esTerapeuta || esRecepcionista;
   const { cargando: cargandoGeofencing, dentroDelPerimetro } = useGeofencing(requiereGeofencing, 30000);
-
-  // 🆕 Determinar si debe estar en modo solo lectura (solo lectura cuando está fuera del perímetro)
   const modoSoloLectura = requiereGeofencing && !dentroDelPerimetro;
 
-  // Cargar seguimiento de asistencia
+  // ========== ESTADOS PARA REUNIÓN CLÍNICA Y VISITA ESCOLAR ==========
+  const [serviciosReunion, setServiciosReunion] = useState([]);
+  const [encargadoVisita, setEncargadoVisita] = useState({
+    nombre_completo: '',
+    telefono: '',
+    institucion: ''
+  });
+  const [documentoFirmado, setDocumentoFirmado] = useState(false);
+
+  // ========== HOOKS PERSONALIZADOS ==========
+  const { pacientes, loading: loadingPacientes } = useBusquedaPacientes(queryPaciente);
+  const serviciosApi = useServicios();
+  const { motivos, loading: loadingMotivos } = useMotivosCita();
+  const { trabajadores } = useTrabajadores();
+  const { historial, loading: loadingHistorial, error: errorHistorial } = useHistorialCita(
+    modoEdicion && citaEditando?.id ? citaEditando.id : null
+  );
+  
+
+  // ========== PERMISOS ==========
+  const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR ||
+    currentUser?.rol?.id === ROLES.ADMISION ||
+    currentUser?.rol?.id === ROLES.TERAPEUTA;
+  const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR && !modoSoloLectura;
+
+  // 🔒 BLOQUEAR EDICIÓN PARA ADMISIONISTA SI YA HAY ASISTENCIA REGISTRADA (por cualquiera de los dos)
+  const bloqueadoPorAsistencia = esRecepcionista && modoEdicion && (
+    seguimientoAsistencia?.recepcion_marco == 1 ||
+    seguimientoAsistencia?.terapeuta_marco == 1
+  );
+
+  const [guardandoLocal, setGuardandoLocal] = useState(false);
+  // ========== RESETEAR ESTADOS AL CERRAR MODAL ==========
+  useEffect(() => {
+    if (!open) {
+      setModalYaAbierto(false);
+    }
+  }, [open]);
+
+  // ========== FUNCIONES DE ASISTENCIA ==========
   const cargarSeguimientoAsistencia = useCallback(async () => {
     if (!citaEditando?.id) return;
-
     setCargandoAsistencia(true);
     try {
       const response = await api.get(`/asistencia/seguimiento/${citaEditando.id}`);
@@ -100,31 +156,26 @@ const ModalAgendarCita = ({
     }
   }, [citaEditando?.id]);
 
-  // Marcar llegada (Recepción) - ✅ SIEMPRE PERMITIDO, INCLUSO FUERA DEL PERÍMETRO
   const handleRecepcionMarcar = async (estadoId) => {
+     if (seguimientoAsistencia?.recepcion_marco && currentUser?.rol?.id !== ROLES.ADMINISTRADOR) return;
     setGuardandoAsistencia(true);
-
-    // ✅ Actualización optimista: actualizar UI inmediatamente
     const backupSeguimiento = seguimientoAsistencia;
+    // Optimistic update: si estadoId es null = desmarcar, si no = marcar/cambiar
     setSeguimientoAsistencia(prev => prev ? {
       ...prev,
-      recepcion_marco: 1,
+      recepcion_marco: estadoId !== null ? 1 : 0,
       recepcion_estado_id: estadoId,
-      recepcion_fecha: new Date().toISOString()
+      recepcion_fecha: estadoId !== null ? new Date().toISOString() : null
     } : prev);
-
     try {
       await api.post('/asistencia/registrar-recepcion', {
         cita_id: citaEditando.id,
         usuario_id: currentUser.id,
-        estado_id: estadoId
+        estado_id: estadoId  // null = desmarcar
       });
-
-      // Recargar para confirmar desde el servidor
       await cargarSeguimientoAsistencia();
     } catch (error) {
       console.error('Error al registrar:', error);
-      // ❌ Revertir cambio optimista si falla
       setSeguimientoAsistencia(backupSeguimiento);
       alert(error.response?.data?.message || 'Error al registrar');
     } finally {
@@ -132,31 +183,26 @@ const ModalAgendarCita = ({
     }
   };
 
-  // Marcar sesión completada (Terapeuta) - ✅ SIEMPRE PERMITIDO, INCLUSO FUERA DEL PERÍMETRO
   const handleTerapeutaMarcar = async (estadoId) => {
+    if (seguimientoAsistencia?.terapeuta_marco && currentUser?.rol?.id !== ROLES.ADMINISTRADOR) return;
     setGuardandoAsistencia(true);
-
-    // ✅ Actualización optimista: actualizar UI inmediatamente
     const backupSeguimiento = seguimientoAsistencia;
+    // Optimistic update: si estadoId es null = desmarcar, si no = marcar/cambiar
     setSeguimientoAsistencia(prev => prev ? {
       ...prev,
-      terapeuta_marco: 1,
+      terapeuta_marco: estadoId !== null ? 1 : 0,
       terapeuta_estado_id: estadoId,
-      terapeuta_fecha: new Date().toISOString()
+      terapeuta_fecha: estadoId !== null ? new Date().toISOString() : null
     } : prev);
-
     try {
       await api.post('/asistencia/registrar-terapeuta', {
         cita_id: citaEditando.id,
         terapeuta_id: currentUser.id,
-        estado_id: estadoId
+        estado_id: estadoId  // null = desmarcar
       });
-
-      // Recargar para confirmar desde el servidor
       await cargarSeguimientoAsistencia();
     } catch (error) {
       console.error('Error al registrar:', error);
-      // ❌ Revertir cambio optimista si falla
       setSeguimientoAsistencia(backupSeguimiento);
       alert(error.response?.data?.message || 'Error al registrar');
     } finally {
@@ -164,188 +210,368 @@ const ModalAgendarCita = ({
     }
   };
 
-  // Cargar seguimiento cuando se abre el tab
+  // 📦 CARGAR INFORMACIÓN DEL PAQUETE
+  const cargarInfoPaquete = useCallback(async () => {
+    console.log('🔍 DEBUG cargarInfoPaquete:', {
+      paciente_id: citaEditando?.paciente_id,
+      venta_servicio_detalle_id: citaEditando?.venta_servicio_detalle_id,
+      citaEditando: citaEditando
+    });
+
+    if (!citaEditando?.paciente_id || !citaEditando?.venta_servicio_detalle_id) {
+      console.log('❌ No hay paciente_id o venta_servicio_detalle_id');
+      setInfoPaquete(null);
+      return;
+    }
+
+    setCargandoPaquete(true);
+    try {
+      const listado = await getListadoCitasPorPaciente(citaEditando.paciente_id);
+      console.log('📦 Listado recibido:', listado);
+
+      // Buscar el paquete usando venta_servicio_detalle_id (campo numérico confiable)
+      let paqueteEncontrado = null;
+      for (const servicio of listado.servicios) {
+        const paquetesArray = Array.isArray(servicio.paquetes)
+          ? servicio.paquetes
+          : Object.values(servicio.paquetes);
+
+        for (const paquete of paquetesArray) {
+          if (Number(paquete.venta_servicio_detalle_id) === Number(citaEditando.venta_servicio_detalle_id)) {
+            paqueteEncontrado = {
+              ...paquete,
+              servicio_nombre: servicio.servicio_nombre,
+              servicio_id: servicio.servicio_id
+            };
+            break;
+          }
+        }
+        if (paqueteEncontrado) break;
+      }
+
+      // Si es un combo, recopilar citas de TODAS las líneas del combo (distintos motivos)
+      if (paqueteEncontrado?.paquete_combo_id) {
+        const comboId = paqueteEncontrado.paquete_combo_id;
+        let citasCombo = [];
+        let sesionesTotalesCombo = 0;
+
+        for (const servicio of listado.servicios) {
+          const paquetesArray = Array.isArray(servicio.paquetes)
+            ? servicio.paquetes
+            : Object.values(servicio.paquetes);
+
+          for (const paquete of paquetesArray) {
+            if (paquete.paquete_combo_id === comboId) {
+              // Agregar motivo_nombre de contexto a cada cita de esta línea
+              const citasConMotivo = paquete.citas.map(c => ({
+                ...c,
+                linea_servicio: servicio.servicio_nombre,
+              }));
+              citasCombo = [...citasCombo, ...citasConMotivo];
+              sesionesTotalesCombo += (paquete.sesiones_totales || 0);
+            }
+          }
+        }
+
+        paqueteEncontrado = {
+          ...paqueteEncontrado,
+          paquete_nombre: paqueteEncontrado.paquete_combo_nombre || paqueteEncontrado.paquete_nombre,
+          citas: citasCombo,
+          sesiones_totales: sesionesTotalesCombo,
+          es_combo: true,
+        };
+      }
+
+      setInfoPaquete(paqueteEncontrado);
+    } catch (error) {
+      console.error('❌ Error al cargar info del paquete:', error);
+      setInfoPaquete(null);
+    } finally {
+      setCargandoPaquete(false);
+    }
+  }, [citaEditando?.paciente_id, citaEditando?.venta_servicio_detalle_id]);
+
+  const abrirDetalleVenta = async (ventaId) => {
+    if (!ventaId) return;
+    setCargandoVentaDetalle(true);
+    try {
+      const venta = await getVentaServicioById(ventaId);
+      setVentaDetallePaquete(venta);
+    } catch (err) {
+      console.error('Error al cargar detalle de venta:', err);
+    } finally {
+      setCargandoVentaDetalle(false);
+    }
+  };
+
+  // 🔒 Cargar seguimiento apenas se abre el modal en edición (para validar bloqueo)
+  useEffect(() => {
+    if (open && modoEdicion && citaEditando?.id) {
+      cargarSeguimientoAsistencia();
+    }
+  }, [open, modoEdicion, citaEditando?.id, cargarSeguimientoAsistencia]);
+
+  // Recargar seguimiento cuando se cambia a la pestaña de asistencia
   useEffect(() => {
     if (tabValue === 2 && modoEdicion && citaEditando?.id) {
       cargarSeguimientoAsistencia();
     }
   }, [tabValue, modoEdicion, citaEditando?.id, cargarSeguimientoAsistencia]);
 
-  // ✅ useCallback para el onChange del campo motivo - Actualiza en el PADRE
-  const handleMotivoChange = useCallback((e) => {
+  // 📦 Cargar info del paquete cuando se cambia a la pestaña de paquete
+  useEffect(() => {
+    if (tabValue === 4 && modoEdicion && citaEditando?.id) {
+      cargarInfoPaquete();
+    }
+  }, [tabValue, modoEdicion, citaEditando?.id, cargarInfoPaquete]);
+
+  // ========== HELPERS PARA FORMATEAR DATOS DE CITA ==========
+  const formatearHora = (horaStr) => {
+    const [hours, minutes] = horaStr.split(':').map(Number);
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    const h = hours % 12 || 12;
+    return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const getServicioNombre = (cita) => {
+    if (cita.tipo_cita === 'NORMAL' && cita.servicio) return cita.servicio.nombre;
+    if (cita.tipo_cita === 'VISITA_ESCOLAR') return 'Visita Escolar';
+    if (cita.tipo_cita === 'REUNION_CLINICA') return 'Reunión Clínica';
+    return 'Servicio no especificado';
+  };
+
+  const getServicioConMotivo = (cita) => {
+    const servicio = getServicioNombre(cita);
+    const motivo = cita.motivo?.nombre || '';
+
+    if (motivo) {
+      return `${servicio} - ${motivo}`;
+    }
+    return servicio;
+  };
+
+  const getTerapeutaNombre = (cita) => {
+    if ((cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') && cita.doctor) {
+      return `Lic. ${cita.doctor.nombres || ''} ${cita.doctor.apellidos || ''}`.trim();
+    }
+    if (cita.tipo_cita === 'REUNION_CLINICA' && cita.terapeutas?.length > 0) {
+      return 'Equipo de Terapeutas';
+    }
+    return 'Terapeuta no especificado';
+  };
+
+  // ========== FUNCIÓN AUXILIAR PARA OBTENER SALUDO SEGÚN HORA ==========
+  const obtenerSaludo = () => {
+    const ahora = new Date();
+    const hora = ahora.getHours();
+
+    if (hora >= 0 && hora < 12) {
+      return 'Buenos días';
+    } else if (hora >= 12 && hora < 18) {
+      return 'Buenas tardes';
+    } else {
+      return 'Buenas noches';
+    }
+  };
+
+  // ========== FUNCIÓN PARA GENERAR RECORDATORIO ==========
+  const generarMensajeRecordatorio = useCallback(async () => {
     if (modoSoloLectura) return;
-    
-    const nuevoValor = e.target.value;
-    onFormularioChange('motivo_accion', nuevoValor);
-  }, [onFormularioChange, modoSoloLectura]);
 
-  const [serviciosReunion, setServiciosReunion] = useState([]);
-  const [encargadoVisita, setEncargadoVisita] = useState({
-    nombre_completo: '',
-    telefono: '',
-    institucion: ''
-  });
-  const [documentoFirmado, setDocumentoFirmado] = useState(false);
-
-  const { pacientes, loading: loadingPacientes } = useBusquedaPacientes(queryPaciente);
-  const serviciosApi = useServicios();
-  const { motivos, loading: loadingMotivos } = useMotivosCita();
-  const { trabajadores } = useTrabajadores();
-  const { historial, loading: loadingHistorial, error: errorHistorial } = useHistorialCita(
-    modoEdicion && citaEditando?.id ? citaEditando.id : null
-  );
-
-  // Permisos del usuario
-  const puedeVerHistorial = currentUser?.rol?.id === ROLES.ADMINISTRADOR || 
-                           currentUser?.rol?.id === ROLES.ADMISION || 
-                           currentUser?.rol?.id === ROLES.TERAPEUTA;
-  
-  const puedeEliminar = currentUser?.rol?.id === ROLES.ADMINISTRADOR && !modoSoloLectura;
-
-  // Función para generar mensaje de recordatorio
-  const generarMensajeRecordatorio = useCallback(() => {
-    if (modoSoloLectura) return;
-
-    // En modo edición, usar los datos reales de citaEditando
     if (modoEdicion && citaEditando) {
       if (!citaEditando.fecha || !citaEditando.hora_inicio) {
         console.warn('No hay fecha u hora_inicio disponible para generar el mensaje');
         return;
       }
 
-      // 🔥 OBTENER TODAS LAS CITAS DEL MISMO PACIENTE EN EL MISMO DÍA
-      const citasMismoDia = citas.filter(cita => {
-        return cita.paciente_id === citaEditando.paciente_id &&
-               cita.fecha === citaEditando.fecha;
-      }).sort((a, b) => {
-        // Ordenar por hora de inicio
-        return a.hora_inicio.localeCompare(b.hora_inicio);
-      });
-
-      const fechaStr = citaEditando.fecha;
-      const [year, month, day] = fechaStr.split('-').map(Number);
-      const fechaObj = new Date(year, month - 1, day);
-
-      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-      const diaSemana = diasSemana[fechaObj.getDay()];
-      const dia = fechaObj.getDate();
-      const mes = meses[fechaObj.getMonth()];
-
-      // 🔥 SI HAY MÚLTIPLES CITAS, GENERAR MENSAJE AGRUPADO
-      if (citasMismoDia.length > 1) {
-        let mensajeCitas = '';
-
-        citasMismoDia.forEach((cita, index) => {
-          const [hours, minutes] = cita.hora_inicio.split(':').map(Number);
-          let horasFormateadas = hours;
-          const ampm = horasFormateadas >= 12 ? 'pm' : 'am';
-          horasFormateadas = horasFormateadas % 12;
-          horasFormateadas = horasFormateadas ? horasFormateadas : 12;
-          const horaFormateada = `${horasFormateadas}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-
-          let servicioNombre = 'Servicio no especificado';
-          if (cita.tipo_cita === 'NORMAL' && cita.servicio) {
-            servicioNombre = cita.servicio.nombre;
-          } else if (cita.tipo_cita === 'VISITA_ESCOLAR') {
-            servicioNombre = 'Visita Escolar';
-          } else if (cita.tipo_cita === 'REUNION_CLINICA') {
-            servicioNombre = 'Reunión Clínica';
-          }
-
-          let terapeutaNombre = 'Terapeuta no especificado';
-          if (cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') {
-            if (cita.doctor) {
-              terapeutaNombre = `Lic. ${cita.doctor.nombres || ''} ${cita.doctor.apellidos || ''}`.trim();
-            }
-          } else if (cita.tipo_cita === 'REUNION_CLINICA' && cita.terapeutas && cita.terapeutas.length > 0) {
-            terapeutaNombre = 'Equipo de Terapeutas';
-          }
-
-          mensajeCitas += `\n${index + 1}️⃣ *Cita ${index + 1}*
-🕓 ${horaFormateada}
-💜 ${servicioNombre}
-✨ ${terapeutaNombre}`;
-
-          if (index < citasMismoDia.length - 1) {
-            mensajeCitas += '\n';
+      setCargandoRecordatorio(true);
+      try {
+        const response = await api.get('/citas', {
+          params: {
+            fecha_desde: citaEditando.fecha,
+            fecha_hasta: citaEditando.fecha,
           }
         });
 
-        const mensaje = `Buenas tardes, Sr(a).
-Le hacemos recordar sus citas para el día de mañana
-🗓️ ${diaSemana}, ${dia} de ${mes}
-${mensajeCitas}
+        const todasCitasDelDia = Array.isArray(response.data) ? response.data : [];
 
-🥳 ¡Los esperamos! ✨`;
+        const citasMismoDia = todasCitasDelDia
+          .filter(c => String(c.paciente_id) === String(citaEditando.paciente_id))
+          .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
-        setMensajeRecordatorio(mensaje);
-        setCopiado(false);
-      } else {
-        // 🔥 UNA SOLA CITA - MENSAJE INDIVIDUAL (FORMATO ORIGINAL)
-        const [hours, minutes] = citaEditando.hora_inicio.split(':').map(Number);
-        let horasFormateadas = hours;
-        const ampm = horasFormateadas >= 12 ? 'pm' : 'am';
-        horasFormateadas = horasFormateadas % 12;
-        horasFormateadas = horasFormateadas ? horasFormateadas : 12;
-        const horaFormateada = `${horasFormateadas}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+        const fechaStr = citaEditando.fecha;
+        const [year, month, day] = fechaStr.split('-').map(Number);
+        const fechaObj = new Date(year, month - 1, day);
+        const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        const diaSemana = diasSemana[fechaObj.getDay()];
+        const dia = fechaObj.getDate();
+        const mes = meses[fechaObj.getMonth()];
 
-        let servicioNombre = 'Servicio no especificado';
-        if (citaEditando.tipo_cita === 'NORMAL' && citaEditando.servicio) {
-          servicioNombre = citaEditando.servicio.nombre;
-        } else if (citaEditando.tipo_cita === 'VISITA_ESCOLAR') {
-          servicioNombre = 'Visita Escolar';
-        } else if (citaEditando.tipo_cita === 'REUNION_CLINICA') {
-          servicioNombre = 'Reunión Clínica';
+        const formatearNombreTitulo = (nombre) => nombre.toLowerCase().split(' ')
+          .map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+
+        const nombrePaciente = citaEditando.paciente
+          ? formatearNombreTitulo(`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim())
+          : 'Paciente';
+
+        let tieneResponsable = false;
+        if (citaEditando.paciente?.responsables && Array.isArray(citaEditando.paciente.responsables)) {
+          const responsableActivo = citaEditando.paciente.responsables.find(
+            r => r.activo === true || r.activo === 1 || r.activo === '1'
+          );
+          tieneResponsable = !!responsableActivo;
         }
 
-        let terapeutaNombre = 'Terapeuta no especificado';
-        if (citaEditando.tipo_cita === 'NORMAL' || citaEditando.tipo_cita === 'VISITA_ESCOLAR') {
-          if (citaEditando.doctor) {
-            terapeutaNombre = `Lic. ${citaEditando.doctor.nombres || ''} ${citaEditando.doctor.apellidos || ''}`.trim();
+        const saludo = obtenerSaludo();
+
+        // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
+       // 🎯 VERIFICAR SI ES ÚLTIMA SESIÓN DEL PAQUETE
+        let mensajeUltimaSesion = '';
+        let esCitaFinal = false;
+        try {
+          if (citaEditando.venta_servicio_detalle_id) {
+            const infoVenta = await getInfoVentaDeCita(citaEditando.id);
+
+            console.log('🔍 DEBUG sesiones:', {
+              restantes: infoVenta?.sesiones_restantes,
+              totales: infoVenta?.sesiones_totales,
+              es_penultima: infoVenta?.es_penultima_cita,
+              es_ultima: infoVenta?.es_ultima_cita,
+              tipo_venta: infoVenta?.tipo_venta_id
+            });
+            if (infoVenta) {
+              const restantes = infoVenta.sesiones_restantes || 0;
+              const esSesionUnitaria = infoVenta.tipo_venta_id === 1;
+
+              const esPenultimaManual = !infoVenta.es_penultima_cita &&
+                                        !infoVenta.es_ultima_cita &&
+                                        restantes === 1;
+
+              if (infoVenta.es_ultima_cita) {
+                esCitaFinal = true;
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la ${infoVenta.sesiones_totales === 1 ? 'sesión adquirida' : `última de las *${infoVenta.sesiones_totales} sesiones* adquiridas`}. En caso deseen continuar con sus terapias, les recomendamos coordinar una nueva contratación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📌 Le comentamos también que esta corresponde a la última sesión del paquete contratado (${infoVenta.sesiones_totales} sesiones). En caso deseen continuar con sus terapias y mantener su horario habitual, les recomendamos coordinar la renovación con anticipación.\n\n💳 Asimismo, para poder mantener reservado el horario, le agradeceríamos realizar el pago correspondiente dentro de las próximas *12 horas* posteriores a la atención.`;
+                }
+              } else if ((infoVenta.es_penultima_cita || esPenultimaManual) && infoVenta.sesiones_totales > 2) {
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* de las ${infoVenta.sesiones_totales} sesiones adquiridas. Le recomendamos ir coordinando la contratación de más sesiones para continuar con su proceso.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📌 *Recordatorio:* Luego de esta cita, solo quedará *1 sesión más* por agendar del paquete (${infoVenta.sesiones_totales} sesiones en total).`;
+                }
+              } else if (restantes > 0) {
+                if (esSesionUnitaria) {
+                  mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar de las ${infoVenta.sesiones_totales} sesiones adquiridas.`;
+                } else {
+                  mensajeUltimaSesion = `\n\n📋 *Recordatorio:* Aún ${restantes === 1 ? 'falta *1 sesión*' : `faltan *${restantes} sesiones*`} por agendar del paquete contratado (${infoVenta.sesiones_totales} sesiones en total).`;
+                }
+              }
+            }
           }
-        } else if (citaEditando.tipo_cita === 'REUNION_CLINICA' && citaEditando.terapeutas && citaEditando.terapeutas.length > 0) {
-          terapeutaNombre = 'Equipo de Terapeutas';
+        } catch (err) {
+          console.warn('No se pudo obtener info de la venta:', err);
         }
 
-        const mensaje = `Buenas tardes, Sr(a).
-Le hacemos recordar su cita para el día de mañana
-🗓️ ${diaSemana}, ${dia} de ${mes}
-🕓 ${horaFormateada}
-💜 ${servicioNombre}
-✨ ${terapeutaNombre}
+        // El aviso de pago ya va integrado en mensajeUltimaSesion cuando es última cita
+        const mensajePago = '';
 
-🥳 ¡Los esperamos! ✨`;
+        let mensaje;
+        if (citasMismoDia.length > 1) {
+          let mensajeCitas = '';
+          citasMismoDia.forEach((cita, index) => {
+            mensajeCitas += `\n${index + 1}️⃣ *Cita ${index + 1}*
+  🕓 *${formatearHora(cita.hora_inicio)}*
+  💜 ${getServicioConMotivo(cita)}
+  ✨ ${getTerapeutaNombre(cita)}`;
+            if (index < citasMismoDia.length - 1) mensajeCitas += '\n';
+          });
+
+          if (tieneResponsable) {
+            mensaje = `${saludo}, Sr(a).
+  Le hacemos recordar las citas de *${nombrePaciente}* para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  ${mensajeCitas}${mensajeUltimaSesion}${mensajePago}
+
+  🥳 ¡Los esperamos! ✨`;
+          } else {
+            mensaje = `${saludo}, *${nombrePaciente}*
+  Le hacemos recordar sus citas para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  ${mensajeCitas}${mensajeUltimaSesion}${mensajePago}
+
+  🥳 ¡Lo esperamos! ✨`;
+          }
+        } else {
+          if (tieneResponsable) {
+            mensaje = `${saludo}, Sr(a).
+  Le hacemos recordar la cita de *${nombrePaciente}* para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${formatearHora(citaEditando.hora_inicio)}*
+  💜 ${getServicioConMotivo(citaEditando)}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
+
+  🥳 ¡Los esperamos! ✨`;
+          } else {
+            mensaje = `${saludo}, *${nombrePaciente}*
+  Le hacemos recordar su cita para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${formatearHora(citaEditando.hora_inicio)}*
+  💜 ${getServicioConMotivo(citaEditando)}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
+
+  🥳 ¡Lo esperamos! ✨`;
+          }
+        }
 
         setMensajeRecordatorio(mensaje);
         setCopiado(false);
+      } catch (error) {
+        console.error('Error al obtener citas del día:', error);
+        alert('No se pudo obtener las citas del día. Intenta de nuevo.');
+      } finally {
+        setCargandoRecordatorio(false);
       }
+
     } else {
       if (!formularioCita.paciente || !formularioCita.fechasHoras?.[0]) {
         alert('No hay suficiente información para generar el mensaje');
         return;
       }
-
       const fechaHora = formularioCita.fechasHoras[0];
       const fechaObj = new Date(`${fechaHora.fecha}T${fechaHora.horaInicio}`);
       const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
       const diaSemana = diasSemana[fechaObj.getDay()];
       const dia = fechaObj.getDate();
       const mes = meses[fechaObj.getMonth()];
-
       let horas = fechaObj.getHours();
       let minutos = fechaObj.getMinutes();
       const ampm = horas >= 12 ? 'pm' : 'am';
-      horas = horas % 12;
-      horas = horas ? horas : 12;
+      horas = horas % 12 || 12;
       const horaFormateada = `${horas}:${minutos.toString().padStart(2, '0')} ${ampm}`;
+
+      const formatearNombreTitulo = (nombre) => nombre.toLowerCase().split(' ')
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+
+      const nombrePaciente = formularioCita.paciente?.nombre_completo
+        ? formatearNombreTitulo(formularioCita.paciente.nombre_completo)
+        : 'Paciente';
+
+      let tieneResponsable = false;
+      if (formularioCita.paciente?.responsables && Array.isArray(formularioCita.paciente.responsables)) {
+        const responsableActivo = formularioCita.paciente.responsables.find(
+          r => r.activo === true || r.activo === 1 || r.activo === '1'
+        );
+        tieneResponsable = !!responsableActivo;
+      }
+
+      const saludo = obtenerSaludo();
 
       let servicioNombre = 'Servicio no especificado';
       if (tipoCita === 'NORMAL' && formularioCita.servicio_id) {
-        const servicio = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []))
+        const servicio = (serviciosApi?.length ? serviciosApi : (servicios || []))
           .find(s => s.id === parseInt(formularioCita.servicio_id));
         servicioNombre = servicio?.nombre || 'Servicio no especificado';
       } else if (tipoCita === 'VISITA_ESCOLAR') {
@@ -354,33 +580,48 @@ Le hacemos recordar su cita para el día de mañana
         servicioNombre = 'Reunión Clínica';
       }
 
+      if (formularioCita.motivo_id && motivos.length) {
+        const motivoObj = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
+        if (motivoObj?.nombre) servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
+      }
+
       let terapeutaNombre = 'Terapeuta no especificado';
-      if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
-        if (terapeutaSeleccionado) {
-          terapeutaNombre = `Lic. ${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim();
-        }
+      if ((tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') && terapeutaSeleccionado) {
+        terapeutaNombre = `Lic. ${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim();
       } else if (tipoCita === 'REUNION_CLINICA' && terapeutasReunion.length > 0) {
         terapeutaNombre = 'Equipo de Terapeutas';
       }
 
-      const mensaje = `Buenas tardes, Sr(a).
-Le hacemos recordar su cita para el día de mañana
-🗓️ ${diaSemana}, ${dia} de ${mes}
-🕓 ${horaFormateada}
-💜 ${servicioNombre}
-✨ ${terapeutaNombre}
+      const mensajePago = '';
 
-🥳 ¡Los esperamos! ✨`;
+      let mensaje;
+      if (tieneResponsable) {
+        mensaje = `${saludo}, Sr(a).
+  Le hacemos recordar la cita de *${nombrePaciente}* para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${horaFormateada}*
+  💜 ${servicioNombre}
+  ✨ ${terapeutaNombre}${mensajePago}
+
+  🥳 ¡Los esperamos! ✨`;
+      } else {
+        mensaje = `${saludo}, *${nombrePaciente}*
+  Le hacemos recordar su cita para el día
+  🗓️ *${diaSemana}, ${dia} de ${mes}*
+  🕓 *${horaFormateada}*
+  💜 ${servicioNombre}
+  ✨ ${terapeutaNombre}${mensajePago}
+
+  🥳 ¡Lo esperamos! ✨`;
+      }
 
       setMensajeRecordatorio(mensaje);
       setCopiado(false);
     }
-  }, [modoEdicion, citaEditando, tipoCita, formularioCita, serviciosApi, servicios, terapeutaSeleccionado, terapeutasReunion, modoSoloLectura, citas]);
+  }, [modoEdicion, citaEditando, tipoCita, formularioCita, serviciosApi, servicios, terapeutaSeleccionado, terapeutasReunion, modoSoloLectura, motivos]);
 
-  // Función para copiar al portapapeles
   const copiarAlPortapapeles = async () => {
     if (modoSoloLectura) return;
-    
     try {
       await navigator.clipboard.writeText(mensajeRecordatorio);
       setCopiado(true);
@@ -391,82 +632,48 @@ Le hacemos recordar su cita para el día de mañana
     }
   };
 
-  // Verificar si una hora está disponible
+  // ========== VERIFICAR DISPONIBILIDAD DE HORAS ==========
+  // Chequea conflicto de TERAPEUTA (disponibilidad del profesional)
   const verificarDisponibilidad = (fechaString, hora, duracionMinutos) => {
     if (!fechaString || !hora) return true;
-
-    if (!citas || citas.length === 0) {
-      return true;
-    }
-
+    if (!citas || citas.length === 0) return true;
     let terapeutasIds = [];
-
     if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
       const doctorId = formularioCita.doctor_id || terapeutaSeleccionado?.id;
-      if (doctorId) {
-        terapeutasIds = [parseInt(doctorId)];
-      }
+      if (doctorId) terapeutasIds = [parseInt(doctorId)];
     } else if (tipoCita === 'REUNION_CLINICA') {
-      terapeutasIds = terapeutasReunion
-        .map(t => parseInt(t.terapeuta_id))
-        .filter(id => id && !isNaN(id));
-
+      terapeutasIds = terapeutasReunion.map(t => parseInt(t.terapeuta_id)).filter(id => id && !isNaN(id));
       if (terapeutasIds.length === 0 && formularioCita.terapeutas_ids && formularioCita.terapeutas_ids.length > 0) {
-        terapeutasIds = formularioCita.terapeutas_ids
-          .map(id => parseInt(id))
-          .filter(id => id && !isNaN(id));
+        terapeutasIds = formularioCita.terapeutas_ids.map(id => parseInt(id)).filter(id => id && !isNaN(id));
       }
-
       if (terapeutasIds.length === 0 && citaEditando) {
         if (citaEditando.terapeutas && citaEditando.terapeutas.length > 0) {
-          terapeutasIds = citaEditando.terapeutas
-            .map(t => parseInt(t.id_terapeuta || t.terapeuta_id || t.id))
-            .filter(id => id && !isNaN(id));
+          terapeutasIds = citaEditando.terapeutas.map(t => parseInt(t.id_terapeuta || t.terapeuta_id || t.id)).filter(id => id && !isNaN(id));
         }
       }
-
-      if (terapeutasIds.length === 0) {
-        return true;
-      }
+      if (terapeutasIds.length === 0) return true;
     }
-
-    if (terapeutasIds.length === 0) {
-      return true;
-    }
+    if (terapeutasIds.length === 0) return true;
 
     const citasDelDia = citas.filter(cita => {
-      if (citaEditando && cita.id === citaEditando.id) {
-        return false;
-      }
-
-      if (cita.fecha !== fechaString) {
-        return false;
-      }
-
+      if (citaEditando && cita.id === citaEditando.id) return false;
+      if (cita.fecha !== fechaString) return false;
       if (cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') {
-        const estaInvolucrado = terapeutasIds.includes(cita.doctor_id);
-        return estaInvolucrado;
+        return terapeutasIds.includes(cita.doctor_id);
       } else if (cita.tipo_cita === 'REUNION_CLINICA') {
-        const terapeutasCita = cita.terapeutas?.map(t =>
-          t.id_terapeuta || t.terapeuta_id || t.id
-        ).filter(id => id) || [];
-
-        const compartenTerapeuta = terapeutasIds.some(id => terapeutasCita.includes(id));
-        return compartenTerapeuta;
+        const terapeutasCita = cita.terapeutas?.map(t => t.id_terapeuta || t.terapeuta_id || t.id).filter(id => id) || [];
+        return terapeutasIds.some(id => terapeutasCita.includes(id));
       }
-
       return false;
     });
 
     const [horaH, horaM] = hora.split(':').map(Number);
     const horaInicioMinutos = horaH * 60 + horaM;
     const horaFinMinutos = horaInicioMinutos + parseInt(duracionMinutos || 40);
-
     for (const cita of citasDelDia) {
       const [citaH, citaM] = cita.hora_inicio.split(':').map(Number);
       const citaInicioMinutos = citaH * 60 + citaM;
       const citaFinMinutos = citaInicioMinutos + parseInt(cita.duracion_minutos || 40);
-
       if (
         (horaInicioMinutos >= citaInicioMinutos && horaInicioMinutos < citaFinMinutos) ||
         (horaFinMinutos > citaInicioMinutos && horaFinMinutos <= citaFinMinutos) ||
@@ -475,22 +682,118 @@ Le hacemos recordar su cita para el día de mañana
         return false;
       }
     }
-
     return true;
   };
 
-  // Generar horas según el día de la semana
+  // Chequea conflicto de PACIENTE — devuelve la cita conflictiva o null
+  const verificarConflictoPacienteLocal = (fechaString, hora, duracionMinutos) => {
+    if (!fechaString || !hora) return null;
+    if (!citas || citas.length === 0) return null;
+    const pacienteId = formularioCita.paciente_id ?? citaEditando?.paciente_id;
+    if (!pacienteId) return null;
+
+    const toMin = (h) => {
+      const [hh, mm] = h.split(':').map(Number);
+      return hh * 60 + mm;
+    };
+
+    const nuevaInicio = toMin(hora);
+    const nuevaFin = nuevaInicio + parseInt(duracionMinutos || 40);
+
+    const citasDelPaciente = citas.filter(c => {
+      if (citaEditando && c.id === citaEditando.id) return false;
+      return String(c.paciente_id) === String(pacienteId) && c.fecha === fechaString;
+    });
+
+    for (const c of citasDelPaciente) {
+      const cInicio = toMin(c.hora_inicio);
+      const cFin = cInicio + parseInt(c.duracion_minutos || 40);
+      if (
+        (nuevaInicio >= cInicio && nuevaInicio < cFin) ||
+        (nuevaFin > cInicio && nuevaFin <= cFin) ||
+        (nuevaInicio <= cInicio && nuevaFin >= cFin)
+      ) {
+        return c; // devuelve la cita que genera conflicto
+      }
+    }
+    return null;
+  };
+
+  // Verificar si una fecha/hora está bloqueada
+  const verificarHoraBloqueada = (fechaString, hora) => {
+    if (!fechaString || !hora || !bloqueos || bloqueos.length === 0) return false;
+
+    const toMin = (h) => {
+      const [hh, mm] = h.split(':').map(Number);
+      return hh * 60 + mm;
+    };
+
+    const slotStart = toMin(hora);
+    const slotEnd = slotStart + 40; // duración del slot
+
+    const bloqueado = bloqueos.some(b => {
+      // Verificar si el bloqueo está activo
+      if (!b.activo) return false;
+
+      // Verificar si la fecha está dentro del rango del bloqueo
+      if (fechaString < b.fechaInicio || fechaString > b.fechaFin) return false;
+
+      // Si es bloqueo recurrente, verificar el día de la semana
+      if (b.diaSemana !== null && b.diaSemana !== undefined) {
+        const fecha = new Date(fechaString + 'T00:00:00');
+        const diaSlot = fecha.getDay();
+        if (b.diaSemana !== diaSlot) return false;
+      }
+
+      // Si es todo el día, está bloqueado
+      if (b.todoElDia) return true;
+
+      // Verificar horario
+      const bloqStart = b.horaInicio ? toMin(b.horaInicio.substring(0, 5)) : 0;
+      const bloqEnd = b.horaFin ? toMin(b.horaFin.substring(0, 5)) : bloqStart + 40;
+
+      // Verificar si hay superposición
+      return slotStart < bloqEnd && slotEnd > bloqStart;
+    });
+
+    if (bloqueado) {
+      console.log(`🚫 Hora bloqueada filtrada en modal: ${fechaString} ${hora}`);
+    }
+
+    return bloqueado;
+  };
+
+  // Verificar si una fecha está bloqueada todo el día
+  const verificarFechaBloqueadaTodoElDia = (fechaString) => {
+    if (!fechaString || !bloqueos || bloqueos.length === 0) return false;
+
+    return bloqueos.some(b => {
+      // Verificar si el bloqueo está activo
+      if (!b.activo) return false;
+
+      // Verificar si la fecha está dentro del rango del bloqueo
+      if (fechaString < b.fechaInicio || fechaString > b.fechaFin) return false;
+
+      // Si es bloqueo recurrente, verificar el día de la semana
+      if (b.diaSemana !== null && b.diaSemana !== undefined) {
+        const fecha = new Date(fechaString + 'T00:00:00');
+        const diaSlot = fecha.getDay();
+        if (b.diaSemana !== diaSlot) return false;
+      }
+
+      // Retornar true si es todo el día
+      return b.todoElDia === true;
+    });
+  };
+
   const generarHorasPorFecha = (fechaString, duracion) => {
     if (!fechaString) return [];
-
     const fecha = new Date(fechaString + 'T00:00:00');
     const diaSemana = fecha.getDay();
     const horas = [];
-
     if (diaSemana === 6) {
       let minutos = 8 * 60;
-      const finMinutos = 14 * 60;
-
+      const finMinutos = 20 * 60;
       while (minutos < finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
@@ -499,10 +802,8 @@ Le hacemos recordar su cita para el día de mañana
       }
     } else if (diaSemana >= 1 && diaSemana <= 5) {
       horas.push('08:20', '09:00', '09:40', '10:20', '11:00', '11:40', '12:20');
-
       let minutos = 14 * 60;
       const finMinutos = 20 * 60;
-
       while (minutos <= finMinutos) {
         const h = Math.floor(minutos / 60);
         const m = minutos % 60;
@@ -512,17 +813,20 @@ Le hacemos recordar su cita para el día de mañana
     } else {
       return [];
     }
-
-    return horas.filter(hora => verificarDisponibilidad(fechaString, hora, duracion));
+    // Filtra horas ocupadas tanto por terapeuta como por el mismo paciente, y también las bloqueadas
+    return horas.filter(hora =>
+      verificarDisponibilidad(fechaString, hora, duracion) &&
+      !verificarConflictoPacienteLocal(fechaString, hora, duracion) &&
+      !verificarHoraBloqueada(fechaString, hora)
+    );
   };
 
-  // Efecto para inicializar cuando se abre el modal
+  // ========== INICIALIZAR MODAL ==========
   useEffect(() => {
     if (!open) {
       setModalYaAbierto(false);
       return;
     }
-
     if (open && !modalYaAbierto) {
       setModalYaAbierto(true);
       setQueryPaciente('');
@@ -576,17 +880,94 @@ Le hacemos recordar su cita para el día de mañana
     }
   }, [formularioCita.motivo_id, motivos]);
 
-  // Funciones para Reunión Clínica
+  // 🛒 CARGAR VENTAS DISPONIBLES CUANDO CAMBIA PACIENTE O SERVICIO
+  useEffect(() => {
+    const cargarVentasDisponibles = async () => {
+      // Solo cargar para citas NORMALES
+      if (tipoCita !== 'NORMAL') {
+        setVentasDisponibles([]);
+        return;
+      }
+
+      const pacienteId = formularioCita.paciente_id;
+      const servicioId = formularioCita.servicio_id;
+      const motivoCitaId = formularioCita.motivo_id;
+
+      if (!pacienteId || !servicioId) {
+        setVentasDisponibles([]);
+        return;
+      }
+
+      setCargandoVentas(true);
+      try {
+        // Cargamos con motivo si está seleccionado, sin él si no — así el usuario
+        // ve sus sesiones disponibles tan pronto elige paciente y servicio.
+        let ventas = await getVentasDisponibles(pacienteId, servicioId, motivoCitaId || null);
+        ventas = ventas || [];
+
+        // En modo edición: si la venta actual de la cita no está en el listado
+        // (puede ocurrir cuando ya no tiene sesiones disponibles), agregarla como entrada
+        // SOLO si el motivo no ha cambiado — si cambió, no se debe reutilizar la venta original
+        const motivoOriginalId = citaEditando?.motivo_id || citaEditando?.motivo?.id;
+        const motivoNoHaCambiado = !motivoOriginalId || String(motivoCitaId) === String(motivoOriginalId);
+        if (modoEdicion && citaEditando?.venta_servicio_detalle_id && motivoNoHaCambiado) {
+          const ventaActualEnLista = ventas.some(
+            v => String(v.id) === String(citaEditando.venta_servicio_detalle_id)
+          );
+          if (!ventaActualEnLista) {
+            ventas = [
+              {
+                id: citaEditando.venta_servicio_detalle_id,
+                descripcion: `#${citaEditando.venta_servicio_detalle_id} — ${citaEditando.servicio?.nombre || 'Servicio'}${citaEditando.motivo?.nombre ? ` - ${citaEditando.motivo.nombre}` : ''} (compra vinculada)`,
+                sesiones_disponibles: 0,
+              },
+              ...ventas,
+            ];
+          }
+        }
+
+        setVentasDisponibles(ventas);
+
+        // Si solo hay una venta disponible, seleccionarla automáticamente (solo en nueva cita)
+        if (ventas.length === 1 && !modoEdicion) {
+          onFormularioChange('venta_servicio_detalle_id', ventas[0].id);
+          setVentaSeleccionada(ventas[0]);
+        }
+      } catch (error) {
+        console.error('Error al cargar ventas disponibles:', error);
+        setVentasDisponibles([]);
+        mostrarAlerta('Error', 'No se pudieron cargar las ventas disponibles del paciente.', 'error');
+      } finally {
+        setCargandoVentas(false);
+      }
+    };
+
+    cargarVentasDisponibles();
+  }, [formularioCita.paciente_id, formularioCita.servicio_id, formularioCita.motivo_id, tipoCita, modoEdicion, citaEditando?.id, citaEditando?.venta_servicio_detalle_id]);
+
+  // 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
+// 🛒 SINCRONIZAR VENTA SELECCIONADA CON EL FORMULARIO
+useEffect(() => {
+  if (tipoCita === 'NORMAL' && formularioCita.venta_servicio_detalle_id && ventasDisponibles.length > 0) {
+    const venta = ventasDisponibles.find(
+      v => String(v.id) === String(formularioCita.venta_servicio_detalle_id)
+    );
+    if (venta) {
+      setVentaSeleccionada(venta);
+    }
+  } else if (tipoCita !== 'NORMAL') {
+    setVentaSeleccionada(null);
+  }
+}, [formularioCita.venta_servicio_detalle_id, ventasDisponibles, tipoCita]);
+  // ========== FUNCIONES PARA REUNIÓN CLÍNICA ==========
   const agregarTerapeuta = () => {
     if (modoSoloLectura) return;
     setTerapeutasReunion([...terapeutasReunion, { terapeuta_id: '' }]);
   };
-  
   const eliminarTerapeuta = (index) => {
     if (modoSoloLectura) return;
     setTerapeutasReunion(terapeutasReunion.filter((_, i) => i !== index));
   };
-  
   const actualizarTerapeuta = (index, valor) => {
     if (modoSoloLectura) return;
     const nuevos = [...terapeutasReunion];
@@ -598,12 +979,10 @@ Le hacemos recordar su cita para el día de mañana
     if (modoSoloLectura) return;
     setServiciosReunion([...serviciosReunion, { servicio_id: '' }]);
   };
-  
   const eliminarServicio = (index) => {
     if (modoSoloLectura) return;
     setServiciosReunion(serviciosReunion.filter((_, i) => i !== index));
   };
-  
   const actualizarServicio = (index, valor) => {
     if (modoSoloLectura) return;
     const nuevos = [...serviciosReunion];
@@ -611,71 +990,354 @@ Le hacemos recordar su cita para el día de mañana
     setServiciosReunion(nuevos);
   };
 
-  // HandleGuardar modificado
-  const handleGuardar = useCallback(() => {
+  const handleMotivoChange = useCallback((e) => {
+    if (modoSoloLectura) return;
+    onFormularioChange('motivo_accion', e.target.value);
+  }, [onFormularioChange, modoSoloLectura]);
+
+  // 🛒 CALCULAR SESIONES DISPONIBLES DE LA VENTA SELECCIONADA
+  const sesionesDisponiblesVenta = ventaSeleccionada?.sesiones_disponibles || 0;
+  const slotsActuales = formularioCita.fechasHoras?.length || 0;
+  // Para citas NORMALES: solo permitir si hay venta Y tiene sesiones disponibles
+  // Para otros tipos: siempre permitir
+  const puedeAgregarMasSlots = tipoCita === 'NORMAL'
+    ? (ventaSeleccionada && slotsActuales < sesionesDisponiblesVenta)
+    : true;
+
+  // ========== 🚀 FUNCIONES MEJORADAS PARA FECHAS Y HORAS ==========
+  const agregarFechaHora = () => {
     if (modoSoloLectura) return;
 
-    if (modoEdicion && !esTerapeuta) {
-      if (!motivoAccion || motivoAccion.trim() === '') {
-        setMensajeAlerta('El motivo de modificación es obligatorio para actualizar la cita.');
-        setAlertaAbierta(true);
-        return;
+    // 🛒 VALIDAR QUE EXISTA VENTA PARA CITAS NORMALES
+    if (tipoCita === 'NORMAL' && !ventaSeleccionada) {
+      mostrarAlerta(
+        'Compra Requerida',
+        'Primero selecciona una compra de sesiones antes de agregar fechas/horas.',
+        'error'
+      );
+      return;
+    }
+
+    // 🛒 VALIDAR LÍMITE DE SESIONES PARA CITAS NORMALES
+    if (tipoCita === 'NORMAL' && ventaSeleccionada && !puedeAgregarMasSlots) {
+      console.log('🛒 DEBUG: Bloqueando agregar slot', {
+        ventaSeleccionada,
+        sesionesDisponiblesVenta,
+        slotsActuales,
+        puedeAgregarMasSlots
+      });
+      mostrarAlerta(
+        'Límite de Sesiones Alcanzado',
+        `Esta compra solo tiene ${sesionesDisponiblesVenta} sesión(es) disponible(s). Ya tienes ${slotsActuales} slot(s) agregado(s).`,
+        'warning'
+      );
+      return;
+    }
+
+    console.log('🛒 DEBUG: Permitiendo agregar slot', {
+      tipoCita,
+      ventaSeleccionada: ventaSeleccionada?.descripcion,
+      sesionesDisponiblesVenta,
+      slotsActuales,
+      puedeAgregarMasSlots
+    });
+
+    onFormularioChange('agregarFechaHora', null);
+  };
+
+  const eliminarFechaHora = (index) => {
+    if (modoSoloLectura) return;
+    const slotsActuales = formularioCita.fechasHoras || [];
+    if (slotsActuales.length <= 1) {
+      setMensajeAlerta('Debe haber al menos una fecha y hora programada.');
+      setAlertaAbierta(true);
+      return;
+    }
+    onFormularioChange('eliminarFechaHora', index);
+  };
+
+const handleGuardar = useCallback(async () => {
+  if (modoSoloLectura) return;
+  if (guardandoLocal) return;
+  setGuardandoLocal(true);
+
+  if (modoEdicion && !esTerapeuta) {
+    if (!motivoAccion || motivoAccion.trim() === '') {
+      setMensajeAlerta('El motivo de modificación es obligatorio para actualizar la cita.');
+      setTituloAlerta('Campo Requerido');
+      setAlertaAbierta(true);
+      setGuardandoLocal(false);
+      return;
+    }
+  }
+
+  const fechasHorasARevisar = formularioCita.fechasHoras?.length > 0
+    ? formularioCita.fechasHoras
+    : (citaEditando?.fecha && citaEditando?.hora_inicio
+        ? [{ fecha: citaEditando.fecha, horaInicio: citaEditando.hora_inicio.substring(0, 5) }]
+        : []);
+
+
+
+        // ─── VERIFICAR CONFLICTO DE TERAPEUTA ──────────────────────────────────
+{
+  const toMin = (h) => {
+    const [hh, mm] = (h || '').split(':').map(Number);
+    return hh * 60 + (mm || 0);
+  };
+
+  let terapeutasIds = [];
+  if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
+    const doctorId = formularioCita.doctor_id || terapeutaSeleccionado?.id;
+    if (doctorId) terapeutasIds = [parseInt(doctorId)];
+  } else if (tipoCita === 'REUNION_CLINICA') {
+    terapeutasIds = terapeutasReunion
+      .map(t => parseInt(t.terapeuta_id))
+      .filter(id => id && !isNaN(id));
+  }
+
+  if (terapeutasIds.length > 0) {
+    const fechasUnicas = [...new Set(
+      fechasHorasARevisar.map(fh => fh.fecha).filter(Boolean)
+    )];
+
+    for (const fecha of fechasUnicas) {
+      try {
+        const resp = await api.get('/citas', {
+          params: { fecha_desde: fecha, fecha_hasta: fecha }
+        });
+        const todasCitas = Array.isArray(resp.data) ? resp.data : [];
+
+        const citasTerapeuta = todasCitas.filter(c => {
+          if (citaEditando && c.id === citaEditando.id) return false;
+          if (c.tipo_cita === 'NORMAL' || c.tipo_cita === 'VISITA_ESCOLAR') {
+            return terapeutasIds.includes(c.doctor_id);
+          }
+          if (c.tipo_cita === 'REUNION_CLINICA') {
+            const ids = c.terapeutas?.map(t => t.id_terapeuta || t.terapeuta_id || t.id) || [];
+            return terapeutasIds.some(id => ids.includes(id));
+          }
+          return false;
+        });
+
+        for (const fh of fechasHorasARevisar.filter(fh => fh.fecha === fecha)) {
+          if (!fh.horaInicio) continue;
+          const durMin = parseInt(formularioCita.duracion || 40);
+          const nuevaInicio = toMin(fh.horaInicio);
+          const nuevaFin = nuevaInicio + durMin;
+
+          for (const c of citasTerapeuta) {
+            const cInicio = toMin(c.hora_inicio);
+            const cFin = cInicio + parseInt(c.duracion_minutos || 40);
+
+            const hayConflicto =
+              (nuevaInicio >= cInicio && nuevaInicio < cFin) ||
+              (nuevaFin > cInicio && nuevaFin <= cFin) ||
+              (nuevaInicio <= cInicio && nuevaFin >= cFin);
+
+            if (hayConflicto) {
+              const t = trabajadores.find(w => w.id === c.doctor_id);
+              const nombreTerapeuta = t
+                ? `Lic. ${t.nombres} ${t.apellidos}`.trim()
+                : 'El terapeuta';
+
+              const horaFin = (() => {
+                const fin = cInicio + parseInt(c.duracion_minutos || 40);
+                return `${String(Math.floor(fin / 60)).padStart(2, '0')}:${String(fin % 60).padStart(2, '0')}`;
+              })();
+
+              const servConf = c.servicio?.nombre || c.tipo_cita || 'otra cita';
+
+              mostrarAlerta(
+                'Conflicto de Terapeuta',
+                `${nombreTerapeuta} ya tiene una cita de ${c.hora_inicio.substring(0, 5)} a ${horaFin} (${servConf}).\n\nSelecciona otro horario.`,
+                'warning'
+              );
+              setGuardandoLocal(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudo verificar conflictos de terapeuta:', err.message);
       }
     }
+  }
+}
+// ───────────────────────────────────────────────────────────────────────
 
-    let datosGuardar = { ...formularioCita };
 
-    if (modoEdicion && !esTerapeuta) {
-      datosGuardar.motivo_accion = motivoAccion;
+  const pacienteId = formularioCita.paciente_id ?? citaEditando?.paciente_id;
+  if (pacienteId) {
+    const toMin = (h) => {
+      const partes = (h || '').split(':').map(Number);
+      return partes[0] * 60 + (partes[1] || 0);
+    };
+
+    const fechasUnicas = [...new Set(
+      fechasHorasARevisar.map(fh => fh.fecha).filter(Boolean)
+    )];
+
+    for (const fecha of fechasUnicas) {
+      try {
+        const resp = await api.get('/citas', {
+          params: { fecha_desde: fecha, fecha_hasta: fecha }
+        });
+        const todasCitasFecha = Array.isArray(resp.data) ? resp.data : [];
+
+        const citasPaciente = todasCitasFecha.filter(c => {
+          if (citaEditando && c.id === citaEditando.id) return false;
+          return String(c.paciente_id) === String(pacienteId);
+        });
+
+        for (const fh of fechasHorasARevisar.filter(fh => fh.fecha === fecha)) {
+          if (!fh.horaInicio) continue;
+          const durMin = parseInt(formularioCita.duracion || 40);
+          const nuevaInicio = toMin(fh.horaInicio);
+          const nuevaFin = nuevaInicio + durMin;
+
+          for (const c of citasPaciente) {
+            const cInicio = toMin(c.hora_inicio);
+            const cFin = cInicio + parseInt(c.duracion_minutos || 40);
+
+            const hayConflicto =
+              (nuevaInicio >= cInicio && nuevaInicio < cFin) ||
+              (nuevaFin > cInicio && nuevaFin <= cFin) ||
+              (nuevaInicio <= cInicio && nuevaFin >= cFin);
+
+            if (hayConflicto) {
+              const horaConf = c.hora_inicio.substring(0, 5);
+              const servNombre = c.servicio?.nombre || c.tipo_cita || 'otra especialidad';
+              setTituloAlerta('Conflicto de Horario');
+              setMensajeAlerta(
+                `El paciente ya tiene una cita a las ${horaConf} (${servNombre}). No se pueden agendar citas en horarios superpuestos.`
+              );
+              setAlertaAbierta(true);
+              setGuardandoLocal(false);
+              return;
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.warn('No se pudo verificar conflictos de paciente:', checkErr.message);
+      }
     }
+  }
 
-    if (tipoCita === 'NORMAL') {
-      datosGuardar.terapeutas_ids = [];
-      datosGuardar.servicios_ids = [];
-      datosGuardar.encargado = null;
-      datosGuardar.firma_documento = false;
-    } else if (tipoCita === 'REUNION_CLINICA') {
-      datosGuardar.terapeutas_ids = terapeutasReunion.filter(t => t.terapeuta_id).map(t => parseInt(t.terapeuta_id));
-      datosGuardar.servicios_ids = serviciosReunion.filter(s => s.servicio_id).map(s => parseInt(s.servicio_id));
-      datosGuardar.doctor_id = null;
-      datosGuardar.servicio_id = null;
-      datosGuardar.encargado = null;
-      datosGuardar.firma_documento = false;
-    } else if (tipoCita === 'VISITA_ESCOLAR') {
-      datosGuardar.encargado = encargadoVisita;
-      datosGuardar.terapeutas_ids = [];
-      datosGuardar.servicios_ids = [];
-      datosGuardar.firma_documento = documentoFirmado ? 1 : 0;
+  // Verificar si alguna fecha/hora está bloqueada
+  for (const fh of fechasHorasARevisar) {
+    if (!fh.fecha || !fh.horaInicio) continue;
+
+    if (verificarHoraBloqueada(fh.fecha, fh.horaInicio)) {
+      setTituloAlerta('Horario Bloqueado');
+      setMensajeAlerta(
+        `El horario ${fh.fecha} a las ${fh.horaInicio} está bloqueado y no está disponible para agendar citas.`
+      );
+      setAlertaAbierta(true);
+      setGuardandoLocal(false);
+      return;
     }
+  }
 
-    datosGuardar.esMultiple = !modoEdicion && datosGuardar.fechasHoras && datosGuardar.fechasHoras.length > 1;
+  // Validar que para citas NORMALES haya una venta seleccionada
+  if (tipoCita === 'NORMAL') {
+    if (!formularioCita.venta_servicio_detalle_id) {
+      setTituloAlerta('Venta Requerida');
+      setMensajeAlerta(
+        'Debes seleccionar un detalle de venta para poder agendar la cita. Si el paciente no tiene compras disponibles, primero debe realizar una venta.'
+      );
+      setAlertaAbierta(true);
+      setGuardandoLocal(false);
+      return;
+    }
+    // En edición: si el motivo cambió, verificar que la venta seleccionada
+    // sea válida para el nuevo motivo (sesiones_disponibles > 0)
+    if (modoEdicion && citaEditando) {
+      const motivoOriginalId = citaEditando.motivo_id || citaEditando.motivo?.id;
+      if (String(formularioCita.motivo_id) !== String(motivoOriginalId)) {
+        const ventaValida = ventasDisponibles.find(
+          v => String(v.id) === String(formularioCita.venta_servicio_detalle_id) && (v.sesiones_disponibles || 0) > 0
+        );
+        if (!ventaValida) {
+          mostrarAlerta(
+            'Sin Sesiones Disponibles',
+            'El paciente no tiene una compra activa para el motivo seleccionado. No se puede cambiar el motivo sin una compra válida para ese servicio.',
+            'error'
+          );
+          setGuardandoLocal(false);
+          return;
+        }
+      }
+    }
+  }
 
-    onGuardar(datosGuardar);
-  }, [modoEdicion, esTerapeuta, motivoAccion, formularioCita, tipoCita, terapeutasReunion, serviciosReunion, encargadoVisita, documentoFirmado, onGuardar, modoSoloLectura]);
+  let datosGuardar = { ...formularioCita };
 
+  if (modoEdicion && !esTerapeuta) {
+    datosGuardar.motivo_accion = motivoAccion;
+  }
+
+  if (tipoCita === 'NORMAL') {
+    datosGuardar.terapeutas_ids = [];
+    datosGuardar.servicios_ids = [];
+    datosGuardar.encargado = null;
+    datosGuardar.firma_documento = false;
+  } else if (tipoCita === 'REUNION_CLINICA') {
+    datosGuardar.terapeutas_ids = terapeutasReunion.filter(t => t.terapeuta_id).map(t => parseInt(t.terapeuta_id));
+    datosGuardar.servicios_ids = serviciosReunion.filter(s => s.servicio_id).map(s => parseInt(s.servicio_id));
+    datosGuardar.doctor_id = null;
+    datosGuardar.servicio_id = null;
+    datosGuardar.encargado = null;
+    datosGuardar.firma_documento = false;
+    datosGuardar.compra_id = null;
+  } else if (tipoCita === 'VISITA_ESCOLAR') {
+    datosGuardar.encargado = encargadoVisita;
+    datosGuardar.terapeutas_ids = [];
+    datosGuardar.servicios_ids = [];
+    datosGuardar.firma_documento = documentoFirmado ? 1 : 0;
+    datosGuardar.compra_id = null;
+  }
+
+  datosGuardar.esMultiple = !modoEdicion && datosGuardar.fechasHoras && datosGuardar.fechasHoras.length > 1;
+
+  try {
+    await onGuardar(datosGuardar);
+  } catch (error) {
+    const responseMsg = error?.response?.data?.message;
+    let msg;
+    if (responseMsg) {
+      msg = Array.isArray(responseMsg) ? responseMsg.join(', ') : responseMsg;
+    } else {
+      msg = error?.message || 'Error al guardar la cita';
+    }
+    setTituloAlerta('Conflicto de Horario');
+    setMensajeAlerta(msg);
+    setAlertaAbierta(true);
+  } finally {
+    setGuardandoLocal(false);
+  }
+}, [guardandoLocal, modoEdicion, esTerapeuta, motivoAccion, formularioCita, tipoCita, terapeutasReunion, serviciosReunion, encargadoVisita, documentoFirmado, onGuardar, modoSoloLectura, citaEditando]);
+  // ========== ELIMINAR CITA ==========
   const abrirDialogoEliminar = () => {
     if (modoSoloLectura) return;
     setDialogoEliminarAbierto(true);
   };
-  
   const cerrarDialogoEliminar = () => {
     setDialogoEliminarAbierto(false);
     setMotivoEliminacion('');
   };
-  
   const confirmarEliminar = () => {
     if (modoSoloLectura) return;
-
     if (!motivoEliminacion || motivoEliminacion.trim() === '') {
       setMensajeAlerta('El motivo de eliminación es obligatorio para eliminar la cita.');
       setAlertaAbierta(true);
       return;
     }
-
     setDialogoEliminarAbierto(false);
     if (onEliminar) onEliminar(motivoEliminacion);
   };
 
+  // ========== FUNCIONES PARA HISTORIAL ==========
   const formatearFechaHistorial = (fecha) => {
     return new Date(fecha).toLocaleString('es-ES', {
       year: 'numeric',
@@ -761,7 +1423,6 @@ Le hacemos recordar su cita para el día de mañana
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
-
                 <button
                   onClick={() => setTabValue(1)}
                   className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
@@ -777,8 +1438,6 @@ Le hacemos recordar su cita para el día de mañana
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
-
-                {/* TAB DE ASISTENCIA - ✅ SIEMPRE DISPONIBLE, INCLUSO FUERA DEL PERÍMETRO */}
                 <button
                   onClick={() => setTabValue(2)}
                   className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
@@ -794,8 +1453,6 @@ Le hacemos recordar su cita para el día de mañana
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                   )}
                 </button>
-
-                {/* TAB DE RECORDATORIO - Solo para Admisión y Administración */}
                 {!esTerapeuta && (
                   <button
                     onClick={() => setTabValue(3)}
@@ -809,6 +1466,23 @@ Le hacemos recordar su cita para el día de mañana
                     <span className="hidden sm:inline">Recordatorio</span>
                     <span className="sm:hidden">Rec.</span>
                     {tabValue === 3 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
+                    )}
+                  </button>
+                )}
+                {!esTerapeuta && citaEditando?.venta_servicio_detalle_id && (
+                  <button
+                    onClick={() => setTabValue(4)}
+                    className={`flex items-center gap-2 px-3 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 relative whitespace-nowrap ${
+                      tabValue === 4
+                        ? 'text-[#7B1FA2]'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    <span className="hidden sm:inline">Paquete</span>
+                    <span className="sm:hidden">Paq.</span>
+                    {tabValue === 4 && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full"></div>
                     )}
                   </button>
@@ -828,7 +1502,17 @@ Le hacemos recordar su cita para el día de mañana
                   </label>
                   <select
                     value={formularioCita.motivo_id || ''}
-                    onChange={(e) => onFormularioChange('motivo_id', e.target.value)}
+                    onChange={(e) => {
+                      const newMotivoId = e.target.value;
+                      onFormularioChange('motivo_id', newMotivoId);
+                      if (modoEdicion && citaEditando) {
+                        const motivoOriginalId = citaEditando.motivo_id || citaEditando.motivo?.id;
+                        if (String(newMotivoId) !== String(motivoOriginalId)) {
+                          onFormularioChange('venta_servicio_detalle_id', '');
+                          setVentaSeleccionada(null);
+                        }
+                      }
+                    }}
                     disabled={loadingMotivos || esTerapeuta || modoSoloLectura}
                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900
                     focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/20
@@ -847,12 +1531,53 @@ Le hacemos recordar su cita para el día de mañana
                       </p>
                     </div>
                   )}
+                  {/* Compra vinculada a la cita (solo si el motivo no ha cambiado) */}
+                  {modoEdicion && citaEditando?.venta_servicio_detalle_id && tipoCita === 'NORMAL' &&
+                   String(formularioCita.motivo_id) === String(citaEditando.motivo_id || citaEditando.motivo?.id) && (
+                    <div className="mt-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <Package className="w-3.5 h-3.5 text-purple-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-purple-800">
+                        <span className="font-semibold">Compra vinculada:</span>{' '}
+                        #{citaEditando.venta_servicio_detalle_id}
+                        {citaEditando.servicio?.nombre ? ` — ${citaEditando.servicio.nombre}` : ''}
+                        {citaEditando.motivo?.nombre ? ` (${citaEditando.motivo.nombre})` : ''}
+                      </p>
+                    </div>
+                  )}
+                  {/* Advertencia si se cambia el motivo a uno sin compra disponible */}
+                  {modoEdicion && !cargandoVentas && tipoCita === 'NORMAL' &&
+                  formularioCita.paciente_id && formularioCita.servicio_id && formularioCita.motivo_id &&
+                  ventasDisponibles.length === 0 && (
+                  <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700">
+                      <span className="font-semibold">Sin sesiones disponibles.</span>{' '}
+                      El paciente no tiene una compra activa para este motivo. Debe realizar una compra antes de cambiar el motivo.
+                    </p>
+                  </div>
+                )}
                 </div>
+
+                {/* 🔒 ADVERTENCIA: CITA CON ASISTENCIA REGISTRADA */}
+                {bloqueadoPorAsistencia && (
+                  <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-red-900 mb-1">
+                        🔒 Cita bloqueada para edición
+                      </p>
+                      <p className="text-xs text-red-800">
+                        Ya registraste la asistencia para esta cita. No se puede editar para evitar reutilización de citas antiguas. Solo un administrador puede modificarla.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* PACIENTE */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Paciente <span className="text-red-500">*</span>
+                    Paciente {tipoCita !== 'REUNION_CLINICA' && <span className="text-red-500">*</span>}
+                    {tipoCita === 'REUNION_CLINICA' && <span className="text-gray-400 text-xs ml-1">(Opcional)</span>}
                   </label>
                   <div className="relative">
                     <input
@@ -860,7 +1585,7 @@ Le hacemos recordar su cita para el día de mañana
                       placeholder="Buscar por nombre..."
                       value={queryPaciente}
                       onChange={(e) => setQueryPaciente(e.target.value)}
-                      disabled={esTerapeuta || modoSoloLectura}
+                      disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                       className="w-full px-4 py-2.5 pl-10 bg-white border border-gray-200 rounded-xl text-sm text-gray-900
                       focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/20
                       transition-all disabled:opacity-60 disabled:bg-gray-50
@@ -869,7 +1594,7 @@ Le hacemos recordar su cita para el día de mañana
                     <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   </div>
 
-                  {queryPaciente.length >= 2 && pacientes.length > 0 && !modoSoloLectura && (
+                  {queryPaciente.length >= 2 && pacientes.length > 0 && !modoSoloLectura && !bloqueadoPorAsistencia && (
                     <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                       {pacientes.map((paciente) => (
                         <button
@@ -895,7 +1620,7 @@ Le hacemos recordar su cita para el día de mañana
                         </div>
                         <p className="text-sm font-semibold text-gray-900">{formularioCita.paciente.nombre_completo}</p>
                       </div>
-                      {!esTerapeuta && !modoSoloLectura && (
+                      {!esTerapeuta && !modoSoloLectura && !bloqueadoPorAsistencia && (
                         <button onClick={() => onFormularioChange('paciente', null)} className="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition-all">
                           <X className="w-4 h-4" />
                         </button>
@@ -913,18 +1638,38 @@ Le hacemos recordar su cita para el día de mañana
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Terapeuta <span className="text-red-500">*</span>
                         </label>
-                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                              <User className="w-4 h-4 text-white" />
+                        {esAdmin ? (
+                          <select
+                            value={formularioCita.doctor_id || terapeutaSeleccionado?.id || ''}
+                            onChange={(e) => onFormularioChange('doctor_id', e.target.value)}
+                            disabled={modoSoloLectura || bloqueadoPorAsistencia}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                          >
+                            <option value="">Seleccionar terapeuta...</option>
+                            {trabajadores
+                              .filter(t => {
+                                const rolId = t.rol_id || t.rol?.id;
+                                return rolId === ROLES.TERAPEUTA && (t.estado === true || t.estado === 1);
+                              })
+                              .map(t => (
+                                <option key={t.id} value={t.id}>
+                                  {t.nombres} {t.apellidos}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                <User className="w-4 h-4 text-white" />
+                              </div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim() : 'No seleccionado'}
+                              </p>
                             </div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {terapeutaSeleccionado ? `${terapeutaSeleccionado.nombres || ''} ${terapeutaSeleccionado.apellidos || ''}`.trim() : 'No seleccionado'}
-                            </p>
                           </div>
-                        </div>
+                        )}
                       </div>
-
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Servicio <span className="text-red-500">*</span>
@@ -932,47 +1677,99 @@ Le hacemos recordar su cita para el día de mañana
                         <select
                           value={formularioCita.servicio_id || ''}
                           onChange={(e) => onFormularioChange('servicio_id', e.target.value)}
-                          disabled={esTerapeuta || modoSoloLectura}
+                          disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia || (modoEdicion && !!citaEditando?.venta_servicio_detalle_id)}
                           className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                         >
                           <option value="">Seleccionar servicio...</option>
                           {(() => {
                             const lista = (serviciosApi && serviciosApi.length ? serviciosApi : (servicios || []));
-
                             if (!Array.isArray(lista) || lista.length === 0) {
                               return <option disabled>No hay servicios disponibles</option>;
                             }
-
-                            const areasMap = {
-                              1: 'Infantil y Adolescentes',
-                              2: 'Adultos'
-                            };
-
                             const agrupados = {};
                             lista.forEach(srv => {
-                              const areaId = srv.area_id || srv.area?.id;
-                              const areaNombre = areasMap[areaId] || 'Otros';
-
-                              if (!agrupados[areaNombre]) {
-                                agrupados[areaNombre] = [];
-                              }
+                              const areaNombre = srv.area?.nombre || 'Otros';
+                              if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
                               agrupados[areaNombre].push(srv);
                             });
-
-                            const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                            return ordenAreas
-                              .filter(area => agrupados[area] && agrupados[area].length > 0)
-                              .map(areaNombre => (
-                                <optgroup key={areaNombre} label={areaNombre}>
-                                  {agrupados[areaNombre].map(srv => (
-                                    <option key={srv.id} value={srv.id}>
-                                      {srv.nombre || 'Sin nombre'}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ));
+                            const ordenAreas = ['Área Infantil', 'Área Adolescentes y Adultos', 'Otros'];
+                            const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+                              const indexA = ordenAreas.indexOf(a);
+                              const indexB = ordenAreas.indexOf(b);
+                              if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                              if (indexA === -1) return 1;
+                              if (indexB === -1) return -1;
+                              return indexA - indexB;
+                            });
+                            return areasOrdenadas.map(areaNombre => (
+                              <optgroup key={areaNombre} label={areaNombre}>
+                                {agrupados[areaNombre].map(srv => (
+                                  <option key={srv.id} value={srv.id}>
+                                    {srv.nombre || 'Sin nombre'}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ));
                           })()}
                         </select>
+                      </div>
+
+                      {/* 🛒 SELECTOR DE VENTA (SESIONES DISPONIBLES) */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Compra de Sesiones <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formularioCita.venta_servicio_detalle_id || ''}
+                          onChange={(e) => {
+                            const ventaId = e.target.value;
+                            onFormularioChange('venta_servicio_detalle_id', ventaId);
+
+                            // 🛒 GUARDAR VENTA SELECCIONADA PARA LÍMITES
+                            const venta = ventasDisponibles.find(v => v.id === parseInt(ventaId));
+                            setVentaSeleccionada(venta || null);
+
+                            // 🛒 AJUSTAR SLOTS SI EXCEDE SESIONES DISPONIBLES
+                            if (venta && formularioCita.fechasHoras) {
+                              const sesionesDisp = venta.sesiones_disponibles;
+                              if (formularioCita.fechasHoras.length > sesionesDisp) {
+                                onFormularioChange('fechasHoras', formularioCita.fechasHoras.slice(0, sesionesDisp));
+                                mostrarAlerta(
+                                  'Slots Ajustados',
+                                  `Se redujeron los slots a ${sesionesDisp} porque es el máximo de sesiones disponibles en esta compra.`,
+                                  'warning'
+                                );
+                              }
+                            }
+                          }}
+                        disabled={cargandoVentas || !formularioCita.paciente_id || !formularioCita.servicio_id || esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                        >
+                          <option value="">
+                            {cargandoVentas
+                              ? 'Cargando ventas...'
+                              : !formularioCita.paciente_id || !formularioCita.servicio_id
+                                ? 'Primero selecciona paciente y servicio'
+                                : ventasDisponibles.length === 0
+                                  ? 'No hay sesiones disponibles para este servicio'
+                                  : 'Seleccionar compra...'}
+                          </option>
+                          {ventasDisponibles.map((venta) => (
+                            <option key={venta.id} value={String(venta.id)}>
+                              {venta.descripcion}
+                            </option>
+                          ))}
+                        </select>
+                        {formularioCita.paciente_id && formularioCita.servicio_id && formularioCita.motivo_id && !cargandoVentas && ventasDisponibles.length === 0 && (
+                          <div className="mt-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-red-700">
+                              <span className="font-semibold">No hay sesiones disponibles</span> para este motivo y servicio.
+                              {modoEdicion
+                                ? ' No se puede cambiar el motivo sin una compra válida. El paciente debe realizar una compra primero.'
+                                : ' El paciente debe realizar una compra primero.'}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -984,7 +1781,7 @@ Le hacemos recordar su cita para el día de mañana
                       <select
                         value={formularioCita.duracion}
                         onChange={(e) => onFormularioChange('duracion', e.target.value)}
-                        disabled={esTerapeuta || modoSoloLectura}
+                        disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                       >
                         <option value="">Seleccionar duración...</option>
@@ -996,88 +1793,220 @@ Le hacemos recordar su cita para el día de mañana
                       </select>
                     </div>
 
-                    {/* Fechas y Horas */}
+                    {/* 🚀 FECHAS Y HORAS */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="block text-sm font-semibold text-gray-700">
-                          {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
-                        </label>
-                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && (
+                        <div className="flex items-center gap-3">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
+                          </label>
+                        </div>
+                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
-                            onClick={() => onFormularioChange('agregarFechaHora', null)}
-                            className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
+                            onClick={agregarFechaHora}
+                            disabled={tipoCita === 'NORMAL' && ventaSeleccionada && !puedeAgregarMasSlots}
+                            className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg transition-all text-[#7B1FA2] hover:bg-purple-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={tipoCita === 'NORMAL' && ventaSeleccionada && !puedeAgregarMasSlots ? `Límite alcanzado: ${sesionesDisponiblesVenta} sesiones disponibles` : 'Agregar más fechas/horas'}
                           >
                             <Plus className="w-4 h-4" />
                             Agregar
                           </button>
                         )}
+                        {/* 🛒 CONTADOR DE SESIONES */}
+                        {tipoCita === 'NORMAL' && ventaSeleccionada && !modoEdicion && (
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${slotsActuales >= sesionesDisponiblesVenta ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                            {slotsActuales} de {sesionesDisponiblesVenta} sesiones
+                          </span>
+                        )}
                       </div>
 
                       {modoEdicion ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              const fecha = new Date(e.target.value + 'T00:00:00');
-                              const diaSemana = fecha.getDay();
-                              if (diaSemana >= 1 && diaSemana <= 6) {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
-                              } else {
-                                alert('Solo se pueden agendar citas de lunes a sábado');
-                              }
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                          />
-                          <select
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">
-                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                            </option>
-                            {formularioCita.fechasHoras?.[0]?.fecha &&
-                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                <option key={hora} value={hora}>{hora}</option>
-                              ))
-                            }
-                          </select>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                const fechaStr = e.target.value;
+                                const fecha = new Date(fechaStr + 'T00:00:00');
+                                const diaSemana = fecha.getDay();
+
+                                // Validar que no sea domingo
+                                if (diaSemana === 0) {
+                                  mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                  return;
+                                }
+
+                                // Validar que no sea feriado
+                                const feriado = esFeriado(fechaStr);
+                                if (feriado) {
+                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                  return;
+                                }
+
+                                // Validar que sea de lunes a sábado
+                                if (diaSemana >= 1 && diaSemana <= 6) {
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
+                                } else {
+                                  mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
+                                }
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <select
+                                value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                                onChange={(e) => {
+                                  if (modoSoloLectura) return;
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                </option>
+                                {formularioCita.fechasHoras?.[0]?.fecha && (() => {
+                                  const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
+                                  const horaActual = formularioCita.fechasHoras[0].horaInicio;
+
+                                  if (horaActual && !horasDisponibles.includes(horaActual)) {
+                                    const todasLasHoras = [...horasDisponibles, horaActual].sort();
+                                    return todasLasHoras.map(hora => (
+                                      <option
+                                        key={hora}
+                                        value={hora}
+                                        style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}
+                                      >
+                                        {hora}{hora === horaActual ? ' (ajustada)' : ''}
+                                      </option>
+                                    ));
+                                  }
+
+                                  return horasDisponibles.map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ));
+                                })()}
+                              </select>
+
+                              {formularioCita.fechasHoras?.[0]?.horaInicio && (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales - 10;
+                                      if (nuevosMinutos >= 0) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    -10 min
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const minutosActuales = h * 60 + m;
+                                      const nuevosMinutos = minutosActuales + 10;
+                                      if (nuevosMinutos < 24 * 60) {
+                                        const nuevaH = Math.floor(nuevosMinutos / 60);
+                                        const nuevaM = nuevosMinutos % 60;
+                                        const nuevaHora = `${String(nuevaH).padStart(2, '0')}:${String(nuevaM).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    +10 min
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
                           {formularioCita.fechasHoras && formularioCita.fechasHoras.length > 0 ? (
                             formularioCita.fechasHoras.map((fechaHora, index) => (
                               <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
-                                {!esTerapeuta && !modoSoloLectura && formularioCita.fechasHoras.length > 1 && (
-                                  <button
-                                    onClick={() => onFormularioChange('eliminarFechaHora', index)}
-                                    className="absolute top-2 right-2 text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                )}
+                                {/* Número de slot */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-xs font-bold text-[#7B1FA2] bg-purple-100 px-2.5 py-1 rounded-lg">
+                                    Cita #{index + 1}
+                                  </span>
+                                  {!esTerapeuta && !modoSoloLectura && formularioCita.fechasHoras.length > 1 && (
+                                    <button
+                                      onClick={() => eliminarFechaHora(index)}
+                                      className="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                      disabled={modoSoloLectura}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <input
                                     type="date"
                                     value={fechaHora.fecha}
                                     onChange={(e) => {
                                       if (modoSoloLectura) return;
-                                      const fecha = new Date(e.target.value + 'T00:00:00');
+                                      const fechaStr = e.target.value;
+                                      const fecha = new Date(fechaStr + 'T00:00:00');
                                       const diaSemana = fecha.getDay();
+
+                                      // Validar que no sea domingo
+                                      if (diaSemana === 0) {
+                                        mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                        return;
+                                      }
+
+                                      // Validar que no sea feriado
+                                      const feriado = esFeriado(fechaStr);
+                                      if (feriado) {
+                                        mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                        return;
+                                      }
+
+                                      // Validar que sea de lunes a sábado
                                       if (diaSemana >= 1 && diaSemana <= 6) {
-                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                       } else {
-                                        alert('Solo se pueden agendar citas de lunes a sábado');
+                                        mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                       }
                                     }}
-                                    disabled={esTerapeuta || modoSoloLectura}
+                                    disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                                   />
                                   <select
@@ -1099,11 +2028,31 @@ Le hacemos recordar su cita para el día de mañana
                                     }
                                   </select>
                                 </div>
+                                {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                      <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                      <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                              <p className="text-sm text-gray-500">Haga clic en "Agregar" para agregar fechas y horas</p>
+                              <p className="text-sm text-gray-500">
+                                Haga clic en "Agregar" para crear slots de fechas y horas
+                              </p>
                             </div>
                           )}
                         </div>
@@ -1148,7 +2097,6 @@ Le hacemos recordar su cita para el día de mañana
                           {terapeutasReunion.map((terapeuta, index) => {
                             const esPrimerTerapeuta = index === 0 && terapeutaSeleccionado?.id;
                             const esDisabled = esTerapeuta || modoSoloLectura || (esPrimerTerapeuta && !modoEdicion);
-
                             return (
                               <div key={index} className="flex gap-2">
                                 <select
@@ -1216,7 +2164,7 @@ Le hacemos recordar su cita para el día de mañana
                               <select
                                 value={servicio.servicio_id || ''}
                                 onChange={(e) => actualizarServicio(index, e.target.value)}
-                                disabled={esTerapeuta || modoSoloLectura}
+                                disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                 className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2] disabled:opacity-60"
                               >
                                 <option value="">Seleccionar servicio...</option>
@@ -1225,26 +2173,28 @@ Le hacemos recordar su cita para el día de mañana
                                   if (!Array.isArray(lista) || lista.length === 0) {
                                     return <option disabled>No hay servicios</option>;
                                   }
-
-                                  const areasMap = { 1: 'Infantil y Adolescentes', 2: 'Adultos' };
                                   const agrupados = {};
                                   lista.forEach(srv => {
-                                    const areaId = srv.area_id || srv.area?.id;
-                                    const areaNombre = areasMap[areaId] || 'Otros';
+                                    const areaNombre = srv.area?.nombre || 'Otros';
                                     if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
                                     agrupados[areaNombre].push(srv);
                                   });
-
                                   const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                                  return ordenAreas
-                                    .filter(area => agrupados[area] && agrupados[area].length > 0)
-                                    .map(areaNombre => (
-                                      <optgroup key={areaNombre} label={areaNombre}>
-                                        {agrupados[areaNombre].map(srv => (
-                                          <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
-                                        ))}
-                                      </optgroup>
-                                    ));
+                                  const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+                                    const indexA = ordenAreas.indexOf(a);
+                                    const indexB = ordenAreas.indexOf(b);
+                                    if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                                    if (indexA === -1) return 1;
+                                    if (indexB === -1) return -1;
+                                    return indexA - indexB;
+                                  });
+                                  return areasOrdenadas.map(areaNombre => (
+                                    <optgroup key={areaNombre} label={areaNombre}>
+                                      {agrupados[areaNombre].map(srv => (
+                                        <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
+                                      ))}
+                                    </optgroup>
+                                  ));
                                 })()}
                               </select>
                               {!esTerapeuta && !modoSoloLectura && (
@@ -1289,7 +2239,7 @@ Le hacemos recordar su cita para el día de mañana
                         <label className="block text-sm font-semibold text-gray-700">
                           {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
                         </label>
-                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && (
+                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
                             onClick={() => onFormularioChange('agregarFechaHora', null)}
                             className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
@@ -1301,41 +2251,127 @@ Le hacemos recordar su cita para el día de mañana
                       </div>
 
                       {modoEdicion ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              const fecha = new Date(e.target.value + 'T00:00:00');
-                              const diaSemana = fecha.getDay();
-                              if (diaSemana >= 1 && diaSemana <= 6) {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
-                              } else {
-                                alert('Solo se pueden agendar citas de lunes a sábado');
-                              }
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                          />
-                          <select
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">
-                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                            </option>
-                            {formularioCita.fechasHoras?.[0]?.fecha &&
-                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                <option key={hora} value={hora}>{hora}</option>
-                              ))
-                            }
-                          </select>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                const fechaStr = e.target.value;
+                                const fecha = new Date(fechaStr + 'T00:00:00');
+                                const diaSemana = fecha.getDay();
+
+                                // Validar que no sea domingo
+                                if (diaSemana === 0) {
+                                  mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                  return;
+                                }
+
+                                // Validar que no sea feriado
+                                const feriado = esFeriado(fechaStr);
+                                if (feriado) {
+                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                  return;
+                                }
+
+                                // Validar que sea de lunes a sábado
+                                if (diaSemana >= 1 && diaSemana <= 6) {
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
+                                } else {
+                                  mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
+                                }
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <select
+                                value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                                onChange={(e) => {
+                                  if (modoSoloLectura) return;
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                </option>
+                                {formularioCita.fechasHoras?.[0]?.fecha && (() => {
+                                  const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
+                                  const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                  if (horaActual && !horasDisponibles.includes(horaActual)) {
+                                    const todasLasHoras = [...horasDisponibles, horaActual].sort();
+                                    return todasLasHoras.map(hora => (
+                                      <option
+                                        key={hora}
+                                        value={hora}
+                                        style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}
+                                      >
+                                        {hora}{hora === horaActual ? ' (ajustada)' : ''}
+                                      </option>
+                                    ));
+                                  }
+                                  return horasDisponibles.map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ));
+                                })()}
+                              </select>
+                              {formularioCita.fechasHoras?.[0]?.horaInicio && (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const nuevosMinutos = h * 60 + m - 10;
+                                      if (nuevosMinutos >= 0) {
+                                        const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >-10 min</button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (modoSoloLectura) return;
+                                      const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                      const [h, m] = horaActual.split(':').map(Number);
+                                      const nuevosMinutos = h * 60 + m + 10;
+                                      if (nuevosMinutos < 24 * 60) {
+                                        const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
+                                        onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                      }
+                                    }}
+                                    disabled={esTerapeuta || modoSoloLectura}
+                                    className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >+10 min</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1356,15 +2392,31 @@ Le hacemos recordar su cita para el día de mañana
                                     value={fechaHora.fecha}
                                     onChange={(e) => {
                                       if (modoSoloLectura) return;
-                                      const fecha = new Date(e.target.value + 'T00:00:00');
+                                      const fechaStr = e.target.value;
+                                      const fecha = new Date(fechaStr + 'T00:00:00');
                                       const diaSemana = fecha.getDay();
+
+                                      // Validar que no sea domingo
+                                      if (diaSemana === 0) {
+                                        mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                        return;
+                                      }
+
+                                      // Validar que no sea feriado
+                                      const feriado = esFeriado(fechaStr);
+                                      if (feriado) {
+                                        mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                        return;
+                                      }
+
+                                      // Validar que sea de lunes a sábado
                                       if (diaSemana >= 1 && diaSemana <= 6) {
-                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
+                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                       } else {
-                                        alert('Solo se pueden agendar citas de lunes a sábado');
+                                        mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                       }
                                     }}
-                                    disabled={esTerapeuta || modoSoloLectura}
+                                    disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
                                   />
                                   <select
@@ -1386,6 +2438,24 @@ Le hacemos recordar su cita para el día de mañana
                                     }
                                   </select>
                                 </div>
+                                {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                      <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                      <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
@@ -1445,7 +2515,7 @@ Le hacemos recordar su cita para el día de mañana
                             value={encargadoVisita.institucion}
                             onChange={(e) => {
                               if (modoSoloLectura) return;
-                              setEncargadoVisita({...encargadoVisita, institucion: e.target.value});
+                              setEncargadoVisita({ ...encargadoVisita, institucion: e.target.value });
                             }}
                             disabled={esTerapeuta || modoSoloLectura}
                             placeholder="Ej: Colegio San Juan"
@@ -1461,7 +2531,7 @@ Le hacemos recordar su cita para el día de mañana
                             value={encargadoVisita.nombre_completo}
                             onChange={(e) => {
                               if (modoSoloLectura) return;
-                              setEncargadoVisita({...encargadoVisita, nombre_completo: e.target.value});
+                              setEncargadoVisita({ ...encargadoVisita, nombre_completo: e.target.value });
                             }}
                             disabled={esTerapeuta || modoSoloLectura}
                             placeholder="Ej: María García (Directora)"
@@ -1477,7 +2547,7 @@ Le hacemos recordar su cita para el día de mañana
                             value={encargadoVisita.telefono}
                             onChange={(e) => {
                               if (modoSoloLectura) return;
-                              setEncargadoVisita({...encargadoVisita, telefono: e.target.value});
+                              setEncargadoVisita({ ...encargadoVisita, telefono: e.target.value });
                             }}
                             disabled={esTerapeuta || modoSoloLectura}
                             placeholder="987654321"
@@ -1495,7 +2565,7 @@ Le hacemos recordar su cita para el día de mañana
                                 if (modoSoloLectura) return;
                                 setDocumentoFirmado(e.target.checked);
                               }}
-                              disabled={esTerapeuta || modoSoloLectura}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:opacity-60 cursor-pointer"
                             />
                             <span className="text-sm font-medium text-gray-700">Autorización de visita firmada</span>
@@ -1519,26 +2589,28 @@ Le hacemos recordar su cita para el día de mañana
                           if (!Array.isArray(lista) || lista.length === 0) {
                             return <option disabled>No hay servicios</option>;
                           }
-
-                          const areasMap = { 1: 'Infantil y Adolescentes', 2: 'Adultos' };
                           const agrupados = {};
                           lista.forEach(srv => {
-                            const areaId = srv.area_id || srv.area?.id;
-                            const areaNombre = areasMap[areaId] || 'Otros';
+                            const areaNombre = srv.area?.nombre || 'Otros';
                             if (!agrupados[areaNombre]) agrupados[areaNombre] = [];
                             agrupados[areaNombre].push(srv);
                           });
-
                           const ordenAreas = ['Infantil y Adolescentes', 'Adultos', 'Otros'];
-                          return ordenAreas
-                            .filter(area => agrupados[area] && agrupados[area].length > 0)
-                            .map(areaNombre => (
-                              <optgroup key={areaNombre} label={areaNombre}>
-                                {agrupados[areaNombre].map(srv => (
-                                  <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
-                                ))}
-                              </optgroup>
-                            ));
+                          const areasOrdenadas = Object.keys(agrupados).sort((a, b) => {
+                            const indexA = ordenAreas.indexOf(a);
+                            const indexB = ordenAreas.indexOf(b);
+                            if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                            if (indexA === -1) return 1;
+                            if (indexB === -1) return -1;
+                            return indexA - indexB;
+                          });
+                          return areasOrdenadas.map(areaNombre => (
+                            <optgroup key={areaNombre} label={areaNombre}>
+                              {agrupados[areaNombre].map(srv => (
+                                <option key={srv.id} value={srv.id}>{srv.nombre || 'Sin nombre'}</option>
+                              ))}
+                            </optgroup>
+                          ));
                         })()}
                       </select>
                     </div>
@@ -1551,7 +2623,7 @@ Le hacemos recordar su cita para el día de mañana
                       <select
                         value={formularioCita.duracion}
                         onChange={(e) => onFormularioChange('duracion', e.target.value)}
-                        disabled={esTerapeuta || modoSoloLectura}
+                        disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
                       >
                         <option value="">Seleccionar duración...</option>
@@ -1569,7 +2641,7 @@ Le hacemos recordar su cita para el día de mañana
                         <label className="block text-sm font-semibold text-gray-700">
                           {modoEdicion ? 'Fecha y Hora' : 'Fechas y Horas'} <span className="text-red-500">*</span>
                         </label>
-                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && (
+                        {!esTerapeuta && !modoEdicion && !modoSoloLectura && !bloqueadoPorAsistencia && (
                           <button
                             onClick={() => onFormularioChange('agregarFechaHora', null)}
                             className="flex items-center gap-1 text-sm font-medium text-[#7B1FA2] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all"
@@ -1581,41 +2653,113 @@ Le hacemos recordar su cita para el día de mañana
                       </div>
 
                       {modoEdicion ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={formularioCita.fechasHoras?.[0]?.fecha || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              const fecha = new Date(e.target.value + 'T00:00:00');
-                              const diaSemana = fecha.getDay();
-                              if (diaSemana >= 1 && diaSemana <= 6) {
-                                onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: e.target.value });
-                              } else {
-                                alert('Solo se pueden agendar citas de lunes a sábado');
-                              }
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                          />
-                          <select
-                            value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
-                            onChange={(e) => {
-                              if (modoSoloLectura) return;
-                              onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
-                            }}
-                            disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                          >
-                            <option value="">
-                              {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                            </option>
-                            {formularioCita.fechasHoras?.[0]?.fecha &&
-                              generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                <option key={hora} value={hora}>{hora}</option>
-                              ))
-                            }
-                          </select>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={formularioCita.fechasHoras?.[0]?.fecha || ''}
+                              onChange={(e) => {
+                                if (modoSoloLectura) return;
+                                const fechaStr = e.target.value;
+                                const fecha = new Date(fechaStr + 'T00:00:00');
+                                const diaSemana = fecha.getDay();
+
+                                // Validar que no sea domingo
+                                if (diaSemana === 0) {
+                                  mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                  return;
+                                }
+
+                                // Validar que no sea feriado
+                                const feriado = esFeriado(fechaStr);
+                                if (feriado) {
+                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                  return;
+                                }
+
+                                // Validar que sea de lunes a sábado
+                                if (diaSemana >= 1 && diaSemana <= 6) {
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
+                                } else {
+                                  mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
+                                }
+                              }}
+                              disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <select
+                                value={formularioCita.fechasHoras?.[0]?.horaInicio || ''}
+                                onChange={(e) => {
+                                  if (modoSoloLectura) return;
+                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: e.target.value });
+                                }}
+                                disabled={esTerapeuta || modoSoloLectura || !formularioCita.fechasHoras?.[0]?.fecha}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="">
+                                  {!formularioCita.fechasHoras?.[0]?.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
+                                </option>
+                                {formularioCita.fechasHoras?.[0]?.fecha && (() => {
+                                  const horasDisponibles = generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40);
+                                  const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                  if (horaActual && !horasDisponibles.includes(horaActual)) {
+                                    const todasLasHoras = [...horasDisponibles, horaActual].sort();
+                                    return todasLasHoras.map(hora => (
+                                      <option key={hora} value={hora} style={hora === horaActual ? { backgroundColor: '#e9d5ff', fontWeight: 'bold' } : {}}>
+                                        {hora}{hora === horaActual ? ' (ajustada)' : ''}
+                                      </option>
+                                    ));
+                                  }
+                                  return horasDisponibles.map(hora => (
+                                    <option key={hora} value={hora}>{hora}</option>
+                                  ));
+                                })()}
+                              </select>
+                              {formularioCita.fechasHoras?.[0]?.horaInicio && (
+                                <div className="flex gap-1">
+                                  <button type="button" onClick={() => {
+                                    if (modoSoloLectura) return;
+                                    const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                    const [h, m] = horaActual.split(':').map(Number);
+                                    const nuevosMinutos = h * 60 + m - 10;
+                                    if (nuevosMinutos >= 0) {
+                                      const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
+                                      onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                    }
+                                  }} disabled={esTerapeuta || modoSoloLectura} className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed">-10 min</button>
+                                  <button type="button" onClick={() => {
+                                    if (modoSoloLectura) return;
+                                    const horaActual = formularioCita.fechasHoras[0].horaInicio;
+                                    const [h, m] = horaActual.split(':').map(Number);
+                                    const nuevosMinutos = h * 60 + m + 10;
+                                    if (nuevosMinutos < 24 * 60) {
+                                      const nuevaHora = `${String(Math.floor(nuevosMinutos / 60)).padStart(2, '0')}:${String(nuevosMinutos % 60).padStart(2, '0')}`;
+                                      onFormularioChange('actualizarFechaHora', { index: 0, campo: 'horaInicio', valor: nuevaHora });
+                                    }
+                                  }} disabled={esTerapeuta || modoSoloLectura} className="flex-1 px-2 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed">+10 min</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {formularioCita.fechasHoras?.[0]?.fecha && verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && generarHorasPorFecha(formularioCita.fechasHoras[0].fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
+                                <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1623,49 +2767,58 @@ Le hacemos recordar su cita para el día de mañana
                             formularioCita.fechasHoras.map((fechaHora, index) => (
                               <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
                                 {!esTerapeuta && !modoSoloLectura && formularioCita.fechasHoras.length > 1 && (
-                                  <button
-                                    onClick={() => onFormularioChange('eliminarFechaHora', index)}
-                                    className="absolute top-2 right-2 text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all"
-                                  >
+                                  <button onClick={() => onFormularioChange('eliminarFechaHora', index)} className="absolute top-2 right-2 text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all">
                                     <X className="w-4 h-4" />
                                   </button>
                                 )}
                                 <div className="grid grid-cols-2 gap-3">
-                                  <input
-                                    type="date"
-                                    value={fechaHora.fecha}
-                                    onChange={(e) => {
-                                      if (modoSoloLectura) return;
-                                      const fecha = new Date(e.target.value + 'T00:00:00');
-                                      const diaSemana = fecha.getDay();
-                                      if (diaSemana >= 1 && diaSemana <= 6) {
-                                        onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: e.target.value });
-                                      } else {
-                                        alert('Solo se pueden agendar citas de lunes a sábado');
-                                      }
-                                    }}
-                                    disabled={esTerapeuta || modoSoloLectura}
-                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
-                                  />
-                                  <select
-                                    value={fechaHora.horaInicio || ''}
-                                    onChange={(e) => {
-                                      if (modoSoloLectura) return;
-                                      onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value });
-                                    }}
-                                    disabled={esTerapeuta || modoSoloLectura || !fechaHora.fecha}
-                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50"
-                                  >
-                                    <option value="">
-                                      {!fechaHora.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}
-                                    </option>
-                                    {fechaHora.fecha &&
-                                      generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
-                                        <option key={hora} value={hora}>{hora}</option>
-                                      ))
+                                  <input type="date" value={fechaHora.fecha} onChange={(e) => {
+                                    if (modoSoloLectura) return;
+                                    const fechaStr = e.target.value;
+                                    const fecha = new Date(fechaStr + 'T00:00:00');
+                                    const diaSemana = fecha.getDay();
+
+                                    // Validar que no sea domingo
+                                    if (diaSemana === 0) {
+                                      mostrarAlerta('Domingo no disponible', 'Los domingos no están disponibles para agendar citas.', 'warning');
+                                      return;
                                     }
+
+                                    // Validar que no sea feriado
+                                    const feriado = esFeriado(fechaStr);
+                                    if (feriado) {
+                                      mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+                                      return;
+                                    }
+
+                                    if (diaSemana >= 1 && diaSemana <= 6) {
+                                      onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
+                                    } else {
+                                      mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
+                                    }
+                                  }} disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50" />
+                                  <select value={fechaHora.horaInicio || ''} onChange={(e) => {
+                                    if (modoSoloLectura) return;
+                                    onFormularioChange('actualizarFechaHora', { index, campo: 'horaInicio', valor: e.target.value });
+                                  }} disabled={esTerapeuta || modoSoloLectura || !fechaHora.fecha} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer disabled:opacity-50">
+                                    <option value="">{!fechaHora.fecha ? 'Seleccione una fecha primero' : 'Seleccionar hora...'}</option>
+                                    {fechaHora.fecha && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).map(hora => (
+                                      <option key={hora} value={hora}>{hora}</option>
+                                    ))}
                                   </select>
                                 </div>
+                                {fechaHora.fecha && verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1"><p className="text-sm font-semibold text-red-800">Esta fecha está bloqueada</p><p className="text-xs text-red-600 mt-1">El terapeuta no tiene disponibilidad este día. Por favor seleccione otra fecha.</p></div>
+                                  </div>
+                                )}
+                                {fechaHora.fecha && !verificarFechaBloqueadaTodoElDia(fechaHora.fecha) && generarHorasPorFecha(fechaHora.fecha, formularioCita.duracion ? parseInt(formularioCita.duracion) : 40).length === 0 && (
+                                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl mt-2">
+                                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1"><p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p><p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p></div>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
@@ -1692,7 +2845,7 @@ Le hacemos recordar su cita para el día de mañana
                   </div>
                 )}
 
-                {/* ✅ MOTIVO DE MODIFICACIÓN - UN SOLO CAMPO PARA TODOS LOS TIPOS */}
+                {/* ✅ MOTIVO DE MODIFICACIÓN */}
                 {modoEdicion && !esTerapeuta && !modoSoloLectura && (
                   <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1735,7 +2888,6 @@ Le hacemos recordar su cita para el día de mañana
                   <div className="space-y-4">
                     {historial.map((item) => (
                       <div key={item.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                        {/* Header */}
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${getColorOperacion(item.tipo_operacion)}`}>
@@ -1752,10 +2904,7 @@ Le hacemos recordar su cita para el día de mañana
                             </div>
                           </div>
                         </div>
-
-                        {/* Body - Datos de la cita */}
                         <div className="p-4 space-y-3">
-                          {/* Usuario que hizo el cambio */}
                           {item.usuario && (
                             <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
                               <div className="flex items-center gap-2">
@@ -1766,22 +2915,24 @@ Le hacemos recordar su cita para el día de mañana
                               </div>
                             </div>
                           )}
-
-                          {/* Información del paciente */}
-                          {item.paciente && (
+                          {(item.paciente || item.tipo_cita === 'REUNION_CLINICA') && (
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <p className="text-xs font-semibold text-gray-600 mb-1">Paciente:</p>
-                                <p className="text-sm font-medium text-gray-900">{item.paciente.nombre_completo}</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {item.tipo_cita === 'REUNION_CLINICA' && !item.paciente
+                                    ? 'Reunión Interna'
+                                    : item.paciente?.nombre_completo}
+                                </p>
                               </div>
-                              <div>
-                                <p className="text-xs font-semibold text-gray-600 mb-1">Documento:</p>
-                                <p className="text-sm font-medium text-gray-900">{item.paciente.numero_documento}</p>
-                              </div>
+                              {item.paciente && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 mb-1">Documento:</p>
+                                  <p className="text-sm font-medium text-gray-900">{item.paciente.numero_documento}</p>
+                                </div>
+                              )}
                             </div>
                           )}
-
-                          {/* Motivo y Estado */}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <p className="text-xs font-semibold text-gray-600 mb-1">Motivo:</p>
@@ -1792,8 +2943,6 @@ Le hacemos recordar su cita para el día de mañana
                               <p className="text-sm text-gray-900">{item.estado}</p>
                             </div>
                           </div>
-
-                          {/* Fecha y Hora */}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <p className="text-xs font-semibold text-gray-600 mb-1">Fecha:</p>
@@ -1804,14 +2953,10 @@ Le hacemos recordar su cita para el día de mañana
                               <p className="text-sm text-gray-900">{item.hora_inicio} - {item.hora_fin || 'N/A'}</p>
                             </div>
                           </div>
-
-                          {/* Duración */}
                           <div>
                             <p className="text-xs font-semibold text-gray-600 mb-1">Duración:</p>
                             <p className="text-sm text-gray-900">{item.duracion_minutos} minutos</p>
                           </div>
-
-                          {/* CITA NORMAL: Terapeuta y Servicio */}
                           {item.tipo_cita === 'NORMAL' && (
                             <>
                               {item.terapeuta && (
@@ -1828,8 +2973,6 @@ Le hacemos recordar su cita para el día de mañana
                               )}
                             </>
                           )}
-
-                          {/* REUNIÓN CLÍNICA: Terapeutas y Servicios */}
                           {item.tipo_cita === 'REUNION_CLINICA' && (
                             <>
                               {item.terapeutas && item.terapeutas.length > 0 && (
@@ -1858,8 +3001,6 @@ Le hacemos recordar su cita para el día de mañana
                               )}
                             </>
                           )}
-
-                          {/* VISITA ESCOLAR: Terapeuta + Datos del encargado */}
                           {item.tipo_cita === 'VISITA_ESCOLAR' && (
                             <>
                               {item.terapeuta && (
@@ -1901,16 +3042,12 @@ Le hacemos recordar su cita para el día de mañana
                               )}
                             </>
                           )}
-
-                          {/* Nota */}
                           {item.nota && (
                             <div>
                               <p className="text-xs font-semibold text-gray-600 mb-1">Nota:</p>
                               <p className="text-sm text-gray-900 bg-gray-50 rounded-lg p-2">{item.nota}</p>
                             </div>
                           )}
-
-                          {/* Motivo de Modificación/Eliminación */}
                           {item.motivo_accion && (item.tipo_operacion === 'UPDATE' || item.tipo_operacion === 'DELETE') && (
                             <div className={`rounded-lg p-3 border ${
                               item.tipo_operacion === 'DELETE'
@@ -1944,398 +3081,576 @@ Le hacemos recordar su cita para el día de mañana
               </div>
             )}
 
-          {/* TAB DE ASISTENCIA - ✅ SIEMPRE DISPONIBLE, INCLUSO FUERA DEL PERÍMETRO */}
-          {modoEdicion && puedeVerHistorial && tabValue === 2 && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">Control de Asistencia</h3>
-                {cargandoAsistencia && (
-                  <div className="w-5 h-5 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
-                )}
-              </div>
-
-              {/* RECEPCIONISTA - Marcar llegada */}
-              {esRecepcionista && (
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900">Recepción</h4>
-                      <p className="text-xs text-gray-600">¿El paciente llegó a su cita?</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* ✅ BOTONES SIEMPRE HABILITADOS PARA ASISTENCIA */}
-                    <button
-                      onClick={() => handleRecepcionMarcar(7)}
-                      disabled={guardandoAsistencia || seguimientoAsistencia?.recepcion_marco}
-                      className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {guardandoAsistencia ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Guardando...
-                        </>
-                      ) : (
-                        '✓ Asistió'
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => handleRecepcionMarcar(6)}
-                      disabled={guardandoAsistencia || seguimientoAsistencia?.recepcion_marco}
-                      className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {guardandoAsistencia ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Guardando...
-                        </>
-                      ) : (
-                        '◆ Sesión Dictada'
-                      )}
-                    </button>
-                  </div>
-
-                  {seguimientoAsistencia?.recepcion_marco === 1 && (
-                    <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded-lg text-center">
-                      <p className="text-xs text-green-800 font-bold">Ya registrado</p>
-                    </div>
-                  )}
-
-                  {guardandoAsistencia && (
-                    <div className="mt-3 text-center text-sm text-gray-600 flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                      Guardando...
-                    </div>
+            {/* TAB DE ASISTENCIA */}
+            {modoEdicion && puedeVerHistorial && tabValue === 2 && (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Control de Asistencia</h3>
+                  {cargandoAsistencia && (
+                    <div className="w-5 h-5 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
                   )}
                 </div>
-              )}
 
-              {/* TERAPEUTA - Marcar sesión */}
-              {esTerapeuta && (
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                      <Briefcase className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900">Terapeuta</h4>
-                      <p className="text-xs text-gray-600">Registrar resultado de la sesión</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* ✅ BOTONES SIEMPRE HABILITADOS PARA ASISTENCIA */}
-                    <button
-                      onClick={() => handleTerapeutaMarcar(7)}
-                      disabled={guardandoAsistencia || seguimientoAsistencia?.terapeuta_marco}
-                      className="py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {guardandoAsistencia ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Guardando...
-                        </>
-                      ) : (
-                        '✓ Asistió'
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => handleTerapeutaMarcar(6)}
-                      disabled={guardandoAsistencia || seguimientoAsistencia?.terapeuta_marco}
-                      className="py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {guardandoAsistencia ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Guardando...
-                        </>
-                      ) : (
-                        '◆ Sesión Dictada'
-                      )}
-                    </button>
-                  </div>
-
-                  {seguimientoAsistencia?.terapeuta_marco === 1 && (
-                    <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded-lg text-center">
-                      <p className="text-xs text-green-800 font-bold">Ya registrado</p>
-                    </div>
-                  )}
-
-                  {guardandoAsistencia && (
-                    <div className="mt-3 text-center text-sm text-gray-600 flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                      Guardando...
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* RESUMEN DE REGISTROS */}
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-gray-900 mb-3">Registros</h4>
-
-                <div className="space-y-2">
-                  {/* REGISTRO RECEPCIÓN - Solo lo ven: ADMINISTRADOR y RECEPCIONISTA */}
-                  {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || esRecepcionista) && (
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Recepción</span>
+                {esRecepcionista && (
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <User className="w-5 h-5 text-white" />
                       </div>
-
-                      {seguimientoAsistencia?.recepcion_marco === 1 ? (
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-1 rounded font-bold ${
-                            seguimientoAsistencia.recepcion_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {seguimientoAsistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                          {seguimientoAsistencia?.recepcion_fecha && (
-                            <span className="text-xs text-gray-500">
-                              {new Date(seguimientoAsistencia.recepcion_fecha).toLocaleString('es-PE', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }).replace(',', '')}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">
-                          Pendiente
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* REGISTRO TERAPEUTA - Solo lo ven: ADMINISTRADOR y TERAPEUTA */}
-                  {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || esTerapeuta) && (
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">Terapeuta</span>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">Recepción</h4>
                       </div>
-
-                      {seguimientoAsistencia?.terapeuta_marco === 1 ? (
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-1 rounded font-bold ${
-                            seguimientoAsistencia.terapeuta_estado_id === 7
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {seguimientoAsistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
-                          </span>
-                          {seguimientoAsistencia?.terapeuta_fecha && (
-                            <span className="text-xs text-gray-500">
-                              {new Date(seguimientoAsistencia.terapeuta_fecha).toLocaleString('es-PE', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }).replace(',', '')}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">
-                          Pendiente
-                        </span>
-                      )}
                     </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleRecepcionMarcar(
+                          seguimientoAsistencia?.recepcion_marco && seguimientoAsistencia?.recepcion_estado_id === 7 ? null : 7
+                        )}
+                        disabled={guardandoAsistencia}
+                        className={`py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          seguimientoAsistencia?.recepcion_marco && seguimientoAsistencia?.recepcion_estado_id === 7
+                            ? 'bg-green-600 text-white ring-2 ring-green-400'
+                            : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
+                        }`}
+                      >
+                        {guardandoAsistencia ? (
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '✓ Asistió'}
+                      </button>
+                      <button
+                        onClick={() => handleRecepcionMarcar(
+                          seguimientoAsistencia?.recepcion_marco && seguimientoAsistencia?.recepcion_estado_id === 6 ? null : 6
+                        )}
+                        disabled={guardandoAsistencia}
+                        className={`py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          seguimientoAsistencia?.recepcion_marco && seguimientoAsistencia?.recepcion_estado_id === 6
+                            ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                            : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
+                        }`}
+                      >
+                        {guardandoAsistencia ? (
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '◆ Sesión Dictada'}
+                      </button>
+                    </div>
+                    {!seguimientoAsistencia?.recepcion_marco && (
+                      <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 text-center">
+                        Pendiente — sin registrar
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {esTerapeuta && (
+                  <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <Briefcase className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">Terapeuta</h4>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleTerapeutaMarcar(
+                          seguimientoAsistencia?.terapeuta_marco && seguimientoAsistencia?.terapeuta_estado_id === 7 ? null : 7
+                        )}
+                        disabled={guardandoAsistencia}
+                        className={`py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          seguimientoAsistencia?.terapeuta_marco && seguimientoAsistencia?.terapeuta_estado_id === 7
+                            ? 'bg-green-600 text-white ring-2 ring-green-400'
+                            : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
+                        }`}
+                      >
+                        {guardandoAsistencia ? (
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '✓ Asistió'}
+                      </button>
+                      <button
+                        onClick={() => handleTerapeutaMarcar(
+                          seguimientoAsistencia?.terapeuta_marco && seguimientoAsistencia?.terapeuta_estado_id === 6 ? null : 6
+                        )}
+                        disabled={guardandoAsistencia}
+                        className={`py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          seguimientoAsistencia?.terapeuta_marco && seguimientoAsistencia?.terapeuta_estado_id === 6
+                            ? 'bg-orange-600 text-white ring-2 ring-orange-400'
+                            : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
+                        }`}
+                      >
+                        {guardandoAsistencia ? (
+                          <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        ) : '◆ Sesión Dictada'}
+                      </button>
+                    </div>
+                    {!seguimientoAsistencia?.terapeuta_marco && (
+                      <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 text-center">
+                        Pendiente — sin registrar
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <h4 className="text-sm font-bold text-gray-900 mb-3">Registros</h4>
+                  <div className="space-y-2">
+                    {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || esRecepcionista) && (
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">Recepción</span>
+                        </div>
+                        {seguimientoAsistencia?.recepcion_marco === 1 ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded font-bold ${
+                              seguimientoAsistencia.recepcion_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {seguimientoAsistencia.recepcion_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+                            </span>
+                            {seguimientoAsistencia?.recepcion_fecha && (
+                              <span className="text-xs text-gray-500">
+                                {new Date(seguimientoAsistencia.recepcion_fecha).toLocaleString('es-PE', {
+                                  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                }).replace(',', '')}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">Pendiente</span>
+                        )}
+                      </div>
+                    )}
+                    {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || esTerapeuta) && (
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">Terapeuta</span>
+                        </div>
+                        {seguimientoAsistencia?.terapeuta_marco === 1 ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded font-bold ${
+                              seguimientoAsistencia.terapeuta_estado_id === 7
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {seguimientoAsistencia.terapeuta_estado_id === 7 ? '✓ Asistió' : '◆ Sesión Dictada'}
+                            </span>
+                            {seguimientoAsistencia?.terapeuta_fecha && (
+                              <span className="text-xs text-gray-500">
+                                {new Date(seguimientoAsistencia.terapeuta_fecha).toLocaleString('es-PE', {
+                                  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                }).replace(',', '')}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold">Pendiente</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {currentUser?.rol?.id === ROLES.ADMINISTRADOR &&
+                    seguimientoAsistencia?.recepcion_marco === 1 &&
+                    seguimientoAsistencia?.terapeuta_marco === 1 &&
+                    !((seguimientoAsistencia.recepcion_estado_id === 7 && seguimientoAsistencia.terapeuta_estado_id === 7) ||
+                      (seguimientoAsistencia.recepcion_estado_id === 6 && seguimientoAsistencia.terapeuta_estado_id === 6)) && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        <p className="text-xs text-red-800 font-medium">⚠️ Discrepancia detectada entre Recepción y Terapeuta</p>
+                      </div>
+                    )}
+
+                  {currentUser?.rol?.id === ROLES.ADMINISTRADOR &&
+                    seguimientoAsistencia?.recepcion_marco === 1 &&
+                    seguimientoAsistencia?.terapeuta_marco === 1 &&
+                    seguimientoAsistencia.recepcion_estado_id === 7 &&
+                    seguimientoAsistencia.terapeuta_estado_id === 7 && (
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <span className="text-green-600 font-bold">✓</span>
+                        <p className="text-xs text-green-800 font-medium">Asistencia validada correctamente por ambas partes</p>
+                      </div>
+                    )}
                 </div>
-
-                {/* ALERTA DE DISCREPANCIA - Solo la ve ADMINISTRADOR */}
-                {currentUser?.rol?.id === ROLES.ADMINISTRADOR &&
-                seguimientoAsistencia?.recepcion_marco === 1 && 
-                seguimientoAsistencia?.terapeuta_marco === 1 &&
-                !((seguimientoAsistencia.recepcion_estado_id === 7 && seguimientoAsistencia.terapeuta_estado_id === 7) ||
-                  (seguimientoAsistencia.recepcion_estado_id === 6 && seguimientoAsistencia.terapeuta_estado_id === 6)) && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                    <p className="text-xs text-red-800 font-medium">
-                      ⚠️ Discrepancia detectada entre Recepción y Terapeuta
-                    </p>
-                  </div>
-                )}
-
-                {/* MENSAJE DE ÉXITO - Solo lo ve ADMINISTRADOR */}
-                {currentUser?.rol?.id === ROLES.ADMINISTRADOR &&
-                seguimientoAsistencia?.recepcion_marco === 1 && 
-                seguimientoAsistencia?.terapeuta_marco === 1 &&
-                seguimientoAsistencia.recepcion_estado_id === 7 && 
-                seguimientoAsistencia.terapeuta_estado_id === 7 && (
-                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
-                    <p className="text-xs text-green-800 font-medium">
-                      Asistencia validada correctamente por ambas partes
-                    </p>
-                  </div>
-                )}
               </div>
-            </div>
-          )}
+            )}
 
             {/* TAB DE RECORDATORIO */}
             {modoEdicion && puedeVerHistorial && tabValue === 3 && (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">Mensaje de Recordatorio</h3>
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="w-5 h-5 text-[#7B1FA2]" />
-                    <span className="text-sm font-medium text-gray-600">Para enviar por WhatsApp</span>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-gray-900">Recordatorio WhatsApp</h3>
+                  <MessageCircle className="w-4 h-4 text-[#7B1FA2]" />
                 </div>
 
-                {/* Información de la cita */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-gray-900 mb-3">Resumen de la Cita</h4>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3">
+                  <h4 className="text-xs font-bold text-gray-900 mb-2">Resumen de la Cita</h4>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-1">Paciente:</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {citaEditando?.paciente ?
-                          `${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()
-                          : 'No especificado'}
-                      </p>
+                      <span className="font-semibold text-gray-600">Paciente: </span>
+                      <span className="text-gray-900">
+                        {citaEditando?.tipo_cita === 'REUNION_CLINICA' && !citaEditando?.paciente
+                          ? 'Reunión Interna'
+                          : citaEditando?.paciente
+                            ? `${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()
+                            : 'No especificado'}
+                      </span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-1">Fecha:</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <span className="font-semibold text-gray-600">Fecha: </span>
+                      <span className="text-gray-900">
                         {citaEditando?.fecha ? (() => {
                           const [year, month, day] = citaEditando.fecha.split('-').map(Number);
                           const fechaLocal = new Date(year, month - 1, day);
-                          return fechaLocal.toLocaleDateString('es-ES', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long'
-                          });
+                          return fechaLocal.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
                         })() : 'No especificada'}
-                      </p>
+                      </span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-1">Hora:</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <span className="font-semibold text-gray-600">Hora: </span>
+                      <span className="text-gray-900">
                         {citaEditando?.hora_inicio ? (() => {
                           const [hours, minutes] = citaEditando.hora_inicio.split(':').map(Number);
                           const ampm = hours >= 12 ? 'pm' : 'am';
                           const horasFormateadas = hours % 12 || 12;
                           return `${horasFormateadas}:${minutes.toString().padStart(2, '0')} ${ampm}`;
                         })() : 'No especificada'}
-                      </p>
+                      </span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-1">Tipo:</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <span className="font-semibold text-gray-600">Tipo: </span>
+                      <span className="text-gray-900">
                         {citaEditando?.tipo_cita === 'NORMAL' ? 'Cita Normal' :
-                         citaEditando?.tipo_cita === 'REUNION_CLINICA' ? 'Reunión Clínica' :
-                         citaEditando?.tipo_cita === 'VISITA_ESCOLAR' ? 'Visita Escolar' : 'No especificado'}
-                      </p>
+                          citaEditando?.tipo_cita === 'REUNION_CLINICA' ? 'Reunión Clínica' :
+                            citaEditando?.tipo_cita === 'VISITA_ESCOLAR' ? 'Visita Escolar' : 'No especificado'}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Botón para generar mensaje */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
-                      <MessageCircle className="w-8 h-8 text-white" />
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                        <MessageCircle className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">Generar Mensaje</h4>
+                        <p className="text-xs text-gray-600">Personalizado para WhatsApp</p>
+                      </div>
                     </div>
-                    <h4 className="text-lg font-bold text-gray-900 mb-2">Generar Mensaje de Recordatorio</h4>
-                    <p className="text-sm text-gray-600 mb-4 max-w-md">
-                      Genera un mensaje personalizado con los datos de la cita para enviar por WhatsApp al paciente
-                    </p>
                     <button
                       onClick={generarMensajeRecordatorio}
-                      disabled={modoSoloLectura}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={modoSoloLectura || cargandoRecordatorio}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      Generar Mensaje
+                      {cargandoRecordatorio ? (
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Generando...</>
+                      ) : (
+                        <><MessageCircle className="w-4 h-4" />Generar</>
+                      )}
                     </button>
                   </div>
                 </div>
 
-                {/* Área del mensaje generado */}
                 {mensajeRecordatorio && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold text-gray-900">Mensaje Generado</h4>
+                      <h4 className="text-xs font-bold text-gray-900">Mensaje Generado</h4>
                       <button
                         onClick={copiarAlPortapapeles}
                         disabled={modoSoloLectura}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-lg font-bold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-lg font-semibold text-xs hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {copiado ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            ¡Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4" />
-                            Copiar Mensaje
-                          </>
-                        )}
+                        {copiado ? <><Check className="w-3.5 h-3.5" />¡Copiado!</> : <><Copy className="w-3.5 h-3.5" />Copiar</>}
                       </button>
                     </div>
-                    
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                      <div className="bg-white rounded-lg p-4 border border-gray-300">
-                        <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans">
-                          {mensajeRecordatorio}
-                        </pre>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                      <div className="bg-white rounded-md p-3 border border-gray-300">
+                        <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans">{mensajeRecordatorio}</pre>
                       </div>
-                      
-                      <div className="mt-3 flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <MessageCircle className="w-4 h-4" />
-                          <span>Listo para copiar y pegar en WhatsApp</span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {mensajeRecordatorio.length} caracteres
-                        </div>
+                      <div className="mt-2 flex items-center justify-between text-xs">
+                        <span className="text-gray-500 flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" />
+                          Listo para WhatsApp
+                        </span>
+                        <span className="text-gray-400">{mensajeRecordatorio.length} caracteres</span>
                       </div>
                     </div>
-                    
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
                       <div className="flex items-start gap-2">
-                        <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-bold text-yellow-900 mb-1">Instrucciones:</p>
-                          <ul className="text-xs text-yellow-800 space-y-1">
-                            <li>1. Haz clic en "Copiar Mensaje" para copiar el texto al portapapeles</li>
-                            <li>2. Abre WhatsApp y selecciona el contacto del paciente</li>
-                            <li>3. Pega el mensaje (Ctrl+V o Cmd+V) en el chat</li>
-                            <li>4. Revisa que toda la información sea correcta antes de enviar</li>
-                          </ul>
-                        </div>
+                        <AlertCircle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-yellow-800">
+                          <span className="font-semibold">Tip:</span> Copia el mensaje, abre WhatsApp, pégalo al contacto y revisa antes de enviar
+                        </p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {!mensajeRecordatorio && (
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-8 text-center">
-                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MessageCircle className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <h4 className="text-lg font-bold text-gray-900 mb-2">Mensaje no generado</h4>
-                    <p className="text-sm text-gray-600 max-w-md mx-auto">
-                      Haz clic en "Generar Mensaje" para crear un mensaje de recordatorio personalizado con los datos de la cita actual.
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                    <p className="text-xs text-gray-500">
+                      El mensaje aparecerá aquí una vez generado
                     </p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* 📦 TAB PAQUETE */}
+            {modoEdicion && puedeVerHistorial && tabValue === 4 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-gray-900">Información del Paquete</h3>
+                  <Package className="w-5 h-5 text-[#7B1FA2]" />
+                </div>
+
+                {cargandoPaquete && (
+                  <div className="h-40 bg-gray-50 rounded-xl animate-pulse flex items-center justify-center">
+                    <div className="text-gray-400 text-sm">Cargando información del paquete...</div>
+                  </div>
+                )}
+
+                {!cargandoPaquete && !infoPaquete && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
+                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">Esta cita no pertenece a ningún paquete</p>
+                  </div>
+                )}
+
+                {!cargandoPaquete && infoPaquete && (
+                  <>
+                    {/* Info del Paquete */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-[#7B1FA2]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Package className="w-5 h-5 text-[#7B1FA2]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-gray-900">{infoPaquete.servicio_nombre}</h4>
+                            <p className="text-xs text-gray-600 mt-0.5">{infoPaquete.paquete_nombre || 'Paquete de sesiones'}</p>
+                          </div>
+                        </div>
+                        {infoPaquete.citas[0]?.comprobante && (
+                          <button
+                            onClick={() => abrirDetalleVenta(infoPaquete.citas.find(c => c.venta_id)?.venta_id || infoPaquete.venta_id)}
+                            disabled={cargandoVentaDetalle}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#7B1FA2]/30 rounded-lg hover:bg-[#7B1FA2]/5 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#7B1FA2]" />
+                            <span className="text-xs font-bold text-[#7B1FA2] font-mono">
+                              {cargandoVentaDetalle ? '...' : infoPaquete.citas[0].comprobante}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Aviso sesión individual */}
+                    {infoPaquete.paquete_nombre === 'Cita individual' && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-purple-800">Sesión individual</p>
+                          <p className="text-xs text-purple-700 mt-0.5">
+                            Para continuar el tratamiento, recuerda coordinar la compra de la próxima sesión o un paquete de sesiones.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Indicador de última/penúltima sesión */}
+                    {(() => {
+                      const programadas = infoPaquete.citas
+                        .filter(c => c.programada && c.id !== null)
+                        .sort((a, b) => new Date(`${a.fecha}T${a.hora}`) - new Date(`${b.fecha}T${b.hora}`));
+                      const totalSesiones = infoPaquete.sesiones_totales || programadas.length;
+                      const esUltima = programadas.length > 0 && programadas[programadas.length - 1].id === citaEditando?.id;
+                      const esPenultima = programadas.length >= 2 && programadas[programadas.length - 2].id === citaEditando?.id;
+                      const restantes = Math.max(0, totalSesiones - programadas.length);
+
+                      const esSesionUnitaria = infoPaquete.tipo_venta_id === 1;
+                      if (esUltima) return (
+                        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-amber-800">
+                              {esSesionUnitaria ? 'Última sesión adquirida' : 'Última sesión del paquete'}
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                              {esSesionUnitaria
+                                ? (totalSesiones === 1
+                                    ? 'Esta es la sesión adquirida. Se recomienda coordinar una nueva cita.'
+                                    : `Se han usado las ${totalSesiones} sesiones adquiridas. Se recomienda coordinar una nueva cita.`)
+                                : (`Se han agendado las ${totalSesiones} sesiones contratadas. Se recomienda coordinar la renovación.`)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                      if (esPenultima) return (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-blue-800">
+                              {esSesionUnitaria ? 'Penúltima sesión adquirida' : 'Penúltima sesión del paquete'}
+                            </p>
+                            <p className="text-xs text-blue-700 mt-0.5">
+                              {esSesionUnitaria
+                                ? `Luego de esta cita quedará 1 sesión más de las ${totalSesiones} adquiridas.`
+                                : 'Luego de esta cita quedará solo 1 sesión más.'}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                      if (restantes > 0) return (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
+                          <Package className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <p className="text-sm text-green-800">
+                            <span className="font-bold">{restantes}</span> {restantes === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de agendar
+                          </p>
+                        </div>
+                      );
+                      return null;
+                    })()}
+
+                    {/* Estadísticas */}
+                    {(() => {
+                      // Asistencia real: ambos (terapeuta + recepcion) en estado 7 = asistió, estado 6 = no asistió
+                      const asistio = (c) =>
+                        (c.terapeuta_estado_id == 7 && c.recepcion_estado_id == 7) || c.asistencia == 1;
+                      const noAsistio = (c) =>
+                        (c.terapeuta_estado_id == 6 && c.recepcion_estado_id == 6) || c.asistencia == 0;
+                      const citasReales = infoPaquete.citas.filter(c => c.programada && c.id !== null);
+                      return (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                            <div className="text-2xl font-bold text-[#7B1FA2]">{infoPaquete.sesiones_totales || citasReales.length}</div>
+                            <div className="text-xs text-gray-500 mt-1">Total Sesiones</div>
+                          </div>
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                            <div className="text-2xl font-bold text-green-600">{citasReales.filter(asistio).length}</div>
+                            <div className="text-xs text-gray-500 mt-1">Asistidas</div>
+                          </div>
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+                            <div className="text-2xl font-bold text-red-600">{citasReales.filter(noAsistio).length}</div>
+                            <div className="text-xs text-gray-500 mt-1">Faltas</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Lista de Citas del Paquete */}
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <h4 className="text-xs font-bold text-gray-700 uppercase">Citas del Paquete</h4>
+                      </div>
+                      <div className="divide-y divide-gray-100 max-h-60 overflow-y-auto">
+                        {[...infoPaquete.citas]
+                          .sort((a, b) => {
+                            if (!a.programada) return 1;
+                            if (!b.programada) return -1;
+                            return new Date(`${a.fecha}T${a.hora}`) - new Date(`${b.fecha}T${b.hora}`);
+                          })
+                          .map((cita, idx) => {
+                          const esCitaActual = cita.id === citaEditando?.id;
+                          return (
+                            <div
+                              key={cita.id ?? `slot-${idx}`}
+                              className={`px-4 py-2.5 transition-colors ${
+                                esCitaActual
+                                  ? 'bg-[#7B1FA2]/5 border-l-4 border-[#7B1FA2]'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="flex-shrink-0">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                      esCitaActual
+                                        ? 'bg-[#7B1FA2] text-white'
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {idx + 1}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    {infoPaquete.es_combo && cita.linea_servicio && (
+                                      <div className="text-[10px] font-semibold text-[#7B1FA2] uppercase tracking-wide mb-0.5">
+                                        {cita.linea_servicio}{cita.motivo_nombre ? ` · ${cita.motivo_nombre}` : ''}
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      {cita.fecha ? (
+                                        <span className="text-sm font-medium text-gray-900">
+                                          {new Date(cita.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-gray-400 italic">Por agendar</span>
+                                      )}
+                                      {cita.hora && (
+                                        <>
+                                          <span className="text-gray-300">·</span>
+                                          <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                          <span className="text-sm text-gray-600">{cita.hora?.substring(0, 5)}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-xs text-gray-500 truncate">{cita.especialista || 'No asignado'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {(() => {
+                                    const asistio = (cita.terapeuta_estado_id == 7 && cita.recepcion_estado_id == 7) || cita.asistencia == 1;
+                                    const noAsistio = (cita.terapeuta_estado_id == 6 && cita.recepcion_estado_id == 6) || cita.asistencia == 0;
+                                    if (!cita.programada || !cita.id) return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 text-[10px] font-medium border border-gray-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                        Por agendar
+                                      </span>
+                                    );
+                                    if (asistio) return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold border border-green-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                        Asistió
+                                      </span>
+                                    );
+                                    if (noAsistio) return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-semibold border border-red-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                        No asistió
+                                      </span>
+                                    );
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-[10px] font-medium border border-yellow-100">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                        Pendiente
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                              {esCitaActual && (
+                                <div className="mt-2 flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] animate-pulse" />
+                                  <span className="text-[10px] font-semibold text-[#7B1FA2] uppercase tracking-wide">
+                                    Cita Actual
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -2375,19 +3690,13 @@ Le hacemos recordar su cita para el día de mañana
                   </button>
                   <button
                     onClick={handleGuardar}
-                    disabled={guardando || modoSoloLectura}
+                    disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
                     className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {guardando ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Guardando...
-                      </>
+                    {(guardando || guardandoLocal) ? (
+                      <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
                     ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        {modoEdicion ? 'Actualizar' : 'Guardar'}
-                      </>
+                      <><Save className="w-4 h-4" />{modoEdicion ? 'Actualizar' : 'Guardar'}</>
                     )}
                   </button>
                 </>
@@ -2409,21 +3718,22 @@ Le hacemos recordar su cita para el día de mañana
                 <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
               </div>
             </div>
-
             <div className="p-5">
               <p className="text-sm text-gray-700 mb-4">¿Está seguro que desea eliminar esta cita? Esta acción no se puede deshacer.</p>
               {citaEditando && (
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
                   <p className="text-sm text-gray-600">
-                    <span className="font-semibold">Paciente:</span> {formularioCita.paciente?.nombre_completo || 'N/A'}
+                    <span className="font-semibold">Paciente:</span> {
+                      citaEditando.tipo_cita === 'REUNION_CLINICA' && !formularioCita.paciente
+                        ? 'Reunión Interna'
+                        : (formularioCita.paciente?.nombre_completo || 'N/A')
+                    }
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     <span className="font-semibold">Fecha:</span> {formularioCita.fechasHoras?.[0]?.fecha} - {formularioCita.fechasHoras?.[0]?.horaInicio}
                   </p>
                 </div>
               )}
-
-              {/* MOTIVO DE ELIMINACIÓN (obligatorio) */}
               <div className="bg-red-50 border border-red-300 rounded-xl p-3">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Motivo de Eliminación <span className="text-red-500">*</span>
@@ -2441,18 +3751,11 @@ Le hacemos recordar su cita para el día de mañana
                 </p>
               </div>
             </div>
-
             <div className="border-t border-gray-200 px-5 py-3.5 flex justify-end gap-2 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={cerrarDialogoEliminar}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
-              >
+              <button onClick={cerrarDialogoEliminar} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all">
                 Cancelar
               </button>
-              <button
-                onClick={confirmarEliminar}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition-all"
-              >
+              <button onClick={confirmarEliminar} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition-all">
                 <Trash2 className="w-4 h-4" />
                 Eliminar
               </button>
@@ -2462,36 +3765,69 @@ Le hacemos recordar su cita para el día de mañana
       )}
 
       {/* Modal de Alerta */}
-      {alertaAbierta && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
-            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-b border-orange-200 px-5 py-4 rounded-t-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <AlertCircle className="w-6 h-6 text-white" />
+      {alertaAbierta && (() => {
+        const estilos = {
+          error: {
+            headerBg: 'bg-gradient-to-r from-red-50 to-red-100',
+            headerBorder: 'border-red-200',
+            iconBg: 'bg-gradient-to-br from-red-400 to-red-600',
+            icon: <AlertCircle className="w-6 h-6 text-white" />,
+            buttonBg: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+          },
+          warning: {
+            headerBg: 'bg-gradient-to-r from-yellow-50 to-orange-50',
+            headerBorder: 'border-yellow-200',
+            iconBg: 'bg-gradient-to-br from-yellow-400 to-orange-500',
+            icon: <AlertTriangle className="w-6 h-6 text-white" />,
+            buttonBg: 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
+          },
+          feriado: {
+            headerBg: 'bg-gradient-to-r from-orange-50 to-yellow-50',
+            headerBorder: 'border-orange-200',
+            iconBg: 'bg-gradient-to-br from-orange-400 to-orange-600',
+            icon: <Calendar className="w-6 h-6 text-white" />,
+            buttonBg: 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
+          }
+        };
+        const estilo = estilos[tipoAlerta] || estilos.error;
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+              <div className={`${estilo.headerBg} border-b ${estilo.headerBorder} px-5 py-4 rounded-t-2xl`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 ${estilo.iconBg} rounded-xl flex items-center justify-center shadow-lg`}>
+                    {estilo.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">{tituloAlerta}</h3>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Campo Requerido</h3>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{mensajeAlerta}</p>
+              </div>
+              <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
+                <button
+                  onClick={() => { setAlertaAbierta(false); setTituloAlerta('Campo Requerido'); setTipoAlerta('error'); }}
+                  className={`w-full px-4 py-2.5 ${estilo.buttonBg} text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all`}
+                >
+                  Entendido
+                </button>
               </div>
             </div>
-
-            <div className="p-6">
-              <p className="text-sm text-gray-700 leading-relaxed">{mensajeAlerta}</p>
-            </div>
-
-            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={() => setAlertaAbierta(false)}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
-              >
-                Entendido
-              </button>
-            </div>
           </div>
-        </div>
+        );
+      })()}
+
+      {/* Modal detalle de venta desde tab Paquete */}
+      {ventaDetallePaquete && (
+        <DetalleVentaModal
+          venta={ventaDetallePaquete}
+          tipo="servicio"
+          onClose={() => setVentaDetallePaquete(null)}
+        />
       )}
     </>
   );
 };
 
-// Memorizar el componente para evitar re-renders innecesarios
 export default React.memo(ModalAgendarCita);

@@ -391,6 +391,45 @@ export const blogMetadata = [
   readTime: '10 min lectura',
   author: 'Lic. Merlin Fernández Guadalupe',
   heroImage: '/assets/img/blog/vacaciones-terapia-portada.webp'
+},
+{
+  id: 31,
+  slug: 'semana-concienciacion-tca-2026',
+  title: 'Semana de Concientización sobre los Trastornos de la Conducta Alimentaria 2026',
+  excerpt: 'Durante la última semana de febrero se conmemora la Semana de Concientización sobre los TCA, un momento crucial para visibilizar estas condiciones de salud mental que afectan a millones de personas en todo el mundo.',
+  image: '/assets/img/blog/tca-semana1.webp',
+  date: '23 Febrero 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '15 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/tca-semana1.webp'
+},
+{
+  id: 32,
+  slug: '8-marzo-dia-internacional-mujer-salud-mental',
+  title: '8 de marzo – Día de la Mujer: Conmemorar también es cuidar, salud mental y mujeres',
+  excerpt: '¿Cuántas veces se ha aplaudido la fortaleza de una mujer sin preguntar cómo se siente realmente? Hoy se conmemora la historia, la fuerza y la lucha de millones de mujeres, pero también es necesario recordar que la salud mental de las mujeres importa.',
+  image: '/assets/img/blog/dia-mujer-portada.webp',
+  date: '8 Marzo 2026',
+  category: 'efemerides',
+  categoryName: 'Eventos Conmemorativos',
+  readTime: '12 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/dia-mujer-hero.webp'
+},
+{
+  id: 33,
+  slug: '21-marzo-dia-mundial-sindrome-down',
+  title: 'Día Mundial del Síndrome de Down: reconocer su valor, comprender sus necesidades y acompañar su desarrollo',
+  excerpt: 'Cada 21 de marzo se conmemora el Día Mundial del Síndrome de Down, una fecha que invita a detenerse y mirar con mayor profundidad. No solo se trata de una condición genética, sino de personas, de historias, de familias, del esfuerzo que hay detrás de ello y, sobre todo, de niños con un enorme potencial que merece ser reconocido.',
+  image: '/assets/img/blog/diasindromedown.webp',
+  date: '21 Marzo 2026',
+  category: 'efemerides',
+  categoryName: 'Eventos Conmemorativos',
+  readTime: '18 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/diasindromedown.webp'
 }
   // Aquí agregas más blogs...
 ];
@@ -401,7 +440,33 @@ export const getBlogBySlug = (slug) => {
 };
 
 // Función helper para obtener blogs por categoría
+// Función auxiliar para convertir fecha en español a objeto Date
+const parseSpanishDate = (dateString) => {
+  const monthMap = {
+    'Enero': 0, 'Febrero': 1, 'Marzo': 2, 'Abril': 3, 'Mayo': 4, 'Junio': 5,
+    'Julio': 6, 'Agosto': 7, 'Septiembre': 8, 'Octubre': 9, 'Noviembre': 10, 'Diciembre': 11
+  };
+
+  const parts = dateString.split(' ');
+  const day = parseInt(parts[0]);
+  const month = monthMap[parts[1]];
+  const year = parseInt(parts[2]);
+
+  return new Date(year, month, day);
+};
+
 export const getBlogsByCategory = (category) => {
-  if (category === 'todos') return blogMetadata;
-  return blogMetadata.filter(blog => blog.category === category);
+  let filteredBlogs;
+  if (category === 'todos') {
+    filteredBlogs = blogMetadata;
+  } else {
+    filteredBlogs = blogMetadata.filter(blog => blog.category === category);
+  }
+
+  // Ordenar por fecha: más reciente primero
+  return filteredBlogs.sort((a, b) => {
+    const dateA = parseSpanishDate(a.date);
+    const dateB = parseSpanishDate(b.date);
+    return dateB - dateA; // Orden descendente (más reciente primero)
+  });
 };
