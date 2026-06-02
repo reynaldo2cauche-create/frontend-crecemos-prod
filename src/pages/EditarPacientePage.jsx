@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
+import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle, Copy, Check, ClipboardList } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
@@ -9,6 +9,7 @@ import HistoriaClinicaView from '../components/EditarPaciente/HistoriaClinicaVie
 import ArchivosDigitales from '../components/EditarPaciente/ArchivosDigitales';
 import ResumenTerapiasView from '../components/EditarPaciente/ResumenTerapiasView';
 import NotasEvolucion from '../components/EditarPaciente/NotasEvolucion';
+import PlanTerapeuticoView from '../components/EditarPaciente/PlanTerapeuticoView';
 import AsignarServicioModal from '../components/EditarPaciente/AsignarServicioModal';
 import EditarTerapeutaModal from '../components/EditarPaciente/EditarTerapeutaModal';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -944,6 +945,21 @@ const handleEliminarConvenio = async () => {
             Terapias
           </button>
         )}
+
+        {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.TERAPEUTA) && (
+          <button
+            onClick={() => setTabSeleccionado('plan')}
+            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              tabSeleccionado === 'plan'
+                ? 'bg-[#7B1FA2] text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            <span className="hidden sm:inline">Plan Terapéutico</span>
+            <span className="sm:hidden">Plan</span>
+          </button>
+        )}
       </div>
     </div>
 
@@ -1039,7 +1055,7 @@ const handleEliminarConvenio = async () => {
     </div>
     </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-7">
+          <div className={tabSeleccionado === 'plan' ? 'lg:col-span-12' : 'lg:col-span-7'}>
             {tabSeleccionado === 'filiacion' && (
               <FiliacionView
                 paciente={paciente}
@@ -1081,8 +1097,12 @@ const handleEliminarConvenio = async () => {
                 />
               )
             )}
+            {tabSeleccionado === 'plan' && (
+              <PlanTerapeuticoView pacienteId={paciente?.id} user={user} />
+            )}
           </div>
 
+          {tabSeleccionado !== 'plan' && (
           <div className="lg:col-span-5">
             <NotasEvolucion
               notas={comentarios}
@@ -1097,6 +1117,7 @@ const handleEliminarConvenio = async () => {
               setSnackbar={setSnackbar}
             />
           </div>
+          )}
         </div>
       </div>
 
