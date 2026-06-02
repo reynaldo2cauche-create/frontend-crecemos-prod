@@ -23,6 +23,37 @@ import { generarIndicacionPDF, obtenerPreviewIndicacionURL } from '../../../../u
 // IDs conocidos: 1=TL Infantil, 2=T.Ocup, 10=TL Adultos(area2), 7=Psicoterapia, 8=Pareja, 9=Familiar
 // area.id: 1=Infantil, 2=Adultos
 const SERVICIO_CONFIG = {
+  // ── TERAPIA DE APRENDIZAJE (area=1) — usa la misma config que Terapia de Lenguaje Infantil ──
+  aprendizaje: {
+    match: (s) => s.nombre?.toLowerCase().includes('aprendizaje'),
+    referencias: {
+      internas: [
+        { key: 'refInterTerapiaLenguaje',    label: 'Terapia de lenguaje' },
+        { key: 'refInterTerapiaOcupacional', label: 'Terapia ocupacional' },
+        { key: 'refInterPsicologia',         label: 'Psicología (Conducta / aprendizaje)' },
+        { key: 'refInterPsicoterapiaInd',    label: 'Psicoterapia individual' },
+        { key: 'refInterTerapiaParejaFam',   label: 'Terapia de pareja / T.Familiar' },
+      ],
+      externas: [
+        { key: 'refExterNeuropediatra',   label: 'Neuropediatra' },
+        { key: 'refExterNeuropsicologia', label: 'Neuropsicología' },
+        { key: 'refExterPsiquiatria',     label: 'Psiquiatría' },
+      ],
+    },
+    recomendaciones: [
+      { key: 'dedicar1520MinDiarios',     label: 'Dedicar al menos 15-20 minutos diarios para estimular el lenguaje en casa mediante juegos.' },
+      { key: 'evitarCorregirBruscamente', label: 'Evitar corregir bruscamente al niño; usar el modelado positivo repitiendo la palabra correcta sin regañar.' },
+      { key: 'crearAmbienteRico',         label: 'Crear un ambiente rico en lenguaje: leer cuentos, cantar canciones, conversar frecuentemente.' },
+      { key: 'informarCambios',           label: 'Informar sobre cualquier cambio emocional, médico o escolar relevante que pueda influir en el proceso terapéutico.' },
+      { key: 'evitarPantallasExcesivas',  label: 'Evitar el uso excesivo de pantallas (TV, tablets, celulares), especialmente si se trata de contenido pasivo.' },
+    ],
+    materiales: [
+      'hojasBond','plumones','lapizBorrador','cartulinaDuplex','siliconaLiquida',
+      'limpiatipo','velcro','cartulinaColores','cuaderno','folder','fotos',
+      'guantesBajalenguaHisoposCrema','cintaEmbalaje','botellaAgua','plumonIndeleble',
+    ],
+  },
+
   // ── TERAPIA DE LENGUAJE INFANTIL (id=1 ó id=11, area=1) ──
   lenguaje_infantil: {
     match: (s) => (s.id == 1 || s.id == 11) && s.area?.id == 1,

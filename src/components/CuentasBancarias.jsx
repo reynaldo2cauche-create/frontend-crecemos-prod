@@ -8,7 +8,7 @@ import {
   marcarCuentaPrincipal
 } from '../services/rrhhService';
 
-export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = false }) {
+export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = false, localMode = false, cuentasLocales = [], onCuentasLocalesChange }) {
   const [cuentas, setCuentas] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,6 +18,10 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
     cci: '',
     es_principal: false
   });
+
+  // En modo local (crear empleado) las cuentas viven en el padre, sin tocar el backend
+  const listaCuentas = localMode ? cuentasLocales : cuentas;
+  const puedeEditar = (trabajadorId || localMode) && !readOnly;
 
   const bancos = [
     'BCP',
@@ -31,7 +35,7 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
   ];
 
   useEffect(() => {
-    if (trabajadorId) {
+    if (!localMode && trabajadorId) {
       cargarCuentas();
     }
   }, [trabajadorId]);
@@ -51,6 +55,21 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
   const handleAgregarCuenta = async () => {
     if (!formData.banco || !formData.numero_cuenta) {
       alert('Por favor completa banco y número de cuenta');
+      return;
+    }
+
+    // Modo local (crear empleado): solo agregar a la lista en memoria
+    if (localMode) {
+      const nueva = {
+        id: `tmp-${Date.now()}`,
+        banco: formData.banco,
+        numero_cuenta: formData.numero_cuenta,
+        cci: formData.cci || null,
+        es_principal: cuentasLocales.length === 0
+      };
+      onCuentasLocalesChange?.([...cuentasLocales, nueva]);
+      setFormData({ banco: '', numero_cuenta: '', cci: '', es_principal: false });
+      setMostrarFormulario(false);
       return;
     }
 
@@ -82,6 +101,11 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
   };
 
   const handleEliminarCuenta = async (id) => {
+    if (localMode) {
+      onCuentasLocalesChange?.(cuentasLocales.filter(c => c.id !== id));
+      return;
+    }
+
     if (!confirm('¿Estás seguro de eliminar esta cuenta bancaria?')) return;
 
     try {
@@ -98,6 +122,11 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
   };
 
   const handleMarcarPrincipal = async (id) => {
+    if (localMode) {
+      onCuentasLocalesChange?.(cuentasLocales.map(c => ({ ...c, es_principal: c.id === id })));
+      return;
+    }
+
     try {
       setLoading(true);
       await marcarCuentaPrincipal(id);
@@ -118,10 +147,10 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
-          Cuentas Bancarias {cuentas.length > 0 && `(${cuentas.length})`}
+          Cuentas Bancarias {listaCuentas.length > 0 && `(${listaCuentas.length})`}
         </h3>
         {/* Solo muestra el botón si NO es readOnly */}
-        {trabajadorId && !readOnly && (
+        {puedeEditar && (
           <button
             onClick={() => setMostrarFormulario(!mostrarFormulario)}
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] rounded-lg transition-all"
@@ -204,19 +233,19 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
       )}
 
       {/* Lista de cuentas */}
-      {cuentas.length === 0 && !mostrarFormulario ? (
+      {listaCuentas.length === 0 && !mostrarFormulario ? (
         <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
           <svg className="w-12 h-12 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
           <p className="text-sm text-gray-500">No hay cuentas bancarias registradas</p>
-          {trabajadorId && !readOnly && (
+          {puedeEditar && (
             <p className="text-xs text-gray-400 mt-1">Haz clic en "Agregar" para registrar una cuenta</p>
           )}
         </div>
       ) : (
         <div className="space-y-2">
-          {cuentas.map((cuenta) => (
+          {listaCuentas.map((cuenta) => (
             <div
               key={cuenta.id}
               className={`relative border-2 rounded-lg p-3 transition-all ${
@@ -248,7 +277,7 @@ export default function CuentasBancarias({ trabajadorId, onUpdate, readOnly = fa
                 </div>
 
                 {/* Botones de acciones - SOLO si NO es readOnly */}
-                {!readOnly && trabajadorId && (
+                {puedeEditar && (
                   <div className="flex items-center gap-1">
                     {!cuenta.es_principal && (
                       <button

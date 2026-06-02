@@ -184,9 +184,7 @@ const FormularioTrabaja = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-  
-    
+
     if (!validarFormulario()) {
       setMensaje({
         tipo: 'error',
@@ -201,7 +199,7 @@ const FormularioTrabaja = () => {
 
     try {
       const formDataToSend = new FormData();
-      
+
       formDataToSend.append('nombre', formData.nombre.trim());
       formDataToSend.append('apellido', formData.apellido.trim());
       formDataToSend.append('email', formData.email.trim().toLowerCase());
@@ -210,10 +208,11 @@ const FormularioTrabaja = () => {
       formDataToSend.append('cargo_postulado', formData.cargoPostuladoId);
       formDataToSend.append('cv', cvFile);
 
-      const response = await postulacionesService.crearPostulacion(formDataToSend);
-      
+      // El backend registra la postulación Y envía el correo a RR.HH. con el CV adjunto
+      await postulacionesService.crearPostulacion(formDataToSend);
+
       setMostrarModalExito(true);
-      
+
       setFormData({
         nombre: '',
         apellido: '',
@@ -224,15 +223,13 @@ const FormularioTrabaja = () => {
       });
       setCvFile(null);
       setErrores({});
-      
+
       const fileInput = document.getElementById('cv-file');
       if (fileInput) fileInput.value = '';
-      
 
-      
     } catch (error) {
-      console.error('Mensaje:', error.message);
-      
+      console.error('Error al enviar la postulación:', error?.message);
+
       setMensaje({
         tipo: 'error',
         texto: error.message || 'Ocurrió un error al enviar la postulación. Por favor, intenta nuevamente.'

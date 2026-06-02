@@ -23,9 +23,9 @@ import {
   eliminarDNI,
   abrirArchivo,
 // ← NUEVA
-  getTrabajadorById  
+  getTrabajadorById
 } from '../../services/trabajadorService';
-import { registrarPagoMensual } from '../../services/rrhhService';
+import { registrarPagoMensual, crearCuentaBancaria } from '../../services/rrhhService';
 import { getServicios, getGeneros, getEstadosCiviles, getParentescos, getProvincias, getDistritosByProvincia, getNivelesEducacion } from '../../services/catalogoService';
 import { asignarServicio, getServiciosByTrabajador, desactivarServicio } from '../../services/trabajadorServicioService';
 import api from '../../services/api';
@@ -431,6 +431,7 @@ export default function EmpleadosPage() {
           parentescos={parentescos}
           provincias={provincias}
           nivelesEducacion={nivelesEducacion}
+          trabajadores={empleados}
           onSuccess={() => {
             cargarDatos();
             showNotification('Empleado creado correctamente', 'success');
@@ -953,7 +954,7 @@ const DocumentosSection = ({
   );
 };
 // Modal Nuevo Empleado
-const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios, generos, estadosCiviles, parentescos, provincias, nivelesEducacion, onSuccess, onError }) => {
+const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios, generos, estadosCiviles, parentescos, provincias, nivelesEducacion, trabajadores = [], onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',
@@ -981,6 +982,10 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     parentesco_emergencia_id: '',
     provincia_id: '',
     distrito_id: '',
+    provincia: '',
+    distrito: '',
+    departamento: '',
+    direccion: '',
     procedencia_laboral: '',
     area_laboral: '',
     empresa_anterior: '',
@@ -1009,6 +1014,9 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     dni: null
   });
 
+  // Cuentas bancarias agregadas en modo local (se guardan al crear el empleado)
+  const [cuentasBancarias, setCuentasBancarias] = useState([]);
+
   // Efecto para cargar distritos cuando cambia la provincia
   useEffect(() => {
     const cargarDistritos = async () => {
@@ -1027,6 +1035,41 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     };
     cargarDistritos();
   }, [formData.provincia_id]);
+
+  // Provincia/Distrito: actualizan id + nombre + departamento (igual que en editar)
+  const handleProvinciaChange = async (e) => {
+    const provinciaId = e.target.value === '' ? '' : parseInt(e.target.value);
+    const provinciaSeleccionada = provincias.find(p => p.id === provinciaId);
+    setFormData(prev => ({
+      ...prev,
+      provincia_id: provinciaId || '',
+      provincia: provinciaSeleccionada?.nombre || '',
+      departamento: provinciaSeleccionada?.region || '',
+      distrito_id: '',
+      distrito: ''
+    }));
+    if (provinciaId) {
+      try {
+        const distritosData = await getDistritosByProvincia(provinciaId);
+        setDistritosDisponibles(distritosData || []);
+      } catch (error) {
+        console.error('Error al cargar distritos:', error);
+        setDistritosDisponibles([]);
+      }
+    } else {
+      setDistritosDisponibles([]);
+    }
+  };
+
+  const handleDistritoChange = (e) => {
+    const distritoId = e.target.value === '' ? '' : parseInt(e.target.value);
+    const distritoSeleccionado = distritosDisponibles.find(d => d.id === distritoId);
+    setFormData(prev => ({
+      ...prev,
+      distrito_id: distritoId || '',
+      distrito: distritoSeleccionado?.nombre || ''
+    }));
+  };
 
   const handleFileChange = (type, file) => {
     if (!file) return;
@@ -1079,6 +1122,23 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
 
     if (formData.dni && !/^\d{8}$/.test(formData.dni)) {
       erroresNuevos.dni = 'Debe tener 8 dígitos';
+    }
+
+    // Validar que el nombre de usuario no esté ocupado
+    if (formData.usuario?.trim()) {
+      const usuarioNuevo = formData.usuario.trim().toLowerCase();
+      const ocupado = trabajadores.some(t => (t.username || '').trim().toLowerCase() === usuarioNuevo);
+      if (ocupado) {
+        erroresNuevos.usuario = 'Este nombre de usuario ya está ocupado';
+      }
+    }
+
+    // Validar que el DNI no esté ya registrado
+    if (formData.dni?.trim() && /^\d{8}$/.test(formData.dni)) {
+      const dniOcupado = trabajadores.some(t => (t.dni || '').trim() === formData.dni.trim());
+      if (dniOcupado) {
+        erroresNuevos.dni = 'Este DNI ya está registrado';
+      }
     }
 
     setErrors(erroresNuevos);
@@ -1169,6 +1229,13 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
         fecha_termino_estudio: formData.fecha_termino_estudio || null,
 
         hobbies: formData.hobbies || null,
+        opciones_regalo: formData.opciones_regalo || null,
+
+        // Datos financieros
+        sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
+        fecha_ingreso: formData.fecha_ingreso || null,
+        banco: formData.banco || null,
+        numero_cuenta: formData.numero_cuenta || null,
 
         // ✅ AGREGAR EL ID DEL USUARIO LOGUEADO (ADMINISTRADOR)
         user_id_actua: usuarioLogueado.id
@@ -1182,7 +1249,37 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
         'data.user_id_actua': dataToCreate.user_id_actua // ✅ Verificar que se envía
       });
 
-      await crearTrabajador(dataToCreate);
+      const nuevoTrabajador = await crearTrabajador(dataToCreate);
+
+      // ✅ Asignar los servicios seleccionados al nuevo trabajador (igual que en edición)
+      if (esTerapeuta && serviciosSeleccionados.length > 0 && nuevoTrabajador?.id) {
+        const userId = usuarioLogueado?.id || 1;
+        for (const servicioId of serviciosSeleccionados) {
+          try {
+            await asignarServicio(nuevoTrabajador.id, servicioId, '', userId);
+            console.log(`Servicio ${servicioId} asignado al nuevo trabajador ${nuevoTrabajador.id}`);
+          } catch (error) {
+            console.error(`Error al asignar servicio ${servicioId}:`, error);
+          }
+        }
+      }
+
+      // Guardar las cuentas bancarias agregadas (modo local) al nuevo empleado
+      if (cuentasBancarias.length > 0 && nuevoTrabajador?.id) {
+        for (const cuenta of cuentasBancarias) {
+          try {
+            await crearCuentaBancaria({
+              trabajadorId: nuevoTrabajador.id,
+              banco: cuenta.banco,
+              numero_cuenta: cuenta.numero_cuenta,
+              cci: cuenta.cci || null,
+              es_principal: cuenta.es_principal || false
+            });
+          } catch (error) {
+            console.error('Error al guardar cuenta bancaria:', error);
+          }
+        }
+      }
 
       onSuccess('Empleado creado correctamente');
       onClose();
@@ -1287,6 +1384,59 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                 </div>
                 <InputField label="País" name="pais" value={formData.pais} onChange={handleChange} placeholder="Perú" />
                 <InputField label="Referencia de Dirección" name="referencia_direccion" value={formData.referencia_direccion} onChange={handleChange} className="md:col-span-2" />
+              </div>
+            </div>
+
+            {/* Ubicación */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Ubicación
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Provincia</label>
+                  <select
+                    name="provincia_id"
+                    value={formData.provincia_id}
+                    onChange={handleProvinciaChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                  >
+                    <option value="">Seleccionar provincia</option>
+                    {provincias?.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Distrito</label>
+                  <select
+                    name="distrito_id"
+                    value={formData.distrito_id}
+                    onChange={handleDistritoChange}
+                    disabled={!formData.provincia_id}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Seleccionar distrito</option>
+                    {distritosDisponibles?.map(d => (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Departamento</label>
+                  <input
+                    type="text"
+                    name="departamento"
+                    value={formData.departamento}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                    placeholder="Se asigna automáticamente"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <InputField label="Dirección" name="direccion" value={formData.direccion} onChange={handleChange} multiline />
+                </div>
               </div>
             </div>
 
@@ -1477,6 +1627,36 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
               </div>
             </div>
 
+            {/* Datos Académicos */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Datos Académicos Principales (Opcional)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nivel de Educación</label>
+                  <select
+                    name="nivel_educacion_id"
+                    value={formData.nivel_educacion_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] outline-none transition-all"
+                  >
+                    <option value="">Seleccionar nivel</option>
+                    {nivelesEducacion?.map(n => (
+                      <option key={n.id} value={n.id}>{n.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <InputField label="Centro de Estudios Principal" name="centro_estudios_principal" value={formData.centro_estudios_principal} onChange={handleChange} placeholder="Universidad, instituto, etc." />
+                <div className="md:col-span-2">
+                  <InputField label="Carrera Estudiada Principal" name="carrera_estudiada_principal" value={formData.carrera_estudiada_principal} onChange={handleChange} placeholder="Nombre de la carrera" />
+                </div>
+                <InputField label="Fecha Inicio" name="fecha_inicio_estudio" type="date" value={formData.fecha_inicio_estudio} onChange={handleChange} />
+                <InputField label="Fecha Término" name="fecha_termino_estudio" type="date" value={formData.fecha_termino_estudio} onChange={handleChange} />
+              </div>
+            </div>
+
             {/* Datos Adicionales */}
             <div>
               <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
@@ -1598,20 +1778,15 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <InputField label="Sueldo Base (S/)" name="sueldo_base" type="number" step="0.01" value={formData.sueldo_base} onChange={handleChange} />
                 <InputField label="Fecha de Ingreso" name="fecha_ingreso" type="date" value={formData.fecha_ingreso} onChange={handleChange} />
-                <SelectField
-                  label="Banco Principal"
-                  name="banco"
-                  value={formData.banco}
-                  onChange={handleChange}
-                  options={['BCP', 'BBVA', 'INTERBANK', 'SCOTIABANK', 'BANBIF', 'PICHINCHA', 'OTROS']}
-                />
-                <InputField label="Número de Cuenta Principal" name="numero_cuenta" value={formData.numero_cuenta} onChange={handleChange} />
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                <p className="text-xs text-blue-800 flex items-center gap-2">
-                  <Info className="w-4 h-4 flex-shrink-0" />
-                  <span>Puedes agregar cuentas bancarias adicionales después de crear el empleado, editando su perfil.</span>
-                </p>
+
+              {/* Cuentas Bancarias (modo local: se guardan al crear el empleado) */}
+              <div className="border border-gray-200 rounded-xl p-4 mt-2">
+                <CuentasBancarias
+                  localMode={true}
+                  cuentasLocales={cuentasBancarias}
+                  onCuentasLocalesChange={setCuentasBancarias}
+                />
               </div>
             </div>
           </div>
@@ -2676,6 +2851,7 @@ const handleViewDNI = async () => {
             {/* Información Profesional */}
            <DetalleSection title="Información Profesional">
               <div className="grid grid-cols-2 gap-4">
+                <InfoField label="Usuario" value={empleado.username || 'No registrado'} />
                 <InfoField label="Rol" value={empleado.rol?.nombre || 'N/A'} />
 
                 {empleado.cargo && (
@@ -2717,26 +2893,24 @@ const handleViewDNI = async () => {
               </DetalleSection>
             )}
 
-            {/* Datos Financieros */}
-            {(empleado.sueldo_base || empleado.banco) && (
-              <DetalleSection title="Datos Financieros">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <InfoField label="Sueldo Base" value={empleado.sueldo_base ? `S/ ${Number(empleado.sueldo_base).toLocaleString()}` : 'No registrado'} />
-                  <InfoField label="Fecha Ingreso" value={empleado.fecha_ingreso ? empleado.fecha_ingreso.split('-').reverse().join('/') : 'No registrada'} />
-                </div>
-                
-                {/* Cuentas Bancarias */}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <CuentasBancarias 
-                    trabajadorId={empleado.id}
-                    onUpdate={() => {
-                      // Actualizar si es necesario
-                    }}
-                    readOnly={true}
-                  />
-                </div>
-              </DetalleSection>
-            )}
+            {/* Datos Financieros — siempre visible para mostrar sueldo y cuentas bancarias */}
+            <DetalleSection title="Datos Financieros">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <InfoField label="Sueldo Base" value={empleado.sueldo_base ? `S/ ${Number(empleado.sueldo_base).toLocaleString()}` : 'No registrado'} />
+                <InfoField label="Fecha Ingreso" value={empleado.fecha_ingreso ? empleado.fecha_ingreso.split('-').reverse().join('/') : 'No registrada'} />
+              </div>
+
+              {/* Cuentas Bancarias (siempre se cargan; muestran lo que esté registrado) */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <CuentasBancarias
+                  trabajadorId={empleado.id}
+                  onUpdate={() => {
+                    // Actualizar si es necesario
+                  }}
+                  readOnly={true}
+                />
+              </div>
+            </DetalleSection>
 
             {/* Contacto y Dirección */}
             <DetalleSection title="Información de Contacto">

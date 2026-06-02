@@ -14,6 +14,7 @@ export const getTrabajadores = async () => {
 // Crear trabajador
 export const crearTrabajador = async (data) => {
   const response = await api.post('/trabajadores', data);
+  cacheManager.delete('trabajadores:todos');
   return response.data;
 };
 
@@ -38,12 +39,14 @@ export const getCargos = async () => {
 // Activar trabajador
 export const activarTrabajador = async (id) => {
   const response = await api.put(`/trabajadores/${id}/activar`);
+  cacheManager.delete('trabajadores:todos');
   return response.data;
 };
 
 // Desactivar trabajador
 export const desactivarTrabajador = async (id) => {
   const response = await api.put(`/trabajadores/${id}/desactivar`);
+  cacheManager.delete('trabajadores:todos');
   return response.data;
 };
 
@@ -56,6 +59,7 @@ export const getTrabajadorById = async (id) => {
 // Actualizar trabajador
 export const updateTrabajador = async (id, data) => {
   const response = await api.patch(`/trabajadores/${id}`, data);
+  cacheManager.delete('trabajadores:todos');
   return response.data;
 };
 

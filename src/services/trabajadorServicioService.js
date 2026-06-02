@@ -40,12 +40,13 @@ export const getServiciosByTrabajador = async (trabajadorId) => {
  * @param {string} observaciones - Observaciones opcionales
  * @returns {Promise<Object>} - Asignación creada
  */
-export const asignarServicio = async (trabajadorId, servicioId, observaciones = '') => {
+export const asignarServicio = async (trabajadorId, servicioId, observaciones = '', userId = null) => {
   try {
     const response = await axios.post(`${API_URL}/backend_api/trabajador-servicio`, {
       trabajadorId,
       servicioId,
-      observaciones
+      observaciones,
+      userId
     });
     return response.data;
   } catch (error) {
