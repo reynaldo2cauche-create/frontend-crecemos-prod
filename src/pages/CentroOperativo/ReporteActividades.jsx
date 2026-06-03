@@ -334,12 +334,15 @@ function WorkerCard({ usuario, tareasW }) {
 
 export default function ReporteActividades() {
   const navigate = useNavigate();
-  const hoy = new Date();
+  // "Hoy" en zona horaria de Lima (no la del navegador ni UTC).
+  // fmtLimaDate -> "YYYY-MM-DD", así el día corre de 00:00 a 23:59 hora Lima.
+  const hoyLima = fmtLimaDate(new Date());
+  const [yHoy, mHoy] = hoyLima.split('-').map(Number);
 
   const [vista, setVista] = useState('mensual');
-  const [mes, setMes] = useState(hoy.getMonth() + 1);
-  const [anio, setAnio] = useState(hoy.getFullYear());
-  const [fechaDia, setFechaDia] = useState(hoy.toISOString().slice(0, 10));
+  const [mes, setMes] = useState(mHoy);
+  const [anio, setAnio] = useState(yHoy);
+  const [fechaDia, setFechaDia] = useState(hoyLima);
 
   const [tareas, setTareas] = useState([]);
   const [trabajadores, setTrabajadores] = useState([]);
@@ -367,13 +370,12 @@ export default function ReporteActividades() {
     ? `${MESES[mes - 1]} ${anio}`
     : new Date(fechaDia + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
-  // Tareas creadas hoy — compara en zona horaria Lima para que coincida con el servidor
-  const fmtLima = (d) =>
-    new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(d);
-  const hoyLimaStr = fmtLima(new Date());
+  // Tareas creadas hoy — compara la fecha en zona Lima (00:00–23:59). Así un ticket
+  // creado hoy sigue contando hasta las 11:59 pm y recién al cambiar de día
+  // (medianoche Lima) deja de aparecer.
   const tareasCreadasHoy = tareas.filter(t => {
     if (!t.created_at) return false;
-    return fmtLima(new Date(t.created_at)) === hoyLimaStr;
+    return fmtLimaDate(new Date(t.created_at)) === hoyLima;
   });
 
   // Estadísticas del período seleccionado — cuenta por columna como se ve en el tablero

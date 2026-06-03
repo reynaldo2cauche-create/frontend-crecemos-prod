@@ -1,5 +1,5 @@
 // Fixed: setGuardando state added - v2
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   UserPlus, Edit2, Power, Check, X, Search, Eye,
   Mail, Phone, MapPin, User, Users, Briefcase, Shield,
@@ -30,6 +30,69 @@ import { getServicios, getGeneros, getEstadosCiviles, getParentescos, getProvinc
 import { asignarServicio, getServiciosByTrabajador, desactivarServicio } from '../../services/trabajadorServicioService';
 import api from '../../services/api';
 import CuentasBancarias from '../../components/CuentasBancarias';
+
+// Orden lógico de áreas: Infantil → Adolescentes → Adultos → otras
+const ordenArea = (nombre = '') => {
+  const n = nombre.toLowerCase();
+  if (n.includes('infantil')) return 0;
+  if (n.includes('adolescent')) return 1;
+  if (n.includes('adulto')) return 2;
+  return 3;
+};
+
+const COLORES_AREA = [
+  { border: 'border-blue-200',   head: 'text-blue-700',   hover: 'hover:bg-blue-50',   input: 'text-blue-600 focus:ring-blue-500' },
+  { border: 'border-amber-200',  head: 'text-amber-700',  hover: 'hover:bg-amber-50',  input: 'text-amber-600 focus:ring-amber-500' },
+  { border: 'border-purple-200', head: 'text-purple-700', hover: 'hover:bg-purple-50', input: 'text-purple-600 focus:ring-purple-500' },
+  { border: 'border-gray-200',   head: 'text-gray-700',   hover: 'hover:bg-gray-50',   input: 'text-gray-600 focus:ring-gray-500' },
+];
+
+// Lista de servicios agrupada por área. Refleja TODAS las áreas que existan en el
+// backend (Infantil, Adolescentes, Adultos, etc.) sin hardcodear ninguna.
+function ColumnasServiciosPorArea({ servicios, seleccionados, onToggle }) {
+  const grupos = useMemo(() => {
+    const map = new Map();
+    (servicios || []).filter(s => s.activo).forEach(s => {
+      const areaId = s.area?.id ?? 0;
+      if (!map.has(areaId)) map.set(areaId, { id: areaId, nombre: s.area?.nombre || 'Otros', items: [] });
+      map.get(areaId).items.push(s);
+    });
+    return [...map.values()].sort((a, b) => ordenArea(a.nombre) - ordenArea(b.nombre));
+  }, [servicios]);
+
+  if (grupos.length === 0) {
+    return <p className="text-xs text-gray-500">No hay servicios disponibles</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {grupos.map((g, i) => {
+        const c = COLORES_AREA[i % COLORES_AREA.length];
+        return (
+          <div key={g.id} className={`bg-white rounded-lg p-3 border min-w-0 ${c.border}`}>
+            <h4 className={`text-xs font-bold ${c.head} mb-2 uppercase tracking-wide flex items-center gap-1`}>
+              <Briefcase className="w-3 h-3" />
+              {g.nombre} ({g.items.length})
+            </h4>
+            <div className="space-y-1">
+              {g.items.map(servicio => (
+                <label key={servicio.id} className={`flex items-start gap-2 p-2 w-full ${c.hover} rounded cursor-pointer transition-all`}>
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.includes(servicio.id)}
+                    onChange={(e) => onToggle(servicio.id, e.target.checked)}
+                    className={`w-4 h-4 mt-0.5 flex-shrink-0 ${c.input} border-gray-300 rounded`}
+                  />
+                  <span className="text-sm text-gray-700 flex-1 min-w-0 whitespace-normal break-normal leading-snug">{servicio.nombre}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([]);
@@ -1497,63 +1560,15 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                   <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-lg p-3 border border-blue-200">
-                      <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        Infantil y Adolescentes
-                      </h4>
-                      <div className="space-y-1">
-                        {servicios
-                          .filter(s => s.activo && s.area.id === 1)
-                          .map(servicio => (
-                            <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-50 rounded cursor-pointer transition-all">
-                              <input
-                                type="checkbox"
-                                checked={serviciosSeleccionados.includes(servicio.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
-                                  } else {
-                                    setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
-                                  }
-                                }}
-                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                              />
-                              <span className="text-sm text-gray-700">{servicio.nombre}</span>
-                            </label>
-                          ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-3 border border-purple-200">
-                      <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        Adultos
-                      </h4>
-                      <div className="space-y-1">
-                        {servicios
-                          .filter(s => s.activo && s.area.id === 2)
-                          .map(servicio => (
-                            <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-50 rounded cursor-pointer transition-all">
-                              <input
-                                type="checkbox"
-                                checked={serviciosSeleccionados.includes(servicio.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setServiciosSeleccionados([...serviciosSeleccionados, servicio.id]);
-                                  } else {
-                                    setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== servicio.id));
-                                  }
-                                }}
-                                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                              />
-                              <span className="text-sm text-gray-700">{servicio.nombre}</span>
-                            </label>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
+                  <ColumnasServiciosPorArea
+                    servicios={servicios}
+                    seleccionados={serviciosSeleccionados}
+                    onToggle={(id, checked) =>
+                      setServiciosSeleccionados(checked
+                        ? [...serviciosSeleccionados, id]
+                        : serviciosSeleccionados.filter(x => x !== id))
+                    }
+                  />
 
                   {serviciosSeleccionados.length === 0 && (
                     <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
@@ -2281,10 +2296,6 @@ const refrescarEmpleado = async () => {
   const rolSeleccionado = roles.find(r => r.nombre === formData.rol);
   const esTerapeuta = rolSeleccionado?.nombre === 'Terapeuta';
 
-  // Servicios agrupados por área
-  const serviciosInfantiles = servicios.filter(s => s.activo && s.area?.id === 1);
-  const serviciosAdultos = servicios.filter(s => s.activo && s.area?.id === 2);
-
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={onClose} />
@@ -2439,53 +2450,11 @@ const refrescarEmpleado = async () => {
                   <>
                     <p className="text-xs text-gray-600 mb-4">Selecciona los servicios que este terapeuta puede brindar</p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Columna Infantil y Adolescentes */}
-                      {serviciosInfantiles.length > 0 && (
-                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                          <h4 className="text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            Infantil y Adolescentes ({serviciosInfantiles.length})
-                          </h4>
-                          <div className="space-y-1 max-h-60 overflow-y-auto">
-                            {serviciosInfantiles.map(servicio => (
-                              <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-blue-100 rounded cursor-pointer transition-all">
-                                <input
-                                  type="checkbox"
-                                  checked={serviciosSeleccionados.includes(servicio.id)}
-                                  onChange={(e) => handleCheckboxChange(servicio.id, e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-gray-700">{servicio.nombre}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Columna Adultos */}
-                      {serviciosAdultos.length > 0 && (
-                        <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                          <h4 className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            Adultos ({serviciosAdultos.length})
-                          </h4>
-                          <div className="space-y-1 max-h-60 overflow-y-auto">
-                            {serviciosAdultos.map(servicio => (
-                              <label key={servicio.id} className="flex items-center gap-2 p-2 hover:bg-purple-100 rounded cursor-pointer transition-all">
-                                <input
-                                  type="checkbox"
-                                  checked={serviciosSeleccionados.includes(servicio.id)}
-                                  onChange={(e) => handleCheckboxChange(servicio.id, e.target.checked)}
-                                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                                />
-                                <span className="text-sm text-gray-700">{servicio.nombre}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <ColumnasServiciosPorArea
+                      servicios={servicios}
+                      seleccionados={serviciosSeleccionados}
+                      onToggle={handleCheckboxChange}
+                    />
 
                     <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between">
