@@ -4,7 +4,7 @@ import {
   Clock, PenSquare, FileText, Loader2, PartyPopper,
   Briefcase, Check, BellOff, SlidersHorizontal, ChevronDown, ClipboardList, FileUp, UserCog,
   FileCheck, UserMinus, KanbanSquare, MessageSquare, CircleCheckBig, CalendarClock,
-  ArrowRightCircle, Paperclip, Trophy,
+  ArrowRightCircle, Paperclip, PawPrint,
 } from 'lucide-react';
 import {
   obtenerNotificacionesRecientes,
@@ -52,7 +52,7 @@ const TIPO_CONFIG = {
   TAREA_VENCIDA:            { icono: CalendarClock,     color: 'text-rose-500',   borde: 'border-rose-400',   label: 'Tarea vencida'         },
   TAREA_MOVIDA:             { icono: ArrowRightCircle,  color: 'text-amber-500',  borde: 'border-amber-400',  label: 'Tarea movida'          },
   TAREA_ARCHIVO_SUBIDO:     { icono: Paperclip,         color: 'text-cyan-500',   borde: 'border-cyan-400',   label: 'Archivo en tarea'      },
-  SESIONES_TERAPIA_24:      { icono: Trophy,            color: 'text-yellow-500', borde: 'border-yellow-400', label: '24 sesiones de terapia' },
+  SESIONES_TERAPIA_24:      { icono: PawPrint,          color: 'text-yellow-500', borde: 'border-yellow-400', label: '24 sesiones de terapia' },
   DEFAULT:                  { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
 };
 

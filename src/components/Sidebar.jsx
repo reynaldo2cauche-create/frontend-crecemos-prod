@@ -116,6 +116,7 @@ const menuSections = [
       { text: 'Popup Inicio', path: '/intranet/popup-promocional', icon: BellAlertIcon },
       { text: 'Sorteo',       path: '/intranet/sorteo',            icon: GiftIcon },
       { text: 'Campañas',     path: '/intranet/campanas',          icon: MegaphoneIcon },
+      { text: 'Staff',        path: '/intranet/gestion-staff',     icon: UserGroupIcon },
     ],
   },
   {

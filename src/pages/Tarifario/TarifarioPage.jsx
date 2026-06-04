@@ -321,7 +321,8 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
                   </div>
                 )}
                 {servicio.nombre?.toLowerCase().includes('psicolog') &&
-                  servicio.nombre?.toLowerCase().includes('infantil') && (
+                  (servicio.nombre?.toLowerCase().includes('infantil') ||
+                    servicio.nombre?.toLowerCase().includes('adolescent')) && (
                     <div className="mt-2 flex items-start gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl">
                       <svg
                         className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   EyeIcon,
   ShoppingCartIcon,
@@ -68,12 +68,32 @@ const HistorialVentasTab = () => {
   const [feedback, setFeedback]             = useState(null);
   const [validando, setValidando]           = useState(null); // id procesando
 
+  // Indicador de scroll horizontal de la tabla
+  const scrollRef = useRef(null);
+  const [scrollState, setScrollState] = useState({ left: false, right: false });
+  const actualizarScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setScrollState({
+      left: scrollLeft > 4,
+      right: scrollLeft + clientWidth < scrollWidth - 4,
+    });
+  }, []);
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const esAdmision = user?.rol?.id === 2;
   const esAdministrador = user?.rol?.id === 1;
 
   useEffect(() => { obtenerModalidadesPago().then(setModalidades).catch(() => {}); }, []);
   useEffect(() => { cargarVentas(); }, [page, rowsPerPage, filtros.tipo, filtros.fechaDesde, filtros.fechaHasta, filtros.metodoPagoId, pacienteSeleccionado]);
+
+  // Recalcular indicador de scroll cuando cambian los datos o el tamaño de ventana
+  useEffect(() => {
+    actualizarScroll();
+    window.addEventListener('resize', actualizarScroll);
+    return () => window.removeEventListener('resize', actualizarScroll);
+  }, [historialData, loading, actualizarScroll]);
 
   const cargarVentas = async () => {
     setLoading(true);
@@ -349,76 +369,84 @@ const HistorialVentasTab = () => {
               <p className="font-medium">No hay ventas registradas</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative">
+              {/* Degradado indicador: hay más columnas a la izquierda */}
+              <div className={`pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 bg-gradient-to-r from-gray-200/70 to-transparent transition-opacity duration-200 ${scrollState.left ? 'opacity-100' : 'opacity-0'}`} />
+              {/* Degradado indicador: hay más columnas a la derecha */}
+              <div className={`pointer-events-none absolute right-0 top-0 bottom-0 w-12 z-10 bg-gradient-to-l from-gray-200/80 to-transparent transition-opacity duration-200 ${scrollState.right ? 'opacity-100' : 'opacity-0'}`} />
+              {scrollState.right && (
+                <div className="pointer-events-none absolute right-2 top-3 z-20 flex items-center gap-1 px-2 py-1 rounded-full bg-[#7B1FA2] text-white text-[10px] font-semibold shadow-md animate-pulse">
+                  Desliza <ChevronRight className="w-3 h-3" />
+                </div>
+              )}
+              <div ref={scrollRef} onScroll={actualizarScroll} className="overflow-x-auto scrollbar-visible">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-6 py-3 text-xs font-bold text-gray-500 uppercase">Tipo</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Comprobante</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Fecha y Hora</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Pagador</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Cliente</th>
-                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Items</th>
-                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Promos</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">Base</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">IGV</th>
-                    <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase">Total</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Nro Operación</th>
-                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase">Pago validado</th>
-                    <th className="text-center px-6 py-3 text-xs font-bold text-gray-500 uppercase">Acciones</th>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="text-left px-3 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Tipo</th>
+                    <th className="text-left px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Comprobante</th>
+                    <th className="text-left px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Fecha y Hora</th>
+                    <th className="text-left px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Pagador</th>
+                    <th className="text-left px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Cliente</th>
+                    <th className="text-center px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Items</th>
+                    <th className="text-center px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Promos</th>
+                    <th className="text-right px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">IGV</th>
+                    <th className="text-right px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Total</th>
+                    <th className="text-left px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Nro Operación</th>
+                    <th className="text-center px-2.5 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Pago validado</th>
+                    <th className="text-center px-3 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-tight whitespace-nowrap">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {ventasPaginadas.map(v => {
-                    const { base, igv, conIgv } = calcularIgv(v.total, v.tipo_comprobante?.id);
+                    const { igv, conIgv } = calcularIgv(v.total, v.tipo_comprobante?.id);
                     const promos = v.promociones_aplicadas || [];
                     return (
                       <tr key={`${v.tipo}-${v.id}`} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3 align-top">
                           {v.tipo === 'servicio'
                             ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">Servicio</span>
                             : <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold">Producto</span>}
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="space-y-1">
+                        <td className="px-2.5 py-3 align-top">
+                          <div className="space-y-0.5">
                             <ComprobanteLabel nombre={v.tipo_comprobante?.nombre} id={v.tipo_comprobante?.id} />
-                            {v.codigo_comprobante && <p className="text-sm font-mono font-semibold text-purple-700">{v.codigo_comprobante}</p>}
+                            {v.codigo_comprobante && <p className="text-xs font-mono font-semibold text-purple-700">{v.codigo_comprobante}</p>}
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-gray-700">
-                          <div className="text-sm font-medium">{formatFecha(v.fecha_venta)}</div>
+                        <td className="px-2.5 py-3 text-gray-700 align-top whitespace-nowrap">
+                          <div className="text-xs font-medium">{formatFecha(v.fecha_venta)}</div>
                           {v.created_at && (
-                            <div className="text-xs text-gray-400 mt-0.5">
+                            <div className="text-[11px] text-gray-400 mt-0.5">
                               {new Date(v.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-gray-600 text-xs">{tipoPagadorNombre(v.tipo_pagador_id || v.tipo_comprador_id)}</td>
-                        <td className="px-4 py-4 text-gray-900 text-sm">
+                        <td className="px-2.5 py-3 text-gray-600 text-xs align-top">{tipoPagadorNombre(v.tipo_pagador_id || v.tipo_comprador_id)}</td>
+                        <td className="px-2.5 py-3 text-gray-900 text-xs align-top">
                           {v.paciente
                             ? `${v.paciente.nombres} ${v.paciente.apellido_paterno} ${v.paciente.apellido_materno || ''}`.trim()
                             : v.responsable
                             ? `${v.responsable.nombres} ${v.responsable.apellido_paterno} ${v.responsable.apellido_materno || ''}`.trim()
                             : v.comprador_externo ? v.comprador_externo.nombre : '—'}
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-2.5 py-3 text-center align-top">
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">{(v.detalles || []).length}</span>
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-2.5 py-3 text-center align-top">
                           {promos.length > 0
-                            ? <span className="flex items-center justify-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
+                            ? <span className="inline-flex items-center justify-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
                                 <SparklesIcon className="w-3 h-3" />{promos.length}
                               </span>
                             : <span className="text-gray-300 text-xs">—</span>}
                         </td>
-                        <td className="px-4 py-4 text-right text-sm text-gray-600">{formatMonto(base)}</td>
-                        <td className="px-4 py-4 text-right text-sm text-gray-500">
+                        <td className="px-2.5 py-3 text-right text-xs text-gray-500 align-top whitespace-nowrap">
                           {conIgv ? formatMonto(igv) : <span className="text-gray-300 text-xs">—</span>}
                         </td>
-                        <td className="px-4 py-4 text-right font-bold text-gray-900">{formatMonto(v.total)}</td>
+                        <td className="px-2.5 py-3 text-right text-sm font-bold text-gray-900 align-top whitespace-nowrap">{formatMonto(v.total)}</td>
 
                         {/* Nro Operación */}
-                        <td className="px-4 py-4">
+                        <td className="px-2.5 py-3 align-top">
                           {(v.pagos || []).length === 0 ? (
                             <span className="text-xs text-gray-300">—</span>
                           ) : (
@@ -435,7 +463,7 @@ const HistorialVentasTab = () => {
                         </td>
 
                         {/* Pago validado — checkbox por método de pago */}
-                        <td className="px-4 py-4">
+                        <td className="px-2.5 py-3 align-top">
                           {(v.pagos || []).length === 0 ? (
                             <span className="text-xs text-gray-300 italic">Sin pagos</span>
                           ) : (
@@ -494,8 +522,8 @@ const HistorialVentasTab = () => {
                           )}
                         </td>
 
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="px-3 py-3 align-top">
+                          <div className="flex items-center justify-center gap-0.5">
                             <button onClick={() => { setVentaDetalle(v); setTipoDetalle(v.tipo); }} title="Ver detalle"
                               className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
                               <EyeIcon className="w-4 h-4" />
@@ -523,6 +551,7 @@ const HistorialVentasTab = () => {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
