@@ -326,6 +326,11 @@ const HistoriaClinicaView = ({ paciente, user }) => {
     setSeccionActiva(seccionActiva === seccion ? null : seccion);
   };
 
+  // La entrevista psicológica para adultos es solo para pacientes de 18 años a más
+  const edadCalculada = calcularEdad(paciente?.fecha_nacimiento);
+  const edadPaciente = edadCalculada !== '' ? edadCalculada : Number(paciente?.edad ?? NaN);
+  const esAdulto = Number.isFinite(edadPaciente) && edadPaciente >= 18;
+
   // Configuración de las secciones con iconos
   const secciones = [
     {
@@ -350,7 +355,7 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       description: 'Registro completo de evaluación psicológica para pacientes adultos',
       icon: User,
       color: 'purple',
-      visible: true // Siempre visible
+      visible: esAdulto // Solo para pacientes de 18 años a más
     },
     {
       id: 'evaluacion-terapia-ocupacional',

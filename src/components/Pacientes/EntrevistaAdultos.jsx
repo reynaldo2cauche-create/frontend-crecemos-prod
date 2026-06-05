@@ -12,31 +12,28 @@ const SintomaToggle = ({ label, campo, formData, handleChange }) => (
   <div className="border-2 border-gray-200 rounded-lg p-3">
     <div className="flex items-center justify-between mb-2">
       <label className="text-xs font-semibold text-gray-600 uppercase">{label}</label>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
+        <span className={`text-xs font-semibold w-5 ${formData[`${campo}Presente`] === true ? 'text-[#7B1FA2]' : 'text-gray-400'}`}>
+          {formData[`${campo}Presente`] === true ? 'Sí' : 'No'}
+        </span>
         <button
           type="button"
-          onClick={() => handleChange(`${campo}Presente`, true)}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-            formData[`${campo}Presente`] === true
-              ? 'bg-[#7B1FA2] text-white'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          Sí
-        </button>
-        <button
-          type="button"
+          role="switch"
+          aria-checked={formData[`${campo}Presente`] === true}
           onClick={() => {
-            handleChange(`${campo}Presente`, false);
-            handleChange(`${campo}Detalle`, '');
+            const nuevo = formData[`${campo}Presente`] !== true;
+            handleChange(`${campo}Presente`, nuevo);
+            if (!nuevo) handleChange(`${campo}Detalle`, '');
           }}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-            formData[`${campo}Presente`] === false
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+            formData[`${campo}Presente`] === true ? 'bg-[#7B1FA2]' : 'bg-gray-300'
           }`}
         >
-          No
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+              formData[`${campo}Presente`] === true ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
         </button>
       </div>
     </div>
@@ -56,31 +53,28 @@ const HabitoToggle = ({ label, campo, formData, handleChange, multiline = false 
   <div className="border-2 border-gray-200 rounded-lg p-3">
     <div className="flex items-center justify-between mb-2">
       <label className="text-xs font-semibold text-gray-600 uppercase">{label}</label>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
+        <span className={`text-xs font-semibold w-5 ${formData[`${campo}Presente`] === true ? 'text-[#7B1FA2]' : 'text-gray-400'}`}>
+          {formData[`${campo}Presente`] === true ? 'Sí' : 'No'}
+        </span>
         <button
           type="button"
-          onClick={() => handleChange(`${campo}Presente`, true)}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-            formData[`${campo}Presente`] === true
-              ? 'bg-[#7B1FA2] text-white'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          Sí
-        </button>
-        <button
-          type="button"
+          role="switch"
+          aria-checked={formData[`${campo}Presente`] === true}
           onClick={() => {
-            handleChange(`${campo}Presente`, false);
-            handleChange(campo === 'acusadoDetenido' ? 'acusadoDetenidoPreso' : campo, '');
+            const nuevo = formData[`${campo}Presente`] !== true;
+            handleChange(`${campo}Presente`, nuevo);
+            if (!nuevo) handleChange(campo === 'acusadoDetenido' ? 'acusadoDetenidoPreso' : campo, '');
           }}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-            formData[`${campo}Presente`] === false
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+            formData[`${campo}Presente`] === true ? 'bg-[#7B1FA2]' : 'bg-gray-300'
           }`}
         >
-          No
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+              formData[`${campo}Presente`] === true ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
         </button>
       </div>
     </div>

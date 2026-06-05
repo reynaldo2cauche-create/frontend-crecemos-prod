@@ -51,6 +51,7 @@ const ReportesVentas = () => {
   const [ventasPorCategoria, setVentasPorCategoria] = useState([]);
   const [descuentos, setDescuentos] = useState([]);
   const [ingresosPorResponsable, setIngresosPorResponsable] = useState([]);
+  const [citasPorTerapeuta, setCitasPorTerapeuta] = useState([]);
   const [ventasSinCita, setVentasSinCita] = useState([]);
   const [loadingSinCita, setLoadingSinCita] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
@@ -151,6 +152,11 @@ const ReportesVentas = () => {
       const ingresos = data.ingresosPorResponsable || [];
       console.log('👤 ingresosPorResponsable:', ingresos);
       setIngresosPorResponsable(ingresos);
+
+      // ✅ citasPorTerapeuta → cantidad de citas por terapeuta vs período anterior
+      const citasTerapeuta = data.citasPorTerapeuta || [];
+      console.log('🩺 citasPorTerapeuta:', citasTerapeuta);
+      setCitasPorTerapeuta(citasTerapeuta);
 
      const historialData = await getHistorialVentasExcel({ 
         fechaInicio,   // esto se mapea a "desde" dentro del service
@@ -457,6 +463,53 @@ const ReportesVentas = () => {
           )}
         </div>
       </div>
+
+  {/* Citas por terapeuta vs período anterior */}
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+        <CalendarIcon className="w-5 h-5 text-[#7B1FA2]" />
+        Citas por terapeuta
+        <span className="text-xs font-normal text-gray-400">vs. período anterior</span>
+      </h3>
+    </div>
+    {citasPorTerapeuta.length === 0 ? (
+      <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-500 border-b border-gray-200">
+              <th className="py-2 pr-4 font-semibold">Terapeuta</th>
+              <th className="py-2 px-4 font-semibold text-right">Citas</th>
+              <th className="py-2 px-4 font-semibold text-right">Período anterior</th>
+              <th className="py-2 pl-4 font-semibold text-right">Variación</th>
+            </tr>
+          </thead>
+          <tbody>
+            {citasPorTerapeuta.map((t, i) => {
+              const sube = t.variacion > 0;
+              const baja = t.variacion < 0;
+              const color = sube ? 'text-green-600' : baja ? 'text-red-600' : 'text-gray-400';
+              const bg = sube ? 'bg-green-50' : baja ? 'bg-red-50' : 'bg-gray-50';
+              return (
+                <tr key={i} className="border-b border-gray-100 last:border-0">
+                  <td className="py-2.5 pr-4 font-medium text-gray-800">{t.nombre}</td>
+                  <td className="py-2.5 px-4 text-right font-semibold text-gray-900">{t.citas}</td>
+                  <td className="py-2.5 px-4 text-right text-gray-500">{t.citasAnterior}</td>
+                  <td className="py-2.5 pl-4 text-right">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${bg} ${color}`}>
+                      {sube ? '▲' : baja ? '▼' : '—'} {t.variacion > 0 ? '+' : ''}{t.variacion}%
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
 
   {/* Top productos/servicios — solo barra de cantidad, ingresos en tooltip */}
 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
