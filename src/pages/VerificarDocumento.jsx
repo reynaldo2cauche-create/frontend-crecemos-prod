@@ -1566,6 +1566,12 @@ const VerificarDocumentos = () => {
       {/* Hero Section */}
       <section className="hero-verificador">
         <div className="hero-content">
+          {/* Logo Synap */}
+          <img
+            src="/synap-logo.png"
+            alt="Synap"
+            style={{ height: '64px', display: 'block', margin: '0 auto 20px' }}
+          />
           {/* Badge ULTRA VISIBLE con fondo blanco sólido */}
           <div className="company-badge p-2">
             <i className="bi bi-shield-check"></i>

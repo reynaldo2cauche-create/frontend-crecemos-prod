@@ -12,6 +12,16 @@ import IndicacionTerapeuticaView from './HistoriaClinicaView/components/Indicaci
 import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
 import SolicitudInformeView from './HistoriaClinicaView/components/SolicitudInformeView';
 
+// Ordena los reportes de evolución de más recientes a más antiguos
+// (por fecha de evaluación; desempata por id descendente).
+const ordenarRecientesPrimero = (reportes = []) =>
+  [...reportes].sort((a, b) => {
+    const ta = new Date(a.fechaEvaluacion || 0).getTime();
+    const tb = new Date(b.fechaEvaluacion || 0).getTime();
+    if (tb !== ta) return tb - ta;       // fecha de evaluación más reciente primero
+    return (b.id || 0) - (a.id || 0);    // desempate: el creado más recientemente
+  });
+
 const HistoriaClinicaView = ({ paciente, user }) => {
   const [serviciosPaciente, setServiciosPaciente] = useState([]);
   const [seccionActiva, setSeccionActiva] = useState(null); // null = ninguna, 'reporte', 'entrevista', 'evaluacion'
@@ -196,7 +206,7 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       try {
         const reportesData = await obtenerReporteEvolucion(paciente.id);
         if (reportesData && reportesData.length > 0) {
-          setReportesExistentes(reportesData);
+          setReportesExistentes(ordenarRecientesPrimero(reportesData));
         }
       } catch (error) {
         console.error('Error al recargar reportes:', error);
@@ -268,7 +278,7 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         try {
           const reportesData = await obtenerReporteEvolucion(paciente.id);
           if (reportesData && reportesData.length > 0) {
-            setReportesExistentes(reportesData);
+            setReportesExistentes(ordenarRecientesPrimero(reportesData));
           }
         } catch (error) {
           console.error('❌ Error al cargar reportes:', error);

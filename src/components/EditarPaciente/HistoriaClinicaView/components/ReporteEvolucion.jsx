@@ -159,7 +159,7 @@ const ReporteEvolucion = ({
                         </div>
                         <div className="text-left">
                           <div className="flex items-center gap-3 mb-1">
-                            <h3 className="text-base font-bold text-gray-900">Reporte {index + 1}</h3>
+                            <h3 className="text-base font-bold text-gray-900">Reporte {reportesExistentes.length - index}</h3>
                             <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                               {reporte.servicio?.nombre || reporte.servicio}
                             </span>

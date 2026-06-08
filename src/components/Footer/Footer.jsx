@@ -47,7 +47,7 @@ export default function Footer() {
             {/* Columna 1: Información */}
             <div className="col-lg-3 col-md-6 footer-about">
               <a href="/" className="logo d-flex align-items-center">
-                <img src="/logo-text-short.png" alt="Crecemos Logo" />
+                <img src="/synap-logo.png" alt="Synap Logo" />
               </a>
               <div className="footer-contact pt-3">
                 <p>Calle 48 Nro. 234 Urbanización El Pinar, Comas 15316</p>

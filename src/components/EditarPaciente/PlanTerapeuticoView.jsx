@@ -73,6 +73,11 @@ const estadoEsp = (pct) => {
   if (pct >= 40) return { label: 'En proceso', text: 'text-amber-700', bg: 'bg-amber-50' };
   return { label: 'No logrado', text: 'text-red-700', bg: 'bg-red-50' };
 };
+// Fecha de hoy en formato 'YYYY-MM-DD' (hora local), para comparar con las fechas de las sesiones.
+const hoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 const fmtFecha = (f, year) => {
   if (!f) return null;
   const d = new Date(String(f).slice(0, 10) + 'T00:00:00');
@@ -124,8 +129,12 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
         const [data, ar] = await Promise.all([getPlan(pacienteId, servicioId), getAreasServicio(servicioId)]);
         setPlan(data);
         setAreas(ar || []);
-        const pend = data?.sesiones?.find((s) => s.estado !== 'REALIZADA');
-        setSesionActiva(pend ? pend.numero_sesion : data?.sesiones?.[data.sesiones.length - 1]?.numero_sesion || 1);
+        // Sesión activa por defecto: la de HOY; si no hay, la primera pendiente; si no, la última.
+        const hoy = hoyISO();
+        const sesiones = data?.sesiones || [];
+        const deHoy = sesiones.find((s) => s.fecha && String(s.fecha).slice(0, 10) === hoy);
+        const pend = sesiones.find((s) => s.estado !== 'REALIZADA');
+        setSesionActiva((deHoy || pend || sesiones[sesiones.length - 1])?.numero_sesion || 1);
       } catch (e) {
         toast('error', e.response?.data?.message || 'Error al cargar el plan');
       } finally {
@@ -139,6 +148,8 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
   const resultados = plan?.catalogos?.resultados || [];
   const maxGen = plan?.limites?.max_generales ?? 3;
   const maxEsp = plan?.limites?.max_especificos ?? 3;
+  // En Terapia de Lenguaje solo jefa/admin gestionan objetivos, actividades y materiales.
+  const puedeGestionar = plan?.permisos?.gestionar_objetivos ?? true;
   const servicioSel = servicios.find((s) => s.servicio_id === servicioId) || null;
   const sesionSel = useMemo(() => sesiones.find((s) => s.numero_sesion === sesionActiva) || null, [sesiones, sesionActiva]);
 
@@ -175,21 +186,27 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
   };
 
   // ── Handlers de registro por sesión ──
-  const handleResultado = async (esp, codigo) => {
+  // Cada campo (resultado, observaciones, actividad, materiales) se define POR SESIÓN.
+  // Se reenvían todos los valores actuales y se sobreescribe solo el que cambió.
+  const guardarCampoRegistro = async (esp, cambios, msgError) => {
+    const reg = esp.registros?.[sesionActiva] || {};
     try {
-      const reg = esp.registros?.[sesionActiva];
-      await guardarRegistro({ objetivo_especifico_id: esp.id, numero_sesion: sesionActiva, resultado: codigo, observaciones: reg?.observaciones ?? null });
+      await guardarRegistro({
+        objetivo_especifico_id: esp.id,
+        numero_sesion: sesionActiva,
+        resultado: reg.resultado_codigo ?? null,
+        observaciones: reg.observaciones ?? null,
+        actividad: reg.actividad ?? null,
+        materiales: reg.materiales ?? null,
+        ...cambios,
+      });
       await recargarPlan();
-    } catch (e) { toast('error', e.response?.data?.message || 'No se pudo registrar el resultado'); }
+    } catch (e) { toast('error', e.response?.data?.message || msgError); }
   };
-  const handleObs = async (esp, observaciones) => {
-    const reg = esp.registros?.[sesionActiva];
-    try {
-      // Se permite guardar solo la observación, sin resultado marcado.
-      await guardarRegistro({ objetivo_especifico_id: esp.id, numero_sesion: sesionActiva, resultado: reg?.resultado_codigo ?? null, observaciones });
-      await recargarPlan();
-    } catch (e) { toast('error', e.response?.data?.message || 'No se pudo guardar la observación'); }
-  };
+  const handleResultado = (esp, codigo) => guardarCampoRegistro(esp, { resultado: codigo }, 'No se pudo registrar el resultado');
+  const handleObs = (esp, observaciones) => guardarCampoRegistro(esp, { observaciones }, 'No se pudo guardar la observación');
+  const handleActividad = (esp, actividad) => guardarCampoRegistro(esp, { actividad }, 'No se pudo guardar la actividad');
+  const handleMateriales = (esp, materiales) => guardarCampoRegistro(esp, { materiales }, 'No se pudieron guardar los materiales');
 
   // ── Guardar (asignar/quitar) objetivos de un bloque, en lote ──
   const handleGuardarObjetivosBloque = async (numeroBloque, addIds, removeIds) => {
@@ -241,7 +258,7 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
 
       {vista === 'plan' ? (
         <TabPlan
-          plan={plan} generales={generales} maxGen={maxGen} maxEsp={maxEsp}
+          plan={plan} generales={generales} maxGen={maxGen} maxEsp={maxEsp} puedeGestionar={puedeGestionar}
           onAddGeneral={() => setModalGeneral({ mode: 'add', data: {} })}
           onEditGeneral={(g) => setModalGeneral({ mode: 'edit', data: g })}
           onDeleteGeneral={(g) => setConfirmDelete({ tipo: 'general', id: g.id, label: g.area_nombre })}
@@ -253,7 +270,9 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
         <TabSesiones
           plan={plan} generales={generales} sesiones={sesiones} resultados={resultados}
           sesionActiva={sesionActiva} setSesionActiva={setSesionActiva} sesionSel={sesionSel}
+          puedeGestionar={puedeGestionar}
           onResultado={handleResultado} onObs={handleObs}
+          onActividad={handleActividad} onMateriales={handleMateriales}
           onGuardarObjetivos={handleGuardarObjetivosBloque}
         />
       )}
@@ -279,7 +298,7 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
 // ════════════════════════════════════════════════════════════════════
 // TAB · PLAN DE TRATAMIENTO
 // ════════════════════════════════════════════════════════════════════
-const TabPlan = ({ plan, generales, maxGen, maxEsp, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+const TabPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
   const progresoPlan = plan?.plan?.progreso ?? 0;
   const totalSes = plan?.servicio?.total_sesiones ?? 0;
   const revisionCada = plan?.plan?.revision_cada ?? 8;
@@ -296,10 +315,12 @@ const TabPlan = ({ plan, generales, maxGen, maxEsp, onAddGeneral, onEditGeneral,
             <h3 className="text-base font-bold text-gray-800">Plan de tratamiento</h3>
             {plan?.plan?.metodologia && <p className="text-[11px] text-gray-400">{plan.plan.metodologia}</p>}
           </div>
-          <button onClick={onAddGeneral} disabled={generales.length >= maxGen}
-            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
-            <Plus className="w-3.5 h-3.5" /> Objetivo general
-          </button>
+          {puedeGestionar && (
+            <button onClick={onAddGeneral} disabled={generales.length >= maxGen}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
+              <Plus className="w-3.5 h-3.5" /> Objetivo general
+            </button>
+          )}
         </div>
 
         {generales.length === 0 && (
@@ -310,7 +331,7 @@ const TabPlan = ({ plan, generales, maxGen, maxEsp, onAddGeneral, onEditGeneral,
         )}
 
         {generales.map((g, i) => (
-          <GeneralCard key={g.id} g={g} maxEsp={maxEsp} color={AREA_COLORS[i % AREA_COLORS.length]}
+          <GeneralCard key={g.id} g={g} maxEsp={maxEsp} color={AREA_COLORS[i % AREA_COLORS.length]} puedeGestionar={puedeGestionar}
             onEditGeneral={onEditGeneral} onDeleteGeneral={onDeleteGeneral}
             onAddEspecifico={onAddEspecifico} onEditEspecifico={onEditEspecifico} onDeleteEspecifico={onDeleteEspecifico} />
         ))}
@@ -364,7 +385,7 @@ const TabPlan = ({ plan, generales, maxGen, maxEsp, onAddGeneral, onEditGeneral,
 };
 
 // Tarjeta de un objetivo general: panel izquierdo (área + progreso) + tabla de específicos.
-const GeneralCard = ({ g, maxEsp, color, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+const GeneralCard = ({ g, maxEsp, color, puedeGestionar, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
   const [abierto, setAbierto] = useState(true);
   const c = progresoColor(g.progreso);
   const col = color || AREA_COLORS[0];
@@ -396,10 +417,12 @@ const GeneralCard = ({ g, maxEsp, color, onEditGeneral, onDeleteGeneral, onAddEs
               {g.frecuencia_nombre && <span className="flex items-center gap-1.5"><CalendarClock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Frecuencia</span>{g.frecuencia_nombre}</span></span>}
               {g.fecha_logro_est && <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Logro estimado</span>{fmtFecha(g.fecha_logro_est, true)}</span></span>}
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={() => onEditGeneral(g)} className="p-1.5 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3.5 h-3.5" /></button>
-              <button onClick={() => onDeleteGeneral(g)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-            </div>
+            {puedeGestionar && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => onEditGeneral(g)} className="p-1.5 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => onDeleteGeneral(g)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            )}
           </div>
 
           <div className="mt-3 pt-3 border-t border-gray-100">
@@ -408,10 +431,12 @@ const GeneralCard = ({ g, maxEsp, color, onEditGeneral, onDeleteGeneral, onAddEs
                 Objetivos específicos (máx. {maxEsp})
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
               </button>
-              <button onClick={() => onAddEspecifico(g)} disabled={especificos.length >= maxEsp}
-                className="flex items-center gap-1 text-[11px] font-semibold text-[#7B1FA2] hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
-                <Plus className="w-3 h-3" /> Específico
-              </button>
+              {puedeGestionar && (
+                <button onClick={() => onAddEspecifico(g)} disabled={especificos.length >= maxEsp}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#7B1FA2] hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
+                  <Plus className="w-3 h-3" /> Específico
+                </button>
+              )}
             </div>
 
             {abierto && (
@@ -444,10 +469,12 @@ const GeneralCard = ({ g, maxEsp, color, onEditGeneral, onDeleteGeneral, onAddEs
                             </div>
                           </td>
                           <td className="py-2">
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => onEditEspecifico(g, e)} className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3 h-3" /></button>
-                              <button onClick={() => onDeleteEspecifico(e)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
-                            </div>
+                            {puedeGestionar && (
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => onEditEspecifico(g, e)} className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3 h-3" /></button>
+                                <button onClick={() => onDeleteEspecifico(e)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -466,7 +493,7 @@ const GeneralCard = ({ g, maxEsp, color, onEditGeneral, onDeleteGeneral, onAddEs
 // ════════════════════════════════════════════════════════════════════
 // TAB · SESIONES
 // ════════════════════════════════════════════════════════════════════
-const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setSesionActiva, sesionSel, onResultado, onObs, onGuardarObjetivos }) => {
+const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos }) => {
   const bloqueActivo = bloqueDeSesion(sesionActiva);
 
   // Todos los específicos del plan (con su área).
@@ -493,6 +520,7 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
   }, [filas]);
   const colorGen = useMemo(() => coloresPorGeneral(generales), [generales]);
   const [gestionarOpen, setGestionarOpen] = useState(false);
+  const [confirmQuitar, setConfirmQuitar] = useState(null); // objetivo específico a quitar del bloque
   const editable = !!sesionSel?.puede_registrar;
 
   // Agrupar las sesiones en bloques de 4. Orden de visualización: reciente primero.
@@ -605,10 +633,12 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
               <h4 className="text-sm font-bold text-gray-800">Registro de la sesión</h4>
               <p className="text-[11px] text-gray-400">Objetivos del Bloque {bloqueActivo} · sesiones {(bloqueActivo - 1) * SESIONES_POR_BLOQUE + 1}–{bloqueActivo * SESIONES_POR_BLOQUE}</p>
             </div>
-            <button onClick={() => setGestionarOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg">
-              <ListChecks className="w-3.5 h-3.5" /> Gestionar objetivos
-            </button>
+            {puedeGestionar && (
+              <button onClick={() => setGestionarOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg">
+                <ListChecks className="w-3.5 h-3.5" /> Gestionar objetivos
+              </button>
+            )}
           </div>
           {filas.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
@@ -645,9 +675,25 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                             </div>
                           </td>
                         )}
-                        <td className="px-2 py-2.5 text-[11px] text-gray-700 break-words">{e.descripcion}</td>
-                        <td className="px-2 py-2.5 text-[11px] text-gray-600 break-words">{e.actividad_ejemplo || '—'}</td>
-                        <td className="px-2 py-2.5 text-[11px] text-gray-600 break-words">{e.materiales || '—'}</td>
+                        <td className="px-2 py-2.5 text-[11px] text-gray-700 break-words">
+                          <div className="group/obj flex items-start justify-between gap-1">
+                            <span>{e.descripcion}</span>
+                            {puedeGestionar && (
+                              <button onClick={() => setConfirmQuitar(e)} title="Quitar objetivo de este bloque"
+                                className="opacity-0 group-hover/obj:opacity-100 transition-opacity p-0.5 text-gray-300 hover:text-red-500 flex-shrink-0">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar}
+                            placeholder={puedeGestionar ? 'Actividad / ejemplo…' : '—'} onSave={(t) => onActividad(e, t)} />
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar}
+                            placeholder={puedeGestionar ? 'Materiales…' : '—'} onSave={(t) => onMateriales(e, t)} />
+                        </td>
                         <td className="px-2 py-2.5">
                           <div className="flex items-center justify-center gap-1">
                             {resultados.map((r) => {
@@ -720,6 +766,13 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
         <ObjetivosBloqueModal bloque={bloqueActivo} generales={generales}
           onClose={() => setGestionarOpen(false)}
           onGuardar={(addIds, removeIds) => onGuardarObjetivos(bloqueActivo, addIds, removeIds)} />
+      )}
+
+      {confirmQuitar && (
+        <ConfirmModal titulo="Quitar objetivo del bloque"
+          mensaje={`¿Quitar "${confirmQuitar.descripcion}" de las sesiones ${(bloqueActivo - 1) * SESIONES_POR_BLOQUE + 1}–${bloqueActivo * SESIONES_POR_BLOQUE}? Se borrarán los registros (resultado, observaciones, actividad y materiales) de este objetivo en esas sesiones.`}
+          onCancel={() => setConfirmQuitar(null)}
+          onConfirm={() => { onGuardarObjetivos(bloqueActivo, [], [confirmQuitar.id]); setConfirmQuitar(null); }} />
       )}
     </div>
   );
@@ -861,10 +914,20 @@ const ObsCell = ({ value, disabled, placeholder, onSave }) => {
   const ajustarAlto = () => { const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; } };
   useEffect(() => { setV(value || ''); }, [value]);
   useEffect(() => { ajustarAlto(); }, [v]);
+  const dirty = (value || '') !== v;
+  const guardar = () => { if (dirty) onSave(v); };
   return (
-    <textarea ref={ref} value={v} disabled={disabled} placeholder={placeholder} rows={1}
-      onChange={(e) => setV(e.target.value)} onBlur={() => { if ((value || '') !== v) onSave(v); }}
-      className="w-full text-[11px] px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden leading-snug break-words" />
+    <div className="space-y-1">
+      <textarea ref={ref} value={v} disabled={disabled} placeholder={placeholder} rows={1}
+        onChange={(e) => setV(e.target.value)} onBlur={guardar}
+        className="w-full text-[11px] px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden leading-snug break-words" />
+      {dirty && !disabled && (
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={guardar}
+          className="flex items-center gap-1 text-[10px] font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-2 py-1 rounded-md">
+          <Check className="w-3 h-3" /> Guardar
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -920,17 +983,14 @@ const GeneralModal = ({ mode, data, areas, areasUsadas, frecuencias, onClose, on
 };
 
 const EspecificoModal = ({ mode, data, onClose, onSave }) => {
-  const [form, setForm] = useState({
-    descripcion: data.descripcion || '', actividad_ejemplo: data.actividad_ejemplo || '', materiales: data.materiales || '',
-  });
+  const [form, setForm] = useState({ descripcion: data.descripcion || '' });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   return (
     <Overlay onClose={onClose}>
       <Header title={mode === 'add' ? 'Nuevo objetivo específico' : 'Editar objetivo específico'} onClose={onClose} />
       <div className="p-5 space-y-3">
         <Field label="Objetivo específico" required><textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} rows={2} className="inp resize-none" placeholder="Ej. Sigue instrucciones de 1 paso" /></Field>
-        <Field label="Actividad / Ejemplo"><textarea value={form.actividad_ejemplo} onChange={(e) => set('actividad_ejemplo', e.target.value)} rows={2} className="inp resize-none" /></Field>
-        <Field label="Materiales"><input value={form.materiales} onChange={(e) => set('materiales', e.target.value)} className="inp" /></Field>
+        <p className="text-[11px] text-gray-400">La actividad y los materiales se definen por sesión en el tab "Sesiones".</p>
       </div>
       <Footer onClose={onClose} onSave={() => form.descripcion.trim() && onSave(form)} disabled={!form.descripcion.trim()} />
       <style>{`.inp{width:100%;padding:.55rem .75rem;border:2px solid #e5e7eb;border-radius:.6rem;font-size:.85rem;outline:none}.inp:focus{border-color:#7B1FA2}`}</style>
