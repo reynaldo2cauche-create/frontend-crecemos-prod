@@ -58,6 +58,7 @@ export const ListaPacientes = () => {
 const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
   useEffect(() => {
     const tieneFiltrosActivos = searchParams.distritoId || searchParams.estadoId ||
+                                searchParams.estadoServicioId ||
                                 searchParams.numeroDocumento || searchParams.nombreCompleto ||
                                 searchParams.servicioId || searchParams.terapeutaId; // ✅ AGREGADO
 
@@ -719,7 +720,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={ejecutarBusqueda}
-                disabled={searching || (!numeroDocumentoInput && !nombreCompletoInput && !filters.distritoId && !filters.estadoId && !(canViewServiceInfo(user) && filters.servicioId) && !filters.terapeutaId)}
+                disabled={searching || (!numeroDocumentoInput && !nombreCompletoInput && !filters.distritoId && !filters.estadoServicioId && !(canViewServiceInfo(user) && filters.servicioId) && !filters.terapeutaId)}
                 className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
               >
                 {searching ? (

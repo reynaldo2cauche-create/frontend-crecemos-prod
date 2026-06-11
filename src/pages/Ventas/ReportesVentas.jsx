@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -12,7 +13,8 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById } from '../../services/ventasService';
+import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById, getCitasHistorico } from '../../services/ventasService';
+import { getTrabajadores } from '../../services/trabajadorService';
 import DetalleVentaModal from '../../components/Ventas/DetalleVentaModal';
 import {
   exportarMetricas,
@@ -27,6 +29,7 @@ import {
 
 
 const ReportesVentas = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
@@ -51,7 +54,7 @@ const ReportesVentas = () => {
   const [ventasPorCategoria, setVentasPorCategoria] = useState([]);
   const [descuentos, setDescuentos] = useState([]);
   const [ingresosPorResponsable, setIngresosPorResponsable] = useState([]);
-  const [citasPorTerapeuta, setCitasPorTerapeuta] = useState([]);
+  const [citasHistorico, setCitasHistorico] = useState({ modo: 'mensual', periodos: [], filas: [] });
   const [ventasSinCita, setVentasSinCita] = useState([]);
   const [loadingSinCita, setLoadingSinCita] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
@@ -71,6 +74,21 @@ const ReportesVentas = () => {
     } finally {
       setCargandoDetalle(false);
     }
+  };
+
+  // Navega al editar-paciente; si la fila no trae el id, lo obtiene del detalle de la venta
+  const irAEditarPaciente = async (row) => {
+    let pid = row.paciente_id || row.pacienteId || row.id_paciente;
+    if (!pid && row.venta_id) {
+      try {
+        const venta = await getVentaServicioById(row.venta_id);
+        pid = venta?.paciente_id || venta?.paciente?.id;
+      } catch (e) {
+        console.error('No se pudo obtener el paciente de la venta:', e);
+      }
+    }
+    if (pid) window.open(`/editar-paciente/${pid}`, '_blank', 'noopener,noreferrer');
+    else alert('No se encontró el paciente de esta venta.');
   };
 
   const exportar = (key, fn) => {
@@ -153,10 +171,31 @@ const ReportesVentas = () => {
       console.log('👤 ingresosPorResponsable:', ingresos);
       setIngresosPorResponsable(ingresos);
 
-      // ✅ citasPorTerapeuta → cantidad de citas por terapeuta vs período anterior
-      const citasTerapeuta = data.citasPorTerapeuta || [];
-      console.log('🩺 citasPorTerapeuta:', citasTerapeuta);
-      setCitasPorTerapeuta(citasTerapeuta);
+      // ✅ citasHistorico → matriz de citas por terapeuta (6 meses o año vs año anterior)
+      try {
+        const historico = await getCitasHistorico({ fechaInicio, fechaFin });
+        console.log('📅 citasHistorico:', historico);
+        const base = historico || { modo: 'mensual', periodos: [], filas: [] };
+
+        // ✅ Filtrar solo terapeutas activas (estado 1/true en trabajadores)
+        let filas = base.filas || [];
+        try {
+          const trabajadores = await getTrabajadores();
+          const activosIds = new Set(
+            (trabajadores || [])
+              .filter(t => t.estado === 1 || t.estado === true)
+              .map(t => String(t.id))
+          );
+          filas = filas.filter(f => activosIds.has(String(f.terapeuta_id)));
+        } catch (e) {
+          console.error('No se pudo filtrar por terapeutas activas:', e);
+        }
+
+        setCitasHistorico({ ...base, filas });
+      } catch (e) {
+        console.error('Error al cargar histórico de citas:', e);
+        setCitasHistorico({ modo: 'mensual', periodos: [], filas: [] });
+      }
 
      const historialData = await getHistorialVentasExcel({ 
         fechaInicio,   // esto se mapea a "desde" dentro del service
@@ -464,42 +503,61 @@ const ReportesVentas = () => {
         </div>
       </div>
 
-  {/* Citas por terapeuta vs período anterior */}
+  {/* Citas por terapeuta — histórico (6 meses o año vs año anterior) */}
   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
         <CalendarIcon className="w-5 h-5 text-[#7B1FA2]" />
         Citas por terapeuta
-        <span className="text-xs font-normal text-gray-400">vs. período anterior</span>
+        <span className="text-xs font-normal text-gray-400">
+          {citasHistorico.modo === 'anual'
+            ? 'este año vs. año anterior'
+            : 'últimos 6 meses'}
+        </span>
       </h3>
+      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        Crec. = último período vs. el anterior
+      </span>
     </div>
-    {citasPorTerapeuta.length === 0 ? (
+    {citasHistorico.filas.length === 0 ? (
       <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
     ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 border-b border-gray-200">
-              <th className="py-2 pr-4 font-semibold">Terapeuta</th>
-              <th className="py-2 px-4 font-semibold text-right">Citas</th>
-              <th className="py-2 px-4 font-semibold text-right">Período anterior</th>
-              <th className="py-2 pl-4 font-semibold text-right">Variación</th>
+              <th className="py-2 pr-4 font-semibold sticky left-0 bg-white">Terapeuta</th>
+              {citasHistorico.periodos.map((p) => (
+                <th key={p.key} className="py-2 px-3 font-semibold text-right whitespace-nowrap">{p.label}</th>
+              ))}
+              <th className="py-2 pl-3 font-semibold text-right">Crec.</th>
             </tr>
           </thead>
           <tbody>
-            {citasPorTerapeuta.map((t, i) => {
-              const sube = t.variacion > 0;
-              const baja = t.variacion < 0;
+            {citasHistorico.filas.map((t) => {
+              const sube = t.crecimiento > 0;
+              const baja = t.crecimiento < 0;
               const color = sube ? 'text-green-600' : baja ? 'text-red-600' : 'text-gray-400';
               const bg = sube ? 'bg-green-50' : baja ? 'bg-red-50' : 'bg-gray-50';
+              const ultimoKey = citasHistorico.periodos[citasHistorico.periodos.length - 1]?.key;
               return (
-                <tr key={i} className="border-b border-gray-100 last:border-0">
-                  <td className="py-2.5 pr-4 font-medium text-gray-800">{t.nombre}</td>
-                  <td className="py-2.5 px-4 text-right font-semibold text-gray-900">{t.citas}</td>
-                  <td className="py-2.5 px-4 text-right text-gray-500">{t.citasAnterior}</td>
-                  <td className="py-2.5 pl-4 text-right">
+                <tr key={t.terapeuta_id} className="border-b border-gray-100 last:border-0">
+                  <td className="py-2.5 pr-4 font-medium text-gray-800 sticky left-0 bg-white">{t.nombre}</td>
+                  {citasHistorico.periodos.map((p) => {
+                    const esUltimo = p.key === ultimoKey;
+                    const valor = t.valores?.[p.key] ?? 0;
+                    return (
+                      <td
+                        key={p.key}
+                        className={`py-2.5 px-3 text-right ${esUltimo ? 'font-semibold text-gray-900' : 'text-gray-500'}`}
+                      >
+                        {valor}
+                      </td>
+                    );
+                  })}
+                  <td className="py-2.5 pl-3 text-right">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${bg} ${color}`}>
-                      {sube ? '▲' : baja ? '▼' : '—'} {t.variacion > 0 ? '+' : ''}{t.variacion}%
+                      {sube ? '▲' : baja ? '▼' : '—'} {t.crecimiento > 0 ? '+' : ''}{t.crecimiento}%
                     </span>
                   </td>
                 </tr>
@@ -600,7 +658,17 @@ const ReportesVentas = () => {
                         </button>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-sm font-medium text-gray-900">{row.paciente || '—'}</td>
+                    <td className="px-4 py-2.5 text-sm font-medium text-gray-900">
+                      {row.paciente ? (
+                        <button
+                          onClick={() => irAEditarPaciente(row)}
+                          disabled={cargandoDetalle}
+                          className="text-[#7B1FA2] hover:underline hover:text-[#6A1B9A] disabled:opacity-50 transition-colors text-left"
+                        >
+                          {row.paciente}
+                        </button>
+                      ) : '—'}
+                    </td>
                     <td className="px-4 py-2.5 text-sm text-gray-600">{row.descripcion_linea || row.motivo_cita || '—'}</td>
                     <td className="px-4 py-2.5 text-center">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">

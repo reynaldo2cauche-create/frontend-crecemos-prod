@@ -212,6 +212,16 @@ export const getReportes = (filtros = {}) =>
 export const getVentasSinCita = () =>
   api.get('/ventas/reportes/sin-cita').then(r => r.data);
 
+/**
+ * Histórico de citas por terapeuta (matriz multi-período).
+ * Si el rango es mensual → 6 meses terminando en el mes filtrado.
+ * Si el rango es anual → el año filtrado y el año anterior.
+ * @param {Object} filtros - { fechaInicio: string, fechaFin: string }
+ * @returns {Promise<{modo: 'mensual'|'anual', periodos: Array<{key,label}>, filas: Array}>}
+ */
+export const getCitasHistorico = ({ fechaInicio, fechaFin }) =>
+  api.get('/ventas/reportes/citas-historico', { params: { fechaInicio, fechaFin } }).then(r => r.data);
+
 
 export const getHistorialVentasExcel = ({ fechaInicio, fechaFin, tipo }) =>
   api.get('/ventas/servicios/historial', { 

@@ -67,7 +67,7 @@ export default function NavBar() {
           
           {/* Logo */}
           <Link to="/" className="logo d-flex align-items-center me-auto me-xl-0">
-            <img src="/synap-logo.png" alt="Synap Logo" />
+            <img src="/logo-text-short.png" alt="Crecemos Logo" />
           </Link>
 
           {/* Menú de Navegación */}
