@@ -6,6 +6,36 @@ import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 const PAQUETES_POR_PAGINA = 5;
 
+// Agrupa los paquetes por venta_id y los ordena por fecha de pago: la venta MÁS RECIENTE primero.
+const agruparPorVenta = (paquetes) => {
+  const ventasMap = {};
+  const sinVentaArr = [];
+
+  (paquetes || []).forEach(paquete => {
+    if (!paquete.venta_id) { sinVentaArr.push(paquete); return; }
+    const key = paquete.venta_id;
+    if (!ventasMap[key]) ventasMap[key] = { venta_id: key, paquetes: [] };
+    ventasMap[key].paquetes.push(paquete);
+  });
+
+  const ventas = Object.values(ventasMap);
+
+  ventas.sort((a, b) => {
+    const fechaA = a.paquetes.flatMap(p => p.citas).find(c => c.fecha_pago)?.fecha_pago;
+    const fechaB = b.paquetes.flatMap(p => p.citas).find(c => c.fecha_pago)?.fecha_pago;
+    if (!fechaA && !fechaB) return 0;
+    if (!fechaA) return 1;
+    if (!fechaB) return -1;
+    return new Date(fechaB).getTime() - new Date(fechaA).getTime();
+  });
+
+  if (sinVentaArr.length > 0) {
+    ventas.push({ venta_id: null, esGrupoSinVenta: true, paquetes: sinVentaArr });
+  }
+
+  return ventas;
+};
+
 const ListadoCitasPorServicio = ({ pacienteId, pacienteNombre }) => {
   const [listado, setListado] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,8 +75,10 @@ useEffect(() => {
       setListado(data);
       
       if (data?.servicios?.length > 0 && data.servicios[0]?.paquetes?.length > 0) {
-        const primerPaqueteId = data.servicios[0].paquetes[0].paquete_id;
-        setPaquetesAbiertos({ [primerPaqueteId]: true });
+        // Abrir por defecto la venta más reciente
+        const ventas = agruparPorVenta(data.servicios[0].paquetes);
+        const reciente = ventas[0];
+        if (reciente) setPaquetesAbiertos({ [reciente.venta_id ?? 'sin-venta']: true });
       }
     } catch (err) {
       if (!isMounted) return;
@@ -70,10 +102,11 @@ useEffect(() => {
   useEffect(() => {
     if (!listado) return;
     setPaginaActual(1);
-    const primerPaquete = listado.servicios[servicioSeleccionado]?.paquetes?.[0];
-    if (primerPaquete) {
-      const primeraVentaKey = primerPaquete.venta_id ?? 'sin-venta';
-      setPaquetesAbiertos({ [primeraVentaKey]: true });
+    // Abrir por defecto la venta más reciente del servicio seleccionado
+    const ventas = agruparPorVenta(listado.servicios[servicioSeleccionado]?.paquetes || []);
+    const reciente = ventas[0];
+    if (reciente) {
+      setPaquetesAbiertos({ [reciente.venta_id ?? 'sin-venta']: true });
     }
   }, [servicioSeleccionado, listado]);
 
@@ -183,41 +216,6 @@ useEffect(() => {
   );
 
   const servicioActual = listado.servicios[servicioSeleccionado];
-
-  // Agrupar todos los paquetes por venta_id
-const agruparPorVenta = (paquetes) => {
-  const ventasMap = {};
-  const sinVentaArr = [];
-
-  paquetes.forEach(paquete => {
-    if (!paquete.venta_id) {
-      sinVentaArr.push(paquete);
-      return;
-    }
-    const key = paquete.venta_id;
-    if (!ventasMap[key]) {
-      ventasMap[key] = { venta_id: key, paquetes: [] };
-    }
-    ventasMap[key].paquetes.push(paquete);
-  });
-
-  const ventas = Object.values(ventasMap);
-
-  ventas.sort((a, b) => {
-    const fechaA = a.paquetes.flatMap(p => p.citas).find(c => c.fecha_pago)?.fecha_pago;
-    const fechaB = b.paquetes.flatMap(p => p.citas).find(c => c.fecha_pago)?.fecha_pago;
-    if (!fechaA && !fechaB) return 0;
-    if (!fechaA) return 1;
-    if (!fechaB) return -1;
-    return new Date(fechaB).getTime() - new Date(fechaA).getTime();
-  });
-
-  if (sinVentaArr.length > 0) {
-    ventas.push({ venta_id: null, esGrupoSinVenta: true, paquetes: sinVentaArr });
-  }
-
-  return ventas;
-};
 
   const ventasAgrupadas = agruparPorVenta(servicioActual.paquetes);
 

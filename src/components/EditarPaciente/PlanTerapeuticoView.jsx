@@ -11,6 +11,7 @@ import {
   crearEspecifico, editarEspecifico, eliminarEspecifico, guardarRegistro,
   asignarObjetivoBloque, desasignarObjetivoBloque,
 } from '../../services/planTerapeuticoService';
+import { isAdministrador } from '../../constants/roles';
 
 const SESIONES_POR_BLOQUE = 4;
 const bloqueDeSesion = (n) => Math.floor((Number(n) - 1) / SESIONES_POR_BLOQUE) + 1;
@@ -150,6 +151,9 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
   const maxEsp = plan?.limites?.max_especificos ?? 3;
   // En Terapia de Lenguaje solo jefa/admin gestionan objetivos, actividades y materiales.
   const puedeGestionar = plan?.permisos?.gestionar_objetivos ?? true;
+  // Solo el administrador puede re-editar un registro ya colocado; las terapeutas (jefa o
+  // subordinada) registran una vez por sesión y luego queda bloqueado.
+  const esAdmin = isAdministrador(user);
   const servicioSel = servicios.find((s) => s.servicio_id === servicioId) || null;
   const sesionSel = useMemo(() => sesiones.find((s) => s.numero_sesion === sesionActiva) || null, [sesiones, sesionActiva]);
 
@@ -270,7 +274,7 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
         <TabSesiones
           plan={plan} generales={generales} sesiones={sesiones} resultados={resultados}
           sesionActiva={sesionActiva} setSesionActiva={setSesionActiva} sesionSel={sesionSel}
-          puedeGestionar={puedeGestionar}
+          puedeGestionar={puedeGestionar} esAdmin={esAdmin}
           onResultado={handleResultado} onObs={handleObs}
           onActividad={handleActividad} onMateriales={handleMateriales}
           onGuardarObjetivos={handleGuardarObjetivosBloque}
@@ -493,7 +497,7 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, onEditGeneral, onDelete
 // ════════════════════════════════════════════════════════════════════
 // TAB · SESIONES
 // ════════════════════════════════════════════════════════════════════
-const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos }) => {
+const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, esAdmin, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos }) => {
   const bloqueActivo = bloqueDeSesion(sesionActiva);
 
   // Todos los específicos del plan (con su área).
@@ -665,6 +669,11 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                   return grupo.items.map((e, i) => {
                     const reg = e.registros?.[sesionActiva] || {};
                     const ultimo = i === grupo.items.length - 1;
+                    // Una vez colocado un valor, solo el administrador puede re-editarlo.
+                    const resultadoBloqueado  = !esAdmin && !!reg.resultado_codigo;
+                    const actividadBloqueada  = !esAdmin && !!(reg.actividad && String(reg.actividad).trim());
+                    const materialesBloqueados = !esAdmin && !!(reg.materiales && String(reg.materiales).trim());
+                    const obsBloqueada        = !esAdmin && !!(reg.observaciones && String(reg.observaciones).trim());
                     return (
                       <tr key={e.id} className={`align-top ${ultimo ? 'border-b border-gray-100' : ''}`}>
                         {i === 0 && (
@@ -687,11 +696,11 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                           </div>
                         </td>
                         <td className="px-2 py-2.5">
-                          <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar}
+                          <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar || actividadBloqueada}
                             placeholder={puedeGestionar ? 'Actividad / ejemplo…' : '—'} onSave={(t) => onActividad(e, t)} />
                         </td>
                         <td className="px-2 py-2.5">
-                          <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar}
+                          <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar || materialesBloqueados}
                             placeholder={puedeGestionar ? 'Materiales…' : '—'} onSave={(t) => onMateriales(e, t)} />
                         </td>
                         <td className="px-2 py-2.5">
@@ -700,8 +709,8 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                               const sel = reg.resultado_codigo === r.codigo;
                               const cc = COLOR_RES[r.color] || COLOR_RES.amber;
                               return (
-                                <button key={r.codigo} disabled={!editable} onClick={() => onResultado(e, r.codigo)} title={r.nombre}
-                                  className={`text-[10px] font-semibold px-2 py-1 rounded-md border whitespace-nowrap transition-all ${sel ? cc.solid : `bg-white ${cc.soft}`} ${!editable ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <button key={r.codigo} disabled={!editable || resultadoBloqueado} onClick={() => onResultado(e, r.codigo)} title={r.nombre}
+                                  className={`text-[10px] font-semibold px-2 py-1 rounded-md border whitespace-nowrap transition-all ${sel ? cc.solid : `bg-white ${cc.soft}`} ${(!editable || resultadoBloqueado) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                   {r.nombre}
                                 </button>
                               );
@@ -709,7 +718,7 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                           </div>
                         </td>
                         <td className="px-2 py-2.5">
-                          <ObsCell value={reg.observaciones || ''} disabled={!editable}
+                          <ObsCell value={reg.observaciones || ''} disabled={!editable || obsBloqueada}
                             placeholder="Observaciones…" onSave={(t) => onObs(e, t)} />
                         </td>
                       </tr>
