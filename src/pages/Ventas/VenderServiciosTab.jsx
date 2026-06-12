@@ -197,6 +197,7 @@ const VenderServiciosTab = ({
   const [alertaAbierta, setAlertaAbierta] = useState(false);
   const [mensajeAlerta, setMensajeAlerta] = useState('');
   const [tituloAlerta, setTituloAlerta] = useState('');
+  const [mostrarModalSusii, setMostrarModalSusii] = useState(false);
 
   const searchRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1361,7 +1362,12 @@ const VenderServiciosTab = ({
                 <div key={pago.uid} className="flex items-center gap-2">
                   <select
                     value={pago.modalidad_pago_id}
-                    onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, modalidad_pago_id: e.target.value } : p))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, modalidad_pago_id: val } : p));
+                      const m = modalidadesPago.find(m => String(m.id) === String(val));
+                      if (m && /tarjeta/i.test(m.nombre)) setMostrarModalSusii(true);
+                    }}
                     disabled={!!ventaGuardada}
                     className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100">
                     <option value="">Seleccionar método...</option>
@@ -1599,6 +1605,37 @@ const VenderServiciosTab = ({
           </div>
         </div>
       )}
+      {/* Modal informativo: recordatorio SUSII (pago con tarjeta) */}
+      {mostrarModalSusii && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 px-5 py-4 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Recordatorio</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                No se olvide de registrar la boleta o factura en <span className="font-semibold">SUSII</span>.
+              </p>
+            </div>
+            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setMostrarModalSusii(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-semibold text-sm transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {mostrarModalImpresion && ventaGuardada && (
         <PrintPreviewModal venta={ventaGuardada} tipo="servicio" onClose={() => setMostrarModalImpresion(false)} />
       )}
