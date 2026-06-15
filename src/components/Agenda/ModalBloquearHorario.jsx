@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Clock, Calendar, User, AlertCircle, Ban } from 'lucide-react';
+import { X, Clock, Calendar, User, AlertCircle, Ban, Plus } from 'lucide-react';
 import { crearBloqueo } from '../../services/bloqueoService';
 import { getTipoBloqueo } from '../../services/catalogoService';
 
 const DIAS_SEMANA = [
-  { value: 0, label: 'Domingo' },
-  { value: 1, label: 'Lunes' },
-  { value: 2, label: 'Martes' },
-  { value: 3, label: 'Miércoles' },
-  { value: 4, label: 'Jueves' },
-  { value: 5, label: 'Viernes' },
-  { value: 6, label: 'Sábado' },
+  { value: 1, label: 'Lunes', corto: 'Lun' },
+  { value: 2, label: 'Martes', corto: 'Mar' },
+  { value: 3, label: 'Miércoles', corto: 'Mié' },
+  { value: 4, label: 'Jueves', corto: 'Jue' },
+  { value: 5, label: 'Viernes', corto: 'Vie' },
+  { value: 6, label: 'Sábado', corto: 'Sáb' },
+  { value: 0, label: 'Domingo', corto: 'Dom' },
 ];
+
+const fmtFechaCorta = (f) => {
+  if (!f) return '';
+  const d = new Date(`${f}T00:00:00`);
+  return isNaN(d) ? f : d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
 
 const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, userId }) => {
   const [loading, setLoading] = useState(false);
@@ -20,9 +26,11 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
   const [formData, setFormData] = useState({
     trabajadorId: '',
     tipoBloqueoId: '',
-    fechaInicio: '',
-    fechaFin: '',
-    diaSemana: '',
+    fechaInicio: '',          // rango (RECURRENTE) — desde
+    fechaFin: '',             // rango (RECURRENTE) — hasta
+    fechaPuntualTemp: '',     // input temporal para agregar fechas puntuales
+    fechasPuntuales: [],      // PUNTUAL — varias fechas sueltas
+    diasSemana: [],           // RECURRENTE — varios días de la semana
     todoElDia: true,
     horaInicio: '08:00',
     horaFin: '18:00',
@@ -56,7 +64,9 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
       tipoBloqueoId: '',
       fechaInicio: '',
       fechaFin: '',
-      diaSemana: '',
+      fechaPuntualTemp: '',
+      fechasPuntuales: [],
+      diasSemana: [],
       todoElDia: true,
       horaInicio: '08:00',
       horaFin: '18:00',
@@ -67,21 +77,8 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
 
   const handleChange = (field, value) => {
     if (field === 'tipoBloqueoId') {
-      const tipo = tiposBloqueo.find(t => t.id === parseInt(value));
-      if (tipo?.codigo === 'PUNTUAL') {
-        setFormData(prev => ({ ...prev, tipoBloqueoId: value, fechaFin: prev.fechaInicio, diaSemana: '' }));
-      } else if (tipo?.codigo === 'RECURRENTE') {
-        setFormData(prev => ({ ...prev, tipoBloqueoId: value, diaSemana: '' }));
-      } else {
-        setFormData(prev => ({ ...prev, [field]: value }));
-      }
-    } else if (field === 'fechaInicio') {
-      const tipo = tiposBloqueo.find(t => t.id === parseInt(formData.tipoBloqueoId));
-      if (tipo?.codigo === 'PUNTUAL') {
-        setFormData(prev => ({ ...prev, fechaInicio: value, fechaFin: value }));
-      } else {
-        setFormData(prev => ({ ...prev, [field]: value }));
-      }
+      // Al cambiar de tipo, limpiar las selecciones específicas del tipo anterior.
+      setFormData(prev => ({ ...prev, tipoBloqueoId: value, diasSemana: [], fechasPuntuales: [], fechaPuntualTemp: '' }));
     } else if (field === 'todoElDia' && value === true) {
       setFormData(prev => ({ ...prev, todoElDia: true, horaInicio: '', horaFin: '' }));
     } else {
@@ -93,17 +90,43 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
     }
   };
 
-  const validate = () => {
+  // Multi-selección de días de la semana (RECURRENTE)
+  const toggleDia = (diaValue) => {
+    setFormData(prev => {
+      const existe = prev.diasSemana.includes(diaValue);
+      return { ...prev, diasSemana: existe ? prev.diasSemana.filter(d => d !== diaValue) : [...prev.diasSemana, diaValue] };
+    });
+    if (errors.diasSemana) setErrors(prev => ({ ...prev, diasSemana: null }));
+  };
+
+  // Agregar / quitar fechas puntuales (PUNTUAL)
+  const agregarFechaPuntual = () => {
+    const f = formData.fechaPuntualTemp;
+    if (!f) return;
+    setFormData(prev => prev.fechasPuntuales.includes(f)
+      ? { ...prev, fechaPuntualTemp: '' }
+      : { ...prev, fechasPuntuales: [...prev.fechasPuntuales, f].sort(), fechaPuntualTemp: '' });
+    if (errors.fechasPuntuales) setErrors(prev => ({ ...prev, fechasPuntuales: null }));
+  };
+  const quitarFechaPuntual = (f) => {
+    setFormData(prev => ({ ...prev, fechasPuntuales: prev.fechasPuntuales.filter(x => x !== f) }));
+  };
+
+  const validate = (esPuntual, esRecurrente) => {
     const newErrors = {};
     if (!formData.trabajadorId) newErrors.trabajadorId = 'Seleccione un terapeuta';
     if (!formData.tipoBloqueoId) newErrors.tipoBloqueoId = 'Seleccione un tipo de bloqueo';
-    if (!formData.fechaInicio) newErrors.fechaInicio = 'Ingrese fecha de inicio';
-    if (!formData.fechaFin) newErrors.fechaFin = 'Ingrese fecha de fin';
     if (!formData.motivo.trim()) newErrors.motivo = 'Ingrese un motivo';
 
-    const tipo = tiposBloqueo.find(t => t.id === parseInt(formData.tipoBloqueoId));
-    if (tipo?.codigo === 'RECURRENTE' && !formData.diaSemana && formData.diaSemana !== 0) {
-      newErrors.diaSemana = 'Seleccione el día de la semana';
+    if (esPuntual) {
+      if (formData.fechasPuntuales.length === 0) newErrors.fechasPuntuales = 'Agregue al menos una fecha';
+    } else if (esRecurrente) {
+      if (!formData.fechaInicio) newErrors.fechaInicio = 'Ingrese fecha de inicio';
+      if (!formData.fechaFin) newErrors.fechaFin = 'Ingrese fecha de fin';
+      if (formData.fechaInicio && formData.fechaFin && formData.fechaFin < formData.fechaInicio) {
+        newErrors.fechaFin = 'La fecha de fin debe ser mayor o igual a la de inicio';
+      }
+      if (formData.diasSemana.length === 0) newErrors.diasSemana = 'Seleccione al menos un día de la semana';
     }
 
     if (!formData.todoElDia) {
@@ -114,36 +137,54 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
       }
     }
 
-    if (formData.fechaInicio && formData.fechaFin && formData.fechaFin < formData.fechaInicio) {
-      newErrors.fechaFin = 'La fecha de fin debe ser mayor o igual a la de inicio';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!validate()) return;
+    const tipo = tiposBloqueo.find(t => t.id === parseInt(formData.tipoBloqueoId));
+    const esPuntual = tipo?.codigo === 'PUNTUAL';
+    const esRecurrente = tipo?.codigo === 'RECURRENTE';
+    if (!validate(esPuntual, esRecurrente)) return;
+
+    // Base común a todos los bloqueos que se crearán en este submit.
+    const base = {
+      trabajadorId: parseInt(formData.trabajadorId),
+      tipoBloqueoId: parseInt(formData.tipoBloqueoId),
+      todoElDia: formData.todoElDia,
+      horaInicio: formData.todoElDia ? null : `${formData.horaInicio}:00`,
+      horaFin: formData.todoElDia ? null : `${formData.horaFin}:00`,
+      motivo: formData.motivo,
+      userIdCrea: userId,
+    };
+
+    // Construir un bloqueo por cada fecha (PUNTUAL) o por cada día de la semana (RECURRENTE).
+    let bloqueos = [];
+    if (esPuntual) {
+      bloqueos = formData.fechasPuntuales.map(f => ({ ...base, fechaInicio: f, fechaFin: f, diaSemana: null }));
+    } else if (esRecurrente) {
+      bloqueos = formData.diasSemana.map(d => ({ ...base, fechaInicio: formData.fechaInicio, fechaFin: formData.fechaFin, diaSemana: d }));
+    } else {
+      // Otros tipos (rango simple): un único bloqueo.
+      bloqueos = [{ ...base, fechaInicio: formData.fechaInicio, fechaFin: formData.fechaFin, diaSemana: null }];
+    }
+
     setLoading(true);
     try {
-      const bloqueoData = {
-        trabajadorId: parseInt(formData.trabajadorId),
-        tipoBloqueoId: parseInt(formData.tipoBloqueoId),
-        fechaInicio: formData.fechaInicio,
-        fechaFin: formData.fechaFin,
-        diaSemana: formData.diaSemana !== '' ? parseInt(formData.diaSemana) : null,
-        todoElDia: formData.todoElDia,
-        horaInicio: formData.todoElDia ? null : `${formData.horaInicio}:00`,
-        horaFin: formData.todoElDia ? null : `${formData.horaFin}:00`,
-        motivo: formData.motivo,
-        userIdCrea: userId,
-      };
-      await crearBloqueo(bloqueoData);
-      onBloqueoCreado();
-      onClose();
+      const resultados = await Promise.allSettled(bloqueos.map(b => crearBloqueo(b)));
+      const fallidos = resultados.filter(r => r.status === 'rejected').length;
+      const creados = resultados.length - fallidos;
+
+      if (fallidos > 0) {
+        alert(`Se crearon ${creados} de ${resultados.length} bloqueos. ${fallidos} fallaron, intenta nuevamente con los que faltan.`);
+      }
+      if (creados > 0) {
+        onBloqueoCreado();
+        onClose();
+      }
     } catch (error) {
-      console.error('Error al crear bloqueo:', error);
-      alert('Error al crear el bloqueo. Por favor intente nuevamente.');
+      console.error('Error al crear bloqueos:', error);
+      alert('Error al crear los bloqueos. Por favor intente nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -191,7 +232,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800">
                 <p className="font-semibold mb-1">Importante:</p>
-                <p>Los horarios bloqueados no estarán disponibles para agendar citas. El motivo es obligatorio para auditoría.</p>
+                <p>Puedes bloquear varios días a la vez. El motivo es obligatorio para auditoría.</p>
               </div>
             </div>
 
@@ -251,26 +292,69 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
               {errors.tipoBloqueoId && <p className="text-xs text-red-500 mt-1">{errors.tipoBloqueoId}</p>}
             </div>
 
-            {/* Fechas */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* PUNTUAL: varias fechas sueltas */}
+            {esPuntual && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-red-600" />
-                  {esPuntual ? 'Fecha' : 'Desde'}
+                  Fechas a bloquear
                   <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
-                  value={formData.fechaInicio}
-                  onChange={(e) => handleChange('fechaInicio', e.target.value)}
-                  className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
-                    errors.fechaInicio ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                  }`}
-                />
-                {errors.fechaInicio && <p className="text-xs text-red-500 mt-1">{errors.fechaInicio}</p>}
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={formData.fechaPuntualTemp}
+                    onChange={(e) => handleChange('fechaPuntualTemp', e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarFechaPuntual(); } }}
+                    className={`flex-1 px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.fechasPuntuales ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={agregarFechaPuntual}
+                    disabled={!formData.fechaPuntualTemp}
+                    className="px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Agregar
+                  </button>
+                </div>
+                {formData.fechasPuntuales.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {formData.fechasPuntuales.map(f => (
+                      <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-lg">
+                        {fmtFechaCorta(f)}
+                        <button type="button" onClick={() => quitarFechaPuntual(f)} className="hover:text-red-900">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {errors.fechasPuntuales && <p className="text-xs text-red-500 mt-1">{errors.fechasPuntuales}</p>}
+                <p className="text-[11px] text-gray-400 mt-2">Agrega todas las fechas que quieras; se crea un bloqueo por cada una.</p>
               </div>
+            )}
 
-              {!esPuntual && (
+            {/* RECURRENTE: rango de fechas */}
+            {esRecurrente && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-red-600" />
+                    Desde
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.fechaInicio}
+                    onChange={(e) => handleChange('fechaInicio', e.target.value)}
+                    className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                      errors.fechaInicio ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
+                    }`}
+                  />
+                  {errors.fechaInicio && <p className="text-xs text-red-500 mt-1">{errors.fechaInicio}</p>}
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-red-600" />
@@ -287,29 +371,35 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                   />
                   {errors.fechaFin && <p className="text-xs text-red-500 mt-1">{errors.fechaFin}</p>}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Día de la Semana (solo para recurrentes) */}
+            {/* RECURRENTE: varios días de la semana */}
             {esRecurrente && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Día de la Semana
+                  Días de la Semana
                   <span className="text-red-500 ml-1">*</span>
                 </label>
-                <select
-                  value={formData.diaSemana}
-                  onChange={(e) => handleChange('diaSemana', e.target.value)}
-                  className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
-                    errors.diaSemana ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                  }`}
-                >
-                  <option value="">Seleccione un día</option>
-                  {DIAS_SEMANA.map(dia => (
-                    <option key={dia.value} value={dia.value}>{dia.label}</option>
-                  ))}
-                </select>
-                {errors.diaSemana && <p className="text-xs text-red-500 mt-1">{errors.diaSemana}</p>}
+                <div className="flex flex-wrap gap-2">
+                  {DIAS_SEMANA.map(dia => {
+                    const sel = formData.diasSemana.includes(dia.value);
+                    return (
+                      <button
+                        key={dia.value}
+                        type="button"
+                        onClick={() => toggleDia(dia.value)}
+                        className={`px-3.5 py-2 text-sm font-semibold rounded-xl border-2 transition-all ${
+                          sel ? 'border-red-600 bg-red-600 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        {dia.corto}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.diasSemana && <p className="text-xs text-red-500 mt-1">{errors.diasSemana}</p>}
+                <p className="text-[11px] text-gray-400 mt-2">Selecciona uno o varios días (ej: Lunes y Sábado); el bloqueo se repite cada semana dentro del rango.</p>
               </div>
             )}
 

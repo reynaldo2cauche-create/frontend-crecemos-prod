@@ -80,6 +80,13 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
       );
     }
 
+    // Ordenar del más reciente primero (por fecha de creación; desempate por id).
+    filtered.sort((a, b) => {
+      const fa = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const fb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return fb - fa || (b.id - a.id);
+    });
+
     setFilteredBloqueos(filtered);
     setPage(0); // Reset página cuando cambian los filtros
   };
