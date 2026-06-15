@@ -9,12 +9,11 @@ import {
   getServiciosPlan, getAreasServicio, getPlan, actualizarPlan,
   crearGeneral, editarGeneral, eliminarGeneral,
   crearEspecifico, editarEspecifico, eliminarEspecifico, guardarRegistro,
-  asignarObjetivoBloque, desasignarObjetivoBloque,
+  asignarObjetivoSesion, desasignarObjetivoSesion,
 } from '../../services/planTerapeuticoService';
 import { isAdministrador } from '../../constants/roles';
 
-const SESIONES_POR_BLOQUE = 4;
-const bloqueDeSesion = (n) => Math.floor((Number(n) - 1) / SESIONES_POR_BLOQUE) + 1;
+const SESIONES_POR_BLOQUE = 4; // los bloques de 4 sesiones se usan solo para agrupar la línea de tiempo
 
 const ESTADO_SESION = {
   REALIZADA:   { Icon: CheckCircle2, color: 'text-emerald-500', sub: null, label: 'Realizada' },
@@ -212,15 +211,15 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
   const handleActividad = (esp, actividad) => guardarCampoRegistro(esp, { actividad }, 'No se pudo guardar la actividad');
   const handleMateriales = (esp, materiales) => guardarCampoRegistro(esp, { materiales }, 'No se pudieron guardar los materiales');
 
-  // ── Guardar (asignar/quitar) objetivos de un bloque, en lote ──
-  const handleGuardarObjetivosBloque = async (numeroBloque, addIds, removeIds) => {
+  // ── Guardar (asignar/quitar) objetivos de una sesión, en lote ──
+  const handleGuardarObjetivosSesion = async (numeroSesion, addIds, removeIds) => {
     try {
       await Promise.all([
-        ...addIds.map((id) => asignarObjetivoBloque({ objetivo_especifico_id: id, numero_bloque: numeroBloque })),
-        ...removeIds.map((id) => desasignarObjetivoBloque(id, numeroBloque)),
+        ...addIds.map((id) => asignarObjetivoSesion({ objetivo_especifico_id: id, numero_sesion: numeroSesion })),
+        ...removeIds.map((id) => desasignarObjetivoSesion(id, numeroSesion)),
       ]);
       await recargarPlan();
-      if (addIds.length || removeIds.length) toast('success', 'Objetivos del bloque actualizados');
+      if (addIds.length || removeIds.length) toast('success', 'Objetivos de la sesión actualizados');
     } catch (e) { toast('error', e.response?.data?.message || 'No se pudieron actualizar los objetivos'); }
   };
 
@@ -277,7 +276,7 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
           puedeGestionar={puedeGestionar} esAdmin={esAdmin}
           onResultado={handleResultado} onObs={handleObs}
           onActividad={handleActividad} onMateriales={handleMateriales}
-          onGuardarObjetivos={handleGuardarObjetivosBloque}
+          onGuardarObjetivos={handleGuardarObjetivosSesion}
         />
       )}
 
@@ -498,17 +497,15 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, onEditGeneral, onDelete
 // TAB · SESIONES
 // ════════════════════════════════════════════════════════════════════
 const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, esAdmin, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos }) => {
-  const bloqueActivo = bloqueDeSesion(sesionActiva);
-
   // Todos los específicos del plan (con su área).
   const filasTodas = useMemo(
     () => generales.flatMap((g) => (g.especificos || []).map((e) => ({ ...e, area_nombre: g.area_nombre }))),
     [generales],
   );
-  // Objetivos asignados al bloque activo (los que se trabajan en estas 4 sesiones).
+  // Objetivos asignados a la sesión activa (cada sesión elige sus propios objetivos).
   const filas = useMemo(
-    () => filasTodas.filter((e) => (e.bloques_asignados || []).includes(bloqueActivo)),
-    [filasTodas, bloqueActivo],
+    () => filasTodas.filter((e) => (e.sesiones_asignadas || []).includes(sesionActiva)),
+    [filasTodas, sesionActiva],
   );
   const totalEspecificos = filasTodas.length;
   // Agrupar las filas por área (objetivo general) para unir la celda de "Área de trabajo".
@@ -635,7 +632,7 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
             <div>
               <h4 className="text-sm font-bold text-gray-800">Registro de la sesión</h4>
-              <p className="text-[11px] text-gray-400">Objetivos del Bloque {bloqueActivo} · sesiones {(bloqueActivo - 1) * SESIONES_POR_BLOQUE + 1}–{bloqueActivo * SESIONES_POR_BLOQUE}</p>
+              <p className="text-[11px] text-gray-400">Objetivos de la Sesión {sesionActiva}</p>
             </div>
             {puedeGestionar && (
               <button onClick={() => setGestionarOpen(true)}
@@ -648,7 +645,7 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
             <p className="text-sm text-gray-400 text-center py-8">
               {totalEspecificos === 0
                 ? 'Define objetivos en el tab "Plan de tratamiento" para poder asignarlos aquí.'
-                : `Este bloque aún no tiene objetivos. Usa "Gestionar objetivos" para elegir cuáles trabajar en las sesiones ${(bloqueActivo - 1) * SESIONES_POR_BLOQUE + 1}–${bloqueActivo * SESIONES_POR_BLOQUE}.`}
+                : `Esta sesión aún no tiene objetivos. Usa "Gestionar objetivos" para elegir cuáles trabajar en la Sesión ${sesionActiva}.`}
             </p>
           ) : (
             <table className="w-full text-sm table-fixed">
@@ -696,11 +693,11 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                           </div>
                         </td>
                         <td className="px-2 py-2.5">
-                          <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar || actividadBloqueada}
+                          <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar} locked={actividadBloqueada}
                             placeholder={puedeGestionar ? 'Actividad / ejemplo…' : '—'} onSave={(t) => onActividad(e, t)} />
                         </td>
                         <td className="px-2 py-2.5">
-                          <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar || materialesBloqueados}
+                          <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar} locked={materialesBloqueados}
                             placeholder={puedeGestionar ? 'Materiales…' : '—'} onSave={(t) => onMateriales(e, t)} />
                         </td>
                         <td className="px-2 py-2.5">
@@ -772,35 +769,32 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
       </div>
 
       {gestionarOpen && (
-        <ObjetivosBloqueModal bloque={bloqueActivo} generales={generales}
+        <ObjetivosSesionModal sesion={sesionActiva} generales={generales}
           onClose={() => setGestionarOpen(false)}
-          onGuardar={(addIds, removeIds) => onGuardarObjetivos(bloqueActivo, addIds, removeIds)} />
+          onGuardar={(addIds, removeIds) => onGuardarObjetivos(sesionActiva, addIds, removeIds)} />
       )}
 
       {confirmQuitar && (
-        <ConfirmModal titulo="Quitar objetivo del bloque"
-          mensaje={`¿Quitar "${confirmQuitar.descripcion}" de las sesiones ${(bloqueActivo - 1) * SESIONES_POR_BLOQUE + 1}–${bloqueActivo * SESIONES_POR_BLOQUE}? Se borrarán los registros (resultado, observaciones, actividad y materiales) de este objetivo en esas sesiones.`}
+        <ConfirmModal titulo="Quitar objetivo de la sesión"
+          mensaje={`¿Quitar "${confirmQuitar.descripcion}" de la Sesión ${sesionActiva}? Se borrarán los registros (resultado, observaciones, actividad y materiales) de este objetivo en esa sesión.`}
           onCancel={() => setConfirmQuitar(null)}
-          onConfirm={() => { onGuardarObjetivos(bloqueActivo, [], [confirmQuitar.id]); setConfirmQuitar(null); }} />
+          onConfirm={() => { onGuardarObjetivos(sesionActiva, [], [confirmQuitar.id]); setConfirmQuitar(null); }} />
       )}
     </div>
   );
 };
 
 // ════════════════════════════════════════════════════════════════════
-// MODAL · Gestionar objetivos de un bloque
+// MODAL · Gestionar objetivos de una sesión
 // ════════════════════════════════════════════════════════════════════
-const ObjetivosBloqueModal = ({ bloque, generales, onClose, onGuardar }) => {
-  const desde = (bloque - 1) * SESIONES_POR_BLOQUE + 1;
-  const hasta = bloque * SESIONES_POR_BLOQUE;
-
+const ObjetivosSesionModal = ({ sesion, generales, onClose, onGuardar }) => {
   const inicial = useMemo(
     () => new Set(
       generales.flatMap((g) => (g.especificos || [])
-        .filter((e) => (e.bloques_asignados || []).includes(bloque))
+        .filter((e) => (e.sesiones_asignadas || []).includes(sesion))
         .map((e) => e.id)),
     ),
-    [generales, bloque],
+    [generales, sesion],
   );
   const [checked, setChecked] = useState(() => new Set(inicial));
   const [q, setQ] = useState('');
@@ -814,11 +808,8 @@ const ObjetivosBloqueModal = ({ bloque, generales, onClose, onGuardar }) => {
 
   const ql = q.trim().toLowerCase();
   const norm = (s) => (s || '').toLowerCase();
-  // ¿el específico tiene registros (resultado u observación) dentro del bloque?
-  const tieneRegistros = (e) => {
-    for (let s = desde; s <= hasta; s++) if (e.registros?.[s]) return true;
-    return false;
-  };
+  // ¿el específico tiene registros (resultado u observación) en esta sesión?
+  const tieneRegistros = (e) => !!e.registros?.[sesion];
 
   const todos = useMemo(() => generales.flatMap((g) => g.especificos || []), [generales]);
   const addIds = [...checked].filter((id) => !inicial.has(id));
@@ -836,9 +827,9 @@ const ObjetivosBloqueModal = ({ bloque, generales, onClose, onGuardar }) => {
 
   return (
     <Overlay onClose={onClose} wide>
-      <Header title={`Objetivos del Bloque ${bloque}`} onClose={onClose} />
+      <Header title={`Objetivos de la Sesión ${sesion}`} onClose={onClose} />
       <div className="px-5 pt-4">
-        <p className="text-[11px] text-gray-400 mb-2">Marca los objetivos que se trabajarán en las sesiones {desde}–{hasta}.</p>
+        <p className="text-[11px] text-gray-400 mb-2">Marca los objetivos que se trabajarán en la Sesión {sesion}.</p>
         <div className="relative">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar objetivo…"
@@ -871,7 +862,7 @@ const ObjetivosBloqueModal = ({ bloque, generales, onClose, onGuardar }) => {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-xs text-gray-700 leading-snug">{e.descripcion}</span>
-                        {conData && <span className="block text-[9px] text-amber-600 mt-0.5">Tiene registros en este bloque</span>}
+                        {conData && <span className="block text-[9px] text-amber-600 mt-0.5">Tiene registros en esta sesión</span>}
                       </span>
                     </button>
                   );
@@ -888,7 +879,7 @@ const ObjetivosBloqueModal = ({ bloque, generales, onClose, onGuardar }) => {
       {confirmar && removalsConData.length > 0 && (
         <div className="px-5 py-2 bg-amber-50 border-t border-amber-100">
           <p className="text-[11px] text-amber-700">
-            Vas a quitar {removalsConData.length} objetivo(s) que ya tienen registros en este bloque; se borrarán esos resultados/observaciones. Pulsa "Confirmar y guardar" para continuar.
+            Vas a quitar {removalsConData.length} objetivo(s) que ya tienen registros en esta sesión; se borrarán esos resultados/observaciones. Pulsa "Confirmar y guardar" para continuar.
           </p>
         </div>
       )}
@@ -917,20 +908,32 @@ const Donut = ({ pct }) => {
   );
 };
 
-const ObsCell = ({ value, disabled, placeholder, onSave }) => {
+// `disabled` = no editable de plano (sesión no registrable o sin permiso).
+// `locked`   = bloqueo suave (ya tiene valor); con permiso se puede reabrir con el lapicito.
+const ObsCell = ({ value, disabled, locked = false, placeholder, onSave }) => {
   const [v, setV] = useState(value || '');
+  const [unlocked, setUnlocked] = useState(false);
   const ref = useRef(null);
   const ajustarAlto = () => { const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; } };
-  useEffect(() => { setV(value || ''); }, [value]);
+  useEffect(() => { setV(value || ''); setUnlocked(false); }, [value]);
   useEffect(() => { ajustarAlto(); }, [v]);
+  const soloLectura = disabled || (locked && !unlocked);
   const dirty = (value || '') !== v;
   const guardar = () => { if (dirty) onSave(v); };
   return (
     <div className="space-y-1">
-      <textarea ref={ref} value={v} disabled={disabled} placeholder={placeholder} rows={1}
-        onChange={(e) => setV(e.target.value)} onBlur={guardar}
-        className="w-full text-[11px] px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden leading-snug break-words" />
-      {dirty && !disabled && (
+      <div className="relative">
+        <textarea ref={ref} value={v} disabled={soloLectura} placeholder={placeholder} rows={1}
+          onChange={(e) => setV(e.target.value)} onBlur={guardar}
+          className="w-full text-[11px] px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden leading-snug break-words" />
+        {locked && !unlocked && !disabled && (
+          <button type="button" title="Editar" onClick={() => setUnlocked(true)}
+            className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-[#7B1FA2] bg-white/80 rounded">
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+      {dirty && !soloLectura && (
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={guardar}
           className="flex items-center gap-1 text-[10px] font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-2 py-1 rounded-md">
           <Check className="w-3 h-3" /> Guardar

@@ -36,8 +36,8 @@ export const eliminarEspecifico = (id) =>
 export const guardarRegistro = (body) =>
   api.put('/plan-terapeutico/registro', body).then((r) => r.data);
 
-// ── Asignación de objetivos por bloque de 4 sesiones ──
-export const asignarObjetivoBloque = (body) =>
-  api.post('/plan-terapeutico/asignacion-bloque', body).then((r) => r.data);
-export const desasignarObjetivoBloque = (especificoId, numeroBloque) =>
-  api.delete(`/plan-terapeutico/asignacion-bloque/${especificoId}/${numeroBloque}`).then((r) => r.data);
+// ── Asignación de objetivos por sesión ──
+export const asignarObjetivoSesion = (body) =>
+  api.post('/plan-terapeutico/asignacion-sesion', body).then((r) => r.data);
+export const desasignarObjetivoSesion = (especificoId, numeroSesion) =>
+  api.delete(`/plan-terapeutico/asignacion-sesion/${especificoId}/${numeroSesion}`).then((r) => r.data);
