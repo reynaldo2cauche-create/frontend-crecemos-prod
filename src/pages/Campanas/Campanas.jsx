@@ -8,10 +8,21 @@ const formatearContenido = (texto) => {
   return texto.split('\n').map(l => l.trim()).join('<br/>');
 };
 
-const formatFecha = (fecha) =>
-  new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
-    day: '2-digit', month: 'long', year: 'numeric'
-  });
+// Acepta 'YYYY-MM-DD' o datetime 'YYYY-MM-DD HH:mm:ss' (o con 'T'); Date en hora local.
+const parseFecha = (f) => new Date(String(f).replace(' ', 'T'));
+
+const formatFecha = (fecha) => {
+  const d = parseFecha(fecha);
+  return isNaN(d) ? '' : d.toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+};
+
+// Hora 'HH:mm' a partir del datetime (vacía si es medianoche o inválido)
+const formatHora = (fecha) => {
+  const d = parseFecha(fecha);
+  if (isNaN(d)) return '';
+  if (d.getHours() === 0 && d.getMinutes() === 0) return '';
+  return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+};
 
 export const Campanas = () => {
   useEffect(() => { initializePageScripts(); }, []);
@@ -26,7 +37,7 @@ export const Campanas = () => {
     getCampanasActivas()
       .then(data => {
         const ordenadas = [...data].sort(
-          (a, b) => new Date(b.fecha_inicio) - new Date(a.fecha_inicio)
+          (a, b) => parseFecha(b.fecha_inicio) - parseFecha(a.fecha_inicio)
         );
         setCampanas(ordenadas);
         setLoading(false);
@@ -40,11 +51,11 @@ export const Campanas = () => {
   const toggle = (id) => setOpenId(prev => prev === id ? null : id);
 
   const aniosDisponibles = [...new Set(
-    campanas.map(c => new Date(c.fecha_inicio).getFullYear())
+    campanas.map(c => parseFecha(c.fecha_inicio).getFullYear())
   )].sort((a, b) => b - a);
 
   const campanasFiltradas = campanas.filter(
-    c => new Date(c.fecha_inicio).getFullYear() === anioFiltro
+    c => parseFecha(c.fecha_inicio).getFullYear() === anioFiltro
   );
 
   return (
@@ -187,9 +198,9 @@ export const Campanas = () => {
                           <h3 data-numero={index + 1}>{campana.titulo}</h3>
                           <p className="campana-vigencia">
                             Vigencia:&nbsp;
-                            <span>{formatFecha(campana.fecha_inicio)}</span>
+                            <span>{formatFecha(campana.fecha_inicio)}{formatHora(campana.fecha_inicio) ? ` ${formatHora(campana.fecha_inicio)}` : ''}</span>
                             {' — '}
-                            <span>{formatFecha(campana.fecha_fin)}</span>
+                            <span>{formatFecha(campana.fecha_fin)}{formatHora(campana.fecha_fin) ? ` ${formatHora(campana.fecha_fin)}` : ''}</span>
                           </p>
                         </div>
                         <span className={`accordion-icon ${openId === campana.id ? 'open' : ''}`}>+</span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   PlusIcon,
   PencilIcon,
@@ -20,6 +20,34 @@ import {
   actualizarCampana,
   eliminarCampana,
 } from '../../services/campanasService';
+import DateTimePicker from '../../components/DateTimePicker/DateTimePicker';
+
+// Convierte un datetime del backend ('YYYY-MM-DD HH:mm:ss' o ISO) al formato que
+// requiere el input datetime-local ('YYYY-MM-DDTHH:mm'). Devuelve '' si no hay valor.
+const aDatetimeLocal = (v) => {
+  if (!v) return '';
+  return String(v).replace(' ', 'T').slice(0, 16);
+};
+
+// Textarea que se auto-ajusta de alto según el contenido (crece con el texto).
+const AutoTextarea = ({ value, onChange, minRows = 2, className = '', ...props }) => {
+  const ref = useRef(null);
+  const ajustar = () => {
+    const el = ref.current;
+    if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; }
+  };
+  useEffect(() => { ajustar(); }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      rows={minRows}
+      onChange={(e) => { onChange(e); ajustar(); }}
+      className={`resize-none overflow-hidden ${className}`}
+      {...props}
+    />
+  );
+};
 
 const GestorCampanas = () => {
   const [campanas, setCampanas] = useState([]);
@@ -64,14 +92,14 @@ const GestorCampanas = () => {
       resultado = resultado.filter(c => c.estado_id === parseInt(filtroEstado));
     }
 
-    // Filtrar por fecha inicio
+    // Filtrar por fecha inicio (compara solo la parte de fecha del datetime)
     if (filtroFechaInicio) {
-      resultado = resultado.filter(c => c.fecha_inicio >= filtroFechaInicio);
+      resultado = resultado.filter(c => String(c.fecha_inicio).slice(0, 10) >= filtroFechaInicio);
     }
 
-    // Filtrar por fecha fin
+    // Filtrar por fecha fin (compara solo la parte de fecha del datetime)
     if (filtroFechaFin) {
-      resultado = resultado.filter(c => c.fecha_fin <= filtroFechaFin);
+      resultado = resultado.filter(c => String(c.fecha_fin).slice(0, 10) <= filtroFechaFin);
     }
 
     // Filtrar por búsqueda en título y descripción
@@ -114,8 +142,8 @@ const GestorCampanas = () => {
       setFormData({
         titulo: campana.titulo,
         descripcion_corta: campana.descripcion_corta || '',
-        fecha_inicio: campana.fecha_inicio,
-        fecha_fin: campana.fecha_fin,
+        fecha_inicio: aDatetimeLocal(campana.fecha_inicio),
+        fecha_fin: aDatetimeLocal(campana.fecha_fin),
         estado_id: campana.estado_id,
         orden: campana.orden,
         secciones: campana.secciones?.length > 0
@@ -264,8 +292,11 @@ const GestorCampanas = () => {
 
   const formatearFecha = (fechaString) => {
     if (!fechaString) return '';
-    const [year, month, day] = fechaString.split('-');
-    return new Date(year, month - 1, day).toLocaleDateString('es-ES');
+    const d = new Date(String(fechaString).replace(' ', 'T'));
+    if (isNaN(d)) return '';
+    return d.toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
   };
 
   const getEstadoBadge = (estadoId) => {
@@ -542,41 +573,36 @@ const GestorCampanas = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Descripción Corta
                   </label>
-                  <textarea
+                  <AutoTextarea
                     name="descripcion_corta"
                     value={formData.descripcion_corta}
                     onChange={handleChange}
-                    rows="2"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent resize-none"
+                    minRows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha Inicio *
+                      Fecha y Hora de Inicio *
                     </label>
-                    <input
-                      type="date"
-                      name="fecha_inicio"
+                    <DateTimePicker
                       value={formData.fecha_inicio}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
+                      onChange={(v) => setFormData(prev => ({ ...prev, fecha_inicio: v }))}
+                      placeholder="Seleccionar fecha y hora"
                     />
+                    <p className="text-[11px] text-gray-400 mt-1">La campaña se publica sola en esta fecha y hora.</p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha Fin *
+                      Fecha y Hora de Fin *
                     </label>
-                    <input
-                      type="date"
-                      name="fecha_fin"
+                    <DateTimePicker
                       value={formData.fecha_fin}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
+                      onChange={(v) => setFormData(prev => ({ ...prev, fecha_fin: v }))}
+                      placeholder="Seleccionar fecha y hora"
                     />
                   </div>
                 </div>
@@ -667,12 +693,12 @@ const GestorCampanas = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Contenido *
                       </label>
-                      <textarea
+                      <AutoTextarea
                         value={seccion.contenido}
                         onChange={(e) => handleSeccionChange(index, 'contenido', e.target.value)}
                         required
-                        rows="4"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent resize-none"
+                        minRows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B1FA2] focus:border-transparent"
                         placeholder="Puedes usar Markdown para dar formato..."
                       />
                     </div>

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import * as popupService from '../services/popupService';
 import { API_BASE_URL } from '../services/api';
+import DateTimePicker from '../components/DateTimePicker/DateTimePicker';
 
 const GestionPopup = () => {
   const [popups, setPopups] = useState([]);
@@ -572,51 +573,21 @@ const GestionPopup = () => {
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Fecha y Hora de Inicio *
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={formulario.fechaInicio.split('T')[0] || ''}
-                      onChange={(e) => {
-                        const horaActual = formulario.fechaInicio.split('T')[1] || '00:00';
-                        setFormulario(prev => ({ ...prev, fechaInicio: `${e.target.value}T${horaActual}` }));
-                      }}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
-                    />
-                    <input
-                      type="time"
-                      value={formulario.fechaInicio.split('T')[1] || ''}
-                      onChange={(e) => {
-                        const fechaActual = formulario.fechaInicio.split('T')[0] || '';
-                        setFormulario(prev => ({ ...prev, fechaInicio: `${fechaActual}T${e.target.value}` }));
-                      }}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
-                    />
-                  </div>
+                  <DateTimePicker
+                    value={formulario.fechaInicio ? formulario.fechaInicio.slice(0, 16) : ''}
+                    onChange={(v) => setFormulario(prev => ({ ...prev, fechaInicio: v }))}
+                    placeholder="Seleccionar fecha y hora"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Fecha y Hora de Fin *
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={formulario.fechaFin.split('T')[0] || ''}
-                      onChange={(e) => {
-                        const horaActual = formulario.fechaFin.split('T')[1] || '00:00';
-                        setFormulario(prev => ({ ...prev, fechaFin: `${e.target.value}T${horaActual}` }));
-                      }}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
-                    />
-                    <input
-                      type="time"
-                      value={formulario.fechaFin.split('T')[1] || ''}
-                      onChange={(e) => {
-                        const fechaActual = formulario.fechaFin.split('T')[0] || '';
-                        setFormulario(prev => ({ ...prev, fechaFin: `${fechaActual}T${e.target.value}` }));
-                      }}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-[#7B1FA2] focus:outline-none transition-colors text-sm"
-                    />
-                  </div>
+                  <DateTimePicker
+                    value={formulario.fechaFin ? formulario.fechaFin.slice(0, 16) : ''}
+                    onChange={(v) => setFormulario(prev => ({ ...prev, fechaFin: v }))}
+                    placeholder="Seleccionar fecha y hora"
+                  />
                 </div>
               </div>
 
