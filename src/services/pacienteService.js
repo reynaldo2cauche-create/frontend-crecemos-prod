@@ -140,3 +140,15 @@ export const getProcesosLegalesInfantiles = async () => {
   const response = await api.get('/procesos-legales-infantiles');
   return response.data;
 }
+
+/**
+ * ⚠️ ELIMINACIÓN TOTAL E IRREVERSIBLE del paciente y todo lo relacionado
+ * (historia clínica, citas, ventas/pagos, archivos), a solicitud del paciente.
+ * Solo administrador. El backend envía correo informativo a info@ y rrhh@.
+ */
+export const eliminarPacienteDeRaiz = async (pacienteId, motivo) => {
+  const response = await api.delete(`/pacientes/${pacienteId}/eliminar-de-raiz`, {
+    data: { motivo }
+  });
+  return response.data;
+}

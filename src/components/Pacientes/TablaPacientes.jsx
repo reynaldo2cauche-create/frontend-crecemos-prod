@@ -6,7 +6,7 @@ import {
   Edit2, Trash2, Check, ChevronRight, Grid3x3, List, Eye, Building2
 } from 'lucide-react';
 import { canViewContactInfo, canViewServiceInfo, canManagePatientStatus, isAdministrador } from '../../constants/roles';
-import { cambiarVisibilidadPaciente } from '../../services/pacienteService';
+import { cambiarVisibilidadPaciente, eliminarPacienteDeRaiz } from '../../services/pacienteService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../../services/api';
 import { getConveniosPorPaciente } from '../../services/conveniosService';
 
@@ -274,6 +274,42 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
   const [convenios, setConvenios] = useState([]);
   const [loadingConvenios, setLoadingConvenios] = useState(false);
 
+  // Eliminación total (permanente) — solo administrador
+  const [showEliminarTotal, setShowEliminarTotal] = useState(false);
+  const [eliminandoTotal, setEliminandoTotal] = useState(false);
+  const [resultadoEliminar, setResultadoEliminar] = useState(null); // { tipo: 'success' | 'error', mensaje }
+
+  const handleEliminarDeRaiz = async () => {
+    setEliminandoTotal(true);
+    try {
+      await eliminarPacienteDeRaiz(paciente.id);
+      setShowEliminarTotal(false);
+      setResultadoEliminar({
+        tipo: 'success',
+        mensaje: `Se eliminó por completo a ${paciente.nombres} ${paciente.apellido_paterno}. Se notificó por correo a info@crecemos.com.pe y rrhh@crecemos.com.pe.`,
+      });
+    } catch (error) {
+      console.error('Error al eliminar al paciente:', error);
+      setResultadoEliminar({
+        tipo: 'error',
+        mensaje: error?.response?.data?.message || 'No se pudo eliminar al paciente. Inténtalo de nuevo.',
+      });
+    } finally {
+      setEliminandoTotal(false);
+    }
+  };
+
+  const cerrarResultadoEliminar = () => {
+    const fueExito = resultadoEliminar?.tipo === 'success';
+    setResultadoEliminar(null);
+    if (fueExito) {
+      if (onPacienteOcultado) {
+        onPacienteOcultado(paciente.id);
+      }
+      onClose();
+    }
+  };
+
   useEffect(() => {
     const cargarConvenios = async () => {
       if (!paciente.id) return;
@@ -424,6 +460,17 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
             >
               <Trash2 className="w-4 h-4" />
               Ocultar
+            </button>
+          )}
+
+          {isAdministrador(user) && (
+            <button
+              onClick={() => setShowEliminarTotal(true)}
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg border border-red-700 text-sm font-medium hover:bg-red-700 transition-all"
+              title="Eliminar permanentemente al paciente y su historia clínica (a solicitud del paciente)"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar
             </button>
           )}
         </div>
@@ -650,6 +697,110 @@ const ModalDetallesPaciente = ({ paciente, onClose, onEditar, user, onPacienteOc
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showEliminarTotal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
+          onClick={() => !eliminandoTotal && setShowEliminarTotal(false)}
+        >
+          <div
+            className="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Eliminar paciente</h3>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-gray-800">
+                Se eliminará <strong>de forma permanente e irreversible</strong> a:
+              </p>
+              <p className="text-sm font-bold text-gray-900 mt-2">
+                {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
+              </p>
+              <p className="text-sm text-gray-700">
+                {paciente.tipo_documento?.nombre || 'Documento'}: <strong>{paciente.numero_documento}</strong>
+              </p>
+              <p className="text-xs text-red-700 mt-2">
+                Incluye su historia clínica, citas, ventas/pagos, archivos y todo lo relacionado en el sistema.
+              </p>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Se enviará un correo informativo a <strong>info@crecemos.com.pe</strong> y <strong>rrhh@crecemos.com.pe</strong>{' '}
+              indicando que se eliminó toda la información del paciente del sistema <strong>a solicitud del paciente</strong>.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEliminarTotal(false)}
+                disabled={eliminandoTotal}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEliminarDeRaiz}
+                disabled={eliminandoTotal}
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {eliminandoTotal ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resultadoEliminar && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4"
+          onClick={cerrarResultadoEliminar}
+        >
+          <div
+            className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl border border-gray-100 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                resultadoEliminar.tipo === 'success' ? 'bg-green-100' : 'bg-red-100'
+              }`}
+            >
+              {resultadoEliminar.tipo === 'success' ? (
+                <Check className="w-7 h-7 text-green-600" />
+              ) : (
+                <AlertCircle className="w-7 h-7 text-red-600" />
+              )}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {resultadoEliminar.tipo === 'success' ? 'Paciente eliminado' : 'No se pudo eliminar'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-5">{resultadoEliminar.mensaje}</p>
+            <button
+              onClick={cerrarResultadoEliminar}
+              className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all ${
+                resultadoEliminar.tipo === 'success'
+                  ? 'bg-[#A3C644] hover:bg-[#8FB82D]'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}

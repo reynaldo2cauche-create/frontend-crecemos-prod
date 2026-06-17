@@ -8,12 +8,13 @@ import {
   CalendarIcon,
   ArrowDownTrayIcon,
   TagIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById, getCitasHistorico } from '../../services/ventasService';
+import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById, getCitasHistorico, getPacientesHistorico, getPacientesInactivados } from '../../services/ventasService';
 import { getTrabajadores } from '../../services/trabajadorService';
 import DetalleVentaModal from '../../components/Ventas/DetalleVentaModal';
 import {
@@ -55,6 +56,8 @@ const ReportesVentas = () => {
   const [descuentos, setDescuentos] = useState([]);
   const [ingresosPorResponsable, setIngresosPorResponsable] = useState([]);
   const [citasHistorico, setCitasHistorico] = useState({ modo: 'mensual', periodos: [], filas: [] });
+  const [pacientesHistorico, setPacientesHistorico] = useState({ modo: 'mensual', periodos: [], filas: [], totalesPorPeriodo: {}, totalGeneral: 0 });
+  const [pacientesInactivados, setPacientesInactivados] = useState([]);
   const [ventasSinCita, setVentasSinCita] = useState([]);
   const [loadingSinCita, setLoadingSinCita] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
@@ -195,6 +198,24 @@ const ReportesVentas = () => {
       } catch (e) {
         console.error('Error al cargar histórico de citas:', e);
         setCitasHistorico({ modo: 'mensual', periodos: [], filas: [] });
+      }
+
+      // ✅ pacientesHistorico → pacientes registrados por servicio (6 meses o año vs año anterior)
+      try {
+        const ph = await getPacientesHistorico({ fechaInicio, fechaFin });
+        setPacientesHistorico(ph || { modo: 'mensual', periodos: [], filas: [], totalesPorPeriodo: {}, totalGeneral: 0 });
+      } catch (e) {
+        console.error('Error al cargar histórico de pacientes:', e);
+        setPacientesHistorico({ modo: 'mensual', periodos: [], filas: [], totalesPorPeriodo: {}, totalGeneral: 0 });
+      }
+
+      // ✅ pacientesInactivados → pacientes inactivados en el rango del filtro
+      try {
+        const pi = await getPacientesInactivados({ fechaInicio, fechaFin });
+        setPacientesInactivados(Array.isArray(pi) ? pi : []);
+      } catch (e) {
+        console.error('Error al cargar pacientes inactivados:', e);
+        setPacientesInactivados([]);
       }
 
      const historialData = await getHistorialVentasExcel({ 
@@ -563,6 +584,153 @@ const ReportesVentas = () => {
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+
+  {/* Pacientes registrados — histórico por servicio (6 meses o año vs año anterior) */}
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+        <UserGroupIcon className="w-5 h-5 text-[#7B1FA2]" />
+        Pacientes registrados
+        <span className="text-xs font-normal text-gray-400">
+          {pacientesHistorico.modo === 'anual'
+            ? 'este año vs. año anterior'
+            : 'últimos 6 meses'}
+        </span>
+      </h3>
+      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        Total registrados: {pacientesHistorico.totalGeneral ?? 0}
+      </span>
+    </div>
+
+    {(!pacientesHistorico.periodos || pacientesHistorico.periodos.length === 0 || (pacientesHistorico.totalGeneral ?? 0) === 0) ? (
+      <p className="text-sm text-gray-400 text-center py-10">Sin datos para el período seleccionado</p>
+    ) : (
+      <>
+        {/* Gráfico de barras: total de registros por período */}
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={pacientesHistorico.periodos.map((p) => ({ periodo: p.label, total: pacientesHistorico.totalesPorPeriodo?.[p.key] ?? 0 }))}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="periodo" style={{ fontSize: '12px' }} />
+            <YAxis allowDecimals={false} style={{ fontSize: '12px' }} />
+            <Tooltip formatter={(v) => [v, 'Pacientes']} />
+            <Bar dataKey="total" fill="#7B1FA2" name="Pacientes" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+
+        {/* Tabla por servicio */}
+        <div className="overflow-x-auto mt-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-200">
+                <th className="py-2 pr-4 font-semibold sticky left-0 bg-white">Servicio / Área</th>
+                {pacientesHistorico.periodos.map((p) => (
+                  <th key={p.key} className="py-2 px-3 font-semibold text-right whitespace-nowrap">{p.label}</th>
+                ))}
+                <th className="py-2 pl-3 font-semibold text-right">Crec.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pacientesHistorico.filas.map((s) => {
+                const sube = s.crecimiento > 0;
+                const baja = s.crecimiento < 0;
+                const color = sube ? 'text-green-600' : baja ? 'text-red-600' : 'text-gray-400';
+                const bg = sube ? 'bg-green-50' : baja ? 'bg-red-50' : 'bg-gray-50';
+                const ultimoKey = pacientesHistorico.periodos[pacientesHistorico.periodos.length - 1]?.key;
+                return (
+                  <tr key={s.servicio_id} className="border-b border-gray-100 last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-gray-800 sticky left-0 bg-white">{s.nombre}</td>
+                    {pacientesHistorico.periodos.map((p) => {
+                      const esUltimo = p.key === ultimoKey;
+                      const valor = s.valores?.[p.key] ?? 0;
+                      return (
+                        <td
+                          key={p.key}
+                          className={`py-2.5 px-3 text-right ${esUltimo ? 'font-semibold text-gray-900' : 'text-gray-500'}`}
+                        >
+                          {valor}
+                        </td>
+                      );
+                    })}
+                    <td className="py-2.5 pl-3 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${bg} ${color}`}>
+                        {sube ? '▲' : baja ? '▼' : '—'} {s.crecimiento > 0 ? '+' : ''}{s.crecimiento}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {/* Fila Total */}
+              <tr className="bg-purple-50 font-semibold">
+                <td className="py-2.5 pr-4 text-purple-800 sticky left-0 bg-purple-50">Total</td>
+                {pacientesHistorico.periodos.map((p) => (
+                  <td key={p.key} className="py-2.5 px-3 text-right text-purple-900">
+                    {pacientesHistorico.totalesPorPeriodo?.[p.key] ?? 0}
+                  </td>
+                ))}
+                <td className="py-2.5 pl-3 text-right text-purple-900">{pacientesHistorico.totalGeneral ?? 0}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+
+  </div>
+
+  {/* Pacientes inactivados — según el rango de fechas del filtro */}
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+        <UserGroupIcon className="w-5 h-5 text-red-500" />
+        Pacientes inactivados
+        <span className="text-xs font-normal text-gray-400">según el rango de fechas del filtro</span>
+      </h3>
+      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+        {pacientesInactivados.length}
+      </span>
+    </div>
+    {pacientesInactivados.length === 0 ? (
+      <p className="text-sm text-gray-400 text-center py-10">No hay pacientes inactivados en el rango seleccionado</p>
+    ) : (
+      <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-100 rounded-xl">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 sticky top-0">
+            <tr>
+              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha inactivación</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Paciente</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Documento</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
+              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Área</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {pacientesInactivados.map((p) => (
+              <tr key={p.id} className="hover:bg-red-50/40 transition-colors">
+                <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{formatFecha(p.fecha_inactivacion)}</td>
+                <td className="px-4 py-2.5 font-medium text-gray-900">
+                  <button
+                    onClick={() => window.open(`/editar-paciente/${p.id}`, '_blank', 'noopener,noreferrer')}
+                    className="text-[#7B1FA2] hover:underline hover:text-[#6A1B9A] text-left"
+                  >
+                    {p.nombre}
+                  </button>
+                </td>
+                <td className="px-4 py-2.5 text-gray-600">{p.documento || '—'}</td>
+                <td className="px-4 py-2.5 text-gray-700">{p.servicio || '—'}</td>
+                <td className="px-4 py-2.5">
+                  {p.area ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                      {p.area}
+                    </span>
+                  ) : <span className="text-gray-400">—</span>}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

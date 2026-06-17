@@ -2307,6 +2307,23 @@ const handleGuardar = useCallback(async () => {
                           <p className="text-sm text-gray-500">Haga clic en "Agregar" para agregar terapeutas</p>
                         </div>
                       )}
+                      {/* Aviso inmediato si algún terapeuta del equipo tiene bloqueada la fecha/hora seleccionada */}
+                      {formularioCita.fechasHoras?.[0]?.fecha && (
+                        verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) ||
+                        (formularioCita.fechasHoras[0].horaInicio && verificarHoraBloqueada(formularioCita.fechasHoras[0].fecha, formularioCita.fechasHoras[0].horaInicio))
+                      ) && (
+                        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-red-800">Terapeuta con horario bloqueado</p>
+                            <p className="text-xs text-red-600 mt-1">
+                              {verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha)
+                                ? 'Algún terapeuta del equipo tiene bloqueado todo este día. Elige otra fecha o quita ese terapeuta.'
+                                : `Algún terapeuta del equipo tiene bloqueada la hora ${formularioCita.fechasHoras[0].horaInicio}. Elige otra hora o quita ese terapeuta.`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Servicios */}
@@ -2674,6 +2691,23 @@ const handleGuardar = useCallback(async () => {
                           </p>
                         </div>
                       </div>
+                      {/* Aviso inmediato si el terapeuta tiene bloqueada la fecha/hora seleccionada */}
+                      {formularioCita.fechasHoras?.[0]?.fecha && (
+                        verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) ||
+                        (formularioCita.fechasHoras[0].horaInicio && verificarHoraBloqueada(formularioCita.fechasHoras[0].fecha, formularioCita.fechasHoras[0].horaInicio))
+                      ) && (
+                        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-red-800">Terapeuta con horario bloqueado</p>
+                            <p className="text-xs text-red-600 mt-1">
+                              {verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha)
+                                ? 'Tiene bloqueado todo este día. Elige otra fecha.'
+                                : `Tiene bloqueada la hora ${formularioCita.fechasHoras[0].horaInicio}. Elige otra hora.`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Datos de la Visita Escolar */}

@@ -222,6 +222,22 @@ export const getVentasSinCita = () =>
 export const getCitasHistorico = ({ fechaInicio, fechaFin }) =>
   api.get('/ventas/reportes/citas-historico', { params: { fechaInicio, fechaFin } }).then(r => r.data);
 
+/**
+ * Histórico de pacientes registrados por servicio.
+ * Si el rango es mensual → últimos 6 meses + el actual; si es anual → este año vs el anterior.
+ * @returns {Promise<{modo, periodos, filas, totalesPorPeriodo, totalGeneral}>}
+ */
+export const getPacientesHistorico = ({ fechaInicio, fechaFin }) =>
+  api.get('/ventas/reportes/pacientes-historico', { params: { fechaInicio, fechaFin } }).then(r => r.data);
+
+/**
+ * Lista de pacientes inactivados (estado Inactivo) dentro del rango del filtro,
+ * con su servicio y área.
+ * @returns {Promise<Array<{id,nombre,documento,servicio,area,fecha_inactivacion}>>}
+ */
+export const getPacientesInactivados = ({ fechaInicio, fechaFin }) =>
+  api.get('/ventas/reportes/pacientes-inactivados', { params: { fechaInicio, fechaFin } }).then(r => r.data);
+
 
 export const getHistorialVentasExcel = ({ fechaInicio, fechaFin, tipo }) =>
   api.get('/ventas/servicios/historial', { 
