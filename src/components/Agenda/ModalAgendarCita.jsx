@@ -32,6 +32,7 @@ import { useGeofencing } from '../../hooks/useGeofencing';
 import { esFeriado, getNombreFeriado } from '../../constants/feriados';
 import { getVentasDisponibles, getListadoCitasPorPaciente, getInfoVentaDeCita } from '../../services/citaService';
 import { getVentaServicioById } from '../../services/ventasService';
+import { obtenerBloqueosPorTerapeuta } from '../../services/bloqueoService';
 import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 const ModalAgendarCita = ({
@@ -760,9 +761,62 @@ const ModalAgendarCita = ({
     return null;
   };
 
+  // Obtiene los IDs de terapeuta(s) asignados a la cita que se está agendando.
+  // Un bloqueo solo aplica si pertenece a uno de estos terapeutas.
+  const obtenerTerapeutasParaBloqueo = () => {
+    if (tipoCita === 'REUNION_CLINICA') {
+      let ids = terapeutasReunion.map(t => parseInt(t.terapeuta_id)).filter(id => id && !isNaN(id));
+      if (ids.length === 0 && formularioCita.terapeutas_ids?.length > 0) {
+        ids = formularioCita.terapeutas_ids.map(id => parseInt(id)).filter(id => id && !isNaN(id));
+      }
+      return ids;
+    }
+    const doctorId = parseInt(formularioCita.doctor_id || terapeutaSeleccionado?.id);
+    return doctorId && !isNaN(doctorId) ? [doctorId] : [];
+  };
+
+  // Bloqueos del terapeuta(s) que se está asignando en el modal. Se cargan aparte
+  // porque la prop `bloqueos` solo trae los del terapeuta del filtro de la agenda,
+  // y aquí se puede asignar la cita a otro terapeuta distinto.
+  const [bloqueosTerapeutaModal, setBloqueosTerapeutaModal] = useState([]);
+  const terapeutasBloqueoKey = JSON.stringify(obtenerTerapeutasParaBloqueo());
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+
+    const cargar = async () => {
+      const ids = obtenerTerapeutasParaBloqueo();
+      if (ids.length === 0) {
+        if (!cancelado) setBloqueosTerapeutaModal([]);
+        return;
+      }
+      try {
+        const resultados = await Promise.all(
+          ids.map(id => obtenerBloqueosPorTerapeuta(id).catch(() => []))
+        );
+        if (!cancelado) setBloqueosTerapeutaModal(resultados.flat());
+      } catch {
+        if (!cancelado) setBloqueosTerapeutaModal([]);
+      }
+    };
+
+    cargar();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, terapeutasBloqueoKey]);
+
+  // Lista efectiva de bloqueos para la validación inline: la del terapeuta asignado
+  // si ya se cargó; si no, cae a la prop como respaldo.
+  const bloqueosEfectivos = bloqueosTerapeutaModal.length > 0 ? bloqueosTerapeutaModal : (bloqueos || []);
+
   // Verificar si una fecha/hora está bloqueada
   const verificarHoraBloqueada = (fechaString, hora) => {
-    if (!fechaString || !hora || !bloqueos || bloqueos.length === 0) return false;
+    if (!fechaString || !hora || !bloqueosEfectivos || bloqueosEfectivos.length === 0) return false;
+
+    const terapeutasIds = obtenerTerapeutasParaBloqueo();
+    // Sin terapeuta seleccionado no hay nada contra qué bloquear
+    if (terapeutasIds.length === 0) return false;
 
     const toMin = (h) => {
       const [hh, mm] = h.split(':').map(Number);
@@ -772,9 +826,12 @@ const ModalAgendarCita = ({
     const slotStart = toMin(hora);
     const slotEnd = slotStart + 40; // duración del slot
 
-    const bloqueado = bloqueos.some(b => {
+    const bloqueado = bloqueosEfectivos.some(b => {
       // Verificar si el bloqueo está activo
       if (!b.activo) return false;
+
+      // El bloqueo solo aplica si es del terapeuta asignado a esta cita
+      if (!terapeutasIds.includes(Number(b.trabajadorId))) return false;
 
       // Verificar si la fecha está dentro del rango del bloqueo
       if (fechaString < b.fechaInicio || fechaString > b.fechaFin) return false;
@@ -806,11 +863,17 @@ const ModalAgendarCita = ({
 
   // Verificar si una fecha está bloqueada todo el día
   const verificarFechaBloqueadaTodoElDia = (fechaString) => {
-    if (!fechaString || !bloqueos || bloqueos.length === 0) return false;
+    if (!fechaString || !bloqueosEfectivos || bloqueosEfectivos.length === 0) return false;
 
-    return bloqueos.some(b => {
+    const terapeutasIds = obtenerTerapeutasParaBloqueo();
+    if (terapeutasIds.length === 0) return false;
+
+    return bloqueosEfectivos.some(b => {
       // Verificar si el bloqueo está activo
       if (!b.activo) return false;
+
+      // El bloqueo solo aplica si es del terapeuta asignado a esta cita
+      if (!terapeutasIds.includes(Number(b.trabajadorId))) return false;
 
       // Verificar si la fecha está dentro del rango del bloqueo
       if (fechaString < b.fechaInicio || fechaString > b.fechaFin) return false;
@@ -1265,18 +1328,49 @@ const handleGuardar = useCallback(async () => {
     }
   }
 
-  // Verificar si alguna fecha/hora está bloqueada
-  for (const fh of fechasHorasARevisar) {
-    if (!fh.fecha || !fh.horaInicio) continue;
+  // Verificar si alguna fecha/hora está bloqueada — validación autoritativa en el
+  // backend, usando el/los terapeuta(s) realmente asignados a la cita. No depende
+  // de los bloqueos que tenga cargados el modal (que son solo de un terapeuta).
+  {
+    let terapeutasBloqueo = [];
+    if (tipoCita === 'NORMAL' || tipoCita === 'VISITA_ESCOLAR') {
+      const doctorId = formularioCita.doctor_id || terapeutaSeleccionado?.id;
+      if (doctorId) terapeutasBloqueo = [parseInt(doctorId)];
+    } else if (tipoCita === 'REUNION_CLINICA') {
+      terapeutasBloqueo = terapeutasReunion
+        .map(t => parseInt(t.terapeuta_id))
+        .filter(id => id && !isNaN(id));
+    }
 
-    if (verificarHoraBloqueada(fh.fecha, fh.horaInicio)) {
-      setTituloAlerta('Horario Bloqueado');
-      setMensajeAlerta(
-        `El horario ${fh.fecha} a las ${fh.horaInicio} está bloqueado y no está disponible para agendar citas.`
-      );
-      setAlertaAbierta(true);
-      setGuardandoLocal(false);
-      return;
+    for (const fh of fechasHorasARevisar) {
+      if (!fh.fecha || !fh.horaInicio) continue;
+      const horaConSeg = fh.horaInicio.length === 5 ? `${fh.horaInicio}:00` : fh.horaInicio;
+
+      for (const trabajadorId of terapeutasBloqueo) {
+        try {
+          const resp = await api.post('/bloqueos/verificar', {
+            trabajadorId,
+            fecha: fh.fecha,
+            hora: horaConSeg,
+          });
+
+          if (resp.data?.bloqueado) {
+            const t = trabajadores.find(w => w.id === trabajadorId);
+            const nombreTerapeuta = t
+              ? `Lic. ${t.nombres} ${t.apellidos}`.trim()
+              : 'El terapeuta';
+            setTituloAlerta('Horario Bloqueado');
+            setMensajeAlerta(
+              `${nombreTerapeuta} tiene bloqueado el horario del ${fh.fecha} a las ${fh.horaInicio}. No está disponible para agendar citas.`
+            );
+            setAlertaAbierta(true);
+            setGuardandoLocal(false);
+            return;
+          }
+        } catch (err) {
+          console.warn('No se pudo verificar bloqueo:', err.message);
+        }
+      }
     }
   }
 
@@ -1717,6 +1811,23 @@ const handleGuardar = useCallback(async () => {
                             </div>
                           </div>
                         )}
+                        {/* Aviso inmediato si el terapeuta elegido tiene bloqueada la fecha/hora seleccionada */}
+                        {formularioCita.fechasHoras?.[0]?.fecha && (
+                          verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) ||
+                          (formularioCita.fechasHoras[0].horaInicio && verificarHoraBloqueada(formularioCita.fechasHoras[0].fecha, formularioCita.fechasHoras[0].horaInicio))
+                        ) && (
+                          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-2">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-red-800">Terapeuta con horario bloqueado</p>
+                              <p className="text-xs text-red-600 mt-1">
+                                {verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha)
+                                  ? 'Tiene bloqueado todo este día. Elige otra fecha u otro terapeuta.'
+                                  : `Tiene bloqueada la hora ${formularioCita.fechasHoras[0].horaInicio}. Elige otra hora u otro terapeuta.`}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -2000,6 +2111,15 @@ const handleGuardar = useCallback(async () => {
                               <div className="flex-1">
                                 <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
                                 <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && formularioCita.fechasHoras?.[0]?.horaInicio && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && verificarHoraBloqueada(formularioCita.fechasHoras[0].fecha, formularioCita.fechasHoras[0].horaInicio) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Horario bloqueado</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta tiene bloqueada esta hora. Seleccione otro horario disponible.</p>
                               </div>
                             </div>
                           )}
@@ -2420,6 +2540,15 @@ const handleGuardar = useCallback(async () => {
                               </div>
                             </div>
                           )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && formularioCita.fechasHoras?.[0]?.horaInicio && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && verificarHoraBloqueada(formularioCita.fechasHoras[0].fecha, formularioCita.fechasHoras[0].horaInicio) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Horario bloqueado</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta tiene bloqueada esta hora. Seleccione otro horario disponible.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -2805,6 +2934,15 @@ const handleGuardar = useCallback(async () => {
                               <div className="flex-1">
                                 <p className="text-sm font-semibold text-yellow-800">No hay horarios disponibles</p>
                                 <p className="text-xs text-yellow-600 mt-1">Todos los horarios están ocupados o bloqueados para esta fecha.</p>
+                              </div>
+                            </div>
+                          )}
+                          {formularioCita.fechasHoras?.[0]?.fecha && formularioCita.fechasHoras?.[0]?.horaInicio && !verificarFechaBloqueadaTodoElDia(formularioCita.fechasHoras[0].fecha) && verificarHoraBloqueada(formularioCita.fechasHoras[0].fecha, formularioCita.fechasHoras[0].horaInicio) && (
+                            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-800">Horario bloqueado</p>
+                                <p className="text-xs text-red-600 mt-1">El terapeuta tiene bloqueada esta hora. Seleccione otro horario disponible.</p>
                               </div>
                             </div>
                           )}

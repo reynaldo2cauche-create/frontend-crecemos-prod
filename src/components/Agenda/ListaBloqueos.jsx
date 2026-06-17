@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Ban, Trash2, Calendar, Clock, User, AlertCircle, Plus, Filter, Search, X, RefreshCw } from 'lucide-react';
-import { obtenerBloqueosActivos, eliminarBloqueo } from '../../services/bloqueoService';
+import { obtenerBloqueos, eliminarBloqueo } from '../../services/bloqueoService';
 import { getTipoBloqueo } from '../../services/catalogoService';
 import ModalBloquearHorario from './ModalBloquearHorario';
 import DialogMotivo from '../DialogMotivo/DialogMotivo';
@@ -36,7 +36,7 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
   const cargarBloqueos = async () => {
     try {
       setLoading(true);
-      const data = await obtenerBloqueosActivos();
+      const data = await obtenerBloqueos();
       setBloqueos(data);
 
       // Notificar al componente padre que hubo cambios
