@@ -525,18 +525,27 @@ const Agenda = () => {
       }));
     } else if (campo === 'actualizarFechaHora') {
       const { index, campo: subCampo, valor: subValor } = valor;
-      
+
       setFormularioCita(prev => {
         const nuevasFechasHoras = [...prev.fechasHoras];
         nuevasFechasHoras[index] = {
           ...nuevasFechasHoras[index],
           [subCampo]: subValor
         };
-        
+
         return {
           ...prev,
           fechasHoras: nuevasFechasHoras
         };
+      });
+    } else if (campo === 'actualizarFechaHoraCompleta') {
+      // Actualiza fecha y hora del slot a la vez (al mover la cita de día,
+      // para snapear la hora al horario válido del nuevo día).
+      const { index, fecha, horaInicio } = valor;
+      setFormularioCita(prev => {
+        const nuevasFechasHoras = [...prev.fechasHoras];
+        nuevasFechasHoras[index] = { ...nuevasFechasHoras[index], fecha, horaInicio };
+        return { ...prev, fechasHoras: nuevasFechasHoras };
       });
     } else {
       setFormularioCita(prev => ({

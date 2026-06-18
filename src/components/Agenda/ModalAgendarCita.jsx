@@ -2006,7 +2006,29 @@ const handleGuardar = useCallback(async () => {
 
                                 // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
-                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
+                                  // Al cambiar de día, la hora actual puede no existir en la grilla
+                                  // del nuevo día (sábado y L-V tienen horarios distintos). Si no existe,
+                                  // se ajusta automáticamente al horario válido más cercano para que la
+                                  // cita caiga en su casilla exacta y no quede descuadrada/invisible.
+                                  const duracion = formularioCita.duracion ? parseInt(formularioCita.duracion) : 40;
+                                  const horasValidas = generarHorasPorFecha(fechaStr, duracion);
+                                  const horaActual = formularioCita.fechasHoras?.[0]?.horaInicio || '';
+                                  let horaFinal = horaActual;
+                                  if (!horasValidas.includes(horaActual)) {
+                                    if (horasValidas.length === 0) {
+                                      horaFinal = '';
+                                    } else if (!horaActual) {
+                                      horaFinal = horasValidas[0];
+                                    } else {
+                                      const toMin = (h) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; };
+                                      const objetivo = toMin(horaActual);
+                                      horaFinal = horasValidas.reduce(
+                                        (best, h) => Math.abs(toMin(h) - objetivo) < Math.abs(toMin(best) - objetivo) ? h : best,
+                                        horasValidas[0]
+                                      );
+                                    }
+                                  }
+                                  onFormularioChange('actualizarFechaHoraCompleta', { index: 0, fecha: fechaStr, horaInicio: horaFinal });
                                 } else {
                                   mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
@@ -2462,7 +2484,29 @@ const handleGuardar = useCallback(async () => {
 
                                 // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
-                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
+                                  // Al cambiar de día, la hora actual puede no existir en la grilla
+                                  // del nuevo día (sábado y L-V tienen horarios distintos). Si no existe,
+                                  // se ajusta automáticamente al horario válido más cercano para que la
+                                  // cita caiga en su casilla exacta y no quede descuadrada/invisible.
+                                  const duracion = formularioCita.duracion ? parseInt(formularioCita.duracion) : 40;
+                                  const horasValidas = generarHorasPorFecha(fechaStr, duracion);
+                                  const horaActual = formularioCita.fechasHoras?.[0]?.horaInicio || '';
+                                  let horaFinal = horaActual;
+                                  if (!horasValidas.includes(horaActual)) {
+                                    if (horasValidas.length === 0) {
+                                      horaFinal = '';
+                                    } else if (!horaActual) {
+                                      horaFinal = horasValidas[0];
+                                    } else {
+                                      const toMin = (h) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; };
+                                      const objetivo = toMin(horaActual);
+                                      horaFinal = horasValidas.reduce(
+                                        (best, h) => Math.abs(toMin(h) - objetivo) < Math.abs(toMin(best) - objetivo) ? h : best,
+                                        horasValidas[0]
+                                      );
+                                    }
+                                  }
+                                  onFormularioChange('actualizarFechaHoraCompleta', { index: 0, fecha: fechaStr, horaInicio: horaFinal });
                                 } else {
                                   mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
@@ -2890,7 +2934,29 @@ const handleGuardar = useCallback(async () => {
 
                                 // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
-                                  onFormularioChange('actualizarFechaHora', { index: 0, campo: 'fecha', valor: fechaStr });
+                                  // Al cambiar de día, la hora actual puede no existir en la grilla
+                                  // del nuevo día (sábado y L-V tienen horarios distintos). Si no existe,
+                                  // se ajusta automáticamente al horario válido más cercano para que la
+                                  // cita caiga en su casilla exacta y no quede descuadrada/invisible.
+                                  const duracion = formularioCita.duracion ? parseInt(formularioCita.duracion) : 40;
+                                  const horasValidas = generarHorasPorFecha(fechaStr, duracion);
+                                  const horaActual = formularioCita.fechasHoras?.[0]?.horaInicio || '';
+                                  let horaFinal = horaActual;
+                                  if (!horasValidas.includes(horaActual)) {
+                                    if (horasValidas.length === 0) {
+                                      horaFinal = '';
+                                    } else if (!horaActual) {
+                                      horaFinal = horasValidas[0];
+                                    } else {
+                                      const toMin = (h) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; };
+                                      const objetivo = toMin(horaActual);
+                                      horaFinal = horasValidas.reduce(
+                                        (best, h) => Math.abs(toMin(h) - objetivo) < Math.abs(toMin(best) - objetivo) ? h : best,
+                                        horasValidas[0]
+                                      );
+                                    }
+                                  }
+                                  onFormularioChange('actualizarFechaHoraCompleta', { index: 0, fecha: fechaStr, horaInicio: horaFinal });
                                 } else {
                                   mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
