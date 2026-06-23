@@ -14,7 +14,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById, getCitasHistorico, getPacientesHistorico, getPacientesInactivados } from '../../services/ventasService';
+import { getReportes, getVentasSinCita, getHistorialVentasExcel, getVentaServicioById, getCitasHistorico, getPacientesHistorico, getPacientesInactivados, getPaquetesPorRenovar } from '../../services/ventasService';
 import { getTrabajadores } from '../../services/trabajadorService';
 import DetalleVentaModal from '../../components/Ventas/DetalleVentaModal';
 import {
@@ -60,6 +60,8 @@ const ReportesVentas = () => {
   const [pacientesInactivados, setPacientesInactivados] = useState([]);
   const [ventasSinCita, setVentasSinCita] = useState([]);
   const [loadingSinCita, setLoadingSinCita] = useState(false);
+  const [paquetesPorRenovar, setPaquetesPorRenovar] = useState([]);
+  const [loadingRenovar, setLoadingRenovar] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
   const [exportando, setExportando] = useState(null);
   const [ventaDetalle, setVentaDetalle] = useState(null);
@@ -138,6 +140,21 @@ const ReportesVentas = () => {
       }
     };
     cargarSinCita();
+  }, []);
+
+  useEffect(() => {
+    const cargarRenovar = async () => {
+      setLoadingRenovar(true);
+      try {
+        const data = await getPaquetesPorRenovar();
+        setPaquetesPorRenovar(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error('Error al cargar paquetes por renovar:', e);
+      } finally {
+        setLoadingRenovar(false);
+      }
+    };
+    cargarRenovar();
   }, []);
 
   const cargarReportes = async () => {
@@ -871,6 +888,76 @@ const ReportesVentas = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Paquetes por renovar — pacientes con paquete vencido (por servicio) */}
+      <div className="bg-white rounded-2xl shadow-sm border border-indigo-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-indigo-100 bg-indigo-50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-indigo-600" />
+            <h3 className="text-base font-bold text-indigo-900">Paquetes por renovar</h3>
+            {!loadingRenovar && (
+              <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-200 text-indigo-800">
+                {paquetesPorRenovar.length}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-indigo-600">Pacientes cuya última cita del paquete ya fue atendida y no tienen una venta posterior</p>
+        </div>
+        <div className="overflow-x-auto max-h-[28rem] overflow-y-auto">
+          {loadingRenovar ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-sm text-gray-400">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-indigo-500 rounded-full animate-spin" />
+              Cargando...
+            </div>
+          ) : paquetesPorRenovar.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-10">No hay paquetes pendientes de renovar</p>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Paciente</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Documento</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Área</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">Sesiones atendidas</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Última cita atendida</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paquetesPorRenovar.map((row, i) => (
+                  <tr key={`${row.paciente_id}-${row.servicio_id}-${i}`} className="hover:bg-indigo-50/40 transition-colors">
+                    <td className="px-4 py-2.5 text-sm font-medium text-gray-900">
+                      {row.paciente ? (
+                        <button
+                          onClick={() => window.open(`/editar-paciente/${row.paciente_id}`, '_blank', 'noopener,noreferrer')}
+                          className="text-[#7B1FA2] hover:underline hover:text-[#6A1B9A] transition-colors text-left"
+                        >
+                          {row.paciente}
+                        </button>
+                      ) : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-gray-600">{row.documento || '—'}</td>
+                    <td className="px-4 py-2.5 text-sm text-gray-700">{row.servicio || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {row.area ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                          {row.area}
+                        </span>
+                      ) : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
+                        {row.sesiones_atendidas} / {row.sesiones_totales}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">{formatFecha(row.ultima_cita_fecha)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

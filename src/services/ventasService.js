@@ -213,6 +213,16 @@ export const getVentasSinCita = () =>
   api.get('/ventas/reportes/sin-cita').then(r => r.data);
 
 /**
+ * Pacientes con paquete vencido que deben renovar, por servicio.
+ * Un par paciente+servicio aparece cuando todas las sesiones vendidas ya tienen
+ * cita, la última cita ya fue atendida y no existe una venta posterior con
+ * sesiones libres para seguir agendando.
+ * @returns {Promise<Array<{paciente_id,paciente,documento,servicio_id,servicio,area,sesiones_totales,sesiones_atendidas,ultima_venta,ultima_cita_fecha}>>}
+ */
+export const getPaquetesPorRenovar = () =>
+  api.get('/ventas/reportes/paquetes-por-renovar').then(r => r.data);
+
+/**
  * Histórico de citas por terapeuta (matriz multi-período).
  * Si el rango es mensual → 6 meses terminando en el mes filtrado.
  * Si el rango es anual → el año filtrado y el año anterior.
