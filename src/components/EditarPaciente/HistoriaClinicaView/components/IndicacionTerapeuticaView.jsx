@@ -54,9 +54,10 @@ const SERVICIO_CONFIG = {
     ],
   },
 
-  // ── TERAPIA DE LENGUAJE INFANTIL (id=1 ó id=11, area=1) ──
+  // ── TERAPIA DE LENGUAJE INFANTIL (area=1) ──
+  // El área 3 (adolescentes) se maneja en lenguaje_adolescente
   lenguaje_infantil: {
-    match: (s) => (s.id == 1 || s.id == 11) && s.area?.id == 1,
+    match: (s) => s.nombre?.toLowerCase().includes('lenguaje') && s.area?.id == 1,
     referencias: {
       internas: [
         { key: 'refInterTerapiaLenguaje',    label: 'Terapia de lenguaje' },
@@ -109,6 +110,40 @@ const SERVICIO_CONFIG = {
       { key: 'informarCambios',              label: 'Informar sobre cualquier cambio emocional, médico o escolar relevante que pueda influir en el proceso terapéutico.' },
       { key: 'evitarPantallasExcesivas',     label: 'Evitar el uso excesivo de pantallas (TV, tablets, celulares), especialmente si se trata de contenido pasivo.' },
       { key: 'realizarActividadesMotricidad',label: 'Realizar actividades como ensartar cuentas grandes, rasgar papel, enroscar tapas o jugar con plastilina para fortalecer músculos de las manos y mejorar la coordinación ojo-mano.' },
+    ],
+    materiales: [
+      'hojasBond','plumones','lapizBorrador','cartulinaDuplex','siliconaLiquida',
+      'limpiatipo','velcro','cartulinaColores','cuaderno','folder','fotos',
+      'guantesBajalenguaHisoposCrema','cintaEmbalaje','botellaAgua','plumonIndeleble',
+    ],
+  },
+
+  // ── TERAPIA DE LENGUAJE ADOLESCENTE (area=3) — mismas indicaciones que adultos ──
+  // El área 3 = Adolescentes. El servicio se llama "Terapia de Lenguaje" igual que el
+  // infantil (area 1) y el de adultos (area 2); se distingue por area.id == 3.
+  // Debe ir ANTES de lenguaje_adultos y psicologia_adolescentes para ganar el match.
+  lenguaje_adolescente: {
+    match: (s) => s.nombre?.toLowerCase().includes('lenguaje') && s.area?.id == 3,
+    referencias: {
+      internas: [
+        { key: 'refInterTerapiaLenguaje',    label: 'Terapia de lenguaje' },
+        { key: 'refInterTerapiaOcupacional', label: 'Terapia ocupacional' },
+        { key: 'refInterPsicologia',         label: 'Psicología (Conducta / aprendizaje)' },
+        { key: 'refInterPsicoterapiaInd',    label: 'Psicoterapia individual' },
+        { key: 'refInterTerapiaParejaFam',   label: 'Terapia de pareja / T.Familiar' },
+      ],
+      externas: [
+        { key: 'refExterNeurologia',      label: 'Neurología' },
+        { key: 'refExterNeuropsicologia', label: 'Neuropsicología' },
+        { key: 'refExterPsiquiatria',     label: 'Psiquiatría' },
+      ],
+    },
+    recomendaciones: [
+      { key: 'evitarCorregirseConFrustracion', label: 'Evitar corregirse con frustración durante el habla; intente comunicarse con calma y claridad.' },
+      { key: 'evitarDistraccionesPractica',    label: 'Evitar distracciones durante la práctica (TV, ruido, celular) para una mejor concentración.' },
+      { key: 'notificarCambiosSalud',          label: 'Notificar al terapeuta sobre cambios en el estado de salud neurológico o emocional.' },
+      { key: 'realizarEjerciciosEnsenados',    label: 'Realizar los ejercicios enseñados por el terapeuta.' },
+      { key: 'involucrarFamiliarCuidador',     label: 'Involucrar a un familiar o cuidador en el proceso, si el terapeuta lo considera necesario.' },
     ],
     materiales: [
       'hojasBond','plumones','lapizBorrador','cartulinaDuplex','siliconaLiquida',
@@ -850,7 +885,11 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   user?.rol?.id === ROLES.TERAPEUTA ? 'bg-gray-100 cursor-not-allowed' : ''
                 }`}>
                 <option value="">Seleccionar...</option>
-                {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                {servicios.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre}{s.area?.nombre ? ` — ${s.area.nombre}` : ''}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

@@ -433,6 +433,7 @@ const generarTituloServicio = (servicio, esInfantil) => {
   if (!servicio) return '';
   const nombreServicio = servicio.nombre || '';
   if (nombreServicio.toLowerCase().includes('lenguaje')) {
+    if (servicio.area?.id == 3) return `${nombreServicio} Adolescente`;
     return esInfantil ? `${nombreServicio} Infantil` : `${nombreServicio} Adultos`;
   }
   return nombreServicio;

@@ -112,11 +112,9 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
         const data = await getPacientes(url);
 
         if (data && Array.isArray(data)) {
-        // ✅ FILTRAR pacientes con estado.id === 5 (Inactivo) si es terapeuta
-        let pacientesFiltrados = data;
-        if (user?.rol?.id === ROLES.TERAPEUTA) {
-          pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-        }
+        // El terapeuta ve sus pacientes según el estado POR SERVICIO (el backend ya filtra
+        // por asignación + paciente_servicio ACTIVO), NO según el estado global del paciente.
+        const pacientesFiltrados = data;
 
         setPacientes(pacientesFiltrados);
         setFilteredPacientes(pacientesFiltrados);
@@ -171,11 +169,8 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
         const data = await getPacientes(url);
         if (data && Array.isArray(data)) {
-          // Filtrar inactivos si es terapeuta
-          let pacientesFiltrados = data;
-          if (user?.rol?.id === ROLES.TERAPEUTA) {
-            pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-          }
+          // El terapeuta ve por estado POR SERVICIO (lo filtra el backend), no por estado global
+          const pacientesFiltrados = data;
           setPacientes(pacientesFiltrados);
           setFilteredPacientes(pacientesFiltrados);
           setError(null);
@@ -300,10 +295,8 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
       }
 
       const data = await getPacientes(url);
-      let pacientesFiltrados = data;
-      if (user?.rol?.id === ROLES.TERAPEUTA) {
-        pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-      }
+      // El terapeuta ve por estado POR SERVICIO (lo filtra el backend), no por estado global
+      const pacientesFiltrados = data;
       setPacientes(pacientesFiltrados);
       setFilteredPacientes(pacientesFiltrados);
     } catch (error) {
@@ -348,10 +341,8 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
       }
 
       const data = await getPacientes(url);
-      let pacientesFiltrados = data;
-      if (user?.rol?.id === ROLES.TERAPEUTA) {
-        pacientesFiltrados = data.filter(p => p.estado?.id !== 5);
-      }
+      // El terapeuta ve por estado POR SERVICIO (lo filtra el backend), no por estado global
+      const pacientesFiltrados = data;
       setPacientes(pacientesFiltrados);
       setFilteredPacientes(pacientesFiltrados);
       
