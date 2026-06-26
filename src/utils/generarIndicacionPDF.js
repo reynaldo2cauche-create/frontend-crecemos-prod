@@ -358,9 +358,48 @@ const extraerRecomendaciones = (rec) => {
 };
 
 // ─── Extraer materiales dinámicamente ────────────────────────────────────────
-const extraerMateriales = (mat) => {
+// Lista EXACTA y ordenada de materiales para Terapia de Lenguaje (Infantil,
+// Adolescentes y Adultos). El orden y el texto deben figurar tal cual.
+const MATERIALES_LENGUAJE = [
+  ['hojasBond',             '100 hojas bond'],
+  ['cartulinaDuplex',       '2 pliegos de cartulina dúplex'],
+  ['velcro',                '100 unidades Velcro adhesivo'],
+  ['folder',                '1 folder'],
+  ['guantes',               'Guantes por sesión'],
+  ['bajalengua',            'Paquete de bajalengua'],
+  ['hisoposPequenos',       'Paquete de hisopos pequeños'],
+  ['hisoposLargos',         'Paquete de hisopos largos'],
+  ['plumonesGruesos',       'Estuche plumones gruesos'],
+  ['siliconaLiquida',       '1 silicona líquida mediana'],
+  ['cartulinaColores',      '1 pliego de cartulina color'],
+  ['fotos',                 'Fotos'],
+  ['plumonIndeleble',       '1 plumón indeleble negro'],
+  ['cuadernoCuadriculado',  '1 cuaderno cuadriculado A4'],
+  ['cuadernoDecroly',       '1 cuaderno decroly'],
+  ['limpiatipo',            '1 limpia tipo'],
+  ['cintaEmbalaje',         '1 cinta de embalaje'],
+];
+
+const esServicioLenguaje = (servicio) =>
+  !!servicio?.nombre && servicio.nombre.toLowerCase().includes('lenguaje');
+
+const extraerMateriales = (mat, servicio) => {
   if (!mat) return [];
 
+  const activos = [];
+
+  // Terapia de Lenguaje: lista con orden y etiquetas exactas.
+  if (esServicioLenguaje(servicio)) {
+    MATERIALES_LENGUAJE.forEach(([key, label]) => {
+      if (mat[key] === true) activos.push(label);
+    });
+    if (mat.otros && typeof mat.otros === 'string') {
+      parsearOtros(mat.otros).forEach(item => activos.push(item));
+    }
+    return activos;
+  }
+
+  // Resto de servicios: etiquetas genéricas.
   const mapaMateriales = {
     hojasBond:                      'Hojas bond (100 hojas)',
     plumones:                       'Plumones',
@@ -380,7 +419,6 @@ const extraerMateriales = (mat) => {
     munecos:                         'Muñecos',
   };
 
-  const activos = [];
   Object.keys(mat).forEach(key => {
     if (mat[key] === true && mapaMateriales[key]) {
       activos.push(mapaMateriales[key]);
@@ -484,7 +522,7 @@ const drawContenido = (doc, indicacion, wm, y) => {
   const recsActivas = extraerRecomendaciones(rec);
 
   const mat = (indicacion.materiales || [])[0] || {};
-  const matsActivos = extraerMateriales(mat);
+  const matsActivos = extraerMateriales(mat, indicacion.servicio);
 
   // Referencias — 2 columnas (internas | externas)
   if (internas.length > 0 || externas.length > 0) {

@@ -22,6 +22,31 @@ import { generarIndicacionPDF, obtenerPreviewIndicacionURL } from '../../../../u
 // Mapeamos por s.id (id del servicio) y s.area?.id como fallback
 // IDs conocidos: 1=TL Infantil, 2=T.Ocup, 10=TL Adultos(area2), 7=Psicoterapia, 8=Pareja, 9=Familiar
 // area.id: 1=Infantil, 2=Adultos
+
+// Lista EXACTA de materiales para Terapia de Lenguaje (Infantil, Adolescentes y
+// Adultos). El orden y el texto de cada label deben figurar tal cual en el
+// formulario, la vista guardada y el PDF. Cada entrada lleva su propio label
+// para no alterar los demás servicios (que siguen usando MATERIAL_LABELS global).
+const MATERIALES_LENGUAJE = [
+  { key: 'hojasBond',             label: '100 hojas bond' },
+  { key: 'cartulinaDuplex',       label: '2 pliegos de cartulina dúplex' },
+  { key: 'velcro',                label: '100 unidades Velcro adhesivo' },
+  { key: 'folder',                label: '1 folder' },
+  { key: 'guantes',               label: 'Guantes por sesión' },
+  { key: 'bajalengua',            label: 'Paquete de bajalengua' },
+  { key: 'hisoposPequenos',       label: 'Paquete de hisopos pequeños' },
+  { key: 'hisoposLargos',         label: 'Paquete de hisopos largos' },
+  { key: 'plumonesGruesos',       label: 'Estuche plumones gruesos' },
+  { key: 'siliconaLiquida',       label: '1 silicona líquida mediana' },
+  { key: 'cartulinaColores',      label: '1 pliego de cartulina color' },
+  { key: 'fotos',                 label: 'Fotos' },
+  { key: 'plumonIndeleble',       label: '1 plumón indeleble negro' },
+  { key: 'cuadernoCuadriculado',  label: '1 cuaderno cuadriculado A4' },
+  { key: 'cuadernoDecroly',       label: '1 cuaderno decroly' },
+  { key: 'limpiatipo',            label: '1 limpia tipo' },
+  { key: 'cintaEmbalaje',         label: '1 cinta de embalaje' },
+];
+
 const SERVICIO_CONFIG = {
   // ── TERAPIA DE APRENDIZAJE (area=1) — usa la misma config que Terapia de Lenguaje Infantil ──
   aprendizaje: {
@@ -54,7 +79,7 @@ const SERVICIO_CONFIG = {
     ],
   },
 
-  // ── TERAPIA DE LENGUAJE INFANTIL (area=1) ──
+  // ── TERAPIA DE LENGUAJE INFANTIL (area=1) — usa lista exacta de lenguaje ──
   // El área 3 (adolescentes) se maneja en lenguaje_adolescente
   lenguaje_infantil: {
     match: (s) => s.nombre?.toLowerCase().includes('lenguaje') && s.area?.id == 1,
@@ -79,11 +104,7 @@ const SERVICIO_CONFIG = {
       { key: 'informarCambios',           label: 'Informar sobre cualquier cambio emocional, médico o escolar relevante que pueda influir en el proceso terapéutico.' },
       { key: 'evitarPantallasExcesivas',  label: 'Evitar el uso excesivo de pantallas (TV, tablets, celulares), especialmente si se trata de contenido pasivo.' },
     ],
-    materiales: [
-      'hojasBond','plumones','lapizBorrador','cartulinaDuplex','siliconaLiquida',
-      'limpiatipo','velcro','cartulinaColores','cuaderno','folder','fotos',
-      'guantesBajalenguaHisoposCrema','cintaEmbalaje','botellaAgua','plumonIndeleble',
-    ],
+    materiales: MATERIALES_LENGUAJE,
   },
 
   // ── TERAPIA OCUPACIONAL (id=2) ────────────────────────────
@@ -145,11 +166,7 @@ const SERVICIO_CONFIG = {
       { key: 'realizarEjerciciosEnsenados',    label: 'Realizar los ejercicios enseñados por el terapeuta.' },
       { key: 'involucrarFamiliarCuidador',     label: 'Involucrar a un familiar o cuidador en el proceso, si el terapeuta lo considera necesario.' },
     ],
-    materiales: [
-      'hojasBond','plumones','lapizBorrador','cartulinaDuplex','siliconaLiquida',
-      'limpiatipo','velcro','cartulinaColores','cuaderno','folder','fotos',
-      'guantesBajalenguaHisoposCrema','cintaEmbalaje','botellaAgua','plumonIndeleble',
-    ],
+    materiales: MATERIALES_LENGUAJE,
   },
 
   // ── TERAPIA DE LENGUAJE ADULTOS (id=10, area=2) ──────────
@@ -176,11 +193,7 @@ const SERVICIO_CONFIG = {
       { key: 'realizarEjerciciosEnsenados',    label: 'Realizar los ejercicios enseñados por el terapeuta.' },
       { key: 'involucrarFamiliarCuidador',     label: 'Involucrar a un familiar o cuidador en el proceso, si el terapeuta lo considera necesario.' },
     ],
-    materiales: [
-      'hojasBond','plumones','lapizBorrador','cartulinaDuplex','siliconaLiquida',
-      'limpiatipo','velcro','cartulinaColores','cuaderno','folder','fotos',
-      'guantesBajalenguaHisoposCrema','cintaEmbalaje','botellaAgua','plumonIndeleble',
-    ],
+    materiales: MATERIALES_LENGUAJE,
   },
 
   // ── TERAPIA DEGLUTORIA (sin id propio aún, fallback por nombre) ──
@@ -361,7 +374,20 @@ const MATERIAL_LABELS = {
   botellaAgua:                   'Botella con agua',
   plumonIndeleble:               'Plumón indeleble',
   munecos:                       'Muñecos',
+  // Materiales granulares de Terapia de Lenguaje (etiquetas exactas en MATERIALES_LENGUAJE)
+  guantes:                       'Guantes por sesión',
+  bajalengua:                    'Paquete de bajalengua',
+  hisoposPequenos:               'Paquete de hisopos pequeños',
+  hisoposLargos:                 'Paquete de hisopos largos',
+  plumonesGruesos:               'Estuche plumones gruesos',
+  cuadernoCuadriculado:          'Cuaderno cuadriculado A4',
+  cuadernoDecroly:               'Cuaderno decroly',
 };
+
+// Las listas de materiales pueden ser strings (key con label global) u objetos
+// { key, label } (label exacto por servicio, p. ej. Terapia de Lenguaje).
+const matKey   = (m) => (typeof m === 'string' ? m : m.key);
+const matLabel = (m) => (typeof m === 'string' ? MATERIAL_LABELS[m] : m.label);
 
 // Recomendaciones preimpresas (always true por defecto)
 const RECOMENDACIONES_FIJAS = [
@@ -447,6 +473,9 @@ const buildFormInicial = () => ({
     siliconaLiquida: false, limpiatipo: false, velcro: false, cartulinaColores: false,
     cuaderno: false, folder: false, fotos: false, guantesBajalenguaHisoposCrema: false,
     cintaEmbalaje: false, botellaAgua: false, plumonIndeleble: false, munecos: false,
+    // Materiales granulares de Terapia de Lenguaje
+    guantes: false, bajalengua: false, hisoposPequenos: false, hisoposLargos: false,
+    plumonesGruesos: false, cuadernoCuadriculado: false, cuadernoDecroly: false,
     otros: '',
   },
 });
@@ -1122,15 +1151,18 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
               <h4 className="text-sm font-bold text-gray-900 mb-4">Materiales</h4>
               {configServicio ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {configServicio.materiales.map((key) => (
-                    <label key={key}
-                      className={`flex items-start gap-2 cursor-pointer ${key === 'guantesBajalenguaHisoposCrema' ? 'col-span-2' : ''}`}>
-                      <input type="checkbox" checked={formData.materiales[key]}
-                        onChange={(e) => handleCheckboxChange('materiales', key, e.target.checked)}
-                        className="w-4 h-4 mt-0.5 rounded border-gray-300 text-[#7B1FA2] focus:ring-[#7B1FA2] flex-shrink-0" />
-                      <span className="text-sm text-gray-700 leading-snug">{MATERIAL_LABELS[key]}</span>
-                    </label>
-                  ))}
+                  {configServicio.materiales.map((m) => {
+                    const key = matKey(m);
+                    return (
+                      <label key={key}
+                        className={`flex items-start gap-2 cursor-pointer ${key === 'guantesBajalenguaHisoposCrema' ? 'col-span-2' : ''}`}>
+                        <input type="checkbox" checked={formData.materiales[key]}
+                          onChange={(e) => handleCheckboxChange('materiales', key, e.target.checked)}
+                          className="w-4 h-4 mt-0.5 rounded border-gray-300 text-[#7B1FA2] focus:ring-[#7B1FA2] flex-shrink-0" />
+                        <span className="text-sm text-gray-700 leading-snug">{matLabel(m)}</span>
+                      </label>
+                    );
+                  })}
                   <div className="col-span-2 md:col-span-3">
                     {renderOtros('materiales', 'otros', 'Otro material...')}
                   </div>
@@ -1326,16 +1358,16 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   )}
 
                   {/* Materiales */}
-                  {mat && cfgVista && (cfgVista.materiales.some(key => mat[key]) || mat.otros) && (
+                  {mat && cfgVista && (cfgVista.materiales.some(m => mat[matKey(m)]) || mat.otros) && (
                     <div>
                       <h5 className="text-sm font-bold text-gray-900 mb-2">Materiales</h5>
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                           {cfgVista.materiales
-                            .filter(key => mat[key])
-                            .map(key => (
-                              <p key={key} className={`text-gray-600 ${key === 'guantesBajalenguaHisoposCrema' ? 'col-span-2' : ''}`}>
-                                • {MATERIAL_LABELS[key]}
+                            .filter(m => mat[matKey(m)])
+                            .map(m => (
+                              <p key={matKey(m)} className={`text-gray-600 ${matKey(m) === 'guantesBajalenguaHisoposCrema' ? 'col-span-2' : ''}`}>
+                                • {matLabel(m)}
                               </p>
                             ))}
                           {mat.otros && mat.otros.split('\n').filter(Boolean).map((item, idx) => (
