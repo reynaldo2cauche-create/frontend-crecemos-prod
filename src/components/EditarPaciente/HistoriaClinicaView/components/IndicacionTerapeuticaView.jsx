@@ -345,7 +345,7 @@ const SERVICIO_CONFIG = {
 
 // Labels para mostrar materiales
 const MATERIAL_LABELS = {
-  hojasBond:                     'Hojas bond',
+  hojasBond:                     'Hojas bond (100 hojas)',
   plumones:                      'Plumones',
   lapizBorrador:                 'Lápiz y borrador',
   cartulinaDuplex:               'Cartulina Duplex',
@@ -476,6 +476,61 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
   const [tiposCita, setTiposCita]         = useState([]);
 
   const [formData, setFormData] = useState(buildFormInicial());
+  // Texto en escritura de cada campo "Otros" antes de agregarlo (uno por categoría/campo).
+  const [nuevoOtro, setNuevoOtro] = useState({});
+
+  // Los campos "Otros" se guardan como string con cada ítem separado por salto de
+  // línea, para que en el PDF y la vista salga uno por línea.
+  const splitOtros = (valor) => (valor ? valor.split('\n').filter(Boolean) : []);
+
+  const otroKey = (category, field) => `${category}.${field}`;
+
+  const agregarOtro = (category, field) => {
+    const texto = (nuevoOtro[otroKey(category, field)] || '').trim();
+    if (!texto) return;
+    const actuales = splitOtros(formData[category][field]);
+    handleCheckboxChange(category, field, [...actuales, texto].join('\n'));
+    setNuevoOtro(prev => ({ ...prev, [otroKey(category, field)]: '' }));
+  };
+
+  const eliminarOtro = (category, field, idx) => {
+    const actuales = splitOtros(formData[category][field]);
+    handleCheckboxChange(category, field, actuales.filter((_, i) => i !== idx).join('\n'));
+  };
+
+  // Bloque "Otros": se agregan uno por uno y cada uno sale en su propia línea.
+  const renderOtros = (category, field, placeholder = 'Otros...') => {
+    const items = splitOtros(formData[category][field]);
+    const key   = otroKey(category, field);
+    return (
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input type="text" value={nuevoOtro[key] || ''}
+            onChange={(e) => setNuevoOtro(prev => ({ ...prev, [key]: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarOtro(category, field); } }}
+            placeholder={placeholder}
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]" />
+          <button type="button" onClick={() => agregarOtro(category, field)}
+            className="px-3 py-2 bg-[#7B1FA2] text-white rounded-lg hover:bg-[#6A1B9A] transition-all flex items-center gap-1.5 text-sm flex-shrink-0">
+            <Plus className="w-4 h-4" /> Agregar
+          </button>
+        </div>
+        {items.length > 0 && (
+          <ul className="space-y-1.5">
+            {items.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <span className="flex-1 text-sm text-gray-700 leading-snug">{item}</span>
+                <button type="button" onClick={() => eliminarOtro(category, field, idx)}
+                  className="p-1 hover:bg-red-50 rounded transition-colors flex-shrink-0">
+                  <X className="w-4 h-4 text-red-500" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
 
   const edad       = calcularEdad(paciente?.fecha_nacimiento);
   const esInfantil = edad < 18;
@@ -687,10 +742,20 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
   const handleGuardar = async () => {
     try {
       setGuardando(true);
-      if (!formData.fecha)           return showMsg('Debe seleccionar una fecha', 'error');
-      if (!formData.especialidad_id) return showMsg('Debe seleccionar una especialidad', 'error');
-      if (!formData.servicio_id)     return showMsg('Debe seleccionar un servicio', 'error');
-      if (!formData.citas.length)    return showMsg('Debe agregar al menos una cita', 'error');
+      if (!formData.fecha)           return showMsg('Por favor selecciona la fecha de la indicación.', 'error');
+      if (!formData.especialidad_id) return showMsg('Por favor selecciona la especialidad.', 'error');
+      if (!formData.servicio_id)     return showMsg('Por favor selecciona el servicio.', 'error');
+      if (!formData.citas.length)    return showMsg('Agrega al menos una cita antes de guardar.', 'error');
+
+      // Validar que cada cita tenga sus campos obligatorios completos.
+      for (let i = 0; i < formData.citas.length; i++) {
+        const c = formData.citas[i];
+        const numero = formData.citas.length > 1 ? ` ${i + 1}` : '';
+        if (!c.tipoId)       return showMsg(`Falta seleccionar el tipo en la cita${numero}.`, 'error');
+        if (!c.modalidadId)  return showMsg(`Falta seleccionar la modalidad en la cita${numero}.`, 'error');
+        if (!c.frecuenciaId) return showMsg(`Falta seleccionar la frecuencia en la cita${numero}.`, 'error');
+        if (!c.cantidadCitas) return showMsg(`Falta indicar la cantidad de citas en la cita${numero}.`, 'error');
+      }
 
       const payload = {
         fecha:          formData.fecha,
@@ -717,8 +782,21 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
       setFormData(buildFormInicial());
       cargarDatos();
     } catch (error) {
-      console.error('Error al guardar:', error);
-      showMsg(error.response?.data?.message || 'Error al guardar la indicación terapéutica', 'error');
+      // Detalle técnico solo en consola (para el desarrollador).
+      console.error('Error al guardar indicación terapéutica:', error?.response?.data || error);
+
+      // Mensaje amable para el usuario según el tipo de error.
+      let mensaje = 'No se pudo guardar la indicación terapéutica. Por favor, inténtalo de nuevo.';
+      if (error?.response?.status === 400) {
+        mensaje = 'Hay datos incompletos o incorrectos en la indicación. Revisa los campos e inténtalo de nuevo.';
+      } else if (error?.response?.status === 401 || error?.response?.status === 403) {
+        mensaje = 'Tu sesión expiró o no tienes permiso para esta acción. Vuelve a iniciar sesión.';
+      } else if (error?.response?.status >= 500) {
+        mensaje = 'Ocurrió un problema en el servidor. Intenta nuevamente en unos minutos.';
+      } else if (!error?.response) {
+        mensaje = 'No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.';
+      }
+      showMsg(mensaje, 'error');
     } finally {
       setGuardando(false);
     }
@@ -734,7 +812,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
       await generarIndicacionPDF(indicacion, esInfantil);
     } catch (error) {
       console.error('Error al generar PDF:', error);
-      showMsg('Error al generar el PDF', 'error');
+      showMsg('No se pudo generar el PDF. Por favor, inténtalo de nuevo.', 'error');
     } finally {
       setImprimiendoId(null);
     }
@@ -747,7 +825,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
       setPreviewUrl(url);
     } catch (error) {
       console.error('Error al previsualizar PDF:', error);
-      showMsg('Error al previsualizar el PDF', 'error');
+      showMsg('No se pudo mostrar la vista previa del PDF. Por favor, inténtalo de nuevo.', 'error');
     } finally {
       setPreviendoId(null);
     }
@@ -772,7 +850,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
       cargarDatos();
     } catch (error) {
       console.error('Error al eliminar indicación:', error);
-      showMsg('Error al eliminar la indicación terapéutica', 'error');
+      showMsg('No se pudo eliminar la indicación terapéutica. Por favor, inténtalo de nuevo.', 'error');
     } finally {
       setEliminandoId(null);
     }
@@ -991,10 +1069,9 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                           checked={formData.referencias[key]} />
                       ))}
                     </div>
-                    <input type="text" value={formData.referencias.refExterOtros}
-                      onChange={(e) => handleCheckboxChange('referencias', 'refExterOtros', e.target.value)}
-                      placeholder="Otros..."
-                      className="mt-3 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]" />
+                    <div className="mt-3">
+                      {renderOtros('referencias', 'refExterOtros', 'Otra referencia...')}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1033,10 +1110,8 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   </div>
                 )}
 
-                <input type="text" value={formData.recomendaciones.otros}
-                  onChange={(e) => handleCheckboxChange('recomendaciones', 'otros', e.target.value)}
-                  placeholder="Otros..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]" />
+                {/* Otros — se agregan uno por uno; cada uno sale en su propia línea en el PDF */}
+                {renderOtros('recomendaciones', 'otros', 'Otra recomendación...')}
               </div>
             </div>
           )}
@@ -1057,10 +1132,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                     </label>
                   ))}
                   <div className="col-span-2 md:col-span-3">
-                    <input type="text" value={formData.materiales.otros}
-                      onChange={(e) => handleCheckboxChange('materiales', 'otros', e.target.value)}
-                      placeholder="Otros..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]" />
+                    {renderOtros('materiales', 'otros', 'Otro material...')}
                   </div>
                 </div>
               ) : (
@@ -1221,7 +1293,9 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                                 .map(({ key, label }) => (
                                   <p key={key} className="text-gray-600">• {label}</p>
                                 ))}
-                              {ref.refExterOtros && <p className="text-gray-600">• Otros: {ref.refExterOtros}</p>}
+                              {ref.refExterOtros && ref.refExterOtros.split('\n').filter(Boolean).map((item, idx) => (
+                                <p key={idx} className="text-gray-600">• {item}</p>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -1244,13 +1318,15 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                           .map(({ key, label }) => (
                             <p key={key} className="text-gray-600">• {label}</p>
                           ))}
-                        {rec.otros && <p className="text-gray-600">• Otros: {rec.otros}</p>}
+                        {rec.otros && rec.otros.split('\n').filter(Boolean).map((item, idx) => (
+                          <p key={idx} className="text-gray-600">• {item}</p>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   {/* Materiales */}
-                  {mat && cfgVista && cfgVista.materiales.some(key => mat[key]) && (
+                  {mat && cfgVista && (cfgVista.materiales.some(key => mat[key]) || mat.otros) && (
                     <div>
                       <h5 className="text-sm font-bold text-gray-900 mb-2">Materiales</h5>
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -1262,9 +1338,9 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                                 • {MATERIAL_LABELS[key]}
                               </p>
                             ))}
-                          {mat.otros && (
-                            <p className="text-gray-600 col-span-2 md:col-span-3">• Otros: {mat.otros}</p>
-                          )}
+                          {mat.otros && mat.otros.split('\n').filter(Boolean).map((item, idx) => (
+                            <p key={idx} className="text-gray-600 col-span-2 md:col-span-3">• {item}</p>
+                          ))}
                         </div>
                       </div>
                     </div>

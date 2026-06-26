@@ -65,6 +65,16 @@ const formatFecha = (str) => {
   return `${d}/${m}/${y}`;
 };
 
+// Capitaliza la primera letra (para los campos "Otros" escritos por el usuario).
+const capitalizar = (txt) => (txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt);
+
+// "otros" puede contener varios ítems separados por salto de línea; devuelve
+// cada uno limpio y con la primera letra en mayúscula.
+const parsearOtros = (valor) =>
+  typeof valor === 'string'
+    ? valor.split('\n').map(s => capitalizar(s.trim())).filter(Boolean)
+    : [];
+
 const drawWatermark = (doc, wm) => {
   if (!wm) return;
   const wW = Math.min(160, PAGE_W * 0.75);
@@ -268,8 +278,10 @@ const extraerReferencias = (ref) => {
     ref.refExterNutricion              && 'Nutrición',
     ref.refExterOtorrinolaringologia   && 'Otorrinolaringología',
     ref.refExterGeriatria              && 'Geriatría',
-    ref.refExterOtros                  && ref.refExterOtros,
   ].filter(Boolean);
+
+  // "Otros" puede contener varias referencias separadas por salto de línea.
+  parsearOtros(ref.refExterOtros).forEach(item => externas.push(item));
 
   return { internas, externas };
 };
@@ -336,7 +348,9 @@ const extraerRecomendaciones = (rec) => {
     if (rec[key] === true && mapaRecomendaciones[key]) {
       activas.push(mapaRecomendaciones[key]);
     } else if (key === 'otros' && rec[key] && typeof rec[key] === 'string') {
-      activas.push(rec[key]);
+      // "otros" puede contener varias recomendaciones separadas por salto de línea;
+      // cada una se agrega como viñeta independiente.
+      parsearOtros(rec[key]).forEach(item => activas.push(item));
     }
   });
 
@@ -348,7 +362,7 @@ const extraerMateriales = (mat) => {
   if (!mat) return [];
 
   const mapaMateriales = {
-    hojasBond:                      'Hojas bond',
+    hojasBond:                      'Hojas bond (100 hojas)',
     plumones:                       'Plumones',
     lapizBorrador:                  'Lápiz y borrador',
     cartulinaDuplex:                 'Cartulina Duplex',
@@ -371,7 +385,9 @@ const extraerMateriales = (mat) => {
     if (mat[key] === true && mapaMateriales[key]) {
       activos.push(mapaMateriales[key]);
     } else if (key === 'otros' && mat[key] && typeof mat[key] === 'string') {
-      activos.push(mat[key]);
+      // "otros" puede contener varios materiales separados por salto de línea;
+      // cada uno se agrega como ítem independiente.
+      parsearOtros(mat[key]).forEach(item => activos.push(item));
     }
   });
 

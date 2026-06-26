@@ -161,31 +161,34 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
 
   // ── Handlers de objetivos ──
   const handleGuardarGeneral = async (form) => {
+    const esNuevo = modalGeneral.mode === 'add';
     try {
-      if (modalGeneral.mode === 'add') await crearGeneral({ plan_id: plan.plan.id, ...form });
+      if (esNuevo) await crearGeneral({ plan_id: plan.plan.id, ...form });
       else await editarGeneral(modalGeneral.data.id, form);
       setModalGeneral(null);
       await recargarPlan();
-      toast('success', 'Objetivo general guardado');
-    } catch (e) { toast('error', e.response?.data?.message || 'No se pudo guardar'); }
+      toast('success', esNuevo ? 'Objetivo general creado correctamente' : 'Objetivo general editado correctamente');
+    } catch (e) { toast('error', e.response?.data?.message || (esNuevo ? 'No se pudo crear el objetivo general' : 'No se pudo editar el objetivo general')); }
   };
   const handleGuardarEspecifico = async (form) => {
+    const esNuevo = modalEspecifico.mode === 'add';
     try {
-      if (modalEspecifico.mode === 'add') await crearEspecifico({ objetivo_general_id: modalEspecifico.generalId, ...form });
+      if (esNuevo) await crearEspecifico({ objetivo_general_id: modalEspecifico.generalId, ...form });
       else await editarEspecifico(modalEspecifico.data.id, form);
       setModalEspecifico(null);
       await recargarPlan();
-      toast('success', 'Objetivo específico guardado');
-    } catch (e) { toast('error', e.response?.data?.message || 'No se pudo guardar'); }
+      toast('success', esNuevo ? 'Objetivo específico creado correctamente' : 'Objetivo específico editado correctamente');
+    } catch (e) { toast('error', e.response?.data?.message || (esNuevo ? 'No se pudo crear el objetivo específico' : 'No se pudo editar el objetivo específico')); }
   };
   const handleEliminar = async () => {
+    const esGeneral = confirmDelete.tipo === 'general';
     try {
-      if (confirmDelete.tipo === 'general') await eliminarGeneral(confirmDelete.id);
+      if (esGeneral) await eliminarGeneral(confirmDelete.id);
       else await eliminarEspecifico(confirmDelete.id);
       setConfirmDelete(null);
       await recargarPlan();
-      toast('success', 'Eliminado');
-    } catch (e) { toast('error', e.response?.data?.message || 'No se pudo eliminar'); }
+      toast('success', esGeneral ? 'Objetivo general eliminado correctamente' : 'Objetivo específico eliminado correctamente');
+    } catch (e) { toast('error', e.response?.data?.message || (esGeneral ? 'No se pudo eliminar el objetivo general' : 'No se pudo eliminar el objetivo específico')); }
   };
 
   // ── Handlers de registro por sesión ──
@@ -239,7 +242,16 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
   return (
     <div className="space-y-3">
       {msg.texto && (
-        <div className={`px-4 py-2 rounded-xl text-sm ${msg.tipo === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{msg.texto}</div>
+        <div className="fixed top-6 right-6 z-[60] px-5 py-3 rounded-xl shadow-lg border bg-white flex items-center gap-2.5"
+          style={{ borderColor: msg.tipo === 'success' ? '#D1FAE5' : '#FEE2E2' }}>
+          {msg.tipo === 'success'
+            ? <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+            : <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
+          <span className="text-sm font-medium text-gray-700">{msg.texto}</span>
+          <button onClick={() => setMsg({ tipo: '', texto: '' })} className="ml-2">
+            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
       )}
 
       {/* Servicios del paciente */}
@@ -262,6 +274,7 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
       {vista === 'plan' ? (
         <TabPlan
           plan={plan} generales={generales} maxGen={maxGen} maxEsp={maxEsp} puedeGestionar={puedeGestionar}
+          esAdmin={esAdmin}
           onAddGeneral={() => setModalGeneral({ mode: 'add', data: {} })}
           onEditGeneral={(g) => setModalGeneral({ mode: 'edit', data: g })}
           onDeleteGeneral={(g) => setConfirmDelete({ tipo: 'general', id: g.id, label: g.area_nombre })}
@@ -301,7 +314,7 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
 // ════════════════════════════════════════════════════════════════════
 // TAB · PLAN DE TRATAMIENTO
 // ════════════════════════════════════════════════════════════════════
-const TabPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+const TabPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
   const progresoPlan = plan?.plan?.progreso ?? 0;
   const totalSes = plan?.servicio?.total_sesiones ?? 0;
   const revisionCada = plan?.plan?.revision_cada ?? 8;
@@ -334,7 +347,7 @@ const TabPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, onAddGeneral
         )}
 
         {generales.map((g, i) => (
-          <GeneralCard key={g.id} g={g} maxEsp={maxEsp} color={AREA_COLORS[i % AREA_COLORS.length]} puedeGestionar={puedeGestionar}
+          <GeneralCard key={g.id} g={g} maxEsp={maxEsp} color={AREA_COLORS[i % AREA_COLORS.length]} puedeGestionar={puedeGestionar} esAdmin={esAdmin}
             onEditGeneral={onEditGeneral} onDeleteGeneral={onDeleteGeneral}
             onAddEspecifico={onAddEspecifico} onEditEspecifico={onEditEspecifico} onDeleteEspecifico={onDeleteEspecifico} />
         ))}
@@ -388,7 +401,9 @@ const TabPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, onAddGeneral
 };
 
 // Tarjeta de un objetivo general: panel izquierdo (área + progreso) + tabla de específicos.
-const GeneralCard = ({ g, maxEsp, color, puedeGestionar, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+  // Crear objetivos específicos: quien gestiona objetivos o el administrador.
+  const puedeGestionarEspecifico = puedeGestionar || esAdmin;
   const [abierto, setAbierto] = useState(true);
   const c = progresoColor(g.progreso);
   const col = color || AREA_COLORS[0];
@@ -434,7 +449,7 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, onEditGeneral, onDelete
                 Objetivos específicos (máx. {maxEsp})
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
               </button>
-              {puedeGestionar && (
+              {puedeGestionarEspecifico && (
                 <button onClick={() => onAddEspecifico(g)} disabled={especificos.length >= maxEsp}
                   className="flex items-center gap-1 text-[11px] font-semibold text-[#7B1FA2] hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
                   <Plus className="w-3 h-3" /> Específico
@@ -472,10 +487,11 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, onEditGeneral, onDelete
                             </div>
                           </td>
                           <td className="py-2">
-                            {puedeGestionar && (
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => onEditEspecifico(g, e)} className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3 h-3" /></button>
-                                <button onClick={() => onDeleteEspecifico(e)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                            {/* Editar y eliminar objetivos específicos: solo el Administrador */}
+                            {esAdmin && (
+                              <div className="flex items-center gap-0.5">
+                                <button onClick={() => onEditEspecifico(g, e)} title="Editar objetivo específico" className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3 h-3" /></button>
+                                <button onClick={() => onDeleteEspecifico(e)} title="Eliminar objetivo específico" className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                               </div>
                             )}
                           </td>
