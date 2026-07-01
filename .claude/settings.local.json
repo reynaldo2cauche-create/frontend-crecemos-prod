@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-<<<<<<< HEAD
-<<<<<<< HEAD
       "Bash(npm run start:dev:*)",
       "Bash(timeout /t 10)",
       "Bash(netstat:*)",
@@ -33,19 +31,9 @@
       "Bash(find:*)",
       "Bash(for file in \"./historia-clinica/archivos-digitales.controller.ts\" \"./historia-clinica/historia-clinica.controller.ts\" \"./pacientes/controllers/nota-evolucion.controller.ts\" \"./pacientes/historia-clinica.controller.ts\" \"./pacientes/paciente-servicio.controller.ts\")",
       "Bash(do sed -i \"/entidadTipo:/d; /entidadIdParam:/d; /entidadIdBody:/d; /entidadIdResponse:/d\" \"$file\")",
-      "Bash(done)"
-=======
-      "Bash(nul)",
-      "Bash(dir:*)",
-      "Bash(findstr:*)",
+      "Bash(done)",
       "Bash(mkdir:*)",
-      "Bash(npm run dev:*)"
->>>>>>> blog-original
-=======
-      "Bash(npm run start:dev:*)",
-      "Bash(taskkill:*)",
-      "Bash(timeout:*)"
->>>>>>> ab86c50 (se sube beneficios de crecemos)
+      "Bash(node *)"
     ],
     "deny": [],
     "ask": []

@@ -12,13 +12,13 @@ import IndicacionTerapeuticaView from './HistoriaClinicaView/components/Indicaci
 import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
 import SolicitudInformeView from './HistoriaClinicaView/components/SolicitudInformeView';
 
-// Ordena los reportes de evolución de más recientes a más antiguos
-// (por fecha de evaluación; desempata por id descendente).
+// Ordena los reportes de evolución según su fecha de creación (registro),
+// del más reciente al más antiguo; desempata por id descendente.
 const ordenarRecientesPrimero = (reportes = []) =>
   [...reportes].sort((a, b) => {
-    const ta = new Date(a.fechaEvaluacion || 0).getTime();
-    const tb = new Date(b.fechaEvaluacion || 0).getTime();
-    if (tb !== ta) return tb - ta;       // fecha de evaluación más reciente primero
+    const ta = new Date(a.fechaCreacion || 0).getTime();
+    const tb = new Date(b.fechaCreacion || 0).getTime();
+    if (tb !== ta) return tb - ta;       // fecha de registro más reciente primero
     return (b.id || 0) - (a.id || 0);    // desempate: el creado más recientemente
   });
 

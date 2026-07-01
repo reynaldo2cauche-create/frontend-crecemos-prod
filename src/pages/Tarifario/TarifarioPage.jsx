@@ -514,6 +514,7 @@ const ALDEAS_DESCUENTOS = [
   {
     categoria: 'Evaluaciones y Entrevistas',
     color: 'amber',
+    notaCategoria: 'Las evaluaciones en Terapia de Lenguaje y Terapia Ocupacional no incluyen el informe de evaluación.',
     icon: (
       <path
         strokeLinecap="round"
@@ -526,6 +527,7 @@ const ALDEAS_DESCUENTOS = [
       { label: 'Evaluación en Terapia de Lenguaje', descuento: '50%' },
       { label: 'Evaluación en Terapia Ocupacional', descuento: '50%' },
       { label: 'Entrevista psicológica para padres o cuidadores', descuento: '50%' },
+      { label: 'Evaluación psicológica', descuento: '10%' },
     ],
   },
   {
@@ -540,7 +542,7 @@ const ALDEAS_DESCUENTOS = [
       />
     ),
     items: [
-      { label: 'Informes de evaluación', descuento: '100%', nota: 'Gratuito' },
+      { label: 'Informes de evaluación psicológica', descuento: '100%', nota: 'Gratuito' },
       { label: 'Informes de avance o evolución terapéutica', descuento: '50%' },
     ],
   },
@@ -711,6 +713,11 @@ const AldeasConvenioSection = () => {
                       </li>
                     ))}
                   </ul>
+                  {grupo.notaCategoria && (
+                    <p className={`text-xs italic mt-3 pt-2.5 border-t ${c.border} ${c.titleColor}`}>
+                      {grupo.notaCategoria}
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -749,6 +756,8 @@ const SOR_ANA_DESCUENTOS = [
   {
     categoria: 'Beneficios para estudiantes',
     color: 'purple',
+    descripcion: 'Los estudiantes matriculados en el colegio accederán a los siguientes beneficios preferenciales:',
+    notaCategoria: 'Las evaluaciones de Terapia de Lenguaje y Terapia Ocupacional no incluyen el informe físico de evaluación. En caso de requerirse dicho informe, este será emitido conforme a la tarifa vigente del Centro de Terapias Crecemos, aplicándose el descuento correspondiente del convenio.',
     icon: (
       <path
         strokeLinecap="round"
@@ -758,14 +767,17 @@ const SOR_ANA_DESCUENTOS = [
       />
     ),
     items: [
-      { label: 'Primera cita de evaluación o entrevista inicial', descuento: '50%' },
-      { label: 'Primera cita para estudiantes con necesidad de apoyo económico', descuento: '100%', nota: 'Gratuita — previa identificación por el colegio' },
-      { label: 'Paquetes terapéuticos (apoyo económico)', descuento: '10%' },
+      { label: 'Entrevista de padres — servicio de Psicología', descuento: '50%', nota: 'Cuando forma parte de la evaluación psicológica' },
+      { label: 'Evaluación de Terapia de Lenguaje', descuento: '25%' },
+      { label: 'Evaluación de Terapia Ocupacional', descuento: '25%' },
+      { label: 'Paquetes de Evaluación Psicológica', descuento: '10%' },
+      { label: 'Paquetes terapéuticos', descuento: '10%', nota: 'Para estudiantes que requieran intervención continua' },
     ],
   },
   {
     categoria: 'Beneficios para padres de familia',
     color: 'blue',
+    descripcion: 'Los padres de familia o apoderados de estudiantes matriculados accederán a los siguientes beneficios:',
     icon: (
       <path
         strokeLinecap="round"
@@ -775,13 +787,15 @@ const SOR_ANA_DESCUENTOS = [
       />
     ),
     items: [
-      { label: 'Primera cita de evaluación o entrevista inicial', descuento: '50%' },
-      { label: 'Paquetes terapéuticos', descuento: '10%', nota: 'Cuando corresponda' },
+      { label: 'Entrevista de padres del servicio de Psicología', descuento: '50%' },
+      { label: 'Paquetes de Evaluación Psicológica', descuento: '10%' },
+      { label: 'Paquetes terapéuticos', descuento: '10%' },
     ],
   },
   {
     categoria: 'Colaboradores del colegio',
     color: 'green',
+    descripcion: 'Docentes, personal administrativo y demás colaboradores accederán exclusivamente al servicio de Psicología:',
     icon: (
       <path
         strokeLinecap="round"
@@ -793,6 +807,23 @@ const SOR_ANA_DESCUENTOS = [
     items: [
       { label: 'Entrevista psicológica inicial', descuento: '50%', nota: 'Exclusivo servicio de Psicología' },
       { label: 'Paquetes de sesiones psicológicas', descuento: '25%', nota: 'Exclusivo servicio de Psicología' },
+    ],
+  },
+  {
+    categoria: 'Beneficios en Informes',
+    color: 'amber',
+    descripcion: 'Los beneficiarios del presente convenio accederán a:',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
+    ),
+    items: [
+      { label: 'Informes de Evaluación', descuento: '20%' },
+      { label: 'Informes de Avance o Evolución Terapéutica', descuento: '20%' },
     ],
   },
 ];
@@ -824,6 +855,15 @@ const sorAnaColorMap = {
     badgeBg: 'bg-green-100',
     badgeText: 'text-green-700',
     titleColor: 'text-green-800',
+  },
+  amber: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    badgeBg: 'bg-amber-100',
+    badgeText: 'text-amber-700',
+    titleColor: 'text-amber-800',
   },
 };
 
@@ -879,41 +919,58 @@ const SorAnaConvenioSection = () => {
             expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className="px-5 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {SOR_ANA_DESCUENTOS.map((grupo) => {
-              const c = sorAnaColorMap[grupo.color];
-              return (
-                <div key={grupo.categoria} className={`rounded-xl border ${c.border} ${c.bg} p-4`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-7 h-7 rounded-lg ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
-                      <svg className={`w-4 h-4 ${c.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {grupo.icon}
-                      </svg>
-                    </div>
-                    <p className={`text-xs font-bold uppercase tracking-wide ${c.titleColor}`}>
-                      {grupo.categoria}
-                    </p>
-                  </div>
-                  <ul className="space-y-2.5">
-                    {grupo.items.map((item, idx) => (
-                      <li key={idx} className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-800 leading-tight">{item.label}</p>
-                          {item.nota && (
-                            <p className="text-xs text-gray-500 mt-0.5 italic">{item.nota}</p>
-                          )}
+          <div className="px-5 py-5 grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            {[SOR_ANA_DESCUENTOS.slice(0, 1), SOR_ANA_DESCUENTOS.slice(1)].map((columna, ci) => (
+              <div key={ci} className="space-y-4">
+                {columna.map((grupo) => {
+                  const c = sorAnaColorMap[grupo.color];
+                  return (
+                    <div key={grupo.categoria} className={`rounded-xl border ${c.border} ${c.bg} px-4 py-3.5`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-6 h-6 rounded-md ${c.iconBg} flex items-center justify-center flex-shrink-0`}>
+                          <svg className={`w-3.5 h-3.5 ${c.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            {grupo.icon}
+                          </svg>
                         </div>
-                        <span
-                          className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${c.badgeBg} ${c.badgeText} border ${c.border}`}
-                        >
-                          {item.descuento === '100%' ? 'Gratis' : `${item.descuento} dto.`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
+                        <p className={`text-xs font-bold uppercase tracking-wide ${c.titleColor}`}>
+                          {grupo.categoria}
+                        </p>
+                      </div>
+                      {grupo.descripcion && (
+                        <p className="text-[11px] text-gray-500 leading-snug mb-3 -mt-1">
+                          {grupo.descripcion}
+                        </p>
+                      )}
+                      <ul className="space-y-2">
+                        {grupo.items.map((item, idx) => (
+                          <li key={idx} className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-800 leading-snug">{item.label}</p>
+                              {item.nota && (
+                                <p className="text-[11px] text-gray-500 italic leading-snug mt-0.5">{item.nota}</p>
+                              )}
+                            </div>
+                            <span
+                              className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${c.badgeBg} ${c.badgeText} border ${c.border}`}
+                            >
+                              {item.descuento === '100%' ? 'Gratis' : `${item.descuento} dto.`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      {grupo.notaCategoria && (
+                        <p className={`flex items-start gap-1.5 mt-3 pt-2.5 border-t ${c.border} text-[11px] italic leading-snug ${c.titleColor}`}>
+                          <svg className={`w-3.5 h-3.5 flex-shrink-0 mt-px ${c.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {grupo.notaCategoria}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
 
           <div className="px-5 pb-4">
