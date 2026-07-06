@@ -33,7 +33,12 @@
       "Bash(do sed -i \"/entidadTipo:/d; /entidadIdParam:/d; /entidadIdBody:/d; /entidadIdResponse:/d\" \"$file\")",
       "Bash(done)",
       "Bash(mkdir:*)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(npx eslint *)",
+      "Read(//c/Program Files/MySQL/**)",
+      "Read(//c/xampp/mysql/bin/**)",
+      "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -uroot -padmin -e 'SELECT 1 AS ok;' crecemos_website)",
+      "Bash($MYSQL *)"
     ],
     "deny": [],
     "ask": []

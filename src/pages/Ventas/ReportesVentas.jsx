@@ -25,7 +25,8 @@ import {
   exportarTopItems,
   exportarVentasSinCita,
   exportarDescuentos,
-  exportarHistorialVentas
+  exportarHistorialVentas,
+  exportarPaquetesPorRenovar
 } from '../../utils/excelReportesVentas';
 
 
@@ -903,7 +904,14 @@ const ReportesVentas = () => {
               </span>
             )}
           </div>
-          <p className="text-xs text-indigo-600">Pacientes cuya última cita del paquete ya fue atendida y no tienen una venta posterior</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-indigo-600 hidden md:block">Pacientes cuya última cita del paquete ya fue atendida y no tienen una venta posterior</p>
+            <BtnExcel
+              id="renovar"
+              onClick={() => exportar('renovar', () => exportarPaquetesPorRenovar(paquetesPorRenovar, filtros))}
+              disabled={loadingRenovar || paquetesPorRenovar.length === 0}
+            />
+          </div>
         </div>
         <div className="overflow-x-auto max-h-[28rem] overflow-y-auto">
           {loadingRenovar ? (
@@ -917,6 +925,7 @@ const ReportesVentas = () => {
             <table className="w-full">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">N°</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Paciente</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Documento</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
@@ -928,6 +937,7 @@ const ReportesVentas = () => {
               <tbody className="divide-y divide-gray-100">
                 {paquetesPorRenovar.map((row, i) => (
                   <tr key={`${row.paciente_id}-${row.servicio_id}-${i}`} className="hover:bg-indigo-50/40 transition-colors">
+                    <td className="px-4 py-2.5 text-sm text-center text-gray-400 font-medium">{i + 1}</td>
                     <td className="px-4 py-2.5 text-sm font-medium text-gray-900">
                       {row.paciente ? (
                         <button
@@ -952,7 +962,12 @@ const ReportesVentas = () => {
                         {row.sesiones_atendidas} / {row.sesiones_totales}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">{formatFecha(row.ultima_cita_fecha)}</td>
+                    <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">
+                      {formatFecha(row.ultima_cita_fecha)}
+                      {row.ultima_cita_hora && (
+                        <span className="ml-1.5 text-xs text-gray-400">{String(row.ultima_cita_hora).slice(0, 5)}</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

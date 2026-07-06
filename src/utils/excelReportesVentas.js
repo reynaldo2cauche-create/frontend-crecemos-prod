@@ -35,6 +35,12 @@ const parseFechaVenta = (f, inicio, fin) => {
   return isNaN(d) ? null : d;
 };
 
+const fmtHora = (h) => {
+  if (!h) return '—';
+  const m = String(h).match(/^(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : String(h);
+};
+
 const fmtMoneda = (v) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(v ?? 0);
 
@@ -519,6 +525,50 @@ export function exportarDescuentos(descuentos, filtros) {
   guardar(ws, merges, `A1:D${r}`,
     [{ wpx: 230 }, { wpx: 90 }, { wpx: 150 }, { wpx: 110 }],
     `Descuentos_${filtros.fechaInicio}_${filtros.fechaFin}`, r);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 8. PAQUETES POR RENOVAR
+// ═══════════════════════════════════════════════════════════════════════════════
+export function exportarPaquetesPorRenovar(paquetes, filtros) {
+  const ws = {}; const merges = []; const NCOLS = 8;
+  let r = cabecera(ws, merges, NCOLS, filtros, 'Paquetes por Renovar');
+
+  const thP = S.th(P.PURPLE2);
+  ws[`A${r}`] = C('N°',                  thP);
+  ws[`B${r}`] = C('PACIENTE',            { ...thP, alignment: { horizontal: 'left', vertical: 'center' } });
+  ws[`C${r}`] = C('DOCUMENTO',           thP);
+  ws[`D${r}`] = C('SERVICIO',            { ...thP, alignment: { horizontal: 'left', vertical: 'center' } });
+  ws[`E${r}`] = C('ÁREA',                thP);
+  ws[`F${r}`] = C('SESIONES ATENDIDAS',  thP);
+  ws[`G${r}`] = C('ÚLTIMA CITA',         thP);
+  ws[`H${r}`] = C('HORA',                thP);
+  r++;
+
+  paquetes.forEach((row, i) => {
+    const par = i % 2 === 0;
+    const bg  = par ? P.WHITE : P.PURPLE_LT;
+    const td  = (al = 'left') => ({ font: { name: 'Calibri', sz: 13 }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: al, vertical: 'center' }, border: borde() });
+    ws[`A${r}`] = C(i + 1,                  { ...td('center'), font: { name: 'Calibri', sz: 13, color: { rgb: P.GRAY4 } } }, 'n');
+    ws[`B${r}`] = C(row.paciente || '—',   { ...td(), font: { name: 'Calibri', sz: 13, bold: true } });
+    ws[`C${r}`] = C(row.documento || '—',  td('center'));
+    ws[`D${r}`] = C(row.servicio || '—',   td());
+    ws[`E${r}`] = C(row.area || '—',       td('center'));
+    ws[`F${r}`] = C(`${row.sesiones_atendidas ?? 0} / ${row.sesiones_totales ?? 0}`, { ...td('center'), font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: P.PURPLE2 } } });
+    ws[`G${r}`] = C(fmtFecha(row.ultima_cita_fecha), td('center'));
+    ws[`H${r}`] = C(fmtHora(row.ultima_cita_hora),   td('center'));
+    r++;
+  });
+
+  const tot = { font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: P.WHITE } }, fill: { fgColor: { rgb: P.PURPLE } }, alignment: { horizontal: 'left', vertical: 'center' }, border: borde(P.PURPLE) };
+  ws[`A${r}`] = C(`Total: ${paquetes.length} paquetes por renovar`, tot);
+  for (const letra of ['B','C','D','E','F','G','H']) ws[`${letra}${r}`] = C('', tot);
+  merges.push({ s: { r: r - 1, c: 0 }, e: { r: r - 1, c: 7 } });
+
+  guardar(ws, merges, `A1:H${r}`,
+    [{ wpx: 50 }, { wpx: 220 }, { wpx: 110 }, { wpx: 180 }, { wpx: 120 }, { wpx: 150 }, { wpx: 120 }, { wpx: 80 }],
+    `Paquetes_Por_Renovar_${filtros.fechaInicio ?? ''}_${filtros.fechaFin ?? ''}`, r);
 }
 
 
