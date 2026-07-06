@@ -573,6 +573,46 @@ export function exportarPaquetesPorRenovar(paquetes, filtros) {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 9. PACIENTES INACTIVADOS
+// ═══════════════════════════════════════════════════════════════════════════════
+export function exportarPacientesInactivados(pacientes, filtros) {
+  const ws = {}; const merges = []; const NCOLS = 6;
+  let r = cabecera(ws, merges, NCOLS, filtros, 'Pacientes Inactivados');
+
+  const thR = S.th(P.RED);
+  ws[`A${r}`] = C('N°',                 thR);
+  ws[`B${r}`] = C('FECHA INACTIVACIÓN', thR);
+  ws[`C${r}`] = C('PACIENTE',           { ...thR, alignment: { horizontal: 'left', vertical: 'center' } });
+  ws[`D${r}`] = C('DOCUMENTO',          thR);
+  ws[`E${r}`] = C('SERVICIO',           { ...thR, alignment: { horizontal: 'left', vertical: 'center' } });
+  ws[`F${r}`] = C('ÁREA',               thR);
+  r++;
+
+  pacientes.forEach((p, i) => {
+    const par = i % 2 === 0;
+    const bg  = par ? P.WHITE : P.RED_LT;
+    const td  = (al = 'left') => ({ font: { name: 'Calibri', sz: 13 }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: al, vertical: 'center' }, border: borde() });
+    ws[`A${r}`] = C(i + 1,                       { ...td('center'), font: { name: 'Calibri', sz: 13, color: { rgb: P.GRAY4 } } }, 'n');
+    ws[`B${r}`] = C(fmtFecha(p.fecha_inactivacion), td('center'));
+    ws[`C${r}`] = C(p.nombre || '—',             { ...td(), font: { name: 'Calibri', sz: 13, bold: true } });
+    ws[`D${r}`] = C(p.documento || '—',          td('center'));
+    ws[`E${r}`] = C(p.servicio || '—',           td());
+    ws[`F${r}`] = C(p.area || '—',               td('center'));
+    r++;
+  });
+
+  const tot = { font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: P.WHITE } }, fill: { fgColor: { rgb: P.RED } }, alignment: { horizontal: 'left', vertical: 'center' }, border: borde(P.RED) };
+  ws[`A${r}`] = C(`Total: ${pacientes.length} pacientes inactivados`, tot);
+  for (const letra of ['B','C','D','E','F']) ws[`${letra}${r}`] = C('', tot);
+  merges.push({ s: { r: r - 1, c: 0 }, e: { r: r - 1, c: 5 } });
+
+  guardar(ws, merges, `A1:F${r}`,
+    [{ wpx: 50 }, { wpx: 150 }, { wpx: 220 }, { wpx: 110 }, { wpx: 180 }, { wpx: 120 }],
+    `Pacientes_Inactivados_${filtros.fechaInicio ?? ''}_${filtros.fechaFin ?? ''}`, r);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // EXPORTAR HISTORIAL DE VENTAS CON DETALLE
 // Agregar esta función a excelReportesVentas.js
 // ═══════════════════════════════════════════════════════════════════════════════

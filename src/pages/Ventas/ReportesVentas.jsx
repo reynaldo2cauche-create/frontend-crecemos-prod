@@ -26,7 +26,8 @@ import {
   exportarVentasSinCita,
   exportarDescuentos,
   exportarHistorialVentas,
-  exportarPaquetesPorRenovar
+  exportarPaquetesPorRenovar,
+  exportarPacientesInactivados
 } from '../../utils/excelReportesVentas';
 
 
@@ -700,61 +701,6 @@ const ReportesVentas = () => {
 
   </div>
 
-  {/* Pacientes inactivados — según el rango de fechas del filtro */}
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-        <UserGroupIcon className="w-5 h-5 text-red-500" />
-        Pacientes inactivados
-        <span className="text-xs font-normal text-gray-400">según el rango de fechas del filtro</span>
-      </h3>
-      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
-        {pacientesInactivados.length}
-      </span>
-    </div>
-    {pacientesInactivados.length === 0 ? (
-      <p className="text-sm text-gray-400 text-center py-10">No hay pacientes inactivados en el rango seleccionado</p>
-    ) : (
-      <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-100 rounded-xl">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 sticky top-0">
-            <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha inactivación</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Paciente</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Documento</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
-              <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Área</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {pacientesInactivados.map((p) => (
-              <tr key={p.id} className="hover:bg-red-50/40 transition-colors">
-                <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{formatFecha(p.fecha_inactivacion)}</td>
-                <td className="px-4 py-2.5 font-medium text-gray-900">
-                  <button
-                    onClick={() => window.open(`/editar-paciente/${p.id}`, '_blank', 'noopener,noreferrer')}
-                    className="text-[#7B1FA2] hover:underline hover:text-[#6A1B9A] text-left"
-                  >
-                    {p.nombre}
-                  </button>
-                </td>
-                <td className="px-4 py-2.5 text-gray-600">{p.documento || '—'}</td>
-                <td className="px-4 py-2.5 text-gray-700">{p.servicio || '—'}</td>
-                <td className="px-4 py-2.5">
-                  {p.area ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                      {p.area}
-                    </span>
-                  ) : <span className="text-gray-400">—</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>
-
   {/* Top productos/servicios — solo barra de cantidad, ingresos en tooltip */}
 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
   <div className="flex items-center justify-between mb-4">
@@ -974,6 +920,68 @@ const ReportesVentas = () => {
             </table>
           )}
         </div>
+      </div>
+
+      {/* Pacientes inactivados — según el rango de fechas del filtro */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <UserGroupIcon className="w-5 h-5 text-red-500" />
+            Pacientes inactivados
+            <span className="text-xs font-normal text-gray-400">según el rango de fechas del filtro</span>
+            <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+              {pacientesInactivados.length}
+            </span>
+          </h3>
+          <BtnExcel
+            id="inactivados"
+            onClick={() => exportar('inactivados', () => exportarPacientesInactivados(pacientesInactivados, filtros))}
+            disabled={loading || pacientesInactivados.length === 0}
+          />
+        </div>
+        {pacientesInactivados.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-10">No hay pacientes inactivados en el rango seleccionado</p>
+        ) : (
+          <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-100 rounded-xl">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-4 py-2.5 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">N°</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha inactivación</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Paciente</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Documento</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Área</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pacientesInactivados.map((p, i) => (
+                  <tr key={p.id} className="hover:bg-red-50/40 transition-colors">
+                    <td className="px-4 py-2.5 text-center text-gray-400 font-medium">{i + 1}</td>
+                    <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{formatFecha(p.fecha_inactivacion)}</td>
+                    <td className="px-4 py-2.5 font-medium text-gray-900">
+                      <button
+                        onClick={() => window.open(`/editar-paciente/${p.id}`, '_blank', 'noopener,noreferrer')}
+                        className="text-[#7B1FA2] hover:underline hover:text-[#6A1B9A] text-left"
+                      >
+                        {p.nombre}
+                      </button>
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-600">{p.documento || '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-700">{p.servicio || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {p.area ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                          {p.area}
+                        </span>
+                      ) : <span className="text-gray-400">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Tabla descuentos */}
