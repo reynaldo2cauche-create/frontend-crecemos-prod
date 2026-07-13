@@ -31,6 +31,7 @@ import TCABlog from './psicologia/TCABlog';
 import PatronesCrianzaBlog from './psicologia/PatronesCrianzaBlog';
 import DiaDepresionBlog from './psicologia/DiaDepresionBlog';
 import SemanaTCABlog from './psicologia/SemanaTCABlog';
+import DiaTDAHBlog from './psicologia/DiaTDAHBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -79,6 +80,7 @@ export const blogComponents = {
   'patrones-crianza-romper-circulo': PatronesCrianzaBlog,
   '13-enero-dia-mundial-lucha-depresion': DiaDepresionBlog,
   'semana-concienciacion-tca-2026': SemanaTCABlog,
+  '13-julio-dia-internacional-tdah': DiaTDAHBlog,
   'mi-hijo-necesita-terapia-lenguaje-senales-tempranas': TerapiaLenguajeBlog,
   'estimulacion-lenguaje-embarazo-desarrollo-infantil': EstimulacionPrenatalLenguajeBlog,
   'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
@@ -106,6 +108,7 @@ export {
   PatronesCrianzaBlog,
   DiaDepresionBlog,
   SemanaTCABlog,
+  DiaTDAHBlog,
   TerapiaLenguajeBlog,
   EstimulacionPrenatalLenguajeBlog,
   TartamudezInfantilBlog,

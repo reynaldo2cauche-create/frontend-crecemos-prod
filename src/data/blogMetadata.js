@@ -430,6 +430,19 @@ export const blogMetadata = [
   readTime: '18 min lectura',
   author: 'Centro Crecemos',
   heroImage: '/assets/img/blog/diasindromedown.webp'
+},
+{
+  id: 34,
+  slug: '13-julio-dia-internacional-tdah',
+  title: 'Día Internacional del TDAH: comprender la condición y acompañar el desarrollo del niño',
+  excerpt: 'Cada 13 de julio se conmemora el Día Internacional del TDAH, una oportunidad para dejar de lado los mitos y comprender que no se trata de conductas intencionales ni de falta de límites, sino de una condición del neurodesarrollo que merece ser comprendida y acompañada.',
+  image: '/assets/img/blog/tdah-portada.webp',
+  date: '13 Julio 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '14 min lectura',
+  author: 'Lic. Giselle Burgos Del Rosario',
+  heroImage: '/assets/img/blog/tdah-portada.webp'
 }
   // Aquí agregas más blogs...
 ];
