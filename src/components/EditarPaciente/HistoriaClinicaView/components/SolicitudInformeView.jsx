@@ -100,7 +100,7 @@ const buildArchivoUrl = (archivoUrl) => {
 const getFormInitial = () => {
   const hoy = new Date().toISOString().split('T')[0];
   return {
-    servicio_id: null, venta_servicio_id: '', documento_tarifa_id: '',
+    servicio_id: null, venta_servicio_id: '', documento_tarifa_id: '', linea_id: '',
     especialista_id: '', fecha_solicitud: hoy, fecha_entrega: addDays(hoy, 5),
     monto: '', nro_recibo: '', modalidad_pago_id: '', estado_pago_id: 1, nota: '',
     ventaPagos: [],
@@ -537,6 +537,9 @@ const FormularioSolicitud = ({
     if (form.fecha_solicitud) set('fecha_entrega', addDays(form.fecha_solicitud, 5));
   }, [form.fecha_solicitud]);
 
+  const docDeLinea = (d) => d?.documentoTarifaId ?? d?.documento_tarifa_id ?? d?.documento_tarifa?.id ?? '';
+  const montoDeLinea = (d) => Number(d?.subtotal ?? d?.precio_unitario ?? 0);
+
   const seleccionarVenta = (ventaId) => {
     const venta = ventasInforme.find(v => String(v.id) === String(ventaId));
     if (!venta) { set('venta_servicio_id', ventaId); return; }
@@ -544,27 +547,45 @@ const FormularioSolicitud = ({
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('💳 Venta seleccionada:', venta.codigo_comprobante);
 
-    // Calcular monto del informe (ítems de tipo 2)
-    const itemsInforme = (venta.detalles ?? []).filter(
+    // Líneas de informe aún disponibles (calculadas en cargarDatos)
+    const lineas = venta._informeLineas ?? (venta.detalles ?? []).filter(
       d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2
     );
-    const montoInforme = itemsInforme.reduce(
-      (acc, d) => acc + Number(d.subtotal ?? d.precio_unitario ?? 0), 0
-    );
 
+    // Datos comunes de la venta
+    const base = {
+      venta_servicio_id: ventaId,
+      nro_recibo: venta.codigo_comprobante ?? '',
+      modalidad_pago_id: venta.modalidad_pago_id ?? venta.modalidad_pago?.id ?? '',
+      ventaPagos: Array.isArray(venta.pagos) && venta.pagos.length > 0 ? venta.pagos : [],
+    };
 
+    // Si solo hay una línea disponible, se autoselecciona; si hay varias,
+    // se limpian documento/monto para que el usuario elija cuál informe.
+    if (lineas.length === 1) {
+      setForm(p => ({
+        ...p, ...base,
+        linea_id: lineas[0].id,
+        documento_tarifa_id: docDeLinea(lineas[0]) || p.documento_tarifa_id,
+        monto: montoDeLinea(lineas[0]).toFixed(2),
+      }));
+    } else {
+      setForm(p => ({
+        ...p, ...base,
+        linea_id: '', documento_tarifa_id: '', monto: '',
+      }));
+    }
+  };
 
+  const seleccionarLinea = (lineaId) => {
+    const venta = ventasInforme.find(v => String(v.id) === String(form.venta_servicio_id));
+    const linea = (venta?._informeLineas ?? []).find(d => String(d.id) === String(lineaId));
+    if (!linea) return;
     setForm(p => ({
       ...p,
-      venta_servicio_id: ventaId,
-      monto: itemsInforme.length > 0 ? montoInforme.toFixed(2) : p.monto,
-      nro_recibo: venta.codigo_comprobante ?? p.nro_recibo,
-      modalidad_pago_id: venta.modalidad_pago_id ?? venta.modalidad_pago?.id ?? p.modalidad_pago_id,
-      documento_tarifa_id: itemsInforme[0]?.documentoTarifaId
-                  ?? itemsInforme[0]?.documento_tarifa_id
-                  ?? itemsInforme[0]?.documento_tarifa?.id
-                  ?? p.documento_tarifa_id,
-      ventaPagos: Array.isArray(venta.pagos) && venta.pagos.length > 0 ? venta.pagos : [],
+      linea_id: lineaId,
+      documento_tarifa_id: docDeLinea(linea),
+      monto: montoDeLinea(linea).toFixed(2),
     }));
   };
 
@@ -646,7 +667,7 @@ const FormularioSolicitud = ({
 
     console.log('✅ Validación exitosa, enviando datos...');
 
-    const { ventaPagos: _vp, ...formDatos } = form;
+    const { ventaPagos: _vp, linea_id: _li, ...formDatos } = form;
     onSubmit({
       ...formDatos,
       servicio_id:       Number(form.servicio_id),
@@ -678,6 +699,40 @@ const FormularioSolicitud = ({
           </p>
         )}
       </div>
+
+      {/* Selector de línea de informe (solo si la venta tiene más de un informe) */}
+      {ventaSeleccionada && (ventaSeleccionada._informeLineas?.length ?? 0) > 1 && (
+        <div>
+          <label className={LABEL_CLS}>
+            <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Informe a solicitar {required}</span>
+          </label>
+          <div className="space-y-2">
+            {ventaSeleccionada._informeLineas.map(linea => {
+              const docId = linea.documentoTarifaId ?? linea.documento_tarifa_id ?? linea.documento_tarifa?.id;
+              const nombre = linea.descripcionLinea ?? linea.descripcion_linea
+                ?? documentosTarifa.find(d => d.id === docId)?.nombre ?? 'Informe';
+              const monto = Number(linea.subtotal ?? linea.precio_unitario ?? 0);
+              const sel = String(form.linea_id) === String(linea.id);
+              return (
+                <button
+                  type="button"
+                  key={linea.id}
+                  onClick={() => seleccionarLinea(linea.id)}
+                  className={`w-full text-left px-4 py-2.5 rounded-xl border-2 transition-all flex items-center justify-between
+                    ${sel ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/40'}`}
+                >
+                  <span className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                    {sel && <CheckCircle className="w-3.5 h-3.5 text-[#7B1FA2]" />}
+                    {nombre}
+                  </span>
+                  <span className="text-sm font-bold text-[#7B1FA2]">{fmtMoney(monto)}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-xs text-gray-400">Esta venta incluye varios informes. Elige cuál vas a registrar (cada uno genera su propia solicitud).</p>
+        </div>
+      )}
 
       {/* Tipo + Especialista */}
       <div className="grid grid-cols-2 gap-4">
@@ -1543,14 +1598,41 @@ const ModalVer = ({ solicitud, user, onClose }) => {
       });
       setTerapeutas([...terapeutasMap.values()]);
 
-      // Ventas con informe que aún no tienen solicitud
-      const ventaIdsUsadas = new Set(
-        (solicitudesData ?? []).map(s => s.venta_servicio_id).filter(Boolean)
-      );
-      const ventasFiltradas = (ventasData ?? []).filter(v =>
-        (v.detalles ?? []).some(d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2) &&
-        !ventaIdsUsadas.has(v.id)
-      );
+      // Ventas con informe que aún tienen líneas SIN solicitud.
+      // Una venta puede vender varios informes (varias líneas tipo_item_venta = 2).
+      // Contamos cuántas solicitudes existen por (venta, documento_tarifa) y solo
+      // dejamos disponibles las líneas de informe que aún no fueron usadas.
+      const docLinea = (d) => d.documentoTarifaId ?? d.documento_tarifa_id ?? d.documento_tarifa?.id;
+
+      const solicitudesPorVentaDoc = new Map(); // `${ventaId}-${docId}` -> cantidad
+      (solicitudesData ?? []).forEach(s => {
+        if (!s.venta_servicio_id) return;
+        const key = `${s.venta_servicio_id}-${s.documento_tarifa_id}`;
+        solicitudesPorVentaDoc.set(key, (solicitudesPorVentaDoc.get(key) ?? 0) + 1);
+      });
+
+      const ventasFiltradas = (ventasData ?? [])
+        .map(v => {
+          const lineasInforme = (v.detalles ?? []).filter(
+            d => d.tipoItemVenta === 2 || d.tipo_item_venta === 2
+          );
+          // Descontar, por documento, tantas líneas como solicitudes ya existan
+          const cubiertasPorDoc = {};
+          const disponibles = [];
+          lineasInforme.forEach(d => {
+            const docId = docLinea(d);
+            const yaUsadas = solicitudesPorVentaDoc.get(`${v.id}-${docId}`) ?? 0;
+            cubiertasPorDoc[docId] = cubiertasPorDoc[docId] ?? 0;
+            if (cubiertasPorDoc[docId] < yaUsadas) {
+              cubiertasPorDoc[docId]++; // esta línea ya está cubierta por una solicitud
+            } else {
+              disponibles.push(d);
+            }
+          });
+          return { ...v, _informeLineas: disponibles };
+        })
+        .filter(v => (v._informeLineas ?? []).length > 0);
+
       setVentasInforme(ventasFiltradas);
     } catch (err) {
       console.error(err);
