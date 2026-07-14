@@ -851,7 +851,7 @@ const ReportesVentas = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <p className="text-xs text-indigo-600 hidden md:block">Pacientes cuya última cita del paquete ya fue atendida y no tienen una venta posterior</p>
+            <p className="text-xs text-indigo-600 hidden md:block">Paquetes cuya última cita ya pasó y sin ninguna cita futura agendada en ese servicio</p>
             <BtnExcel
               id="renovar"
               onClick={() => exportar('renovar', () => exportarPaquetesPorRenovar(paquetesPorRenovar, filtros))}
@@ -876,13 +876,13 @@ const ReportesVentas = () => {
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Documento</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Servicio</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Área</th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">Sesiones atendidas</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Última cita atendida</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">Sesiones</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">Última cita</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {paquetesPorRenovar.map((row, i) => (
-                  <tr key={`${row.paciente_id}-${row.servicio_id}-${i}`} className="hover:bg-indigo-50/40 transition-colors">
+                  <tr key={row.grupo_id ?? `${row.paciente_id}-${row.servicio_id}-${i}`} className="hover:bg-indigo-50/40 transition-colors">
                     <td className="px-4 py-2.5 text-sm text-center text-gray-400 font-medium">{i + 1}</td>
                     <td className="px-4 py-2.5 text-sm font-medium text-gray-900">
                       {row.paciente ? (
@@ -905,13 +905,13 @@ const ReportesVentas = () => {
                     </td>
                     <td className="px-4 py-2.5 text-center">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-                        {row.sesiones_atendidas} / {row.sesiones_totales}
+                        {row.sesiones_totales}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">
                       {formatFecha(row.ultima_cita_fecha)}
-                      {row.ultima_cita_hora && (
-                        <span className="ml-1.5 text-xs text-gray-400">{String(row.ultima_cita_hora).slice(0, 5)}</span>
+                      {row.ultima_cita_motivo && (
+                        <span className="ml-1.5 text-xs text-gray-400">{row.ultima_cita_motivo}</span>
                       )}
                     </td>
                   </tr>

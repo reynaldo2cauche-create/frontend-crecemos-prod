@@ -541,9 +541,9 @@ export function exportarPaquetesPorRenovar(paquetes, filtros) {
   ws[`C${r}`] = C('DOCUMENTO',           thP);
   ws[`D${r}`] = C('SERVICIO',            { ...thP, alignment: { horizontal: 'left', vertical: 'center' } });
   ws[`E${r}`] = C('ÁREA',                thP);
-  ws[`F${r}`] = C('SESIONES ATENDIDAS',  thP);
+  ws[`F${r}`] = C('SESIONES',            thP);
   ws[`G${r}`] = C('ÚLTIMA CITA',         thP);
-  ws[`H${r}`] = C('HORA',                thP);
+  ws[`H${r}`] = C('MOTIVO',              thP);
   r++;
 
   paquetes.forEach((row, i) => {
@@ -555,9 +555,9 @@ export function exportarPaquetesPorRenovar(paquetes, filtros) {
     ws[`C${r}`] = C(row.documento || '—',  td('center'));
     ws[`D${r}`] = C(row.servicio || '—',   td());
     ws[`E${r}`] = C(row.area || '—',       td('center'));
-    ws[`F${r}`] = C(`${row.sesiones_atendidas ?? 0} / ${row.sesiones_totales ?? 0}`, { ...td('center'), font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: P.PURPLE2 } } });
+    ws[`F${r}`] = C(`${row.sesiones_totales ?? 0}`, { ...td('center'), font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: P.PURPLE2 } } });
     ws[`G${r}`] = C(fmtFecha(row.ultima_cita_fecha), td('center'));
-    ws[`H${r}`] = C(fmtHora(row.ultima_cita_hora),   td('center'));
+    ws[`H${r}`] = C(row.ultima_cita_motivo || '—',   td('center'));
     r++;
   });
 

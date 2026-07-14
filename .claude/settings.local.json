@@ -38,7 +38,12 @@
       "Read(//c/Program Files/MySQL/**)",
       "Read(//c/xampp/mysql/bin/**)",
       "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -uroot -padmin -e 'SELECT 1 AS ok;' crecemos_website)",
-      "Bash($MYSQL *)"
+      "Bash($MYSQL *)",
+      "Bash(npx tsc *)",
+      "Bash(ls *.env* .env*)",
+      "Bash(find . -maxdepth 2 -name \"*.env*\" -not -path \"*/node_modules/*\")",
+      "Bash(find ./src -maxdepth 3 \\\\\\( -name \"*data-source*\" -o -name \"*ormconfig*\" -o -name \"app.module.ts\" \\\\\\) -not -path \"*/node_modules/*\")",
+      "Bash(NODE_PATH=\"C:/Users/Lucero/Desktop/backend-crecemos-prd/node_modules\" node \"C:/Users/Lucero/AppData/Local/Temp/claude/C--Users-Lucero-Desktop-frontend-crecemos-prod/ce38c80c-ef59-4c11-8f88-6ad5e059176e/scratchpad/diag.js\")"
     ],
     "deny": [],
     "ask": []
