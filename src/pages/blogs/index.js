@@ -32,6 +32,7 @@ import PatronesCrianzaBlog from './psicologia/PatronesCrianzaBlog';
 import DiaDepresionBlog from './psicologia/DiaDepresionBlog';
 import SemanaTCABlog from './psicologia/SemanaTCABlog';
 import DiaTDAHBlog from './psicologia/DiaTDAHBlog';
+import CuandoLlevarPsicologoBlog from './psicologia/CuandoLlevarPsicologoBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -81,6 +82,7 @@ export const blogComponents = {
   '13-enero-dia-mundial-lucha-depresion': DiaDepresionBlog,
   'semana-concienciacion-tca-2026': SemanaTCABlog,
   '13-julio-dia-internacional-tdah': DiaTDAHBlog,
+  'cuando-llevar-hijo-psicologo-senales-alerta-edad': CuandoLlevarPsicologoBlog,
   'mi-hijo-necesita-terapia-lenguaje-senales-tempranas': TerapiaLenguajeBlog,
   'estimulacion-lenguaje-embarazo-desarrollo-infantil': EstimulacionPrenatalLenguajeBlog,
   'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
@@ -113,4 +115,5 @@ export {
   EstimulacionPrenatalLenguajeBlog,
   TartamudezInfantilBlog,
   VacacionesTerapiaBlog,
+  CuandoLlevarPsicologoBlog,
 };

@@ -64,6 +64,8 @@ const ModalAgendarCita = ({
   const [tituloAlerta, setTituloAlerta] = useState('Campo Requerido');
   const [tipoAlerta, setTipoAlerta] = useState('error'); // 'error', 'warning', 'feriado'
   const [conflictoTerapeuta, setConflictoTerapeuta] = useState('');
+  // Confirmación para agendar en día feriado (solo Admin/Admisión pueden forzar).
+  const [confirmFeriado, setConfirmFeriado] = useState(null); // { feriado, continuar } | null
 
   const motivoAccion = formularioCita.motivo_accion || '';
 
@@ -101,6 +103,15 @@ const ModalAgendarCita = ({
   const esTerapeuta = currentUser?.rol?.id === ROLES.TERAPEUTA;
   const esAdmin = currentUser?.rol?.id === ROLES.ADMINISTRADOR;
   const requiereGeofencing = esTerapeuta || esRecepcionista;
+
+  // Feriado: Admin/Admisión pueden confirmar y agendar igual; el resto queda bloqueado.
+  const manejarFeriado = (feriado, continuar) => {
+    if (esAdmin || esRecepcionista) {
+      setConfirmFeriado({ feriado, continuar });
+    } else {
+      mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
+    }
+  };
   const { cargando: cargandoGeofencing, dentroDelPerimetro } = useGeofencing(requiereGeofencing, 30000);
   const modoSoloLectura = requiereGeofencing && !dentroDelPerimetro;
 
@@ -1997,13 +2008,9 @@ const handleGuardar = useCallback(async () => {
                                   return;
                                 }
 
-                                // Validar que no sea feriado
+                                // Validar que no sea feriado (Admin/Admisión pueden confirmar y agendar igual)
                                 const feriado = esFeriado(fechaStr);
-                                if (feriado) {
-                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
-                                  return;
-                                }
-
+                                const continuarTrasFeriado = () => {
                                 // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
                                   // Al cambiar de día, la hora actual puede no existir en la grilla
@@ -2032,6 +2039,12 @@ const handleGuardar = useCallback(async () => {
                                 } else {
                                   mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
+                                };
+                                if (feriado) {
+                                  manejarFeriado(feriado, continuarTrasFeriado);
+                                  return;
+                                }
+                                continuarTrasFeriado();
                               }}
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
@@ -2182,19 +2195,21 @@ const handleGuardar = useCallback(async () => {
                                         return;
                                       }
 
-                                      // Validar que no sea feriado
+                                      // Validar que no sea feriado (Admin/Admisión pueden confirmar y agendar igual)
                                       const feriado = esFeriado(fechaStr);
-                                      if (feriado) {
-                                        mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
-                                        return;
-                                      }
-
+                                      const continuarTrasFeriado = () => {
                                       // Validar que sea de lunes a sábado
                                       if (diaSemana >= 1 && diaSemana <= 6) {
                                         onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                       } else {
                                         mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                       }
+                                      };
+                                      if (feriado) {
+                                        manejarFeriado(feriado, continuarTrasFeriado);
+                                        return;
+                                      }
+                                      continuarTrasFeriado();
                                     }}
                                     disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
@@ -2475,13 +2490,9 @@ const handleGuardar = useCallback(async () => {
                                   return;
                                 }
 
-                                // Validar que no sea feriado
+                                // Validar que no sea feriado (Admin/Admisión pueden confirmar y agendar igual)
                                 const feriado = esFeriado(fechaStr);
-                                if (feriado) {
-                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
-                                  return;
-                                }
-
+                                const continuarTrasFeriado = () => {
                                 // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
                                   // Al cambiar de día, la hora actual puede no existir en la grilla
@@ -2510,6 +2521,12 @@ const handleGuardar = useCallback(async () => {
                                 } else {
                                   mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
+                                };
+                                if (feriado) {
+                                  manejarFeriado(feriado, continuarTrasFeriado);
+                                  return;
+                                }
+                                continuarTrasFeriado();
                               }}
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
@@ -2640,19 +2657,21 @@ const handleGuardar = useCallback(async () => {
                                         return;
                                       }
 
-                                      // Validar que no sea feriado
+                                      // Validar que no sea feriado (Admin/Admisión pueden confirmar y agendar igual)
                                       const feriado = esFeriado(fechaStr);
-                                      if (feriado) {
-                                        mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
-                                        return;
-                                      }
-
+                                      const continuarTrasFeriado = () => {
                                       // Validar que sea de lunes a sábado
                                       if (diaSemana >= 1 && diaSemana <= 6) {
                                         onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                       } else {
                                         mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                       }
+                                      };
+                                      if (feriado) {
+                                        manejarFeriado(feriado, continuarTrasFeriado);
+                                        return;
+                                      }
+                                      continuarTrasFeriado();
                                     }}
                                     disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
@@ -2925,13 +2944,9 @@ const handleGuardar = useCallback(async () => {
                                   return;
                                 }
 
-                                // Validar que no sea feriado
+                                // Validar que no sea feriado (Admin/Admisión pueden confirmar y agendar igual)
                                 const feriado = esFeriado(fechaStr);
-                                if (feriado) {
-                                  mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
-                                  return;
-                                }
-
+                                const continuarTrasFeriado = () => {
                                 // Validar que sea de lunes a sábado
                                 if (diaSemana >= 1 && diaSemana <= 6) {
                                   // Al cambiar de día, la hora actual puede no existir en la grilla
@@ -2960,6 +2975,12 @@ const handleGuardar = useCallback(async () => {
                                 } else {
                                   mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                 }
+                                };
+                                if (feriado) {
+                                  manejarFeriado(feriado, continuarTrasFeriado);
+                                  return;
+                                }
+                                continuarTrasFeriado();
                               }}
                               disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia}
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50"
@@ -3070,18 +3091,20 @@ const handleGuardar = useCallback(async () => {
                                       return;
                                     }
 
-                                    // Validar que no sea feriado
+                                    // Validar que no sea feriado (Admin/Admisión pueden confirmar y agendar igual)
                                     const feriado = esFeriado(fechaStr);
-                                    if (feriado) {
-                                      mostrarAlerta('Feriado Nacional', `No se pueden agendar citas en feriados.\n\n🎉 ${feriado.nombre}`, 'feriado');
-                                      return;
-                                    }
-
+                                    const continuarTrasFeriado = () => {
                                     if (diaSemana >= 1 && diaSemana <= 6) {
                                       onFormularioChange('actualizarFechaHora', { index, campo: 'fecha', valor: fechaStr });
                                     } else {
                                       mostrarAlerta('Fecha no válida', 'Solo se pueden agendar citas de lunes a sábado.', 'warning');
                                     }
+                                    };
+                                    if (feriado) {
+                                      manejarFeriado(feriado, continuarTrasFeriado);
+                                      return;
+                                    }
+                                    continuarTrasFeriado();
                                   }} disabled={esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all disabled:opacity-50" />
                                   <select value={fechaHora.horaInicio || ''} onChange={(e) => {
                                     if (modoSoloLectura) return;
@@ -4110,6 +4133,43 @@ const handleGuardar = useCallback(async () => {
           </div>
         );
       })()}
+
+      {/* Modal de confirmación: agendar en día feriado (Admin/Admisión) */}
+      {confirmFeriado && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-b border-orange-200 px-5 py-4 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Día feriado</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                El <b>{confirmFeriado.feriado.fecha}</b> es feriado:
+                <br />🎉 <b>{confirmFeriado.feriado.nombre}</b>
+              </p>
+              <p className="text-sm text-gray-600 mt-3">¿Deseas agendar la cita igual en este día feriado?</p>
+            </div>
+            <div className="border-t border-gray-200 px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmFeriado(null)}
+                className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { const acc = confirmFeriado.continuar; setConfirmFeriado(null); if (acc) acc(); }}
+                className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
+              >
+                Agendar igual
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal detalle de venta desde tab Paquete */}
       {ventaDetallePaquete && (

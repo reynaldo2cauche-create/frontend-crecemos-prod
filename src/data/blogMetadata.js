@@ -443,6 +443,19 @@ export const blogMetadata = [
   readTime: '14 min lectura',
   author: 'Lic. Giselle Burgos Del Rosario',
   heroImage: '/assets/img/blog/tdah-portada.webp'
+},
+{
+  id: 35,
+  slug: 'cuando-llevar-hijo-psicologo-senales-alerta-edad',
+  title: '¿Cuándo debo llevar a mi hijo al psicólogo? Principales señales de alerta según la edad',
+  excerpt: 'No siempre es fácil distinguir entre lo esperable del desarrollo y una señal que merece atención profesional. Esta guía reúne las principales señales de alerta en niños de 0 a 5 años, de 6 a 12 años y en adolescentes, además de qué ocurre durante una evaluación psicológica infantil.',
+  image: '/assets/img/blog/psicologo-nino-portada.webp',
+  date: '15 Julio 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '12 min lectura',
+  author: 'Lic. Giselle Burgos Del Rosario',
+  heroImage: '/assets/img/blog/psicologo-nino-portada.webp'
 }
   // Aquí agregas más blogs...
 ];

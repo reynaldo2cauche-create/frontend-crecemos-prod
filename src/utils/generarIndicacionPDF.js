@@ -206,8 +206,16 @@ const drawReferenciasBox = (doc, internas, externas, y) => {
 
   const cols   = grupos.length; // 1 o 2 columnas según cuántos grupos haya
   const colW   = (TEXT_W - p * 2) / cols;
-  const maxRows = Math.max(...grupos.map(g => g.items.length));
-  const boxH   = Math.max(headerH + maxRows * lh + p * 2 + 2, 15);
+
+  // Pre-calcular las líneas reales (con salto de línea) de cada ítem, para que
+  // la caja crezca según el contenido y los ítems no se superpongan.
+  doc.setFont('helvetica', 'normal').setFontSize(9);
+  grupos.forEach(g => {
+    g.lineas = g.items.map(item => doc.splitTextToSize(String(item ?? ''), colW - 6));
+    g.totalLineas = g.lineas.reduce((s, l) => s + l.length, 0);
+  });
+  const maxLineas = Math.max(...grupos.map(g => g.totalLineas));
+  const boxH   = Math.max(headerH + maxLineas * lh + p * 2 + 2, 15);
 
   doc.setDrawColor(...GRAY).setLineWidth(0.3).rect(M, y, TEXT_W, boxH);
 
@@ -220,10 +228,10 @@ const drawReferenciasBox = (doc, internas, externas, y) => {
     yT += headerH;
 
     doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...BLACK);
-    grupo.items.forEach(item => {
+    grupo.lineas.forEach(lineas => {
       doc.text('•', xBase, yT);
-      doc.text(item, xBase + 4, yT, { maxWidth: colW - 6 });
-      yT += lh;
+      lineas.forEach((ln, i) => doc.text(ln, xBase + 4, yT + i * lh));
+      yT += lineas.length * lh;
     });
   });
 
@@ -237,7 +245,24 @@ const drawListBox = (doc, items, y, minH = 10, cols = 1) => {
 
   doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...BLACK);
 
-  const colW   = (TEXT_W - p * 2) / cols;
+  const colW = (TEXT_W - p * 2) / cols;
+
+  // Una columna: soporta textos largos (multi-línea) sin superponer; la caja crece.
+  if (cols === 1) {
+    const lineasPorItem = items.map(item => doc.splitTextToSize(String(item ?? ''), colW - 6));
+    const totalLineas = lineasPorItem.reduce((s, l) => s + l.length, 0);
+    const boxH = Math.max(totalLineas * lh + p * 2 + 1, minH);
+    doc.setDrawColor(...GRAY).setLineWidth(0.3).rect(M, y, TEXT_W, boxH);
+    let yT = y + p + 3.3;
+    lineasPorItem.forEach(lineas => {
+      doc.text('•', M + p, yT);
+      lineas.forEach((ln, i) => doc.text(ln, M + p + 4, yT + i * lh));
+      yT += lineas.length * lh;
+    });
+    return y + boxH + 1.5;
+  }
+
+  // Varias columnas (ítems cortos, p. ej. materiales): grilla de filas fijas.
   const perCol = Math.ceil(items.length / cols);
   const boxH   = Math.max(perCol * lh + p * 2 + 1, minH);
 

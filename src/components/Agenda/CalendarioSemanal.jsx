@@ -138,6 +138,9 @@ const CalendarioSemanal = ({
   const [bloqueoSeleccionado, setBloqueoSeleccionado] = useState(null);
   const [modalFeriadoAbierto, setModalFeriadoAbierto] = useState(false);
   const [feriadoSeleccionado, setFeriadoSeleccionado] = useState(null);
+  const [feriadoSlot, setFeriadoSlot] = useState(null); // { dia, hora } del slot feriado clickeado
+  // Solo Admin/Admisión pueden crear cita en un feriado (los únicos que agendan).
+  const puedeForzarFeriado = currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION;
   const [diaCopiado, setDiaCopiado] = useState(null); // Para mostrar feedback al copiar
 
 
@@ -514,6 +517,7 @@ const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
   const handleSlotClick = () => {
     if (feriado) {
       setFeriadoSeleccionado(feriado);
+      setFeriadoSlot({ dia, hora });
       setModalFeriadoAbierto(true);
     } else if (estaBloqueado && bloqueo) {
       setBloqueoSeleccionado(bloqueo);
@@ -870,10 +874,12 @@ const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
                   <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-red-900 mb-1">
-                      No se pueden agendar citas en feriados
+                      {puedeForzarFeriado ? 'Día feriado nacional' : 'No se pueden agendar citas en feriados'}
                     </p>
                     <p className="text-xs text-red-700">
-                      Este día está bloqueado automáticamente por ser feriado nacional. El centro permanecerá cerrado.
+                      {puedeForzarFeriado
+                        ? 'Por defecto el centro no atiende en feriados. Si un terapeuta atenderá este día (se le canjeará por otro), puedes crear la cita igual.'
+                        : 'Este día está bloqueado automáticamente por ser feriado nacional. El centro permanecerá cerrado.'}
                     </p>
                   </div>
                 </div>
@@ -882,12 +888,29 @@ const esSoloContinuacion = hayCitas && citasInfo.every(s => !s.isTop);
 
             {/* Footer */}
             <div className="px-6 py-4 bg-gray-50 rounded-b-2xl border-t border-gray-100">
-              <button
-                onClick={() => setModalFeriadoAbierto(false)}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold"
-              >
-                Entendido
-              </button>
+              {puedeForzarFeriado && feriadoSlot && onSlotClick ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setModalFeriadoAbierto(false)}
+                    className="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => { const s = feriadoSlot; setModalFeriadoAbierto(false); onSlotClick(s.dia, s.hora); }}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all font-semibold"
+                  >
+                    Crear cita igual
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setModalFeriadoAbierto(false)}
+                  className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold"
+                >
+                  Entendido
+                </button>
+              )}
             </div>
           </div>
         </div>
