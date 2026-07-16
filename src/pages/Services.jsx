@@ -155,7 +155,20 @@ const Servicios = () => {
         'Acompañamiento durante todo el proceso'
       ],
       link: 'adulto-evaluacion-psicologica-universidad'
-    }
+    },
+    {
+      icon: 'bi-heart-pulse',
+      titulo: 'Obstetricia',
+      descripcion: 'Acompañamiento integral para la mujer, la gestante y el desarrollo temprano del bebé, con énfasis en el embarazo, el posparto y los primeros meses de vida.',
+      caracteristicas: [
+        'Control y orientación durante el embarazo',
+        'Psicoprofilaxis obstétrica y estimulación prenatal',
+        'Consejería en lactancia materna',
+        'Cuidados del recién nacido y seguimiento del bebé',
+        'Consejería en salud sexual y reproductiva'
+      ],
+      link: 'adulto-obstetricia'
+    },
   ];
 
   const ServiceCard = ({ servicio }) => (

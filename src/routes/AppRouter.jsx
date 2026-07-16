@@ -18,6 +18,7 @@ import { AreaAdultosPage } from '../pages/areas/AreaAdultosPage';
 import { AdultoPsicologiaIndividualPage } from '../pages/service-adulto/AdultoPsicologiaIndividualPage';
 import  AdultoTerapiaParejaPage  from '../pages/service-adulto/AdultoTerapiaParejaPage';
 import  AdultoTerapiaFamiliarPage  from '../pages/service-adulto/AdultoTerapiaFamiliarPage';
+import AdultoObstetriciaPage from '../pages/service-adulto/AdultoObstetricia';
 import  AdultoTerapiaLenguajePage  from '../pages/service-adulto/AdultoTerapiaLenguajePage';
 import { TerminosCondiciones } from '../pages/TerminosCondiciones';
 import  TrabajaNosotros  from '../pages/TrabajaNosotros';
@@ -90,6 +91,7 @@ import { Campanas } from '../pages/Campanas/Campanas';
 import GestionInformesPage from '../pages/Informes/GestionInformesPage';
 import CentroOperativo from '../pages/CentroOperativo/CentroOperativo';
 import ReporteActividades from '../pages/CentroOperativo/ReporteActividades';
+import ObstetriciaPage from '../pages/service-adulto/AdultoObstetricia';
 
 export const AppRouter = () => {
   return (
@@ -549,6 +551,7 @@ export const AppRouter = () => {
           <Route path="adulto-terapia-familiar" element={<AdultoTerapiaFamiliarPage />} />
           <Route path="adulto-terapia-lenguaje" element={<AdultoTerapiaLenguajePage />} />
           <Route path="adulto-evaluacion-psicologica-universidad" element={<AdultoEvalPsicolUniverPage />} />
+          <Route path="adulto-obstetricia" element={<AdultoObstetriciaPage />} />
           <Route path="terminos-condiciones" element={<TerminosCondiciones />} />
           <Route path="mantenimiento" element={<Mantenimiento />} />
 

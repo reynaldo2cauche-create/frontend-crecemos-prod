@@ -174,6 +174,11 @@ export default function NavBar() {
                       Evaluación Psicológica para Universidad
                     </Link>
                   </li>
+                  <li>
+                    <Link to="/adulto-obstetricia" onClick={closeMobileNav}>
+                      Obstetricia
+                    </Link>
+                  </li>
                 </ul>
               </li>
               

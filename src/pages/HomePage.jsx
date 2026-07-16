@@ -440,6 +440,14 @@ const cerrarPopup = () => {
                 <p>Para ingreso o permanencia</p>
                 <a href="/adulto-evaluacion-psicologica-universidad" className="btn-mini-service">Ver Detalles</a>
               </div>
+              <div className="service-mini-card">
+                <div className="mini-icon">
+                  <i className="bi bi-heart-pulse"></i>
+                </div>
+                <h6>Obstetricia</h6>
+                <p>Cuidado en embarazo y posparto</p>
+                <a href="/adulto-obstetricia" className="btn-mini-service">Ver Detalles</a>
+              </div>
             </div>
           </div>
         </div>
