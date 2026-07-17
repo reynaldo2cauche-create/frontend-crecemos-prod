@@ -340,7 +340,7 @@ const cargarLogo = () => {
         canvas.width  = img.naturalWidth;
         canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
-        _logoCache = canvas.toDataURL('image/png');
+        _logoCache = { dataUrl: canvas.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight };
         resolve(_logoCache);
       } catch { resolve(null); }
     };
@@ -391,8 +391,11 @@ export const generarPDFA4 = async (venta, tipo) => {
   const promociones = Array.isArray(venta.promociones_aplicadas) ? venta.promociones_aplicadas : [];
   const totalPromos = promociones.reduce((s, p) => s + toFloat(p.monto_ahorrado), 0);
 
-  const logoBase64 = await cargarLogo();
-  if (logoBase64) doc.addImage(logoBase64, 'PNG', M, M, 50, 12);
+  const logo = await cargarLogo();
+  if (logo) {
+    const lH = 24, lW = lH * (logo.w / logo.h);
+    doc.addImage(logo.dataUrl, 'PNG', M, M, lW, lH);
+  }
 
   // Recuadro tipo comprobante
   const bx = pageW - M - 65, by = M, bw = 65, bh = 30;
@@ -406,7 +409,7 @@ export const generarPDFA4 = async (venta, tipo) => {
   doc.text(venta.codigo_comprobante || '#00000', bx + bw / 2, by + 23, { align: 'center' });
 
   // Datos empresa
-  let y = M + 25;
+  let y = M + 33;
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...COLOR_TEXTO);
   doc.text('CONTIGO CRECEMOS E.I.R.L.', M, y); y += 5;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...COLOR_GRIS);

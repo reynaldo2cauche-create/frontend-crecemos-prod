@@ -577,7 +577,7 @@ export const buildTicketHTML = (venta, tipo) => {
   .thead{display:flex;justify-content:space-between;font-size:10px;font-weight:bold;border-bottom:1px dashed #aaa;padding-bottom:2px;margin-bottom:3px}
   .item{margin-bottom:4px;border-bottom:1px dotted #ddd;padding-bottom:3px}
 </style></head><body>
-  <div class="center" style="margin-bottom:6px"><img src="${window.location.origin}/logo-text-short.png" style="width:130px;height:auto;display:block;margin:0 auto"></div>
+  <div class="center" style="margin-bottom:6px"><img src="${window.location.origin}/logo-text-short.png" style="width:160px;height:auto;display:block;margin:0 auto"></div>
   <div class="center" style="font-size:10px;line-height:1.4">
     <div class="bold" style="font-size:12px">CONTIGO CRECEMOS E.I.R.L.</div>
     <div>Centro de terapias Crecemos</div><div>LT. 5 MZ. W1 URB. EL PINAR PARCELA H</div>

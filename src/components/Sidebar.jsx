@@ -439,8 +439,8 @@ const Sidebar = () => {
               <img src="/videologo.png" alt="Logo" className="w-10 h-10 object-contain" />
             </div>
           ) : (
-            <div className="bg-white rounded-xl px-3 py-2 flex items-center justify-center shadow-sm overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
-              <img src="/logo-text-short.png" alt="Logo Crecemos" className="h-11 w-auto object-contain" />
+            <div className="bg-white rounded-xl px-2 py-1 flex items-center justify-center shadow-sm overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+              <img src="/logo-text-short.png" alt="Logo Crecemos" className="h-16 w-auto object-contain" />
             </div>
           )}
         </div>

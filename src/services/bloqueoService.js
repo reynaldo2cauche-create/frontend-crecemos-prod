@@ -66,11 +66,12 @@ export const actualizarBloqueo = async (id, bloqueoData) => {
   }
 };
 
-// Eliminar un bloqueo (soft delete)
-export const eliminarBloqueo = async (id, userId) => {
+// Eliminar un bloqueo (soft delete). motivoEliminacion queda registrado en auditoría.
+export const eliminarBloqueo = async (id, userId, motivoEliminacion) => {
   try {
     const response = await api.delete(`/bloqueos/${id}`, {
-      params: { userId }
+      params: { userId },
+      data: { motivoEliminacion }
     });
     return response.data;
   } catch (error) {

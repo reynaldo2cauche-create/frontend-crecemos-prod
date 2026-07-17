@@ -43,7 +43,14 @@
       "Bash(ls *.env* .env*)",
       "Bash(find . -maxdepth 2 -name \"*.env*\" -not -path \"*/node_modules/*\")",
       "Bash(find ./src -maxdepth 3 \\\\\\( -name \"*data-source*\" -o -name \"*ormconfig*\" -o -name \"app.module.ts\" \\\\\\) -not -path \"*/node_modules/*\")",
-      "Bash(NODE_PATH=\"C:/Users/Lucero/Desktop/backend-crecemos-prd/node_modules\" node \"C:/Users/Lucero/AppData/Local/Temp/claude/C--Users-Lucero-Desktop-frontend-crecemos-prod/ce38c80c-ef59-4c11-8f88-6ad5e059176e/scratchpad/diag.js\")"
+      "Bash(NODE_PATH=\"C:/Users/Lucero/Desktop/backend-crecemos-prd/node_modules\" node \"C:/Users/Lucero/AppData/Local/Temp/claude/C--Users-Lucero-Desktop-frontend-crecemos-prod/ce38c80c-ef59-4c11-8f88-6ad5e059176e/scratchpad/diag.js\")",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Lucero\\\\Desktop\\\\backend-crecemos-prd\"; npx tsc --noEmit -p tsconfig.json; \"EXIT: $LASTEXITCODE\")",
+      "Bash(grep -c \"descVentaActualizar\" dist/auditoria/auditoria.interceptor.js)",
+      "Bash(stat -c '%y %n' src/auditoria/auditoria.interceptor.ts dist/auditoria/auditoria.interceptor.js)",
+      "PowerShell(npm run *)",
+      "PowerShell(Get-CimInstance *)",
+      "Bash(python -c \"from PIL import Image; im=Image.open\\(r'C:/Users/Lucero/Desktop/frontend-crecemos-prod/public/logo-text-short.png'\\); print\\('WH',im.size\\)\")",
+      "Bash(python3 -c \"import struct;d=open\\(r'C:/Users/Lucero/Desktop/frontend-crecemos-prod/public/logo-text-short.png','rb'\\).read\\(26\\);print\\('WH',struct.unpack\\('>II',d[16:24]\\)\\)\")"
     ],
     "deny": [],
     "ask": []

@@ -101,7 +101,7 @@ const field = (doc, label, value, xLabel, xBox, yRow, boxW, boxH, tOff) => {
 const drawHeader = (doc, logo, wm, fecha, hora, especialidad) => {
   drawWatermark(doc, wm);
   if (logo) {
-    const lH = 12, lW = lH * (logo.w / logo.h);
+    const lH = 15, lW = lH * (logo.w / logo.h);
     doc.addImage(logo.dataUrl, 'PNG', M, 9, lW, lH);
   }
   doc.setFont('helvetica', 'bold').setFontSize(16).setTextColor(...BLACK);

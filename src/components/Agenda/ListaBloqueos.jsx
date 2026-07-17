@@ -104,7 +104,7 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
 
   const handleConfirmarEliminar = async (motivo) => {
     try {
-      await eliminarBloqueo(dialogMotivo.bloqueoId, userId);
+      await eliminarBloqueo(dialogMotivo.bloqueoId, userId, motivo);
       setDialogMotivo({ open: false, bloqueoId: null });
       cargarBloqueos();
     } catch (error) {
