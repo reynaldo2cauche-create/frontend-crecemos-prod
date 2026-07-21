@@ -50,7 +50,8 @@
       "PowerShell(npm run *)",
       "PowerShell(Get-CimInstance *)",
       "Bash(python -c \"from PIL import Image; im=Image.open\\(r'C:/Users/Lucero/Desktop/frontend-crecemos-prod/public/logo-text-short.png'\\); print\\('WH',im.size\\)\")",
-      "Bash(python3 -c \"import struct;d=open\\(r'C:/Users/Lucero/Desktop/frontend-crecemos-prod/public/logo-text-short.png','rb'\\).read\\(26\\);print\\('WH',struct.unpack\\('>II',d[16:24]\\)\\)\")"
+      "Bash(python3 -c \"import struct;d=open\\(r'C:/Users/Lucero/Desktop/frontend-crecemos-prod/public/logo-text-short.png','rb'\\).read\\(26\\);print\\('WH',struct.unpack\\('>II',d[16:24]\\)\\)\")",
+      "Bash(npx --prefix \"C:/Users/Lucero/Desktop/backend-crecemos-prd\" tsc --noEmit -p \"C:/Users/Lucero/Desktop/backend-crecemos-prd/tsconfig.json\")"
     ],
     "deny": [],
     "ask": []

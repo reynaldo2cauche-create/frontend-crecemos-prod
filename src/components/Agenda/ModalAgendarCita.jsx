@@ -1764,14 +1764,20 @@ const handleGuardar = useCallback(async () => {
                         <div className="w-9 h-9 bg-blue-500 rounded-lg flex items-center justify-center">
                           <User className="w-4 h-4 text-white" />
                         </div>
-                        <a
-                          href={`/editar-paciente/${formularioCita.paciente_id || formularioCita.paciente.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-semibold text-blue-700 hover:underline"
-                        >
-                          {formularioCita.paciente.nombre_completo}
-                        </a>
+                        {modoSoloLectura ? (
+                          <span className="text-sm font-semibold text-gray-700">
+                            {formularioCita.paciente.nombre_completo}
+                          </span>
+                        ) : (
+                          <a
+                            href={`/editar-paciente/${formularioCita.paciente_id || formularioCita.paciente.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-blue-700 hover:underline"
+                          >
+                            {formularioCita.paciente.nombre_completo}
+                          </a>
+                        )}
                       </div>
                       {!esTerapeuta && !modoSoloLectura && !bloqueadoPorAsistencia && (
                         <button onClick={() => onFormularioChange('paciente', null)} className="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition-all">
@@ -3603,14 +3609,18 @@ const handleGuardar = useCallback(async () => {
                         {citaEditando?.tipo_cita === 'REUNION_CLINICA' && !citaEditando?.paciente
                           ? 'Reunión Interna'
                           : citaEditando?.paciente
-                            ? <a
-                                href={`/editar-paciente/${citaEditando.paciente_id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-700 hover:underline font-semibold"
-                              >
-                                {`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()}
-                              </a>
+                            ? (modoSoloLectura
+                                ? <span className="text-gray-900 font-semibold">
+                                    {`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()}
+                                  </span>
+                                : <a
+                                    href={`/editar-paciente/${citaEditando.paciente_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-700 hover:underline font-semibold"
+                                  >
+                                    {`${citaEditando.paciente.nombres || ''} ${citaEditando.paciente.apellido_paterno || ''} ${citaEditando.paciente.apellido_materno || ''}`.trim()}
+                                  </a>)
                             : 'No especificado'}
                       </span>
                     </div>
