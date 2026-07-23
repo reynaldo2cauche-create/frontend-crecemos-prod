@@ -1797,7 +1797,7 @@ const handleGuardar = useCallback(async () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Terapeuta <span className="text-red-500">*</span>
                         </label>
-                        {esAdmin ? (
+                        {(esAdmin || esRecepcionista) ? (
                           <select
                             value={formularioCita.doctor_id || terapeutaSeleccionado?.id || ''}
                             onChange={(e) => onFormularioChange('doctor_id', e.target.value)}
