@@ -244,13 +244,25 @@ const GestionArchivosOficiales = () => {
     });
   }, [terapeutas, searchTerapeuta]);
 
-  const calcularFechaVigencia = (fechaEmision, vigenciaMeses) => {
-    if (!vigenciaMeses || !fechaEmision) return '';
-    
+  const calcularFechaVigencia = (fechaEmision, vigenciaMeses, vigenciaDias) => {
+    const meses = Number(vigenciaMeses) || 0;
+    const dias = Number(vigenciaDias) || 0;
+    if ((!meses && !dias) || !fechaEmision) return '';
+
     const fecha = new Date(fechaEmision + 'T00:00:00');
-    fecha.setMonth(fecha.getMonth() + vigenciaMeses);
-    
+    fecha.setMonth(fecha.getMonth() + meses);
+    fecha.setDate(fecha.getDate() + dias);
+
     return fecha.toISOString().split('T')[0];
+  };
+
+  const formatearVigencia = (vigenciaMeses, vigenciaDias) => {
+    const meses = Number(vigenciaMeses) || 0;
+    const dias = Number(vigenciaDias) || 0;
+    const partes = [];
+    if (meses) partes.push(`${meses} ${meses === 1 ? 'mes' : 'meses'}`);
+    if (dias) partes.push(`${dias} ${dias === 1 ? 'día' : 'días'}`);
+    return partes.join(' y ');
   };
 
   const cargarDocumentos = async () => {
@@ -273,8 +285,8 @@ const GestionArchivosOficiales = () => {
     
     setTipoSeleccionado(tipo);
     
-    const fechaVigenciaCalculada = tipo?.vigencia_meses 
-      ? calcularFechaVigencia(formData.fechaEmision, tipo.vigencia_meses)
+    const fechaVigenciaCalculada = (tipo?.vigencia_meses || tipo?.vigencia_dias)
+      ? calcularFechaVigencia(formData.fechaEmision, tipo.vigencia_meses, tipo.vigencia_dias)
       : '';
     
     setFormData(prev => ({
@@ -305,8 +317,8 @@ const GestionArchivosOficiales = () => {
   const handleFechaEmisionChange = (e) => {
     const nuevaFechaEmision = e.target.value;
     
-    const fechaVigenciaCalculada = tipoSeleccionado?.vigencia_meses
-      ? calcularFechaVigencia(nuevaFechaEmision, tipoSeleccionado.vigencia_meses)
+    const fechaVigenciaCalculada = (tipoSeleccionado?.vigencia_meses || tipoSeleccionado?.vigencia_dias)
+      ? calcularFechaVigencia(nuevaFechaEmision, tipoSeleccionado.vigencia_meses, tipoSeleccionado.vigencia_dias)
       : formData.fechaVigencia;
     
     setFormData(prev => ({
@@ -537,7 +549,8 @@ const GestionArchivosOficiales = () => {
       if (resultado.success) {
         setCodigoGenerado(resultado.data);
         setDialogExito(true);
-        
+        cargarDocumentos();
+
         setFormData({
           pacienteId: '',
           trabajadorId: '',
@@ -1550,7 +1563,7 @@ const GestionArchivosOficiales = () => {
                           tiposArchivoFiltrados.map((tipo) => (
                             <option key={tipo.id} value={tipo.id}>
                               {tipo.nombre}
-                              {tipo.vigencia_meses ? ` (${tipo.vigencia_meses} meses)` : ''}
+                              {(tipo.vigencia_meses || tipo.vigencia_dias) ? ` (${formatearVigencia(tipo.vigencia_meses, tipo.vigencia_dias)})` : ''}
                             </option>
                           ))
                         )}
@@ -1572,14 +1585,14 @@ const GestionArchivosOficiales = () => {
 
                   {tipoSeleccionado && (
                     <div className={`p-3 rounded-xl border mb-4 ${
-                      tipoSeleccionado.vigencia_meses
+                      (tipoSeleccionado.vigencia_meses || tipoSeleccionado.vigencia_dias)
                         ? 'bg-green-50 border-green-200'
                         : 'bg-blue-50 border-blue-200'
                     }`}>
                       <p className="text-xs font-semibold">
-                        {tipoSeleccionado.vigencia_meses ? (
+                        {(tipoSeleccionado.vigencia_meses || tipoSeleccionado.vigencia_dias) ? (
                           <>
-                            ✓ Vigencia: {tipoSeleccionado.vigencia_meses} {tipoSeleccionado.vigencia_meses === 1 ? 'mes' : 'meses'}
+                            ✓ Vigencia: {formatearVigencia(tipoSeleccionado.vigencia_meses, tipoSeleccionado.vigencia_dias)}
                             {formData.fechaVigencia && (
                               <span className="block mt-1 text-gray-700">
                                 Vence el: <strong>{formatearFecha(formData.fechaVigencia)}</strong>
