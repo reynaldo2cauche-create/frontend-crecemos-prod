@@ -456,6 +456,58 @@ export const blogMetadata = [
   readTime: '12 min lectura',
   author: 'Lic. Giselle Burgos Del Rosario',
   heroImage: '/assets/img/blog/psicologo-nino-portada.webp'
+},
+{
+  id: 36,
+  slug: 'fotobiomodulacion-transcraneal-tea-terapia-prometedora',
+  title: 'Fotobiomodulación Transcraneal: una terapia prometedora que podría transformar el tratamiento del TEA',
+  excerpt: 'La fotobiomodulación transcraneal es una técnica no invasiva que utiliza luz láser o LED de baja intensidad para favorecer el metabolismo neuronal. Diversos estudios sugieren que podría convertirse en un tratamiento complementario importante para algunos niños con Trastorno del Espectro Autista (TEA).',
+  image: '/assets/img/blog/fotobiomodulacion-portada.webp',
+  date: '30 Julio 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '12 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/fotobiomodulacion-portada.webp'
+},
+{
+  id: 37,
+  slug: 'apraxia-habla-tea-como-ayudar-padres-casa',
+  title: '¿Cómo pueden ayudar los padres en casa a un niño con Apraxia del Habla y TEA?',
+  excerpt: 'La terapia no termina cuando el niño sale del consultorio. Descubre pequeñas acciones diarias que pueden marcar una gran diferencia: hablar despacio, dar tiempo para responder, jugar con lo que más le gusta y valorar cada intento de comunicación.',
+  image: '/assets/img/blog/apraxia-portada.webp',
+  date: '30 Julio 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '10 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/apraxia-portada.webp'
+},
+{
+  id: 38,
+  slug: 'apraxia-habla-tea-que-es-senales-tratamiento',
+  title: 'Apraxia del Habla y TEA: cuando las palabras quieren salir, pero el cerebro no logra organizarlas',
+  excerpt: 'Muchos padres notan que su hijo comprende e intenta comunicarse, pero las palabras no salen con claridad. Conoce qué es la Apraxia del Habla Infantil, sus señales, cómo puede coexistir con el TEA y en qué consiste su tratamiento especializado.',
+  image: '/assets/img/blog/apraxia-que-es-portada.webp',
+  date: '30 Julio 2026',
+  category: 'terapias',
+  categoryName: 'Terapias',
+  readTime: '13 min lectura',
+  author: 'Lic. Merlin Fernández Guadalupe',
+  heroImage: '/assets/img/blog/apraxia-que-es-portada.webp'
+},
+{
+  id: 39,
+  slug: 'diferenciar-rabieta-problema-regulacion-emocional-ninos',
+  title: '¿Cómo diferenciar una rabieta de un problema en la regulación emocional?',
+  excerpt: 'Sentir enojo, frustración o tristeza forma parte del desarrollo emocional del niño y las rabietas son esperables en los primeros años. Aprende a distinguir una rabieta típica del desarrollo de una dificultad en la regulación emocional, por qué ocurre y cuándo buscar apoyo psicológico.',
+  image: '/assets/img/blog/rabieta-portada.webp',
+  date: '30 Julio 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '14 min lectura',
+  author: 'Lic. Giselle Burgos Del Rosario',
+  heroImage: '/assets/img/blog/rabieta-portada.webp'
 }
   // Aquí agregas más blogs...
 ];

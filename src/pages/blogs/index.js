@@ -33,6 +33,7 @@ import DiaDepresionBlog from './psicologia/DiaDepresionBlog';
 import SemanaTCABlog from './psicologia/SemanaTCABlog';
 import DiaTDAHBlog from './psicologia/DiaTDAHBlog';
 import CuandoLlevarPsicologoBlog from './psicologia/CuandoLlevarPsicologoBlog';
+import RabietaRegulacionEmocionalBlog from './psicologia/RabietaRegulacionEmocionalBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -45,6 +46,9 @@ import TerapiaLenguajeBlog from './terapias/TerapiaLenguajeBlog';
 import EstimulacionPrenatalLenguajeBlog from './terapias/EstimulacionPrenatalLenguajeBlog';
 import TartamudezInfantilBlog from './terapias/TartamudezInfantilBlog';
 import VacacionesTerapiaBlog from './terapias/VacacionesTerapiaBlog';
+import FotobiomodulacionTranscranealBlog from './terapias/FotobiomodulacionTranscranealBlog';
+import ApraxiaHablaTeaPadresBlog from './terapias/ApraxiaHablaTeaPadresBlog';
+import ApraxiaHablaTeaQueEsBlog from './terapias/ApraxiaHablaTeaQueEsBlog';
 
 // Blogs de Familia
 // import EjemploBlog from './familia/EjemploBlog';
@@ -87,6 +91,10 @@ export const blogComponents = {
   'estimulacion-lenguaje-embarazo-desarrollo-infantil': EstimulacionPrenatalLenguajeBlog,
   'tartamudez-infantil-etapa-o-preocupacion': TartamudezInfantilBlog,
   'vacaciones-mejor-momento-evaluar-terapia-lenguaje': VacacionesTerapiaBlog,
+  'fotobiomodulacion-transcraneal-tea-terapia-prometedora': FotobiomodulacionTranscranealBlog,
+  'apraxia-habla-tea-como-ayudar-padres-casa': ApraxiaHablaTeaPadresBlog,
+  'apraxia-habla-tea-que-es-senales-tratamiento': ApraxiaHablaTeaQueEsBlog,
+  'diferenciar-rabieta-problema-regulacion-emocional-ninos': RabietaRegulacionEmocionalBlog,
   '8-marzo-dia-internacional-mujer-salud-mental': DiaMujerBlog,
   '21-marzo-dia-mundial-sindrome-down': DiaSindromeDownBlog,
 
@@ -116,4 +124,8 @@ export {
   TartamudezInfantilBlog,
   VacacionesTerapiaBlog,
   CuandoLlevarPsicologoBlog,
+  FotobiomodulacionTranscranealBlog,
+  ApraxiaHablaTeaPadresBlog,
+  ApraxiaHablaTeaQueEsBlog,
+  RabietaRegulacionEmocionalBlog,
 };
