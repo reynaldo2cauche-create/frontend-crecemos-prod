@@ -489,7 +489,7 @@ export const blogMetadata = [
   title: 'Apraxia del Habla y TEA: cuando las palabras quieren salir, pero el cerebro no logra organizarlas',
   excerpt: 'Muchos padres notan que su hijo comprende e intenta comunicarse, pero las palabras no salen con claridad. Conoce qué es la Apraxia del Habla Infantil, sus señales, cómo puede coexistir con el TEA y en qué consiste su tratamiento especializado.',
   image: '/assets/img/blog/apraxia-que-es-portada.webp',
-  date: '30 Julio 2026',
+  date: '1 Agosto 2026',
   category: 'terapias',
   categoryName: 'Terapias',
   readTime: '13 min lectura',
