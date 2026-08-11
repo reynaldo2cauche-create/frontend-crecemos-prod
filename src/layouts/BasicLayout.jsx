@@ -6,10 +6,10 @@ import WhatsAppFloat from "../components/whatsapp/WhatsappButton";
 
 export default function BasicLayout() {
   return (
-    <div style={{ 
-      margin: 0, 
-      padding: 0, 
-      width: '100%', 
+    <div className="cx-site" style={{
+      margin: 0,
+      padding: 0,
+      width: '100%',
       minHeight: '100vh',
       overflowX: 'hidden'
     }}>

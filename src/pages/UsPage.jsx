@@ -1,251 +1,209 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { initializePageScripts } from '../utils/initScripts';
+import Reveal from '../components/public/Reveal';
+import RevealText from '../components/public/RevealText';
+import Decor from '../components/public/Decor';
+import Counter from '../components/public/Counter';
 
+const stats = [
+  { to: 1000, suffix: '+', sep: true, label: 'Pacientes atendidos' },
+  { to: 30000, suffix: '+', sep: true, label: 'Sesiones de terapia' },
+  { to: 8, suffix: '+', sep: false, label: 'Años de experiencia' },
+  { to: 100, suffix: '%', sep: false, label: 'Compromiso con la excelencia' },
+];
 
-import  {initializePageScripts}  from '../utils/initScripts';
+const valores = [
+  { icon: 'bi-heart-fill', title: 'Compromiso', desc: 'Nos dedicamos por completo al bienestar y progreso de cada paciente, con atención personalizada y de calidad.' },
+  { icon: 'bi-people-fill', title: 'Profesionalismo', desc: 'Equipo altamente capacitado y en constante actualización para ofrecer las mejores terapias.' },
+  { icon: 'bi-shield-fill-check', title: 'Confianza', desc: 'Relaciones sólidas basadas en transparencia, honestidad y respeto con pacientes y familias.' },
+  { icon: 'bi-lightbulb-fill', title: 'Innovación', desc: 'Incorporamos nuevas metodologías y tecnologías para mejorar la efectividad de los tratamientos.' },
+  { icon: 'bi-hand-thumbs-up-fill', title: 'Excelencia', desc: 'Superamos expectativas en cada servicio, con los más altos estándares de calidad.' },
+  { icon: 'bi-emoji-smile-fill', title: 'Calidez humana', desc: 'Tratamos a cada paciente con cariño, respeto y comprensión, en un ambiente acogedor y seguro.' },
+];
+
 const UsPage = () => {
   useEffect(() => {
     initializePageScripts();
-  }, []); 
+  }, []);
 
   return (
-    <>
-     
-
-      <main className="main">
-        {/* Page Title */}
-        <div className="page-title light-background" data-aos="fade">
-          <div className="container">
-            <h1>Conoce Nuestra Institución</h1>
-            <p className="page-subtitle">Más de 8 años transformando vidas a través de terapias especializadas</p>
-            <nav className="breadcrumbs">
-              <ol>
-                <li><a href="/">Inicio</a></li>
-                <li className="current">Nosotros</li>
-              </ol>
+    <main className="cx-page">
+      {/* ============================ ENCABEZADO =========================== */}
+      <section className="cx-subhero">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-buildings" /> Quiénes somos</span>
+            <RevealText as="h1" text="Conoce nuestra institución" />
+            <p>Más de 8 años transformando vidas a través de terapias especializadas.</p>
+            <nav className="cx-breadcrumb">
+              <Link to="/">Inicio</Link>
+              <i className="bi bi-chevron-right" />
+              <span>Nosotros</span>
             </nav>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ============================= HISTORIA ============================ */}
+      <section className="cx-section cx-section--deco">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <div className="cx-split">
+            <Reveal className="cx-split-media" direction="right">
+              <div className="cx-media">
+                <img src="/assets/img/nosotros/historia.webp" alt="Centro de Terapias Crecemos" />
+              </div>
+            </Reveal>
+            <div className="cx-split-body">
+              <span className="cx-eyebrow"><i className="bi bi-clock-history" /> Nuestra trayectoria</span>
+              <RevealText as="h2" text="Nuestra Historia" />
+              <Reveal delay={0.1}>
+                <p>
+                  Somos una institución que desde su fundación en el <strong>2016</strong> ha
+                  logrado una trayectoria exitosa en beneficio de todos sus pacientes.
+                </p>
+                <p>
+                  Nos hemos especializado en terapias de rehabilitación para niños, adolescentes
+                  y adultos, con más de <strong>2,000 pacientes atendidos y más de 30 mil sesiones
+                  de terapia realizadas.</strong>
+                </p>
+                <p>
+                  Nos caracteriza una atención confiable con <strong>profesionales capacitados y
+                  actualizados</strong> en cada área, que brindan una <strong>terapia efectiva y,
+                  sobre todo, un trato humano y cálido.</strong>
+                </p>
+              </Reveal>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Historia Section */}
-        <section className="about-history-section">
-          <div className="container">
-            <div className="row align-items-center">
-              
-              <div className="col-lg-6" data-aos="fade-right" data-aos-delay="100">
-                <img src="/assets/img/nosotros/historia.webp" alt="Centro de Terapias Crecemos" className="img-fluid rounded" />
-              </div>
-
-              <div className="col-lg-6" data-aos="fade-left" data-aos-delay="200">
-                <div className="section-title">
-                  <h2>Nuestra Historia</h2>
-                </div>
-                
-                <div className="history-content">
-                  <p>
-                    Somos una institución que desde su fundación en el <strong>2016</strong> ha logrado una trayectoria exitosa con progreso en beneficio de todos sus pacientes.
-                  </p>
-                  
-                  <p>
-                    Nos hemos especializado en brindar terapias de rehabilitación para niños, adolescentes y adultos, teniendo hasta el momento más de <strong>2,000 pacientes atendidos y más de 30 mil sesiones de terapia realizadas.</strong>
-                  </p>
-                  
-                  <p>
-                    Nos caracteriza una atención confiable con <strong>profesionales capacitados y actualizados</strong> en cada área que te brindan una <strong>terapia efectiva y sobre todo un trato humano y cálido.</strong>
-                  </p>
-                </div>
-              </div>
-
-            </div>
+      {/* ============================= MÉTRICAS =========================== */}
+      <section className="cx-section cx-section--brand">
+        <Decor variant="hero" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-graph-up-arrow" /> En números</span>
+            <RevealText as="h2" text="Resultados que hablan por nosotros" />
+          </Reveal>
+          <div className="cx-mstats">
+            {stats.map((s, i) => (
+              <Reveal className="cx-mstat" key={s.label} delay={0.08 * i} y={22}>
+                <span className="num">
+                  <Counter to={s.to} suffix={s.suffix} separator={s.sep} />
+                </span>
+                <p>{s.label}</p>
+              </Reveal>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Stats Highlight Section */}
-        <section className="stats-highlight" id="stats-section">
-          <div className="container">
-            <div className="row">
-              
-              <div className="col-lg-3 col-md-6 col-sm-6" data-aos="fade-up" data-aos-delay="100">
-                <div className="stat-item-custom">
-                  <div className="stat-wrapper">
-                    <span className="stat-number purecounter" 
-                          data-purecounter-start="0" 
-                          data-purecounter-end="1000" 
-                          data-purecounter-duration="2"
-                          data-purecounter-separator="true">0</span>
-                    <span className="stat-symbol">+</span>
-                  </div>
-                  <p className="stat-text">Pacientes Atendidos</p>
-                </div>
-              </div>
-
-              <div className="col-lg-3 col-md-6 col-sm-6" data-aos="fade-up" data-aos-delay="200">
-                <div className="stat-item-custom">
-                  <div className="stat-wrapper">
-                    <span className="stat-number purecounter" 
-                          data-purecounter-start="0" 
-                          data-purecounter-end="30000" 
-                          data-purecounter-duration="2"
-                          data-purecounter-separator="true">0</span>
-                    <span className="stat-symbol">+</span>
-                  </div>
-                  <p className="stat-text">Sesiones de Terapia</p>
-                </div>
-              </div>
-
-              <div className="col-lg-3 col-md-6 col-sm-6" data-aos="fade-up" data-aos-delay="300">
-                <div className="stat-item-custom">
-                  <div className="stat-wrapper">
-                    <span className="stat-number purecounter" 
-                          data-purecounter-start="0" 
-                          data-purecounter-end="8" 
-                          data-purecounter-duration="2">0</span>
-                    <span className="stat-symbol">+</span>
-                  </div>
-                  <p className="stat-text">Años de Experiencia</p>
-                </div>
-              </div>
-
-              <div className="col-lg-3 col-md-6 col-sm-6" data-aos="fade-up" data-aos-delay="400">
-                <div className="stat-item-custom">
-                  <div className="stat-wrapper">
-                    <span className="stat-number purecounter" 
-                          data-purecounter-start="0" 
-                          data-purecounter-end="100" 
-                          data-purecounter-duration="2">0</span>
-                    <span className="stat-symbol">%</span>
-                  </div>
-                  <p className="stat-text">Compromiso con la Excelencia</p>
-                </div>
-              </div>
-
-            </div>
+      {/* ========================= MISIÓN Y VISIÓN ======================== */}
+      <section className="cx-section cx-section--deco cx-section--deco-r">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <div className="cx-mv">
+            <Reveal className="cx-mv-card cx-mv-card--a" direction="right">
+              <span className="ic"><i className="bi bi-bullseye" /></span>
+              <h3>Misión</h3>
+              <p>
+                Brindar rehabilitación terapéutica integral a niños y adultos mediante terapias
+                efectivas con profesionales actualizados en cada área.
+              </p>
+            </Reveal>
+            <Reveal className="cx-mv-card cx-mv-card--b" direction="left" delay={0.1}>
+              <span className="ic"><i className="bi bi-eye-fill" /></span>
+              <h3>Visión</h3>
+              <p>
+                Ser la institución líder e innovadora en tratamiento terapéutico para niños y
+                adultos en Lima Norte.
+              </p>
+            </Reveal>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Misión y Visión Section */}
-        <section className="mission-vision-section">
-          <div className="container">
-            
-            <div className="row gy-4">
-              
-              <div className="col-lg-6" data-aos="fade-up" data-aos-delay="100">
-                <div className="mission-vision-card">
-                  <div className="card-icon">
-                    <img src="/assets/img/nosotros/mision.webp" alt="Misión - Centro Crecemos" />
-                  </div>
-                  <h3>Misión</h3>
-                  <p>
-                    Brindar rehabilitación terapéutica integral a niños y adultos mediante terapias efectivas con profesionales actualizados en cada área.
-                  </p>
+      {/* =============================== ÁREAS ============================ */}
+      <section className="cx-section cx-section--deco">
+        <Decor variant="c" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-diagram-3" /> A quién acompañamos</span>
+            <RevealText as="h2" text="Áreas que atendemos" />
+            <p>Terapias especializadas para cada etapa de la vida, con un enfoque cálido y profesional.</p>
+          </Reveal>
+          <div className="cx-imgcards">
+            {[
+              { img: '/assets/img/index/Psicologia Infantil.webp', tag: 'Niños', title: 'Área Infantil', desc: 'Lenguaje, aprendizaje, terapia ocupacional y psicología infantil.' },
+              { img: '/assets/img/index/area_adolescentes.webp', tag: 'Adolescentes', title: 'Área Adolescentes', desc: 'Acompañamiento emocional, conductual y orientación vocacional.' },
+              { img: '/assets/img/index/area_adultos.webp', tag: 'Adultos', title: 'Área Adultos', desc: 'Psicoterapia, terapia de pareja, familiar y rehabilitación del habla.' },
+            ].map((a, i) => (
+              <Reveal className="cx-imgcard" key={a.title} delay={0.1 * i} y={24}>
+                <img
+                  src={a.img}
+                  alt={a.title}
+                  loading="lazy"
+                  onError={(e) => { e.target.onerror = null; e.target.src = '/assets/img/about-2.webp'; }}
+                />
+                <div className="cx-imgcard-body">
+                  <span className="cx-imgcard-tag">{a.tag}</span>
+                  <h3>{a.title}</h3>
+                  <p>{a.desc}</p>
                 </div>
-              </div>
-
-              <div className="col-lg-6" data-aos="fade-up" data-aos-delay="200">
-                <div className="mission-vision-card">
-                  <div className="card-icon">
-                    <img src="/assets/img/nosotros/vision.webp" alt="Visión - Centro Crecemos" />
-                  </div>
-                  <h3>Visión</h3>
-                  <p>
-                    Ser la institución líder e innovadora que logre brindar tratamiento terapéutico a niños y adultos en Lima Norte.
-                  </p>
-                </div>
-              </div>
-
-            </div>
+              </Reveal>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Valores Section */}
-        <section className="section light-background">
-          <div className="container">
-            
-            <div className="section-title text-center" data-aos="fade-up">
-              <h2>Nuestros Valores</h2>
-              <p>Los principios que guían nuestro trabajo diario y nos comprometen con la excelencia en el cuidado de nuestros pacientes.</p>
-            </div>
-
-            <div className="row gy-4">
-              
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                <div className="feature-box text-center h-100">
-                  <div className="icon mb-3">
-                    <i className="bi bi-heart-fill" style={{ fontSize: '3rem', color: 'var(--accent-color)' }}></i>
-                  </div>
-                  <h4>Compromiso</h4>
-                  <p>Nos dedicamos completamente al bienestar y progreso de cada uno de nuestros pacientes, brindando atención personalizada y de calidad.</p>
-                </div>
-              </div>
-
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                <div className="feature-box text-center h-100">
-                  <div className="icon mb-3">
-                    <i className="bi bi-people-fill" style={{ fontSize: '3rem', color: 'var(--accent-color)' }}></i>
-                  </div>
-                  <h4>Profesionalismo</h4>
-                  <p>Contamos con un equipo de profesionales altamente capacitados y en constante actualización para ofrecer las mejores terapias.</p>
-                </div>
-              </div>
-
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                <div className="feature-box text-center h-100">
-                  <div className="icon mb-3">
-                    <i className="bi bi-shield-fill-check" style={{ fontSize: '3rem', color: 'var(--accent-color)' }}></i>
-                  </div>
-                  <h4>Confianza</h4>
-                  <p>Construimos relaciones sólidas basadas en la transparencia, la honestidad y el respeto mutuo con nuestros pacientes y familias.</p>
-                </div>
-              </div>
-
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                <div className="feature-box text-center h-100">
-                  <div className="icon mb-3">
-                    <i className="bi bi-lightbulb-fill" style={{ fontSize: '3rem', color: 'var(--accent-color)' }}></i>
-                  </div>
-                  <h4>Innovación</h4>
-                  <p>Incorporamos constantemente nuevas metodologías y tecnologías para mejorar la efectividad de nuestros tratamientos.</p>
-                </div>
-              </div>
-
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
-                <div className="feature-box text-center h-100">
-                  <div className="icon mb-3">
-                    <i className="bi bi-hand-thumbs-up-fill" style={{ fontSize: '3rem', color: 'var(--accent-color)' }}></i>
-                  </div>
-                  <h4>Excelencia</h4>
-                  <p>Nos esforzamos por superar las expectativas en cada servicio que brindamos, manteniendo los más altos estándares de calidad.</p>
-                </div>
-              </div>
-
-              <div className="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
-                <div className="feature-box text-center h-100">
-                  <div className="icon mb-3">
-                    <i className="bi bi-emoji-smile-fill" style={{ fontSize: '3rem', color: 'var(--accent-color)' }}></i>
-                  </div>
-                  <h4>Calidez Humana</h4>
-                  <p>Tratamos a cada paciente con el cariño, respeto y comprensión que merecen, creando un ambiente acogedor y seguro.</p>
-                </div>
-              </div>
-
-            </div>
+      {/* ============================== VALORES =========================== */}
+      <section className="cx-section cx-section--deco">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-gem" /> Lo que nos define</span>
+            <RevealText as="h2" text="Nuestros Valores" />
+            <p>Los principios que guían nuestro trabajo diario y nos comprometen con la excelencia en el cuidado de cada paciente.</p>
+          </Reveal>
+          <div className="cx-cards cx-cards--tint">
+            {valores.map((v, i) => (
+              <Reveal className="cx-card" key={v.title} delay={0.06 * i} y={18}>
+                <span className="ic"><i className={`bi ${v.icon}`} /></span>
+                <h3>{v.title}</h3>
+                <p>{v.desc}</p>
+              </Reveal>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* CTA Section */}
-        <section className="cta-section">
-          <div className="container">
-            <div className="row justify-content-center">
-              <div className="col-lg-8 text-center" data-aos="fade-up" data-aos-delay="100">
-                <h3>¿Listo para comenzar tu proceso de rehabilitación?</h3>
-                <p>Nos sentimos comprometidos con nuestros pacientes, trabajadores, proveedores y la sociedad. Este modelo de atención integral es el que vivimos cada día.</p>
-                <a href="contactanos" className="btn-custom">Contáctanos</a>
+      {/* ============================== CTA FINAL ========================= */}
+      <section className="cx-section">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-stars" /> Da el primer paso</span>
+              <RevealText as="h2" text="¿Listo para comenzar tu rehabilitación?" />
+              <p>Estamos comprometidos con nuestros pacientes y sus familias. Este modelo de atención integral es el que vivimos cada día.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Contáctanos</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver servicios
+                </Link>
               </div>
             </div>
-          </div>
-        </section>
-
-      </main>
-    </>
+          </Reveal>
+        </div>
+      </section>
+    </main>
   );
 };
 

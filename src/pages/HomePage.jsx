@@ -1,646 +1,494 @@
-import React, { useEffect } from 'react';
-import  {initializePageScripts}  from '../utils/initScripts';
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { initializePageScripts } from '../utils/initScripts';
 import * as popupService from '../services/popupService';
 import * as conveniosService from '../services/conveniosService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 import DialogNotice from '../components/DialogNotice/DialogNotice';
+import Reveal from '../components/public/Reveal';
+import RevealText from '../components/public/RevealText';
+import Decor from '../components/public/Decor';
 
-
+// Fotos del hero: rotan automáticamente cada 5s con transición (crossfade).
+// Para agregar más, solo sube los archivos a /public/assets/img/index/ y
+// añade su ruta aquí. Con 2+ fotos aparecen los puntos de navegación.
+// Recomendado: horizontal 2560×1440 px (16:9), WebP optimizado (<400 KB).
 const heroImages = [
   '/assets/img/index/Carrusel servicios.webp',
-  '/assets/img/index/Psicologia Infantil.webp',
+  // '/assets/img/index/hero-2.webp',
+  // '/assets/img/index/hero-3.webp',
 ];
 
-export default function HomePage() {
+const stats = [
+  { icon: 'bi-people', value: '1000+ Pacientes', label: 'Atendidos exitosamente' },
+  { icon: 'bi-calendar-check', value: '8+ Años', label: 'De experiencia profesional' },
+  { icon: 'bi-star-fill', value: '98% Satisfacción', label: 'De nuestros pacientes' },
+  { icon: 'bi-chat-heart', value: '24/7 Apoyo', label: 'Seguimiento continuo' },
+];
 
- const [currentImage, setCurrentImage] = useState(0);
+const servicios = {
+  infantil: [
+    { icon: 'bi-chat-dots', title: 'Terapia de Lenguaje', desc: 'Mejora del habla y comunicación', to: '/infantil-terapia-lenguaje' },
+    { icon: 'bi-person-workspace', title: 'Terapia Ocupacional', desc: 'Desarrollo de habilidades motoras', to: '/infantil-terapia-ocupacional' },
+    { icon: 'bi-book', title: 'Terapia de Aprendizaje', desc: 'Estrategias de aprendizaje', to: '/infantil-terapia-aprendizaje' },
+    { icon: 'bi-heart', title: 'Psicología Infantil', desc: 'Apoyo emocional y conductual', to: '/infantil-psicologia-infantil' },
+    { icon: 'bi-clipboard-data', title: 'Evaluación Psicológica', desc: 'Para colegio e institución', to: '/infantil-evaluacion-psicologica-colegio' },
+    { icon: 'bi-compass', title: 'Orientación Vocacional', desc: 'Elección de carrera profesional', to: '/infantil-orientacion-vocacional' },
+  ],
+  adultos: [
+    { icon: 'bi-person-check', title: 'Psicoterapia Individual', desc: 'Bienestar personal y emocional', to: '/adulto-psicologia-individual' },
+    { icon: 'bi-heart-fill', title: 'Terapia de Pareja', desc: 'Fortalecimiento de la relación', to: '/adulto-terapia-pareja' },
+    { icon: 'bi-people-fill', title: 'Terapia Familiar', desc: 'Convivencia armoniosa familiar', to: '/adulto-terapia-familiar' },
+    { icon: 'bi-mic', title: 'Terapia de Lenguaje', desc: 'Rehabilitación del habla adultos', to: '/adulto-terapia-lenguaje' },
+    { icon: 'bi-mortarboard', title: 'Evaluación Universitaria', desc: 'Para ingreso o permanencia', to: '/adulto-evaluacion-psicologica-universidad' },
+    { icon: 'bi-heart-pulse', title: 'Obstetricia', desc: 'Cuidado en embarazo y posparto', to: '/adulto-obstetricia' },
+  ],
+};
+
+const recomendaciones = [
+  {
+    tag: 'Psicología Infantil',
+    title: '¿Cuándo debo llevar a mi hijo al psicólogo?',
+    desc: 'Nuestra licenciada en psicología infantil te enseña a reconocer cuándo necesitas llevar a tu hijo a consulta psicológica.',
+    url: 'https://www.youtube.com/watch?v=pwWZEl8m1Go&t=1s',
+  },
+  {
+    tag: 'Trastorno del Espectro Autista',
+    title: 'TEA - Signos de Alerta y Tratamiento',
+    desc: 'Conoce cuáles son los signos de alerta y tratamiento en el autismo.',
+    url: 'https://www.youtube.com/watch?v=37K-l2eBwAk&t=1s',
+  },
+  {
+    tag: 'Lic. Merlin Fernández',
+    title: 'Signos de Alerta en el Desarrollo del Lenguaje',
+    desc: 'La Lic. Merlin Fernández te muestra los signos de alerta que debes saber para detectar a tiempo retrasos en el desarrollo del lenguaje de tu niño.',
+    url: 'https://www.youtube.com/watch?v=iD0CY3QFlp4&t=208s',
+  },
+];
+
+const pilares = [
+  { icon: 'bi-heart-pulse', title: 'Atención cálida y humana', desc: 'Te acompañamos con empatía y respeto en cada sesión.' },
+  { icon: 'bi-people', title: 'Equipo profesional', desc: 'Especialistas certificados en cada área terapéutica.' },
+  { icon: 'bi-clipboard2-pulse', title: 'Plan personalizado', desc: 'Diseñamos la terapia a la medida de cada persona.' },
+  { icon: 'bi-shield-check', title: '8+ años de experiencia', desc: 'Miles de familias ya confiaron su bienestar en nosotros.' },
+];
+
+const pasos = [
+  { n: '01', title: 'Agenda tu cita', desc: 'Escríbenos y reserva tu primera consulta sin complicaciones.' },
+  { n: '02', title: 'Evaluación inicial', desc: 'Conocemos tu caso y definimos objetivos juntos.' },
+  { n: '03', title: 'Terapia personalizada', desc: 'Iniciamos tu proceso con seguimiento cercano y continuo.' },
+];
+
+// Miniatura real del video de YouTube a partir de la URL
+const ytThumb = (url) => {
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : 'videologo.png';
+};
+
+export default function HomePage() {
+  const [currentImage, setCurrentImage] = useState(0);
+  const [activeTab, setActiveTab] = useState('infantil');
   const [showPopup, setShowPopup] = useState(false);
   const [popupActivo, setPopupActivo] = useState(null);
   const [convenios, setConvenios] = useState([]);
   const [cargandoConvenios, setCargandoConvenios] = useState(true);
 
+  // Scripts base + rotación automática del hero
+  useEffect(() => {
+    initializePageScripts();
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-
- useEffect(() => {
-  initializePageScripts();
-
-  const tabs = document.querySelectorAll('.quick-tab');
-  const contents = document.querySelectorAll('.area-content');
-
-  // Configurar event listeners para tabs
-  const handleTabClick = (tab) => {
-    const area = tab.getAttribute('data-area');
-
-    // Remover active de todos
-    tabs.forEach(t => t.classList.remove('active'));
-    contents.forEach(c => c.classList.remove('active'));
-
-    // Activar tab seleccionado
-    tab.classList.add('active');
-
-    // Activar contenido con delay para la animación
-    const targetContent = document.getElementById(`${area}-content`);
-
-    // Remover el atributo data-aos temporalmente
-    const cards = targetContent.querySelectorAll('[data-aos]');
-    cards.forEach(card => {
-      card.classList.remove('aos-animate');
-    });
-
-    // Activar el contenido
-    targetContent.classList.add('active');
-
-    // Forzar reflow y re-animar
-    setTimeout(() => {
-      cards.forEach(card => {
-        card.classList.add('aos-animate');
-      });
-    }, 50);
-  };
-
-  // Agregar listeners a cada tab
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => handleTabClick(tab));
-  });
-
-  // Carrusel de imágenes - Auto rotación
-  const interval = setInterval(() => {
-    setCurrentImage((prev) => {
-      const next = (prev + 1) % heroImages.length;
-     
-      return next;
-    });
-  }, 5000);
-
-
-
-  // Cleanup function
-  return () => {
-    clearInterval(interval);
-    tabs.forEach(tab => {
-      tab.removeEventListener('click', () => handleTabClick(tab));
-    });
-  };
-}, []);
-
-useEffect(() => {
-  const cargarPopup = async () => {
-    try {
-
-      const respuesta = await popupService.obtenerPopupActivo();
-
-
-
-      if (respuesta.activo && respuesta.popup) {
-        const popup = respuesta.popup;
-
-        const ahora = new Date();
-        const fechaInicio = new Date(popup.fechaInicio);
-        const fechaFin = new Date(popup.fechaFin);
-
-
-        // Solo mostrar si no hay un popup activo ya visible
-        if (!popupActivo) {
-
-          setPopupActivo(popup);
+  // Popup programado
+  useEffect(() => {
+    const cargarPopup = async () => {
+      try {
+        const respuesta = await popupService.obtenerPopupActivo();
+        if (respuesta.activo && respuesta.popup) {
+          setPopupActivo(respuesta.popup);
           setTimeout(() => setShowPopup(true), 1000);
-        } else {
-          console.log('⏭️ Ya hay un popup visible, no mostrar otro');
         }
-      } else {
-        console.log('❌ No hay popup activo o no cumple condiciones');
+      } catch (error) {
+        console.error('💥 Error al cargar popup:', error);
       }
-    } catch (error) {
-      console.error('💥 Error al cargar popup:', error);
-    }
-  };
+    };
+    cargarPopup();
+  }, []);
 
-  // Solo cargar UNA VEZ al montar el componente
-  cargarPopup();
-}, []); // Sin intervalo, sin cleanup
+  // Convenios activos desde la BD
+  useEffect(() => {
+    const cargarConvenios = async () => {
+      try {
+        setCargandoConvenios(true);
+        const conveniosActivos = await conveniosService.getConveniosActivos();
+        const conveniosFiltrados = conveniosActivos.filter((c) => c.id !== 27);
+        setConvenios(conveniosFiltrados);
+      } catch (error) {
+        console.error('Error al cargar convenios:', error);
+        setConvenios([]);
+      } finally {
+        setCargandoConvenios(false);
+      }
+    };
+    cargarConvenios();
+  }, []);
 
-// Cargar convenios activos desde la BD
-useEffect(() => {
-  const cargarConvenios = async () => {
-    try {
-      setCargandoConvenios(true);
-
-      const conveniosActivos = await conveniosService.getConveniosActivos();
-      const conveniosFiltrados = conveniosActivos.filter(c => c.id !== 27);
-
-      console.log('Convenios activos obtenidos:', conveniosFiltrados);
-      setConvenios(conveniosFiltrados);
-      
-    } catch (error) {
-      console.error('Error al cargar convenios:', error);
-      setConvenios([]);
-    } finally {
-      setCargandoConvenios(false);
-    }
-  };
-
-  cargarConvenios();
-}, []);
-
-// Re-inicializar Swiper cuando los convenios se cargan
-useEffect(() => {
-  if (!cargandoConvenios && convenios.length > 0) {
-    // Esperar un frame para asegurar que el DOM se haya actualizado
-    setTimeout(() => {
-      const swiperElement = document.querySelector(".init-swiper");
-      if (swiperElement) {
-        const configElement = swiperElement.querySelector(".swiper-config");
-        if (configElement) {
-          try {
-            // Importar dinámicamente Swiper
-            import('swiper').then(({ default: Swiper }) => {
-              import('swiper/modules').then(({ Autoplay, Pagination }) => {
-                const config = JSON.parse(configElement.innerHTML.trim());
-                new Swiper(swiperElement, {
-                  ...config,
-                  modules: [Autoplay, Pagination]
+  // Re-inicializar Swiper cuando los convenios se cargan
+  useEffect(() => {
+    if (!cargandoConvenios && convenios.length > 0) {
+      setTimeout(() => {
+        const swiperElement = document.querySelector('.init-swiper');
+        if (swiperElement) {
+          const configElement = swiperElement.querySelector('.swiper-config');
+          if (configElement) {
+            try {
+              import('swiper').then(({ default: Swiper }) => {
+                import('swiper/modules').then(({ Autoplay, Pagination }) => {
+                  const config = JSON.parse(configElement.innerHTML.trim());
+                  new Swiper(swiperElement, { ...config, modules: [Autoplay, Pagination] });
                 });
-                console.log('✅ Swiper de convenios inicializado correctamente');
               });
-            });
-          } catch (error) {
-            console.error('Error al re-inicializar Swiper:', error);
-          }
-        }
-      }
-    }, 100);
-  }
-}, [convenios, cargandoConvenios]);
-
-const cerrarPopup = () => {
-  console.log('🚪 Cerrando popup');
-  setShowPopup(false);
-  // No guardar en sessionStorage - siempre muestra en cada recarga
-  setTimeout(() => setPopupActivo(null), 300);
-};
-  return (
-<main className="main">
-{/* Popup Programado - NUEVO DISEÑO MODERNO */}
-<DialogNotice
-  open={showPopup && !!popupActivo}
-  onClose={cerrarPopup}
-  popupData={popupActivo ? {
-    titulo: popupActivo.titulo,
-    imagenUrl: `${API_BASE_URL}/popup/imagen/${popupActivo.imagenUrl}`,
-    mensajeWhatsapp: popupActivo.mensajeWhatsapp
-  } : null}
-/>
-  <section id="hero" className="hero section" style={{ paddingTop: '150px' }}>
-      <div className="container" data-aos="fade-up" data-aos-delay="100">
-        <div className="row align-items-center">
-          <div className="col-lg-6">
-            <div className="hero-content" data-aos="fade-up" data-aos-delay="200">
-              <div className="company-badge mb-4">
-                <i className="bi bi-heart-fill me-2"></i>
-                Tu bienestar es nuestra prioridad
-              </div>
-
-              <h1 className="mb-4">
-                Centro de Terapia <br />
-                y Desarrollo <br />
-                <span className="accent-text">Crecemos</span>
-              </h1>
-
-              <p className="mb-4 mb-md-5">
-                Brindamos atención especializada en terapia psicológica, desarrollo personal 
-                y bienestar emocional. Nuestro equipo de profesionales te acompaña en tu 
-                proceso de crecimiento y sanación.
-              </p>
-
-              <div className="hero-buttons">
-                <a href="/contactanos" className="btn btn-primary me-0 me-sm-2 mx-1">Reservar Cita</a>
-                {/* <a href="#" className="btn btn-link mt-2 mt-sm-0 glightbox">
-                  <i className="bi bi-play-circle me-1"></i>
-                  Conoce Más
-                </a> */}
-              </div>
-            </div>
-          </div>
-
-          <div className="col-lg-6">
-            <div className="hero-image position-relative" data-aos="zoom-out" data-aos-delay="300">
-              {/* Carrusel de imágenes */}
-<div className="position-relative hero-carousel" style={{
-  width: '100%',
-  aspectRatio: '3/4',
-  maxHeight: '600px',
-  borderRadius: '16px',
-  overflow: 'hidden',
-  backgroundColor: '#f0f0f0'
-}}>
-  {heroImages.map((img, index) => (
-    <img
-      key={index}
-      src={img}
-      alt={`Terapia y Bienestar ${index + 1}`}
-      className="position-absolute top-0 start-0 w-100 h-100 hero-carousel-img"
-      style={{
-        objectFit: 'cover',
-        objectPosition: 'center 50%',
-        opacity: index === currentImage ? 1 : 0,
-        transition: 'opacity 1s ease-in-out',
-        zIndex: index === currentImage ? 2 : 1,
-        pointerEvents: index === currentImage ? 'auto' : 'none'
-      }}
-    />
-  ))}
-  
-  {/* Indicadores */}
-  <div className="position-absolute bottom-0 end-0 mb-3 me-3 d-flex gap-2">
-    {heroImages.map((_, index) => (
-      <button
-        key={index}
-        onClick={() => setCurrentImage(index)}
-        className="btn p-0 border-0 rounded-pill"
-        style={{
-          width: index === currentImage ? '32px' : '8px',
-          height: '8px',
-          backgroundColor: index === currentImage ? 'white' : 'rgba(255, 255, 255, 0.5)',
-          transition: 'all 0.3s ease',
-          cursor: 'pointer'
-        }}
-        aria-label={`Ir a imagen ${index + 1}`}
-      />
-    ))}
-  </div>
-</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="row stats-row gy-4 mt-5" data-aos="fade-up" data-aos-delay="500">
-          <div className="col-lg-3 col-md-6">
-            <div className="stat-item">
-              <div className="stat-icon">
-                <i className="bi bi-people"></i>
-              </div>
-              <div className="stat-content">
-                <h4>1000+ Pacientes</h4>
-                <p className="mb-0">Atendidos exitosamente</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-lg-3 col-md-6">
-            <div className="stat-item">
-              <div className="stat-icon">
-                <i className="bi bi-calendar-check"></i>
-              </div>
-              <div className="stat-content">
-                <h4>8+ Años</h4>
-                <p className="mb-0">De experiencia profesional</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-lg-3 col-md-6">
-            <div className="stat-item">
-              <div className="stat-icon">
-                <i className="bi bi-star-fill"></i>
-              </div>
-              <div className="stat-content">
-                <h4>98% Satisfacción</h4>
-                <p className="mb-0">De nuestros pacientes</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-lg-3 col-md-6">
-            <div className="stat-item">
-              <div className="stat-icon">
-                <i className="bi bi-chat-heart"></i>
-              </div>
-              <div className="stat-content">
-                <h4>24/7 Apoyo</h4>
-                <p className="mb-0">Seguimiento continuo</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-      {/* Services Quick Section */}
-      <section className="services-quick">
-        <div className="container" data-aos="fade-up">
-          <div className="section-header">
-            <h2>Servicios Especializados</h2>
-            <p>Accede directamente a la información detallada de cada servicio</p>
-          </div>
-
-          <div className="quick-tabs">
-            <button className="quick-tab active" data-area="infantil">Infantil y Adolescentes</button>
-            <button className="quick-tab" data-area="adultos">Adultos</button>
-          </div>
-
-          <div className="area-content active" id="infantil-content" data-aos="fade-up">
-            <div className="services-mini-grid" data-aos="fade-up">
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-chat-dots"></i>
-                </div>
-                <h6>Terapia de Lenguaje</h6>
-                <p>Mejora del habla y comunicación</p>
-                <a href="/infantil-terapia-lenguaje" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-person-workspace"></i>
-                </div>
-                <h6>Terapia Ocupacional</h6>
-                <p>Desarrollo de habilidades motoras</p>
-                <a href="/infantil-terapia-ocupacional" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-book"></i>
-                </div>
-                <h6>Terapia de Aprendizaje</h6>
-                <p>Estrategias de aprendizaje</p>
-                <a href="/infantil-terapia-aprendizaje" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-heart"></i>
-                </div>
-                <h6>Psicología Infantil</h6>
-                <p>Apoyo emocional y conductual</p>
-                <a href="/infantil-psicologia-infantil" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-clipboard-data"></i>
-                </div>
-                <h6>Evaluación Psicológica</h6>
-                <p>Para colegio e institución</p>
-                <a href="/infantil-evaluacion-psicologica-colegio" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-compass"></i>
-                </div>
-                <h6>Orientación Vocacional</h6>
-                <p>Elección de carrera profesional</p>
-                <a href="/infantil-orientacion-vocacional" className="btn-mini-service">Ver Detalles</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="area-content" id="adultos-content" >
-            <div className="services-mini-grid" data-aos="fade-up">
-              <div className="service-mini-card" >
-                <div className="mini-icon">
-                  <i className="bi bi-person-check"></i>
-                </div>
-                <h6>Psicoterapia Individual</h6>
-                <p>Bienestar personal y emocional</p>
-                <a href="/adulto-psicologia-individual" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-heart-fill"></i>
-                </div>
-                <h6>Terapia de Pareja</h6>
-                <p>Fortalecimiento de la relación</p>
-                <a href="/adulto-terapia-pareja" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-people-fill"></i>
-                </div>
-                <h6>Terapia Familiar</h6>
-                <p>Convivencia armoniosa familiar</p>
-                <a href="/adulto-terapia-familiar" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-mic"></i>
-                </div>
-                <h6>Terapia de Lenguaje</h6>
-                <p>Rehabilitación del habla adultos</p>
-                <a href="/adulto-terapia-lenguaje" className="btn-mini-service">Ver Detalles</a>
-              </div>
-
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-mortarboard"></i>
-                </div>
-                <h6>Evaluación Universitaria</h6>
-                <p>Para ingreso o permanencia</p>
-                <a href="/adulto-evaluacion-psicologica-universidad" className="btn-mini-service">Ver Detalles</a>
-              </div>
-              <div className="service-mini-card">
-                <div className="mini-icon">
-                  <i className="bi bi-heart-pulse"></i>
-                </div>
-                <h6>Obstetricia</h6>
-                <p>Cuidado en embarazo y posparto</p>
-                <a href="/adulto-obstetricia" className="btn-mini-service">Ver Detalles</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Recomendaciones Section */}
-      <section id="recomendaciones" className="testimonials section light-background">
-        <div className="container section-title" data-aos="fade-up">
-          <h2>Recomendaciones</h2>
-          <p>Contenido educativo y consejos profesionales para padres y pacientes</p>
-        </div>
-
-        <div className="container">
-          <div className="row g-5">
-            <div className="col-lg-4" data-aos="fade-up" data-aos-delay="100">
-              <div className="testimonial-item">
-                <img src="videologo.png" className="testimonial-img" alt="¿Cuándo llevar al psicólogo?" />
-                <h3>¿Cuándo debo llevar a mi hijo al psicólogo?</h3>
-                <h4>Psicología Infantil</h4>
-                <div className="stars">
-                  <i className="bi bi-play-circle"></i>
-                  <span className="ms-2">Video educativo</span>
-                </div>
-                <p>
-                  <i className="bi bi-quote quote-icon-left"></i>
-                  <span>Nuestra licenciada en psicología infantil te enseña a reconocer cuándo necesitas llevar a tu hijo a consulta psicológica.</span>
-                  <i className="bi bi-quote quote-icon-right"></i>
-                </p>
-                <a className="mt-3 btn-getstarted" href="https://www.youtube.com/watch?v=pwWZEl8m1Go&t=1s" target="_blank" rel="noopener noreferrer">Ver Video</a>
-              </div>
-            </div>
-
-            <div className="col-lg-4" data-aos="fade-up" data-aos-delay="200">
-              <div className="testimonial-item">
-                <img src="videologo.png" className="testimonial-img" alt="TEA - Signos de Alerta" />
-                <h3>TEA - Signos de Alerta y Tratamiento</h3>
-                <h4>Trastorno del Espectro Autista</h4>
-                <div className="stars">
-                  <i className="bi bi-play-circle"></i>
-                  <span className="ms-2">Video educativo</span>
-                </div>
-                <p>
-                  <i className="bi bi-quote quote-icon-left"></i>
-                  <span>Conoce cuáles son los SIGNOS DE ALERTA Y TRATAMIENTO en el autismo.</span>
-                  <i className="bi bi-quote quote-icon-right"></i>
-                </p>
-                <a className="mt-3 btn-getstarted" href="https://www.youtube.com/watch?v=37K-l2eBwAk&t=1s" target="_blank" rel="noopener noreferrer">Ver Video</a>
-              </div>
-            </div>
-
-            <div className="col-lg-4" data-aos="fade-up" data-aos-delay="300">
-              <div className="testimonial-item">
-                <img src="videologo.png" className="testimonial-img" alt="Desarrollo del Lenguaje" />
-                <h3>Signos de Alerta en el Desarrollo del Lenguaje</h3>
-                <h4>Lic. Merlin Fernández</h4>
-                <div className="stars">
-                  <i className="bi bi-play-circle"></i>
-                  <span className="ms-2">Video educativo</span>
-                </div>
-                <p>
-                  <i className="bi bi-quote quote-icon-left"></i>
-                  <span>Lic.Merlin Fernández te muestra los signos de alerta que debes saber para detectar a tiempo retrasos en el desarrollo del lenguaje de tu niño.</span>
-                  <i className="bi bi-quote quote-icon-right"></i>
-                </p>
-                <a className="mt-3 btn-getstarted" href="https://www.youtube.com/watch?v=iD0CY3QFlp4&t=208s" target="_blank" rel="noopener noreferrer">Ver Video</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-5" data-aos="fade-up" data-aos-delay="400">
-            <a href="#" className="me-0 me-sm-2 mx-1">Ver Más Recomendaciones</a>
-          </div>
-        </div>
-      </section>
-
-      {/* Alianzas Section */}
-<section id="alianzas" className="clients section">
-  <div className="container" data-aos="fade-up" data-aos-delay="100">
-    <div className="section-title text-center mb-5">
-      <h2>Alianzas y Convenios</h2>
-      <p>Gracias a nuestros <strong>convenios con universidades e instituciones</strong>, podemos garantizar una mayor viabilidad en la realización de <strong>prácticas profesionales y especializaciones</strong> enfocadas a mejorar su formación, brindando terapias actualizadas y efectivas. Así mismo nuestras alianzas con otras instituciones nos permite una adecuada derivación de nuestros pacientes.</p>
-    </div>
-
-    <div className="swiper init-swiper" style={{ paddingBottom: '60px' }}>
-      <script type="application/json" className="swiper-config" dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          loop: true,
-          speed: 600,
-          autoplay: {
-            delay: 3000
-          },
-          slidesPerView: "auto",
-          pagination: {
-            el: ".swiper-pagination",
-            type: "bullets",
-            clickable: true
-          },
-          breakpoints: {
-            320: {
-              slidesPerView: 1,
-              spaceBetween: 40
-            },
-            480: {
-              slidesPerView: 2,
-              spaceBetween: 60
-            },
-            640: {
-              slidesPerView: 3,
-              spaceBetween: 80
-            },
-            992: {
-              slidesPerView: 4,
-              spaceBetween: 100
-            },
-            1200: {
-              slidesPerView: 5,
-              spaceBetween: 120
+            } catch (error) {
+              console.error('Error al re-inicializar Swiper:', error);
             }
           }
-        })
-      }} />
-          <div className="swiper-wrapper align-items-center" style={{ marginBottom: '50px' }}>
-        {convenios.map((convenio) => (
-          <div
-            key={convenio.id}
-            className="swiper-slide text-center"
-            style={{
-              padding: '20px 10px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <div style={{
-              height: '180px',
-              width: '250px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '15px',
-              overflow: 'hidden',
-              borderRadius: '20px'
-            }}>
-              <img
-                src={convenio.logo_url
-                  ? (convenio.logo_url.startsWith('/')
-                    ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
-                    : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
-                  : '/assets/img/index/default-logo.webp'}
-                className="img-fluid"
-                alt={convenio.empresa}
-                style={{
-                  maxHeight: '180px',
-                  maxWidth: '250px',
-                  minHeight: '120px',
-                  objectFit: 'contain',
-                  width: 'auto',
-                  height: 'auto',
-                  borderRadius: '20px'
-                }}
-                onError={(e) => {
+        }
+      }, 100);
+    }
+  }, [convenios, cargandoConvenios]);
+
+  const cerrarPopup = () => {
+    setShowPopup(false);
+    setTimeout(() => setPopupActivo(null), 300);
+  };
+
+  return (
+    <main className="cx-page">
+      <DialogNotice
+        open={showPopup && !!popupActivo}
+        onClose={cerrarPopup}
+        popupData={popupActivo ? {
+          titulo: popupActivo.titulo,
+          imagenUrl: `${API_BASE_URL}/popup/imagen/${popupActivo.imagenUrl}`,
+          mensajeWhatsapp: popupActivo.mensajeWhatsapp,
+        } : null}
+      />
+
+      {/* ========================= HERO (cine, full-bleed) ========================= */}
+      <section className="cx-hero cx-hero--cine">
+        <div className="cx-hero-bg">
+          {heroImages.map((img, index) => (
+            <img
+              key={index}
+              src={img}
+              alt={`Terapia y bienestar ${index + 1}`}
+              onError={(e) => {
+                if (!e.target.src.endsWith('/assets/img/index/hero.webp')) {
                   e.target.onerror = null;
-                  e.target.src = '/assets/img/index/default-logo.webp';
-                }}
-              />
-            </div>
-            <h6
-              className="mt-2"
-              style={{
-                fontSize: '0.9rem',
-                lineHeight: '1.3',
-                margin: '0',
-                padding: '0 5px'
+                  e.target.src = '/assets/img/index/hero.webp';
+                }
               }}
-            >
-              {convenio.empresa}
-            </h6>
+              style={{
+                opacity: index === currentImage ? 1 : 0,
+                zIndex: index === currentImage ? 2 : 1,
+              }}
+            />
+          ))}
+        </div>
+        <div className="cx-hero-overlay" />
+        {heroImages.length > 1 && (
+          <div className="cx-hero-dots">
+            {heroImages.map((_, index) => (
+              <button
+                key={index}
+                className={index === currentImage ? 'on' : ''}
+                onClick={() => setCurrentImage(index)}
+                aria-label={`Ir a imagen ${index + 1}`}
+              />
+            ))}
           </div>
-        ))}
-      </div>
-      <div  className="mt-2" 
-        style={{ 
-          fontSize: '0.9rem', 
-          lineHeight: '1.3',
-          textAlign: 'center',
-          marginTop: 'auto'
-        }}></div>
-          <div className="swiper-pagination"></div>
-   
-    </div>
-  </div>
-</section>
+        )}
+        <div className="cx-container cx-hero-cine-inner">
+          <Reveal className="cx-hero-copy" y={26}>
+            <span className="cx-badge cx-anim-1">
+              <i className="bi bi-heart-fill" />
+              Tu bienestar es nuestra prioridad
+            </span>
+            <RevealText
+              as="h1"
+              delay={0.28}
+              stagger={0.06}
+              amount={0.4}
+              parts={[
+                { t: 'Centro' }, { t: 'de' }, { t: 'Terapia' }, { t: 'y' },
+                { t: 'Desarrollo' }, { t: 'Crecemos', className: 'cx-grad' },
+              ]}
+            />
+            <p className="cx-anim-3">
+              Atención especializada en terapia psicológica, desarrollo personal
+              y bienestar emocional. Un equipo humano que te acompaña en tu
+              proceso de crecimiento.
+            </p>
+            <div className="cx-hero-cta cx-anim-4">
+              <Link to="/contactanos" className="cx-btn cx-btn-primary">
+                Reservar cita <i className="bi bi-arrow-right" />
+              </Link>
+              <Link
+                to="/servicios"
+                className="cx-btn cx-btn-ghost cx-btn-circle"
+                aria-label="Conoce nuestros servicios"
+              >
+                <i className="bi bi-arrow-up-right" />
+              </Link>
+            </div>
+
+            <div className="cx-trust cx-anim-5">
+              <span className="cx-trust-ic"><i className="bi bi-emoji-smile-fill" /></span>
+              <div>
+                <b>+1000 pacientes felices</b>
+                <div>
+                  <span className="stars">★★★★★</span>{' '}
+                  <small>4.9/5 en satisfacción</small>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* =========================== STATS BAND ======================== */}
+      <section className="cx-statsband">
+        <div className="cx-container">
+          <div className="cx-stats">
+            {stats.map((s, i) => (
+              <Reveal className="cx-stat" key={s.value} delay={0.08 * i}>
+                <span className="ic"><i className={`bi ${s.icon}`} /></span>
+                <div>
+                  <h4>{s.value}</h4>
+                  <p>{s.label}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================ PILARES =========================== */}
+      <section className="cx-section cx-section--deco">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-heart" /> Por qué elegirnos</span>
+            <RevealText as="h2" text="Un espacio seguro para tu bienestar" />
+            <p>Cuidamos cada detalle para que te sientas acompañado en todo tu proceso.</p>
+          </Reveal>
+          <div className="cx-features cx-features--tint">
+            {pilares.map((f, i) => (
+              <Reveal className="cx-feature" key={f.title} delay={0.07 * i} y={18}>
+                <span className="ic"><i className={`bi ${f.icon}`} /></span>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ========================== SERVICIOS ========================== */}
+      <section className="cx-section cx-section--soft">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-stars" /> Nuestros servicios</span>
+            <RevealText as="h2" text="Servicios Especializados" />
+            <p>Accede directamente a la información detallada de cada servicio.</p>
+          </Reveal>
+
+          <div className="cx-tabs">
+            <div className="cx-tabs-inner">
+              <button
+                className={`cx-tab ${activeTab === 'infantil' ? 'on' : ''}`}
+                onClick={() => setActiveTab('infantil')}
+              >
+                Infantil y Adolescentes
+              </button>
+              <button
+                className={`cx-tab ${activeTab === 'adultos' ? 'on' : ''}`}
+                onClick={() => setActiveTab('adultos')}
+              >
+                Adultos
+              </button>
+            </div>
+          </div>
+
+          <div className="cx-cards cx-cards--tint" key={activeTab}>
+            {servicios[activeTab].map((srv, i) => (
+              <Reveal className="cx-card" key={srv.title} delay={0.06 * i} y={18}>
+                <span className="ic"><i className={`bi ${srv.icon}`} /></span>
+                <h3>{srv.title}</h3>
+                <p>{srv.desc}</p>
+                <Link to={srv.to} className="cx-card-link">
+                  Ver detalles <i className="bi bi-arrow-right" />
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ========================= CÓMO FUNCIONA ======================= */}
+      <section className="cx-section cx-section--deco cx-section--deco-r">
+        <Decor variant="c" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-signpost-2" /> Fácil y cercano</span>
+            <RevealText as="h2" text="¿Cómo empezamos?" />
+            <p>Tres pasos simples para dar el primer paso hacia tu bienestar.</p>
+          </Reveal>
+          <div className="cx-steps">
+            {pasos.map((s, i) => (
+              <Reveal className="cx-step" key={s.n} delay={0.08 * i} y={18}>
+                <span className="num">{s.n}</span>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ======================= RECOMENDACIONES ======================= */}
+      <section className="cx-section cx-section--deco">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-play-btn" /> Contenido educativo</span>
+            <RevealText as="h2" text="Recomendaciones" />
+            <p>Contenido educativo y consejos profesionales para padres y pacientes.</p>
+          </Reveal>
+
+          <div className="cx-cards">
+            {recomendaciones.map((v, i) => (
+              <Reveal key={v.title} delay={0.08 * i} y={20}>
+                <a className="cx-vid" href={v.url} target="_blank" rel="noopener noreferrer">
+                  <div className="cx-vid-thumb">
+                    <img
+                      src={ytThumb(v.url)}
+                      alt={v.title}
+                      loading="lazy"
+                      onError={(e) => { e.target.onerror = null; e.target.src = 'videologo.png'; }}
+                    />
+                    <span className="cx-vid-play"><span><i className="bi bi-play-fill" /></span></span>
+                  </div>
+                  <div className="cx-vid-body">
+                    <span className="cx-vid-tag">{v.tag}</span>
+                    <h3>{v.title}</h3>
+                    <p>{v.desc}</p>
+                    <span className="cx-card-link">
+                      Ver video <i className="bi bi-arrow-right" />
+                    </span>
+                  </div>
+                </a>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* =========================== ALIANZAS =========================== */}
+      <section className="cx-section cx-section--alt cx-alianzas">
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-patch-check-fill" /> Confían en nosotros</span>
+            <RevealText as="h2" text="Alianzas y Convenios" />
+            <p>
+              Gracias a nuestros <strong>convenios con universidades e instituciones</strong>,
+              garantizamos <strong>prácticas profesionales y especializaciones</strong> que mejoran
+              la formación de nuestro equipo, brindando terapias actualizadas y efectivas. Nuestras
+              alianzas también permiten una adecuada derivación de nuestros pacientes.
+            </p>
+          </Reveal>
+
+          <div className="swiper init-swiper" style={{ paddingBottom: '60px' }}>
+            <script
+              type="application/json"
+              className="swiper-config"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  loop: true,
+                  speed: 600,
+                  autoplay: { delay: 3000 },
+                  slidesPerView: 'auto',
+                  pagination: { el: '.swiper-pagination', type: 'bullets', clickable: true },
+                  breakpoints: {
+                    320: { slidesPerView: 1, spaceBetween: 30 },
+                    480: { slidesPerView: 2, spaceBetween: 40 },
+                    640: { slidesPerView: 3, spaceBetween: 50 },
+                    992: { slidesPerView: 4, spaceBetween: 60 },
+                    1200: { slidesPerView: 5, spaceBetween: 60 },
+                  },
+                }),
+              }}
+            />
+            <div className="swiper-wrapper align-items-center" style={{ marginBottom: '40px' }}>
+              {convenios.map((convenio) => (
+                <div key={convenio.id} className="swiper-slide text-center" style={{ padding: '16px 8px' }}>
+                  <div className="cx-logo-card">
+                    <img
+                      src={convenio.logo_url
+                        ? (convenio.logo_url.startsWith('/')
+                          ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                          : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                        : '/assets/img/index/default-logo.webp'}
+                      alt={convenio.empresa}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/assets/img/index/default-logo.webp';
+                      }}
+                    />
+                  </div>
+                  <h6 style={{ fontSize: '0.9rem', lineHeight: 1.3, margin: '12px 0 0' }}>
+                    {convenio.empresa}
+                  </h6>
+                </div>
+              ))}
+            </div>
+            <div className="swiper-pagination" />
+          </div>
+        </div>
+      </section>
+
+      {/* =========================== CTA FINAL ========================== */}
+      <section className="cx-section">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-stars" /> Empieza hoy</span>
+              <RevealText as="h2" text="Da el primer paso hacia tu bienestar" />
+              <p>Estamos listos para acompañarte. Reserva tu cita hoy y comencemos juntos este camino.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Reservar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Conoce los servicios
+                </Link>
+              </div>
+              <div className="cx-cta-note">
+                <span><i className="bi bi-shield-check" /> Atención cálida y profesional</span>
+                <span><i className="bi bi-clock-history" /> Respuesta rápida</span>
+                <span><i className="bi bi-emoji-smile" /> Sin compromiso</span>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
     </main>
   );
 }

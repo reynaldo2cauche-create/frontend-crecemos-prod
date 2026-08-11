@@ -65,7 +65,21 @@
       "Bash(git update-ref *)",
       "Bash(git reflog *)",
       "Bash(git gc *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(npx vite *)",
+      "WebFetch(domain:mindoor.webflow.io)",
+      "Bash(echo \"EXIT=$?\")",
+      "Read(//tmp/**)",
+      "WebFetch(domain:alveora.webflow.io)",
+      "Bash(echo \"BUILD_EXIT=$?\")",
+      "Bash(cat vite.config.js)",
+      "Bash(cat vite.config.ts)",
+      "Bash(where cloudflared *)",
+      "Bash(cloudflared --version)",
+      "PowerShell(winget install *)",
+      "PowerShell($p = Get-Process cloudflared -ErrorAction SilentlyContinue; if \\($p\\) { \"CLOUDFLARED_VIVO PID=$\\($p.Id\\)\" } else { \"CLOUDFLARED_MUERTO\" })",
+      "PowerShell(Get-Process *)",
+      "PowerShell($c = Get-Process cloudflared -ErrorAction SilentlyContinue; if \\($c\\) { $c | Stop-Process -Force; \"tunel eliminado \\($\\($c.Count\\) proceso/s\\)\" } else { \"no habia tunel corriendo\" })"
     ],
     "deny": [],
     "ask": []

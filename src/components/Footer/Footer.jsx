@@ -66,7 +66,7 @@ export default function Footer() {
                 </p>
               </div>
               <div className="social-links d-flex mt-4">
-                <a href="https://www.facebook.com/CentrodeTerapiasCrecemos" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.facebook.com/crecemos" target="_blank" rel="noopener noreferrer">
                   <i className="bi bi-facebook" />
                 </a>
                 <a href="https://www.instagram.com/centro_crecemos/" target="_blank" rel="noopener noreferrer">

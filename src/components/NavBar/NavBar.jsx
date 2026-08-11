@@ -222,6 +222,7 @@ export default function NavBar() {
           {/* Botón CTA */}
           <Link className="btn-getstarted" to="/contactanos" onClick={closeMobileNav}>
             Agenda tu cita
+            <i className="bi bi-arrow-up-right" />
           </Link>
 
         </div>

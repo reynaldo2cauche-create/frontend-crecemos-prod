@@ -5,6 +5,9 @@ import { getStaffActivos, getStaffDetalleCompleto } from '../services/staffServi
 import { getServiciosByTrabajador } from '../services/trabajadorServicioService';
 import { API_BASE_URL } from '../services/api';
 import PureCounter from '@srexi/purecounterjs';
+import Reveal from '../components/public/Reveal';
+import RevealText from '../components/public/RevealText';
+import Decor from '../components/public/Decor';
 
 export const Staff = () => {
   const [specialists, setSpecialists] = useState([]);
@@ -497,200 +500,51 @@ export const Staff = () => {
 
     return (
 
-      <div className="modal-backdrop" style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        zIndex: 9999,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '20px',
-        overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch'
-      }}>
-        <div className="modal-content" style={{
-          backgroundColor: 'white',
-          borderRadius: '20px',
-          maxWidth: '900px',
-          width: '100%',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          position: 'relative',
-          margin: '0'
-        }}>
-          {/* Botón cerrar - absoluto respecto al modal-content */}
-          <button 
-            onClick={handleCloseModal} 
-            className="modal-close-btn-custom" 
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              width: '40px',
-              height: '40px',
-              background: 'white',
-              border: 'none',
-              borderRadius: '50%',
-              fontSize: '20px',
-              color: '#666',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.3s ease',
-              zIndex: 1002
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--accent-color)';
-              e.currentTarget.style.color = 'white';
-              e.currentTarget.style.transform = 'scale(1.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = '#666';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          >
-            <i className="bi bi-x-lg"></i>
+      <div className="cx-modal-backdrop" onClick={handleCloseModal}>
+        <div className="cx-modal" onClick={(e) => e.stopPropagation()}>
+          <button className="cx-modal-close" onClick={handleCloseModal} aria-label="Cerrar">
+            <i className="bi bi-x-lg" />
           </button>
 
-          <div className="modal-body" style={{ padding: '40px', position: 'relative' }}>
-            {/* Botón cerrar - sticky */}
-            
-
-            <div style={{ clear: 'both' }}></div>
-            {/* Header del modal */}
-            <div className="modal-header" style={{
-              display: 'flex',
-              gap: '40px',
-              marginBottom: '40px',
-              flexWrap: 'wrap'
-            }}>
-              <div style={{
-                width: '250px',
-                height: '300px',
-                borderRadius: '15px',
-                overflow: 'hidden',
-                flexShrink: 0
-              }}>
-                <img
-                  src={selectedSpecialist.img}
-                  alt={selectedSpecialist.name}
-                  onError={handleImageError}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
+          <div className="cx-modal-body">
+            {/* Cabecera */}
+            <div className="cx-modal-head">
+              <div className="cx-modal-photo">
+                <img src={selectedSpecialist.img} alt={selectedSpecialist.name} onError={handleImageError} />
               </div>
-              
-              <div style={{ flex: 1, minWidth: '300px' }}>
-                <h2 style={{
-                  fontSize: '2rem',
-                  fontWeight: '700',
-                  color: '#2c3e50',
-                  marginBottom: '10px'
-                }}>
-                  Lic. {selectedSpecialist.name}
-                </h2>
-                
-                <p style={{
-                  color: 'var(--accent-color)',
-                  fontSize: '1.1rem',
-                  fontWeight: '600',
-                  marginBottom: '15px'
-                }}>
-                  {selectedSpecialist.title}
-                </p>
+              <div className="cx-modal-headinfo">
+                <h2>Lic. {selectedSpecialist.name}</h2>
+                <span className="cx-modal-role">{selectedSpecialist.title}</span>
 
                 {selectedSpecialist.titulo_profesional && (
-                  <p style={{ color: '#666', marginBottom: '10px' }}>
-                    <i className="bi bi-award" style={{ marginRight: '8px' }}></i>
-                    {selectedSpecialist.titulo_profesional}
-                  </p>
+                  <p className="cx-modal-line"><i className="bi bi-award" /> {selectedSpecialist.titulo_profesional}</p>
                 )}
-
                 {selectedSpecialist.numero_colegiatura && (
-                  <p style={{ color: '#666', marginBottom: '20px' }}>
-                    <i className="bi bi-shield-check" style={{ marginRight: '8px' }}></i>
-                    {inicialesColegio ? `${inicialesColegio}: ${selectedSpecialist.numero_colegiatura}` : `Colegiatura: ${selectedSpecialist.numero_colegiatura}`}
+                  <p className="cx-modal-line">
+                    <i className="bi bi-shield-check" />
+                    {inicialesColegio ? ` ${inicialesColegio}: ${selectedSpecialist.numero_colegiatura}` : ` Colegiatura: ${selectedSpecialist.numero_colegiatura}`}
                   </p>
                 )}
 
-                {/* Áreas de especialización */}
-                <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#444',
-                    marginBottom: '10px'
-                  }}>
-                    Áreas de Especialización
-                  </h4>
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px'
-                  }}>
+                <div className="cx-modal-block">
+                  <h4>Áreas de especialización</h4>
+                  <div className="cx-modal-tags">
                     {selectedSpecialist.areas && Array.isArray(selectedSpecialist.areas) && selectedSpecialist.areas.map((area, idx) => (
-                      <span key={idx} style={{
-                        background: 'color-mix(in srgb, var(--accent-color), transparent 92%)',
-                        color: 'var(--accent-color)',
-                        padding: '6px 15px',
-                        borderRadius: '20px',
-                        fontSize: '0.85rem',
-                        fontWeight: '600'
-                      }}>
+                      <span key={idx} className="cx-tag-primary">
                         {typeof area === 'string' ? area : area.nombre || JSON.stringify(area)}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                {/* Servicios */}
-                <div>
-                  <h4 style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#444',
-                    marginBottom: '10px'
-                  }}>
-                    Servicios Ofrecidos
-                  </h4>
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px'
-                  }}>
+                <div className="cx-modal-block">
+                  <h4>Servicios ofrecidos</h4>
+                  <div className="cx-modal-tags">
                     {selectedSpecialist.services.slice(0, 8).map((service, idx) => (
-                      <span key={idx} style={{
-                        background: '#f8f9fa',
-                        color: '#666',
-                        padding: '6px 15px',
-                        borderRadius: '20px',
-                        fontSize: '0.85rem',
-                        border: '1px solid #e9ecef'
-                      }}>
-                        {service}
-                      </span>
+                      <span key={idx} className="cx-tag-soft">{service}</span>
                     ))}
                     {selectedSpecialist.services.length > 8 && (
-                      <span style={{
-                        background: '#f8f9fa',
-                        color: '#666',
-                        padding: '6px 15px',
-                        borderRadius: '20px',
-                        fontSize: '0.85rem',
-                        border: '1px solid #e9ecef'
-                      }}>
-                        +{selectedSpecialist.services.length - 8} más
-                      </span>
+                      <span className="cx-tag-soft">+{selectedSpecialist.services.length - 8} más</span>
                     )}
                   </div>
                 </div>
@@ -699,77 +553,28 @@ export const Staff = () => {
 
             {/* Biografía */}
             {selectedSpecialist.biografia && (
-              <div style={{ marginBottom: '40px' }}>
-                <h3 style={{
-                  fontSize: '1.5rem',
-                  fontWeight: '600',
-                  color: '#2c3e50',
-                  marginBottom: '20px',
-                  paddingBottom: '10px',
-                  borderBottom: '2px solid var(--accent-color)'
-                }}>
-                  Biografía Profesional
-                </h3>
-                <div style={{
-                  color: '#555',
-                  lineHeight: '1.8',
-                  fontSize: '1rem'
-                }} dangerouslySetInnerHTML={{ __html: selectedSpecialist.biografia }}>
-                </div>
+              <div className="cx-modal-section">
+                <h3>Biografía profesional</h3>
+                <div className="cx-modal-bio" dangerouslySetInnerHTML={{ __html: selectedSpecialist.biografia }} />
               </div>
             )}
 
             {/* Formación académica */}
             {(selectedSpecialist.formaciones && selectedSpecialist.formaciones.length > 0) && (
-              <div style={{ marginBottom: '40px' }}>
-                <h3 style={{
-                  fontSize: '1.5rem',
-                  fontWeight: '600',
-                  color: '#2c3e50',
-                  marginBottom: '20px',
-                  paddingBottom: '10px',
-                  borderBottom: '2px solid var(--accent-color)'
-                }}>
-                  Formación Académica
-                </h3>
-                <div style={{
-                  display: 'grid',
-                  gap: '20px'
-                }}>
+              <div className="cx-modal-section">
+                <h3>Formación académica</h3>
+                <div className="cx-modal-formaciones">
                   {selectedSpecialist.formaciones.map((formacion, idx) => (
-                    <div key={idx} style={{
-                      padding: '20px',
-                      background: '#f8f9fa',
-                      borderRadius: '10px',
-                      borderLeft: '4px solid var(--accent-color)'
-                    }}>
+                    <div key={idx} className="cx-modal-formacion">
                       {formacion.titulo ? (
                         <>
-                          <h4 style={{
-                            fontSize: '1.1rem',
-                            fontWeight: '600',
-                            color: '#2c3e50',
-                            marginBottom: '8px'
-                          }}>
-                            {formacion.titulo}
-                          </h4>
-                          <p style={{ color: '#666', marginBottom: '5px' }}>
-                            <i className="bi bi-building" style={{ marginRight: '8px' }}></i>
-                            {formacion.institucion}
-                          </p>
-                          <p style={{ color: '#888', fontSize: '0.9rem' }}>
-                            {formacion.anio_inicio} {formacion.anio_fin ? `- ${formacion.anio_fin}` : formacion.en_curso ? '(En curso)' : ''}
-                          </p>
-                          {formacion.descripcion && (
-                            <p style={{ color: '#555', marginTop: '10px', fontSize: '0.95rem' }}>
-                              {formacion.descripcion}
-                            </p>
-                          )}
+                          <h4>{formacion.titulo}</h4>
+                          <p className="cx-modal-line"><i className="bi bi-building" /> {formacion.institucion}</p>
+                          <p className="cx-modal-muted">{formacion.anio_inicio} {formacion.anio_fin ? `- ${formacion.anio_fin}` : formacion.en_curso ? '(En curso)' : ''}</p>
+                          {formacion.descripcion && <p className="cx-modal-desc">{formacion.descripcion}</p>}
                         </>
                       ) : (
-                        <p style={{ color: '#555', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                          {formacion.descripcion || formacion.nombre || 'Sin descripción'}
-                        </p>
+                        <p className="cx-modal-desc">{formacion.descripcion || formacion.nombre || 'Sin descripción'}</p>
                       )}
                     </div>
                   ))}
@@ -777,87 +582,26 @@ export const Staff = () => {
               </div>
             )}
 
-            {/* Cursos y certificaciones */}
+            {/* Cursos y logros */}
             {(selectedSpecialist.cursos && selectedSpecialist.cursos.length > 0) && (
-              <div style={{ marginBottom: '40px' }}>
-                <h3 style={{
-                  fontSize: '1.5rem',
-                  fontWeight: '600',
-                  color: '#2c3e50',
-                  marginBottom: '20px',
-                  paddingBottom: '10px',
-                  borderBottom: '2px solid var(--accent-color)'
-                }}>
-                  Formación y Logros
-                </h3>
-                <ul style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0
-                }}>
+              <div className="cx-modal-section">
+                <h3>Formación y logros</h3>
+                <ul className="cx-modal-cursos">
                   {selectedSpecialist.cursos.map((curso, idx) => (
-                    <li key={idx} style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '12px',
-                      marginBottom: '16px',
-                      paddingBottom: '16px',
-                      borderBottom: idx < selectedSpecialist.cursos.length - 1 ? '1px solid #e9ecef' : 'none'
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: 'var(--accent-color)',
-                        marginTop: '6px',
-                        flexShrink: 0
-                      }}></div>
-                      <p style={{
-                        fontSize: '0.95rem',
-                        color: '#555',
-                        lineHeight: '1.7',
-                        margin: 0
-                      }}>
-                        {curso.descripcion || curso.nombre || 'Sin descripción'}
-                      </p>
+                    <li key={idx}>
+                      <span className="cx-modal-dot" />
+                      <p>{curso.descripcion || curso.nombre || 'Sin descripción'}</p>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Botón para agendar cita */}
-            <div style={{
-              textAlign: 'center',
-              marginTop: '40px',
-              paddingTop: '30px',
-              borderTop: '1px solid #eee'
-            }}>
-              <a href="contactanos" style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                background: 'var(--accent-color)',
-                color: 'white',
-                padding: '15px 40px',
-                borderRadius: '50px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '1rem',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 20px rgba(194, 99, 249, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 6px 25px rgba(194, 99, 249, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(194, 99, 249, 0.3)';
-              }}>
-                <i className="bi bi-calendar-check" style={{ fontSize: '1.2rem' }}></i>
-                Agendar Cita con {selectedSpecialist.name.split(' ')[0]}
-              </a>
+            {/* CTA */}
+            <div className="cx-modal-cta">
+              <Link to="/contactanos" className="cx-btn cx-btn-primary">
+                <i className="bi bi-calendar-check" /> Agendar cita con {selectedSpecialist.name.split(' ')[0]}
+              </Link>
             </div>
           </div>
         </div>
@@ -1097,618 +841,182 @@ export const Staff = () => {
         `}
       </style>
       
-      <main className="main">
-        {/* Hero Section Mejorado */}
-        <div className="page-title light-background" data-aos="fade">
-          <div className="container">
-            <h1>Nuestros Especialistas</h1>
-            <p className="page-subtitle">
-              Conoce a nuestro equipo de profesionales altamente calificados y comprometidos con tu bienestar
-            </p>
-            <nav className="breadcrumbs">
-              <ol>
-                <li><a href="/">Inicio</a></li>
-                <li className="current">Especialistas</li>
-              </ol>
-            </nav>
+      <main className="cx-page">
+        {/* Encabezado premium */}
+        <section className="cx-subhero">
+          <Decor variant="a" />
+          <div className="cx-container">
+            <Reveal className="cx-subhero-inner">
+              <span className="cx-eyebrow"><i className="bi bi-people-fill" /> Nuestro equipo</span>
+              <RevealText as="h1" text="Nuestros Especialistas" />
+              <p>Conoce a nuestro equipo de profesionales altamente calificados y comprometidos con tu bienestar.</p>
+              <nav className="cx-breadcrumb">
+                <Link to="/">Inicio</Link>
+                <i className="bi bi-chevron-right" />
+                <span>Especialistas</span>
+              </nav>
+            </Reveal>
           </div>
-        </div>
+        </section>
 
-        
 
-        {/* Search Section */}
-        <section className="search-section" style={{ padding: '30px 0 40px 0', background: '#f8f9fa', marginBottom: 0}}>
-          <div className="container">
-            <div className="row justify-content-center">
-              <div className="col-lg-10">
-                <div className="search-box" data-aos="fade-up" style={{
-                  background: 'white',
-                  borderRadius: '50px',
-                  padding: '8px 24px',
-                  boxShadow: '0 4px 20px rgba(194, 99, 249, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <i className="bi bi-search" style={{ fontSize: '1.2rem', color: 'var(--accent-color)' }}></i>
-                  <input
-                    type="text"
-                    className="search-input"
-                    placeholder="Buscar terapeuta por nombre..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    style={{
-                      border: 'none',
-                      outline: 'none',
-                      flex: 1,
-                      fontSize: '1rem',
-                      padding: '12px 0'
-                    }}
-                  />
-                  {searchTerm && (
-                    <button
-                      className="clear-search"
-                      onClick={clearSearch}
-                      style={{
-                        background: '#f0f0f0',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '32px',
-                        height: '32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.background = '#e0e0e0'}
-                      onMouseOut={(e) => e.currentTarget.style.background = '#f0f0f0'}
-                    >
-                      <i className="bi bi-x" style={{ fontSize: '1.5rem' }}></i>
-                    </button>
-                  )}
-                </div>
-              </div>
+
+        {/* Buscador */}
+        <section className="cx-spec-searchband">
+          <div className="cx-container">
+            <div className="cx-search">
+              <i className="bi bi-search" />
+              <input
+                type="text"
+                placeholder="Buscar terapeuta por nombre..."
+                value={searchTerm}
+                onChange={handleSearch}
+              />
+              {searchTerm && (
+                <button className="cx-search-clear" onClick={clearSearch} aria-label="Limpiar búsqueda">
+                  <i className="bi bi-x-lg" />
+                </button>
+              )}
             </div>
           </div>
         </section>
 
-        <section className="specialists-section section light-background" style={{ paddingTop: '50px', paddingBottom: '60px' }}>
-          <div className="container" style={{ marginTop: '0' }}>
-            <div className="row" style={{ marginTop: '0' }}>
-              {/* Botón para mostrar filtros en móvil */}
-              <div className="col-12">
-                <button
-                  className="filter-toggle-mobile"
-                  onClick={toggleFiltersMobile}
-                >
-                  <i className="bi bi-funnel-fill"></i>
-                  Filtrar Especialistas
-                  {(filtroArea || filtroServicio) && (
-                    <span style={{
-                      background: 'white',
-                      color: 'var(--accent-color)',
-                      borderRadius: '50%',
-                      width: '24px',
-                      height: '24px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.85rem',
-                      fontWeight: '700'
-                    }}>
-                      {[filtroArea, filtroServicio].filter(Boolean).length}
-                    </span>
-                  )}
-                </button>
-              </div>
+        <section className="cx-section cx-section--deco cx-spec-section">
+          <Decor variant="b" />
+          <div className="cx-container">
+            {/* Botón filtros (móvil) */}
+            <button className="cx-filter-toggle" onClick={toggleFiltersMobile}>
+              <i className="bi bi-funnel-fill" /> Filtrar especialistas
+              {(filtroArea || filtroServicio) && (
+                <span className="cx-filter-count">{[filtroArea, filtroServicio].filter(Boolean).length}</span>
+              )}
+            </button>
 
-              {/* Backdrop para filtros móvil */}
+            <div className="cx-spec-layout">
+              {/* Backdrop móvil */}
               <div
-                className={`filter-backdrop ${showFiltersMobile ? 'active' : ''}`}
+                className={`cx-filter-backdrop ${showFiltersMobile ? 'on' : ''}`}
                 onClick={closeFiltersMobile}
-              ></div>
+              />
 
-              {/* Filtros Laterales */}
-              <div className={`col-lg-3 col-md-4 mb-4 filters-sidebar ${showFiltersMobile ? 'active' : ''}`}>
-                <div style={{
-                  background: 'white',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  boxShadow: '0 2px 12px rgba(194, 99, 249, 0.08)',
-                  position: 'sticky',
-                  top: '100px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '24px',
-                    paddingBottom: '16px',
-                    borderBottom: '2px solid #f0f0f0'
-                  }}>
-                    <h3 style={{
-                      fontSize: '1.1rem',
-                      fontWeight: '700',
-                      color: '#2c3e50',
-                      margin: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <i className="bi bi-funnel"></i>
-                      Filtros
-                    </h3>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {/* Filtros */}
+              <aside className={`cx-filters ${showFiltersMobile ? 'on' : ''}`}>
+                <div className="cx-filters-inner">
+                  <div className="cx-filters-head">
+                    <h3><i className="bi bi-funnel" /> Filtros</h3>
+                    <div className="cx-filters-actions">
                       {(filtroArea || filtroServicio) && (
-                        <button
-                          onClick={clearAllFilters}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--accent-color)',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            transition: 'all 0.3s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-color), transparent 92%)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                        >
-                          Limpiar
-                        </button>
+                        <button className="cx-filters-clear" onClick={clearAllFilters}>Limpiar</button>
                       )}
-                      {/* Botón cerrar solo visible en móvil */}
-                      <button
-                        onClick={closeFiltersMobile}
-                        className="close-filters-mobile"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          fontSize: '1.5rem',
-                          color: '#666',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          display: 'none'
-                        }}
-                      >
-                        <i className="bi bi-x-lg"></i>
+                      <button className="cx-filters-x" onClick={closeFiltersMobile} aria-label="Cerrar">
+                        <i className="bi bi-x-lg" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Filtro por Área */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <h4 style={{
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      color: '#666',
-                      marginBottom: '12px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <i className="bi bi-people"></i>
-                      Área de Atención
-                    </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="cx-filter-group">
+                    <h4><i className="bi bi-people" /> Área de atención</h4>
+                    <div className="cx-filter-opts">
                       {areasUnicas.map(area => (
-                        <label key={area} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s',
-                          background: filtroArea === area ? 'color-mix(in srgb, var(--accent-color), transparent 92%)' : 'transparent',
-                          border: filtroArea === area ? '1px solid var(--accent-color)' : '1px solid transparent'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (filtroArea !== area) e.currentTarget.style.background = '#f8f9fa';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (filtroArea !== area) e.currentTarget.style.background = 'transparent';
-                        }}>
+                        <label key={area} className={`cx-filter-opt ${filtroArea === area ? 'on' : ''}`}>
                           <input
-                            type="radio"
-                            name="area"
-                            value={area}
+                            type="radio" name="area" value={area}
                             checked={filtroArea === area}
                             onChange={(e) => setFiltroArea(e.target.value)}
-                            style={{
-                              marginRight: '10px',
-                              accentColor: 'var(--accent-color)',
-                              cursor: 'pointer'
-                            }}
                           />
-                          <span style={{
-                            fontSize: '0.9rem',
-                            color: filtroArea === area ? 'var(--accent-color)' : '#555',
-                            fontWeight: filtroArea === area ? '600' : '500'
-                          }}>
-                            {area}
-                          </span>
+                          <span>{area}</span>
                         </label>
                       ))}
-                      {filtroArea && (
-                        <button
-                          onClick={() => setFiltroArea('')}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#999',
-                            fontSize: '0.85rem',
-                            padding: '8px',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontWeight: '500'
-                          }}
-                        >
-                          <i className="bi bi-x-circle"></i> Quitar filtro
-                        </button>
-                      )}
                     </div>
                   </div>
 
-                  {/* Filtro por Servicio */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <h4 style={{
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      color: '#666',
-                      marginBottom: '12px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <i className="bi bi-heart-pulse"></i>
-                      Servicios
-                    </h4>
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      maxHeight: '400px',
-                      overflowY: 'auto',
-                      paddingRight: '8px'
-                    }}>
+                  <div className="cx-filter-group">
+                    <h4><i className="bi bi-heart-pulse" /> Servicios</h4>
+                    <div className="cx-filter-opts cx-filter-opts--scroll">
                       {serviciosUnicos.map(servicio => (
-                        <label key={servicio} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s',
-                          background: filtroServicio === servicio ? 'color-mix(in srgb, var(--accent-color), transparent 92%)' : 'transparent',
-                          border: filtroServicio === servicio ? '1px solid var(--accent-color)' : '1px solid transparent'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (filtroServicio !== servicio) e.currentTarget.style.background = '#f8f9fa';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (filtroServicio !== servicio) e.currentTarget.style.background = 'transparent';
-                        }}>
+                        <label key={servicio} className={`cx-filter-opt ${filtroServicio === servicio ? 'on' : ''}`}>
                           <input
-                            type="radio"
-                            name="servicio"
-                            value={servicio}
+                            type="radio" name="servicio" value={servicio}
                             checked={filtroServicio === servicio}
                             onChange={(e) => setFiltroServicio(e.target.value)}
-                            style={{
-                              marginRight: '10px',
-                              accentColor: 'var(--accent-color)',
-                              cursor: 'pointer'
-                            }}
                           />
-                          <span style={{
-                            fontSize: '0.85rem',
-                            color: filtroServicio === servicio ? 'var(--accent-color)' : '#555',
-                            fontWeight: filtroServicio === servicio ? '600' : '500',
-                            lineHeight: '1.4'
-                          }}>
-                            {servicio}
-                          </span>
+                          <span>{servicio}</span>
                         </label>
                       ))}
-                      {filtroServicio && (
-                        <button
-                          onClick={() => setFiltroServicio('')}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#999',
-                            fontSize: '0.85rem',
-                            padding: '8px',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontWeight: '500'
-                          }}
-                        >
-                          <i className="bi bi-x-circle"></i> Quitar filtro
-                        </button>
-                      )}
                     </div>
                   </div>
 
-                  {/* Contador de resultados */}
-                  <div style={{
-                    marginTop: '24px',
-                    paddingTop: '16px',
-                    borderTop: '2px solid #f0f0f0',
-                    textAlign: 'center'
-                  }}>
-                    <div style={{
-                      color: '#666',
-                      fontSize: '0.85rem',
-                      fontWeight: '500'
-                    }}>
-                      {filteredSpecialists.length === specialists.length ? (
-                        <span><i className="bi bi-check-circle"></i> {filteredSpecialists.length} especialistas</span>
-                      ) : (
-                        <span>
-                          <i className="bi bi-funnel-fill" style={{ color: 'var(--accent-color)' }}></i> {filteredSpecialists.length} de {specialists.length}
-                        </span>
-                      )}
-                    </div>
+                  <div className="cx-filters-result">
+                    {filteredSpecialists.length === specialists.length ? (
+                      <span><i className="bi bi-check-circle" /> {filteredSpecialists.length} especialistas</span>
+                    ) : (
+                      <span><i className="bi bi-funnel-fill" /> {filteredSpecialists.length} de {specialists.length}</span>
+                    )}
                   </div>
                 </div>
-              </div>
+              </aside>
 
               {/* Grid de Especialistas */}
-              <div className="col-lg-9 col-md-8">
+              <div className="cx-spec-main">
             {loading ? (
-              <div className="text-center py-5">
-                <div className="spinner-border" role="status" style={{ width: '3rem', height: '3rem', color: 'var(--accent-color)' }}>
-                  <span className="visually-hidden">Cargando...</span>
-                </div>
-                <p className="mt-3" style={{ color: '#666' }}>Cargando terapeutas...</p>
+              <div className="cx-spec-loading">
+                <span className="cx-spinner" />
+                <p>Cargando terapeutas...</p>
               </div>
             ) : (
-              <div id="specialistsContainer" className="row g-4">
+              <div id="specialistsContainer" className="cx-spec-grid">
                 {filteredSpecialists.map((specialist, index) => (
-                  <div
+                  <Reveal
                     key={specialist.id}
-                    className="col-lg-6 col-md-6 col-12 specialist-item fade-in"
-                    data-aos="fade-up"
-                    data-aos-delay={(index % 2) * 50 + 50}
-                  >
-                    {/* Tarjeta según boceto */}
-                    <div className="specialist-card-modern" style={{
-                      background: 'white',
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 12px rgba(194, 99, 249, 0.08)',
-                      border: '1px solid #f0f0f0',
-                      transition: 'all 0.3s ease',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      height: '100%',
-                      padding: '20px'
-                    }}
+                    className="cx-spec-card"
+                    delay={(index % 2) * 0.06}
+                    y={20}
                     onClick={() => handleVerDetalle(specialist)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(194, 99, 249, 0.2)';
-                      e.currentTarget.style.transform = 'translateY(-3px)';
-                      e.currentTarget.style.borderColor = 'var(--accent-color)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(194, 99, 249, 0.08)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = '#f0f0f0';
-                    }}>
-
-                      {/* Fila superior: Foto + Info (misma altura) */}
-                      <div style={{
-                        display: 'flex',
-                        gap: '16px',
-                        marginBottom: '16px',
-                        height: '180px'
-                      }}>
-                        {/* Foto Izquierda */}
-                        <div style={{
-                          width: '160px',
-                          minWidth: '160px',
-                          height: '100%',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%)',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                        }}>
-                          <img
-                            src={specialist.img}
-                            alt={specialist.name}
-                            onError={handleImageError}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              transition: 'transform 0.3s ease'
-                            }}
-                          />
-                        </div>
-
-                        {/* Info Derecha - 3 secciones suaves */}
-                        <div className="specialist-info-section" style={{
-                          flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px',
-                          height: '100%',
-                          minWidth: 0,
-                          justifyContent: 'space-around'
-                        }}>
-                          {/* Nombre */}
-                          <div>
-                            <h3 style={{
-                              fontSize: '1.05rem',
-                              fontWeight: '700',
-                              color: '#2c3e50',
-                              margin: 0,
-                              lineHeight: '1.3',
-                              letterSpacing: '-0.3px'
-                            }}>
-                              Lic. {specialist.name}
-                            </h3>
-                          </div>
-
-                          {/* Especialidad */}
-                          <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            background: 'color-mix(in srgb, var(--accent-color), transparent 92%)',
-                            padding: '8px 16px',
-                            borderRadius: '50px',
-                            alignSelf: 'flex-start',
-                            boxShadow: '0 2px 8px rgba(194, 99, 249, 0.12)'
-                          }}>
-                            <i className="bi bi-patch-check-fill" style={{
-                              fontSize: '0.95rem',
-                              color: 'var(--accent-color)'
-                            }}></i>
-                            <p style={{
-                              fontSize: '0.85rem',
-                              fontWeight: '600',
-                              color: 'var(--accent-color)',
-                              margin: 0,
-                              lineHeight: '1.2'
-                            }}>
-                              {specialist.title}
-                            </p>
-                          </div>
-
-                          {/* Áreas */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}>
-                            <div style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '50%',
-                              background: 'color-mix(in srgb, var(--accent-color), transparent 92%)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0
-                            }}>
-                              <i className="bi bi-people-fill" style={{
-                                fontSize: '0.85rem',
-                                color: 'var(--accent-color)'
-                              }}></i>
-                            </div>
-                            <p style={{
-                              fontSize: '0.8rem',
-                              fontWeight: '500',
-                              color: '#666',
-                              margin: 0,
-                              lineHeight: '1.4'
-                            }}>
-                              {Array.isArray(specialist.areas)
-                                ? specialist.areas.map(a => typeof a === 'string' ? a : a.nombre).join(' • ')
-                                : 'Sin área'}
-                            </p>
-                          </div>
-                        </div>
+                  >
+                    <div className="cx-spec-top">
+                      <div className="cx-spec-photo">
+                        <img src={specialist.img} alt={specialist.name} onError={handleImageError} />
                       </div>
-
-                      {/* Servicios - Ocupan el resto del espacio */}
-                      <div style={{
-                        flex: 1,
-                        marginBottom: '16px',
-                        display: 'flex',
-                        flexDirection: 'column'
-                      }}>
-                        <h4 style={{
-                          fontSize: '0.7rem',
-                          fontWeight: '600',
-                          color: '#888',
-                          margin: '0 0 10px 0',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}>
-                          <i className="bi bi-heart-pulse" style={{ marginRight: '4px' }}></i>
-                          Servicios ({specialist.services.length})
-                        </h4>
-                        <div style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '6px',
-                          alignContent: 'flex-start'
-                        }}>
-                          {specialist.services.length > 0 ? (
-                            specialist.services.map((service, idx) => (
-                              <span key={idx} style={{
-                                background: 'color-mix(in srgb, var(--accent-color), transparent 92%)',
-                                color: 'var(--accent-color)',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '0.7rem',
-                                fontWeight: '600',
-                                lineHeight: '1.3'
-                              }}>
-                                {service}
-                              </span>
-                            ))
-                          ) : (
-                            <span style={{ color: '#999', fontSize: '0.75rem' }}>Sin servicios</span>
-                          )}
-                        </div>
+                      <div className="cx-spec-meta">
+                        <h3>Lic. {specialist.name}</h3>
+                        <span className="cx-spec-title">
+                          <i className="bi bi-patch-check-fill" /> {specialist.title}
+                        </span>
+                        <span className="cx-spec-areas">
+                          <i className="bi bi-people-fill" />
+                          {Array.isArray(specialist.areas)
+                            ? specialist.areas.map(a => typeof a === 'string' ? a : a.nombre).join(' • ')
+                            : 'Sin área'}
+                        </span>
                       </div>
-
-                      {/* Botón VER PERFIL */}
-                      <button
-                        style={{
-                          width: '100%',
-                          background: 'var(--accent-color)',
-                          color: 'white',
-                          padding: '12px 20px',
-                          borderRadius: '50px',
-                          border: 'none',
-                          fontWeight: '700',
-                          fontSize: '0.85rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#6A1B9A';
-                          e.currentTarget.style.transform = 'scale(1.02)';
-                          e.stopPropagation();
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'var(--accent-color)';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}>
-                        VER PERFIL
-                        <i className="bi bi-arrow-right-circle-fill"></i>
-                      </button>
                     </div>
-                  </div>
+
+                    <div className="cx-spec-services">
+                      <h4><i className="bi bi-heart-pulse" /> Servicios ({specialist.services.length})</h4>
+                      <div className="cx-spec-tags">
+                        {specialist.services.length > 0 ? (
+                          specialist.services.map((service, idx) => (
+                            <span key={idx}>{service}</span>
+                          ))
+                        ) : (
+                          <span className="cx-spec-tag-empty">Sin servicios</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <span className="cx-spec-btn">
+                      Ver perfil <i className="bi bi-arrow-right" />
+                    </span>
+                  </Reveal>
                 ))}
               </div>
             )}
 
             {!loading && filteredSpecialists.length === 0 && (
-              <div id="noResults" className="no-results">
-                <i className="bi bi-search"></i>
+              <div className="cx-spec-empty">
+                <i className="bi bi-search" />
                 <h4>No se encontraron especialistas</h4>
-                <p>Intenta con otros términos de búsqueda</p>
+                <p>Intenta con otros términos o quita los filtros.</p>
               </div>
             )}
               </div>
@@ -1716,126 +1024,27 @@ export const Staff = () => {
           </div>
         </section>
 
-        {/* CTA Section Mejorado */}
-        <section style={{
-          padding: '80px 0',
-          background: 'var(--accent-color)',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {/* Decorative circles */}
-          <div style={{
-            position: 'absolute',
-            width: '400px',
-            height: '400px',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.05)',
-            top: '-200px',
-            right: '-100px'
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            width: '300px',
-            height: '300px',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.05)',
-            bottom: '-150px',
-            left: '-50px'
-          }}></div>
-
-          <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-            <div className="row justify-content-center">
-              <div className="col-lg-8 text-center" data-aos="fade-up">
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '24px',
-                  padding: '50px 40px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
-                }}>
-                  <i className="bi bi-heart-pulse" style={{
-                    fontSize: '3.5rem',
-                    color: 'white',
-                    marginBottom: '20px',
-                    display: 'block'
-                  }}></i>
-                  <h2 style={{
-                    color: 'white',
-                    fontSize: '2.2rem',
-                    fontWeight: '700',
-                    marginBottom: '20px'
-                  }}>
-                    ¿Listo para comenzar tu proceso terapéutico?
-                  </h2>
-                  <p style={{
-                    color: 'rgba(255, 255, 255, 0.95)',
-                    fontSize: '1.1rem',
-                    lineHeight: '1.8',
-                    marginBottom: '35px'
-                  }}>
-                    Nuestro equipo de especialistas está preparado para acompañarte en tu camino hacia el bienestar.
-                    Agenda tu cita hoy mismo y da el primer paso hacia una mejor calidad de vida.
-                  </p>
-                  <div className="cta-buttons" style={{
-                    display: 'flex',
-                    gap: '15px',
-                    justifyContent: 'center',
-                    flexWrap: 'wrap'
-                  }}>
-                    <a href="contactanos" style={{
-                      background: 'white',
-                      color: 'var(--accent-color)',
-                      padding: '16px 40px',
-                      borderRadius: '50px',
-                      textDecoration: 'none',
-                      fontWeight: '700',
-                      fontSize: '1rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 6px 30px rgba(0, 0, 0, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.2)';
-                    }}>
-                      <i className="bi bi-calendar-check" style={{ fontSize: '1.2rem' }}></i>
-                      Agendar Cita
-                    </a>
-                    <a href="servicios" style={{
-                      background: 'transparent',
-                      color: 'white',
-                      padding: '16px 40px',
-                      borderRadius: '50px',
-                      textDecoration: 'none',
-                      fontWeight: '700',
-                      fontSize: '1rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      transition: 'all 0.3s ease',
-                      border: '2px solid white'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}>
-                      <i className="bi bi-grid-3x3-gap" style={{ fontSize: '1.2rem' }}></i>
-                      Ver Servicios
-                    </a>
-                  </div>
+        {/* CTA final */}
+        <section className="cx-section">
+          <div className="cx-container">
+            <Reveal className="cx-cta-band" y={30}>
+              <span className="cx-cta-glow" aria-hidden="true" />
+              <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+              <div className="cx-cta-content">
+                <span className="cx-cta-eyebrow"><i className="bi bi-heart-pulse" /> Estamos para ti</span>
+                <RevealText as="h2" text="¿Listo para comenzar tu proceso terapéutico?" />
+                <p>Nuestro equipo está preparado para acompañarte en tu camino hacia el bienestar. Agenda tu cita hoy y da el primer paso.</p>
+                <div className="cx-cta-actions">
+                  <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                    <span>Agendar cita</span>
+                    <i className="bi bi-arrow-right" />
+                  </Link>
+                  <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                    Ver servicios
+                  </Link>
                 </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
       </main>
