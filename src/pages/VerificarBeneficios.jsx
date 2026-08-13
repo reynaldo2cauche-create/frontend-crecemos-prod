@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { verificarPacienteYObtenerBeneficios } from '../services/pacienteService';
 import { getTerminosPorBeneficio } from '../services/conveniosService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
+import Reveal from '../components/public/Reveal';
+import RevealText from '../components/public/RevealText';
+import Decor from '../components/public/Decor';
 
 const VerificarBeneficios = () => {
   const [dni, setDni] = useState('');
@@ -16,6 +20,28 @@ const VerificarBeneficios = () => {
   // Estados para modal de términos
   const [modalTerminos, setModalTerminos] = useState(false);
   const [beneficioSeleccionado, setBeneficioSeleccionado] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+  const toggleExpand = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const resultsRef = useRef(null);
+
+  // Al terminar una consulta (éxito o error), desplazar suavemente al resultado
+  useEffect(() => {
+    if (!loading && (paciente || error)) {
+      const el = resultsRef.current;
+      if (el) {
+        const y = el.getBoundingClientRect().top + window.pageYOffset - 100;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }
+  }, [loading, paciente, error]);
   const [terminos, setTerminos] = useState([]);
   const [loadingTerminos, setLoadingTerminos] = useState(false);
 
@@ -146,687 +172,124 @@ const VerificarBeneficios = () => {
     setTerminos([]);
   };
 
+  const iconoEstado = {
+    success: 'bi-check-circle-fill',
+    error: 'bi-x-circle-fill',
+    warning: 'bi-exclamation-triangle-fill',
+    idle: 'bi-clock-history',
+  };
 
   return (
-    <div className="verificar-beneficios-wrapper">
-      <style>{`
-        .verificar-beneficios-wrapper {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-
-        /* Header Hero */
-        .beneficios-hero {
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          padding: 140px 20px 100px;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .beneficios-hero::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-          opacity: 0.3;
-        }
-
-        .beneficios-hero-content {
-          max-width: 1400px;
-          margin: 0 auto;
-          text-align: center;
-          position: relative;
-          z-index: 1;
-        }
-
-        .beneficios-hero h1 {
-          color: white;
-          font-size: clamp(2rem, 5vw, 3rem);
-          font-weight: 800;
-          margin-bottom: 16px;
-          text-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .beneficios-hero p {
-          color: rgba(255,255,255,0.95);
-          font-size: clamp(1rem, 2vw, 1.125rem);
-          max-width: 600px;
-          margin: 0 auto;
-        }
-
-        /* Container Principal */
-        .beneficios-container {
-          max-width: 1400px;
-          margin: -60px auto 0;
-          padding: 0 20px 60px;
-          position: relative;
-          z-index: 2;
-        }
-
-        /* Panel de Búsqueda - Horizontal */
-        .search-panel {
-          background: white;
-          border-radius: 20px;
-          padding: 36px 48px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-          border: 2px solid #dbeafe;
-          margin-bottom: 40px;
-          transition: all 0.3s ease;
-        }
-
-        .search-panel:hover {
-          border-color: #93c5fd;
-          box-shadow: 0 12px 48px rgba(37,99,235,0.15);
-        }
-
-        .search-form-wrapper {
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          gap: 40px;
-          align-items: center;
-          max-width: 1100px;
-          margin: 0 auto;
-        }
-
-        .search-panel-title {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          color: #1e293b;
-          font-size: 1.063rem;
-          font-weight: 700;
-          white-space: nowrap;
-          padding-right: 8px;
-        }
-
-        .search-panel-icon {
-          width: 52px;
-          height: 52px;
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          flex-shrink: 0;
-          box-shadow: 0 4px 14px rgba(37,99,235,0.3);
-        }
-
-        .form-input-wrapper {
-          flex: 1;
-        }
-
-        .form-input {
-          width: 100%;
-          padding: 16px 24px;
-          border: 2px solid #e2e8f0;
-          border-radius: 14px;
-          font-size: 1.063rem;
-          font-family: 'Courier New', monospace;
-          font-weight: 600;
-          background: #f8fafc;
-          color: #1e293b;
-          transition: all 0.3s ease;
-          box-sizing: border-box;
-        }
-
-        .form-input:focus {
-          outline: none;
-          border-color: #2563eb;
-          background: white;
-          box-shadow: 0 0 0 4px rgba(37,99,235,0.1);
-        }
-
-        .form-input.error {
-          border-color: #ef4444;
-          background: #fef2f2;
-        }
-
-        .btn-consultar {
-          padding: 16px 48px;
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          color: white;
-          border: none;
-          border-radius: 14px;
-          font-size: 1.063rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 16px rgba(37,99,235,0.35);
-          white-space: nowrap;
-        }
-
-        .btn-consultar:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 24px rgba(37,99,235,0.45);
-        }
-
-        .btn-consultar:active {
-          transform: translateY(0);
-        }
-
-        .btn-consultar:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          transform: none;
-        }
-
-        /* Panel de Resultados */
-        .results-panel {
-          background: white;
-          border-radius: 24px;
-          padding: 32px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-          border: 1px solid rgba(37,99,235,0.1);
-          min-height: 500px;
-        }
-
-        .results-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-          flex-wrap: wrap;
-          gap: 16px;
-        }
-
-        .status-badge {
-          padding: 12px 24px;
-          border-radius: 12px;
-          font-weight: 700;
-          font-size: 1rem;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .status-success {
-          background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-          color: #065f46;
-          border: 2px solid #6ee7b7;
-        }
-
-        .status-error {
-          background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-          color: #991b1b;
-          border: 2px solid #fca5a5;
-        }
-
-        .status-warning {
-          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-          color: #92400e;
-          border: 2px solid #fcd34d;
-        }
-
-        .status-idle {
-          background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-          color: #475569;
-          border: 2px solid #cbd5e1;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 12px;
-        }
-
-        .btn-action {
-          padding: 10px 20px;
-          background: white;
-          border: 2px solid #e2e8f0;
-          border-radius: 10px;
-          font-size: 0.938rem;
-          font-weight: 600;
-          cursor: pointer;
-          color: #475569;
-          transition: all 0.2s ease;
-        }
-
-        .btn-action:hover {
-          border-color: #2563eb;
-          color: #2563eb;
-          background: #eff6ff;
-        }
-
-        .btn-action-primary {
-          padding: 10px 20px;
-          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-          border: none;
-          border-radius: 10px;
-          font-size: 0.938rem;
-          font-weight: 600;
-          cursor: pointer;
-          color: white;
-          transition: all 0.2s ease;
-        }
-
-        .btn-action-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        /* Alert Messages */
-        .alert {
-          padding: 20px;
-          border-radius: 16px;
-          margin-bottom: 24px;
-          font-size: 0.938rem;
-          line-height: 1.6;
-        }
-
-        .alert-info {
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-          color: #1e40af;
-          border-left: 4px solid #2563eb;
-        }
-
-        .alert-error {
-          background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-          color: #991b1b;
-          border-left: 4px solid #ef4444;
-        }
-
-        .alert-warning {
-          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-          color: #92400e;
-          border-left: 4px solid #f59e0b;
-        }
-
-        /* Grid de Beneficios */
-        .beneficios-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 20px;
-        }
-
-        .beneficio-card {
-          background: white;
-          border-radius: 16px;
-          overflow: hidden;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-          border: 2px solid #dbeafe;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .beneficio-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 32px rgba(37,99,235,0.15);
-          border-color: #93c5fd;
-        }
-
-        .beneficio-card-header-section {
-          background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
-          padding: 24px 20px 20px;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .beneficio-card-header-section::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%232563eb' fill-opacity='0.03' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
-          opacity: 1;
-        }
-
-        .beneficio-descuento-badge {
-          position: absolute;
-          top: 16px;
-          right: 16px;
-          padding: 8px 16px;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          border-radius: 10px;
-          font-size: 0.938rem;
-          font-weight: 800;
-          box-shadow: 0 4px 16px rgba(16,185,129,0.3);
-          z-index: 2;
-          letter-spacing: 0.3px;
-        }
-
-        .beneficio-icon-wrapper {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 16px;
-          position: relative;
-          z-index: 1;
-        }
-
-        .beneficio-icon-container {
-          width: 80px;
-          height: 80px;
-          background: white;
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          box-shadow: 0 4px 16px rgba(37,99,235,0.12);
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-
-        .beneficio-card:hover .beneficio-icon-container {
-          transform: scale(1.05) rotate(3deg);
-          box-shadow: 0 6px 20px rgba(37,99,235,0.2);
-        }
-
-        .beneficio-icon-svg {
-          width: 40px;
-          height: 40px;
-          color: #2563eb;
-          padding: 16px;
-        }
-
-        .beneficio-icon-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .beneficio-nombre {
-          font-size: 1.125rem;
-          font-weight: 800;
-          color: #0f172a;
-          margin: 0 0 10px 0;
-          line-height: 1.3;
-          text-align: center;
-          position: relative;
-          z-index: 1;
-        }
-
-        .beneficio-empresa-tag {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
-          background: white;
-          border: 1.5px solid #e2e8f0;
-          border-radius: 8px;
-          font-size: 0.813rem;
-          font-weight: 700;
-          color: #475569;
-          margin: 0 auto;
-          position: relative;
-          z-index: 1;
-        }
-
-        .empresa-icon {
-          width: 14px;
-          height: 14px;
-          color: #64748b;
-        }
-
-        .beneficio-card-body {
-          padding: 20px;
-          background: white;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .beneficio-descripcion {
-          font-size: 0.875rem;
-          color: #475569;
-          line-height: 1.6;
-          margin: 0;
-        }
-
-        .beneficio-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding-top: 14px;
-          border-top: 1.5px solid #f1f5f9;
-          margin-top: auto;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-
-        .btn-ver-terminos {
-          padding: 6px 12px;
-          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-        }
-
-        .btn-ver-terminos:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        }
-
-        .btn-ver-terminos:active {
-          transform: translateY(0);
-        }
-
-        .beneficio-categoria {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
-          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-          border-radius: 8px;
-          font-size: 0.813rem;
-          font-weight: 700;
-          color: #1e40af;
-          border: 1.5px solid #bfdbfe;
-        }
-
-        .categoria-icon {
-          width: 14px;
-          height: 14px;
-        }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-          .search-form-wrapper {
-            grid-template-columns: 1fr;
-            gap: 24px;
-          }
-
-          .search-panel {
-            padding: 32px 28px;
-          }
-
-          .search-panel-title {
-            justify-content: center;
-          }
-
-          .btn-consultar {
-            width: 100%;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .beneficios-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .beneficio-card-header-section {
-            padding: 20px 16px 16px;
-          }
-
-          .beneficio-card-body {
-            padding: 16px;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .beneficios-hero {
-            padding: 120px 20px 80px;
-          }
-
-          .beneficios-container {
-            padding: 0 16px 40px;
-            margin: -50px auto 0;
-          }
-
-          .search-panel {
-            padding: 20px;
-            border-radius: 16px;
-          }
-
-          .results-panel {
-            padding: 24px 20px;
-            border-radius: 16px;
-          }
-
-          .results-header {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .action-buttons {
-            width: 100%;
-          }
-
-          .btn-action, .btn-action-primary {
-            flex: 1;
-          }
-        }
-
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-
-          .beneficio-card {
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-
-
-          
-        }
-
-        
-      `}</style>
-
-      {/* Hero Header */}
-      <div className="beneficios-hero">
-        <div className="beneficios-hero-content">
-          <h1>Consulta de Beneficios</h1>
-          <p>Verifica los beneficios disponibles para pacientes activos del Centro de Terapias Crecemos</p>
-        </div>
-      </div>
-
-      {/* Contenido Principal */}
-      <div className="beneficios-container">
-        {/* Panel de Búsqueda */}
-        <div className="search-panel">
-          <form onSubmit={handleValidar}>
-            <div className="search-form-wrapper">
-              <div className="search-panel-title">
-                <div className="search-panel-icon">
-                  <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <span>Consultar con DNI</span>
-              </div>
-
-              <div className="form-input-wrapper">
-                <input
-                  id="dni"
-                  className={`form-input ${error && estado === 'error' ? 'error' : ''}`}
-                  placeholder="Ingresa DNI de 8 dígitos"
-                  value={dni}
-                  onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  autoComplete="off"
-                  maxLength="8"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn-consultar"
-                disabled={loading}
-              >
-                {loading ? 'Consultando...' : 'Consultar'}
+    <main className="cx-page vb-page">
+      {/* ===================== Hero ===================== */}
+      <section className="cx-subhero vb-hero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-gift-fill" /> Beneficios para pacientes</span>
+            <RevealText as="h1" text="Consulta tus beneficios" />
+            <p>
+              Verifica los convenios y descuentos exclusivos disponibles para los pacientes
+              activos del Centro de Terapias Crecemos.
+            </p>
+
+            <form className={`vb-searchbar ${error && estado === 'error' ? 'is-error' : ''}`} onSubmit={handleValidar}>
+              <i className="bi bi-person-vcard vb-searchbar-ic" />
+              <input
+                className="vb-searchbar-input"
+                placeholder="Ingresa el DNI (8 dígitos)"
+                value={dni}
+                onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                autoComplete="off"
+                maxLength="8"
+                inputMode="numeric"
+                aria-label="DNI del paciente"
+              />
+              <button type="submit" className="vb-searchbar-btn" disabled={loading}>
+                {loading ? (
+                  <><span className="cx-btn-spinner" /> <span className="vb-searchbar-btn-txt">Consultando…</span></>
+                ) : (
+                  <><span className="vb-searchbar-btn-txt">Consultar</span> <i className="bi bi-arrow-right" /></>
+                )}
               </button>
-            </div>
-          </form>
+            </form>
+            <p className="vb-hint"><i className="bi bi-shield-lock-fill" /> Solo pacientes activos acceden a los beneficios vigentes.</p>
+          </Reveal>
         </div>
+      </section>
 
-        {/* Panel de Resultados */}
-        <div className="results-panel">
-            <div className="results-header">
-              <div className={`status-badge status-${estado}`}>
-                {estado === 'success' && (
-                  <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-                {estado === 'error' && (
-                  <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-                {estado === 'warning' && (
-                  <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                )}
-                {estado === 'idle' && (
-                  <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
+      {/* ===================== Buscador + Resultados ===================== */}
+      <section className="cx-section cx-section--deco cx-section--soft vb-section">
+        <Decor variant="b" />
+        <div className="cx-container">
+          {/* Cómo funciona (solo antes de consultar) */}
+          {!paciente && (
+            <Reveal className="vb-how" y={24}>
+              <div className="vb-how-head">
+                <span className="cx-eyebrow"><i className="bi bi-stars" /> Cómo funciona</span>
+                <RevealText as="h2" text="Tus beneficios en 3 pasos" />
+              </div>
+              <div className="vb-steps">
+                {[
+                  { icon: 'bi-credit-card-2-front', title: 'Ingresa tu DNI', desc: 'Escribe el número de documento del paciente en el buscador.' },
+                  { icon: 'bi-search-heart', title: 'Consulta al instante', desc: 'Verificamos que estés activo y buscamos todos tus beneficios vigentes.' },
+                  { icon: 'bi-gift', title: 'Presenta y ahorra', desc: 'Muestra tu beneficio en el convenio y disfruta el descuento.' },
+                ].map((s, i) => (
+                  <div className="vb-step" key={s.title}>
+                    <span className="vb-step-n">{i + 1}</span>
+                    <i className={`bi ${s.icon} vb-step-ic`} />
+                    <h3>{s.title}</h3>
+                    <p>{s.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          )}
+
+          {/* Resultados */}
+          <div className="vb-results" ref={resultsRef}>
+            <div className="vb-results-head no-print">
+              <span className={`vb-status vb-status--${estado}`}>
+                <i className={`bi ${iconoEstado[estado] || 'bi-clock-history'}`} />
                 {estadoTexto}
-              </div>
-              <div className="action-buttons no-print">
-                <button className="btn-action" onClick={handleImprimirBeneficios}>
-                  <svg style={{ width: '16px', height: '16px', display: 'inline', marginRight: '6px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Imprimir
-                </button>
-                <button className="btn-action-primary" onClick={handleCompartir}>
-                  <svg style={{ width: '16px', height: '16px', display: 'inline', marginRight: '6px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                  Compartir
-                </button>
-              </div>
+              </span>
+
+              {paciente && beneficios.length > 0 && (
+                <div className="vb-actions">
+                  <button className="cx-btn cx-btn-ghost vb-abtn" onClick={handleImprimirBeneficios}>
+                    <i className="bi bi-printer" /> Imprimir
+                  </button>
+                  <button className="cx-btn cx-btn-soft vb-abtn" onClick={handleCompartir}>
+                    <i className="bi bi-share" /> Compartir
+                  </button>
+                </div>
+              )}
             </div>
 
             {!paciente && !error && (
-              <div className="alert alert-info">
-                <strong>Bienvenido</strong><br />
-                Ingrese un DNI válido de 8 dígitos para consultar beneficios disponibles.
-              </div>
+              <Reveal className="vb-alert vb-alert--info" y={16}>
+                <i className="bi bi-info-circle-fill" />
+                <div>
+                  <strong>Bienvenido.</strong> Ingresa un DNI válido de 8 dígitos para consultar
+                  los beneficios disponibles.
+                </div>
+              </Reveal>
             )}
 
             {error && (
-              <div className={`alert ${estado === 'warning' ? 'alert-warning' : 'alert-error'}`}>
-                <strong>{estado === 'warning' ? 'Advertencia:' : 'Error:'}</strong> {error}
-                <br />
-                <small>DNI: <strong>{dni}</strong></small>
+              <div className={`vb-alert ${estado === 'warning' ? 'vb-alert--warning' : 'vb-alert--error'}`}>
+                <i className={`bi ${estado === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-x-circle-fill'}`} />
+                <div>
+                  <strong>{estado === 'warning' ? 'Aviso: ' : 'Error: '}</strong>{error}
+                  <br />
+                  <small>DNI consultado: <strong>{dni}</strong></small>
+                </div>
               </div>
             )}
 
             {paciente && beneficios.length > 0 && (
-              <div className="beneficios-grid">
-                {beneficios.map((beneficio) => {
+              <div className="vb-list">
+                {beneficios.map((beneficio, index) => {
                   const logoUrl = beneficio.convenio?.logo_url
                     ? (beneficio.convenio.logo_url.startsWith('/')
                       ? `${API_BASE_URL}/convenios/logo/${beneficio.convenio.logo_url.split('/').pop()}`
@@ -834,391 +297,337 @@ const VerificarBeneficios = () => {
                     : null;
 
                   const nombreEmpresa = beneficio.convenio?.empresa || beneficio.convenio?.nombre || beneficio.proveedor || 'Empresa';
+                  const open = expandedIds.has(beneficio.id);
 
                   return (
-                    <div key={beneficio.id} className="beneficio-card">
-                      <div className="beneficio-card-header-section">
-                        {beneficio.descuento && (
-                          <div className="beneficio-descuento-badge">
-                            {beneficio.descuento}
-                          </div>
-                        )}
-
-                        <div className="beneficio-icon-wrapper">
-                          <div className="beneficio-icon-container">
-                            {logoUrl ? (
-                              <img
-                                src={logoUrl}
-                                alt={nombreEmpresa}
-                                className="beneficio-icon-img"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <svg className="beneficio-icon-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-
-                        <h3 className="beneficio-nombre">{beneficio.nombre}</h3>
-
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                          <div className="beneficio-empresa-tag">
-                            <svg className="empresa-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            {nombreEmpresa}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="beneficio-card-body">
-                        <p className="beneficio-descripcion">{beneficio.descripcion}</p>
-
-                        <div className="beneficio-footer">
-                          {beneficio.categoria?.nombre && (
-                            <div className="beneficio-categoria">
-                              <svg className="categoria-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                              </svg>
-                              {beneficio.categoria.nombre}
-                            </div>
+                    <Reveal as="div" className={`vb-item ${open ? 'is-open' : ''}`} key={beneficio.id} y={16} delay={(index % 4) * 0.04}>
+                      <button className="vb-item-head" onClick={() => toggleExpand(beneficio.id)} aria-expanded={open}>
+                        <div className="vb-logo">
+                          {logoUrl && (
+                            <img src={logoUrl} alt={nombreEmpresa} onError={(e) => { e.target.style.display = 'none'; }} />
                           )}
+                          <i className="bi bi-building vb-logo-fallback" />
+                        </div>
+                        <div className="vb-item-txt">
+                          <h3 className="vb-name">{beneficio.nombre}</h3>
+                          <span className="vb-empresa"><i className="bi bi-building" /> {nombreEmpresa}</span>
+                        </div>
+                        {beneficio.descuento && <span className="vb-disc">{beneficio.descuento}</span>}
+                        <i className="bi bi-chevron-down vb-chevron" />
+                      </button>
 
-                          <a
-                            onClick={() => handleAbrirTerminos(beneficio)}
-                            className="link-ver-terminos no-print"
-                            style={{ cursor: 'pointer' }}
-                          >
-                            Términos y Condiciones
-                          </a>
+                      <div className="vb-item-panel">
+                        <div className="vb-item-panel-in">
+                          <p className="vb-desc">{beneficio.descripcion}</p>
+                          <div className="vb-foot">
+                            {beneficio.categoria?.nombre && (
+                              <span className="vb-cat"><i className="bi bi-tag-fill" /> {beneficio.categoria.nombre}</span>
+                            )}
+                            <button className="vb-terminos no-print" onClick={() => handleAbrirTerminos(beneficio)}>
+                              Términos y condiciones <i className="bi bi-arrow-right" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </Reveal>
                   );
                 })}
               </div>
             )}
 
-            <style>{`
-              .link-ver-terminos {
-                color: #174ea6;
-                font-size: 0.875rem;
-                font-weight: 500;
-                text-decoration: underline;
-                transition: all 0.2s ease;
-              }
-
-              .link-ver-terminos:hover {
-                color: #c263f9;
-                text-decoration: underline;
-              }
-            `}</style>
             {paciente && beneficios.length === 0 && (
-              <div className="alert alert-info">
-                <strong>Sin beneficios</strong><br />
-                No hay beneficios disponibles en este momento para este paciente.
+              <div className="vb-alert vb-alert--info">
+                <i className="bi bi-inbox" />
+                <div>
+                  <strong>Sin beneficios.</strong> No hay beneficios disponibles en este momento
+                  para este paciente.
+                </div>
               </div>
             )}
-        </div>
-      </div>
-
-<style>{`
-  .link-ver-terminos {
-    color: #174ea6;
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: underline;
-    transition: all 0.2s ease;
-  }
-
-  .link-ver-terminos:hover {
-    color: #c263f9;
-    text-decoration: underline;
-  }
-`}</style>
-
-{/* MODAL DE TÉRMINOS Y CONDICIONES */}
-{modalTerminos && beneficioSeleccionado && (
-  <div
-    style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 9999,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0, 0, 0, 0.4)',
-      backdropFilter: 'blur(3px)',
-      padding: '20px'
-    }}
-    onClick={handleCerrarTerminos}
-  >
-    <style>{`
-      @keyframes modalSlideIn {
-        from {
-          opacity: 0;
-          transform: translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .terminos-modal {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(23, 78, 166, 0.12);
-        width: 100%;
-        max-width: 550px;
-        max-height: 75vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        animation: modalSlideIn 0.25s ease-out;
-      }
-
-      .terminos-header {
-        padding: 24px 28px;
-        border-bottom: 1px solid #e8f1ff;
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-      }
-
-      .terminos-header-content {
-        flex: 1;
-      }
-
-      .terminos-title {
-        color: #174ea6;
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin: 0 0 6px 0;
-        letter-spacing: -0.3px;
-      }
-
-      .terminos-subtitle {
-        color: #64748b;
-        font-size: 0.875rem;
-        margin: 0;
-        font-weight: 400;
-      }
-
-      .terminos-close {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: #94a3b8;
-        flex-shrink: 0;
-      }
-
-      .terminos-close:hover {
-        background: #f1f5f9;
-        color: #64748b;
-      }
-
-      .terminos-body {
-        padding: 28px;
-        overflow-y: auto;
-        flex: 1;
-      }
-
-      .terminos-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      
-      .terminos-list .termino{
-        padding:4px;}
-
-      .termino {
-        display: flex;
-        gap: 8px;
-        padding: 2px 0;
-        border-bottom: 1px solid #f1f5f9;
-        list-style: none !important;
-        align-items: flex-start;
-      }
-
-      .termino::before {
-        display: none !important;
-      }
-
-      .termino::marker {
-        display: none !important;
-      }
-
-      .termino:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-      }
-
-      .termino:first-child {
-        padding-top: 0;
-      }
-
-      .termino-bullet {
-        flex-shrink: 0;
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #174ea6 0%, #c263f9 100%);
-        margin-top: 9px;
-      }
-
-      .termino-text {
-        flex: 1;
-        color: #475569;
-        line-height: 1.1 !important;
-        font-size: 0.9rem;
-        margin: 0;
-        padding: 0;
-      }
-
-      .terminos-empty {
-        text-align: center;
-        padding: 48px 20px;
-      }
-
-      .terminos-empty-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 16px;
-        color: #cbd5e1;
-      }
-
-      .terminos-empty-title {
-        color: #475569;
-        font-size: 1rem;
-        font-weight: 500;
-        margin: 0 0 6px 0;
-      }
-
-      .terminos-empty-desc {
-        color: #94a3b8;
-        font-size: 0.875rem;
-        margin: 0;
-      }
-
-      .terminos-loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 48px 20px;
-        gap: 16px;
-      }
-
-      .loading-spinner {
-        width: 32px;
-        height: 32px;
-        border: 3px solid #f1f5f9;
-        border-top-color: #174ea6;
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
-      }
-
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-
-      .loading-text {
-        color: #64748b;
-        font-size: 0.875rem;
-      }
-
-      @media (max-width: 640px) {
-        .terminos-modal {
-          max-width: 100%;
-          max-height: 90vh;
-        }
-
-        .terminos-header {
-          padding: 20px 24px;
-        }
-
-        .terminos-title {
-          font-size: 1.125rem;
-        }
-
-        .terminos-body {
-          padding: 24px;
-        }
-
-        .termino {
-          gap: 6px;
-          padding: 1px 0;
-        }
-
-        .termino-text {
-          font-size: 0.875rem;
-          line-height: 1.05 !important;
-        }
-        
-        .termino-bullet {
-          margin-top: 8px;
-          width: 3px;
-          height: 3px;
-        }
-      }
-    `}</style>
-
-    <div className="terminos-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="terminos-header">
-        <div className="terminos-header-content">
-          <h2 className="terminos-title">Términos y Condiciones</h2>
-          <p className="terminos-subtitle">{beneficioSeleccionado.nombre}</p>
-        </div>
-        <button className="terminos-close" onClick={handleCerrarTerminos}>
-          <svg style={{ width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="terminos-body">
-        {loadingTerminos ? (
-          <div className="terminos-loading">
-            <div className="loading-spinner"></div>
-            <p className="loading-text">Cargando términos...</p>
           </div>
-        ) : terminos.length === 0 ? (
-          <div className="terminos-empty">
-            <svg className="terminos-empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 className="terminos-empty-title">Sin términos disponibles</h3>
-            <p className="terminos-empty-desc">Este beneficio no tiene términos registrados</p>
+        </div>
+      </section>
+
+      {/* ===================== CTA final ===================== */}
+      <section className="cx-section">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-gift-fill" /> Aprovecha tus convenios</span>
+              <RevealText as="h2" text="¿Aún no eres paciente de Crecemos?" />
+              <p>Únete a nuestra comunidad y accede a descuentos exclusivos en convenios de salud, educación y bienestar. Agenda tu primera cita hoy.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Agendar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver servicios
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ===================== Modal de términos ===================== */}
+      {modalTerminos && beneficioSeleccionado && (
+        <div className="vb-modal-backdrop" onClick={handleCerrarTerminos}>
+          <div className="vb-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="vb-modal-head">
+              <div className="vb-modal-head-txt">
+                <span className="vb-modal-eyebrow"><i className="bi bi-file-earmark-text-fill" /> Términos y condiciones</span>
+                <h3>{beneficioSeleccionado.nombre}</h3>
+              </div>
+              <button className="vb-modal-close" onClick={handleCerrarTerminos} aria-label="Cerrar">
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+
+            <div className="vb-modal-body">
+              {loadingTerminos ? (
+                <div className="vb-modal-loading">
+                  <span className="cx-spinner" />
+                  <p>Cargando términos…</p>
+                </div>
+              ) : terminos.length === 0 ? (
+                <div className="vb-modal-empty">
+                  <i className="bi bi-file-earmark-x" />
+                  <h4>Sin términos disponibles</h4>
+                  <p>Este beneficio no tiene términos registrados.</p>
+                </div>
+              ) : (
+                <ul className="vb-terminos-list">
+                  {terminos.map((termino) => (
+                    <li key={termino.id}>
+                      <span className="vb-dot" />
+                      <p>{termino.descripcion}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-        ) : (
-          <ul className="terminos-list">
-            {terminos.map((termino) => (
-              <li key={termino.id} className="termino">
-                <span className="termino-bullet"></span>
-                <p className="termino-text">{termino.descripcion}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  </div>
-)}
-    </div>
+        </div>
+      )}
+
+      <style>{`
+        /* ===== Hero ===== */
+        .vb-hero { padding-bottom: clamp(40px, 5vw, 60px); }
+        .cx-site .vb-hero .cx-subhero-inner { text-align: center; }
+        .cx-site .vb-hero .cx-subhero-inner > p,
+        .cx-site .vb-hero .vb-hint {
+          color: var(--cx-ink-2); font-weight: 500;
+          text-align: center; margin-left: auto; margin-right: auto;
+        }
+        .cx-site .vb-hero .cx-subhero-inner > p { max-width: 600px; }
+        /* menos espacio entre buscador y resultados */
+        .cx-page .vb-section { padding-top: clamp(28px, 3.5vw, 44px); }
+
+        /* ===== Barra de búsqueda protagonista (estilo Webflow) ===== */
+        .vb-searchbar {
+          display: flex; align-items: center; gap: 10px;
+          width: 100%; max-width: 480px; margin: clamp(26px, 4vw, 38px) auto 0;
+          padding: 7px 7px 7px 18px;
+          background: var(--cx-surface); border: 1px solid var(--cx-line);
+          border-radius: var(--cx-r-pill);
+          box-shadow: 0 20px 44px -26px rgba(58, 43, 74, .4);
+          transition: border-color .3s, box-shadow .3s, transform .3s;
+        }
+        .vb-searchbar:focus-within { border-color: var(--cx-primary-200); box-shadow: 0 26px 52px -26px rgba(141, 40, 143, .4); transform: translateY(-2px); }
+        .vb-searchbar.is-error { border-color: #e5484d; }
+        .vb-searchbar-ic { flex: 0 0 auto; color: var(--cx-primary-700); font-size: 1.25rem; }
+        .vb-searchbar-input {
+          flex: 1; min-width: 0; border: 0; background: none; outline: none; text-align: center;
+          padding: 12px 4px; color: var(--cx-ink);
+          font-family: var(--cx-font); font-size: 1.05rem; font-weight: 700; letter-spacing: .1em;
+        }
+        .vb-searchbar-input::placeholder { letter-spacing: normal; font-weight: 500; color: var(--cx-muted); }
+        .vb-searchbar-btn {
+          flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer;
+          padding: 13px 22px; border-radius: var(--cx-r-pill); color: #fff; font-family: var(--cx-font); font-weight: 700; font-size: .95rem;
+          background: linear-gradient(120deg, var(--cx-primary), var(--cx-primary-600));
+          box-shadow: 0 12px 24px -12px rgba(169, 62, 240, .6);
+          transition: transform .25s, box-shadow .25s;
+        }
+        .vb-searchbar-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 18px 34px -12px rgba(169, 62, 240, .7); }
+        .vb-searchbar-btn:disabled { opacity: .7; cursor: not-allowed; }
+        .vb-searchbar-btn i { transition: transform .25s; }
+        .vb-searchbar-btn:hover:not(:disabled) i { transform: translateX(3px); }
+        .vb-hint { margin-top: 16px; text-align: center; color: var(--cx-ink-2); font-size: .88rem; font-weight: 500; }
+        .vb-hint i { color: var(--cx-primary-700); margin-right: 5px; }
+
+        @media (max-width: 520px) {
+          .vb-searchbar { flex-wrap: wrap; border-radius: var(--cx-r-lg); padding: 14px; gap: 10px; }
+          .vb-searchbar-ic { display: none; }
+          .vb-searchbar-input { flex: 1 1 100%; padding: 12px 6px; text-align: center; }
+          .vb-searchbar-btn { flex: 1 1 100%; justify-content: center; }
+        }
+
+        /* ===== Cómo funciona (3 pasos) ===== */
+        .vb-how { margin-top: clamp(44px, 6vw, 66px); }
+        .vb-how-head { text-align: center; margin-bottom: clamp(26px, 3.4vw, 40px); }
+        .cx-site .vb-how-head h2 { font-size: clamp(1.5rem, 3vw, 2.15rem); margin-top: 12px; }
+        .vb-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .vb-step {
+          position: relative; text-align: center; padding: 30px 24px 26px;
+          background: var(--cx-surface); border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
+          box-shadow: var(--cx-shadow-sm);
+          transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s, border-color .3s;
+        }
+        .vb-step:hover { transform: translateY(-6px); box-shadow: var(--cx-shadow); border-color: var(--cx-primary-200); }
+        .vb-step-n {
+          position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+          width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+          background: linear-gradient(135deg, var(--cx-primary), var(--cx-primary-600)); color: #fff; font-weight: 800; font-size: .92rem;
+          box-shadow: 0 12px 22px -8px rgba(169,62,240,.65);
+        }
+        .vb-step-ic { display: block; font-size: 2rem; color: var(--cx-primary-700); margin: 12px 0 12px; }
+        .cx-site .vb-step h3 { font-family: var(--cx-font); font-size: 1.06rem; font-weight: 700; color: var(--cx-ink); margin: 0 0 8px; }
+        .vb-step p { color: var(--cx-muted); font-size: .9rem; line-height: 1.6; margin: 0; }
+        @media (max-width: 720px) { .vb-steps { grid-template-columns: 1fr; } }
+
+        /* ===== Resultados ===== */
+        .vb-results { margin-top: clamp(18px, 2.5vw, 28px); }
+        .vb-results-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
+        .vb-status {
+          display: inline-flex; align-items: center; gap: 9px;
+          padding: 11px 20px; border-radius: var(--cx-r-pill);
+          font-weight: 700; font-size: .95rem;
+        }
+        .vb-status i { font-size: 1.1rem; }
+        .vb-status--success { background: var(--cx-mint); color: #2f6a48; }
+        .vb-status--error   { background: #fbe4e4; color: #a3312f; }
+        .vb-status--warning { background: #f8ebd0; color: #8a5a1a; }
+        .vb-status--idle    { background: var(--cx-primary-100); color: var(--cx-primary-700); }
+        .vb-actions { display: flex; gap: 10px; }
+        .vb-abtn { padding: 11px 18px; font-size: .9rem; }
+
+        /* ===== Alertas ===== */
+        .vb-alert {
+          display: flex; gap: 14px; align-items: flex-start;
+          padding: 18px 22px; border-radius: var(--cx-r-md);
+          font-size: .95rem; line-height: 1.6; margin-bottom: 22px;
+        }
+        .vb-alert i { font-size: 1.4rem; flex: 0 0 auto; line-height: 1.4; }
+        .vb-alert strong { font-weight: 700; }
+        .vb-alert--info    { background: var(--cx-primary-050); color: var(--cx-ink-2); border: 1px solid var(--cx-primary-100); }
+        .vb-alert--info i  { color: var(--cx-primary-700); }
+        .vb-alert--error   { background: #fbe4e4; color: #8a2a28; }
+        .vb-alert--error i { color: #d33; }
+        .vb-alert--warning   { background: #f8ebd0; color: #7a4f18; }
+        .vb-alert--warning i { color: #c78a1e; }
+
+        /* ===== Lista acordeón de beneficios (2 columnas) ===== */
+        .vb-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
+        .vb-item {
+          background: var(--cx-surface); border: 1px solid var(--cx-line);
+          border-radius: var(--cx-r-md); overflow: hidden; box-shadow: var(--cx-shadow-sm);
+          transition: border-color .25s, box-shadow .25s;
+        }
+        .vb-item:hover { border-color: var(--cx-primary-200); box-shadow: var(--cx-shadow-sm), inset 3px 0 0 var(--cx-primary-200); }
+        .vb-item.is-open { border-color: var(--cx-primary-200); box-shadow: var(--cx-shadow), inset 3px 0 0 var(--cx-primary); }
+        .vb-item.is-open .vb-item-head { background: linear-gradient(180deg, var(--cx-primary-050), transparent 92%); }
+
+        .vb-item-head {
+          display: flex; align-items: center; gap: 14px; width: 100%;
+          padding: 13px 18px; background: none; border: 0; cursor: pointer; text-align: left; font-family: inherit;
+        }
+        .vb-logo {
+          position: relative; flex: 0 0 auto; width: 60px; height: 60px; border-radius: 14px; overflow: hidden;
+          display: grid; place-items: center; background: #fff; border: 1px solid var(--cx-line); box-shadow: var(--cx-shadow-sm);
+        }
+        .vb-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 7px; z-index: 1; }
+        .vb-logo-fallback { z-index: 0; font-size: 1.15rem; color: var(--cx-primary-700); }
+        .vb-item-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .cx-site .vb-item-txt .vb-name { font-family: var(--cx-font); font-size: 1rem; font-weight: 700; color: var(--cx-ink); line-height: 1.3; margin: 0; }
+        .vb-empresa { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 600; color: var(--cx-muted); }
+        .vb-empresa i { color: var(--cx-lila-600); font-size: .82rem; flex: 0 0 auto; }
+        .vb-disc {
+          flex: 0 0 auto; padding: 6px 13px; border-radius: var(--cx-r-pill);
+          background: var(--cx-mint); color: #2f6a48; font-weight: 800; font-size: .82rem; border: 1px solid rgba(63,138,90,.22);
+        }
+        .vb-chevron { flex: 0 0 auto; color: var(--cx-muted); font-size: 1rem; transition: transform .3s, color .3s; }
+        .vb-item.is-open .vb-chevron { transform: rotate(180deg); color: var(--cx-primary-700); }
+
+        .vb-item-panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s cubic-bezier(.2,.8,.2,1); }
+        .vb-item.is-open .vb-item-panel { grid-template-rows: 1fr; }
+        .vb-item-panel-in { overflow: hidden; }
+        .vb-item-panel .vb-desc { margin: 0; padding: 4px 18px 0; color: var(--cx-ink-2); font-size: .92rem; line-height: 1.65; }
+        .vb-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px 18px 0; padding: 14px 0 16px; border-top: 1px solid var(--cx-line); }
+        .vb-cat {
+          display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--cx-r-pill);
+          background: var(--cx-primary-050); border: 1px solid var(--cx-primary-100); color: var(--cx-primary-700); font-size: .76rem; font-weight: 700;
+        }
+        .vb-terminos {
+          display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: none; cursor: pointer;
+          color: var(--cx-primary-700); font-weight: 700; font-size: .85rem; transition: gap .25s, color .25s;
+        }
+        .vb-terminos i { transition: transform .25s; }
+        .vb-terminos:hover { gap: 10px; color: var(--cx-primary); }
+        .vb-terminos:hover i { transform: translateX(3px); }
+
+        /* ===== Modal de términos ===== */
+        .vb-modal-backdrop {
+          position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;
+          background: rgba(24,15,38,.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+          animation: vb-fade .25s ease;
+        }
+        .vb-modal {
+          width: 100%; max-width: 560px; max-height: 82vh; display: flex; flex-direction: column; overflow: hidden;
+          background: var(--cx-surface); border-radius: var(--cx-r-lg); box-shadow: var(--cx-shadow-lg);
+          animation: vb-modal-in .35s cubic-bezier(.2,.8,.2,1);
+        }
+        .vb-modal-head {
+          display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+          padding: 24px 26px; border-bottom: 1px solid var(--cx-line);
+          background: radial-gradient(120% 100% at 0% 0%, var(--cx-primary-050), transparent 60%);
+        }
+        .vb-modal-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--cx-primary-700); }
+        .cx-site .vb-modal-head h3 { font-family: var(--cx-display); font-weight: 400; color: var(--cx-ink); font-size: 1.3rem; margin: 8px 0 0; line-height: 1.2; }
+        .vb-modal-close {
+          flex: 0 0 auto; width: 38px; height: 38px; border: 0; border-radius: 50%; cursor: pointer;
+          display: grid; place-items: center; font-size: 1rem; color: var(--cx-ink); background: var(--cx-bg-soft); transition: all .25s;
+        }
+        .vb-modal-close:hover { background: var(--cx-primary); color: #fff; transform: rotate(90deg); }
+        .vb-modal-body { padding: 24px 26px; overflow-y: auto; }
+        .vb-modal-body::-webkit-scrollbar { width: 7px; }
+        .vb-modal-body::-webkit-scrollbar-thumb { background: var(--cx-primary-200); border-radius: 999px; }
+
+        .vb-terminos-list { list-style: none; padding: 0; margin: 0; }
+        .vb-terminos-list li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--cx-line); }
+        .vb-terminos-list li:last-child { border-bottom: 0; }
+        .vb-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: linear-gradient(135deg, var(--cx-primary), var(--cx-peach)); box-shadow: 0 0 0 4px var(--cx-primary-050); }
+        .vb-terminos-list p { margin: 0; color: var(--cx-ink-2); font-size: .93rem; line-height: 1.6; }
+
+        .vb-modal-loading, .vb-modal-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 44px 20px; }
+        .vb-modal-loading p { margin: 6px 0 0; color: var(--cx-muted); }
+        .vb-modal-empty i { font-size: 2.6rem; color: var(--cx-lila); margin-bottom: 14px; }
+        .cx-site .vb-modal-empty h4 { font-size: 1.15rem; color: var(--cx-ink); margin: 0 0 6px; }
+        .vb-modal-empty p { color: var(--cx-muted); font-size: .9rem; margin: 0; }
+
+        @keyframes vb-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes vb-modal-in { from { opacity: 0; transform: translateY(22px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 640px) {
+          .vb-results-head { flex-direction: column; align-items: stretch; }
+          .vb-actions { width: 100%; }
+          .vb-actions .cx-btn { flex: 1; }
+        }
+
+        @media (max-width: 720px) {
+          .vb-list { grid-template-columns: 1fr; }
+        }
+
+        @media print {
+          .no-print { display: none !important; }
+          .vb-card { break-inside: avoid; page-break-inside: avoid; }
+        }
+      `}</style>
+    </main>
   );
 };
 

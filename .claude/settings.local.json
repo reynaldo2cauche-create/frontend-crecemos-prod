@@ -79,7 +79,11 @@
       "PowerShell(winget install *)",
       "PowerShell($p = Get-Process cloudflared -ErrorAction SilentlyContinue; if \\($p\\) { \"CLOUDFLARED_VIVO PID=$\\($p.Id\\)\" } else { \"CLOUDFLARED_MUERTO\" })",
       "PowerShell(Get-Process *)",
-      "PowerShell($c = Get-Process cloudflared -ErrorAction SilentlyContinue; if \\($c\\) { $c | Stop-Process -Force; \"tunel eliminado \\($\\($c.Count\\) proceso/s\\)\" } else { \"no habia tunel corriendo\" })"
+      "PowerShell($c = Get-Process cloudflared -ErrorAction SilentlyContinue; if \\($c\\) { $c | Stop-Process -Force; \"tunel eliminado \\($\\($c.Count\\) proceso/s\\)\" } else { \"no habia tunel corriendo\" })",
+      "Bash(where python3 *)",
+      "Bash(py --version)",
+      "Bash(xargs grep -l -i \"ui-pro\\\\|ui-ux-pro\")",
+      "Bash(grep -n \"Modal de términos\\\\|</section>\\\\|</div>\\\\s*$\" src/pages/VerificarBeneficios.jsx)"
     ],
     "deny": [],
     "ask": []

@@ -21,10 +21,16 @@ export const Staff = () => {
   const [filtroServicio, setFiltroServicio] = useState('');
   const [totalServiciosUnicos, setTotalServiciosUnicos] = useState(0);
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+  const [activeCard, setActiveCard] = useState(null); // card "abierta" en móvil (tap-to-reveal)
 
   useEffect(() => {
     initializePageScripts();
     cargarStaff();
+    // Restaurar el scroll si se desmonta con el modal abierto
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
   }, []);
 
   // Calcular servicios únicos cuando cambien los specialists
@@ -234,6 +240,17 @@ export const Staff = () => {
     }
   };
 
+  // Click en la card: en táctil (sin hover) el primer toque revela la info;
+  // en desktop (con hover) abre el modal directo.
+  const handleCardClick = (specialist) => {
+    const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
+    if (isTouch) {
+      setActiveCard(prev => (prev === specialist.id ? null : specialist.id));
+    } else {
+      handleVerDetalle(specialist);
+    }
+  };
+
   // Función para mostrar detalles del terapeuta
   const handleVerDetalle = async (specialist) => {
     try {
@@ -311,14 +328,16 @@ export const Staff = () => {
       }
 
       setShowModal(true);
-      // Evitar scroll en el body cuando el modal está abierto
+      // Evitar scroll de fondo cuando el modal está abierto (body + html)
       document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
     } catch (error) {
       console.error('Error al mostrar detalle:', error);
       // En caso de error, mostrar al menos los datos básicos
       setSelectedSpecialist(specialist);
       setShowModal(true);
       document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
     }
   };
 
@@ -329,6 +348,7 @@ export const Staff = () => {
     document.body.style.overflow = '';
     document.body.style.position = '';
     document.body.style.width = '';
+    document.documentElement.style.overflow = '';
   };
 
   // Función de filtrado combinada
@@ -506,55 +526,58 @@ export const Staff = () => {
             <i className="bi bi-x-lg" />
           </button>
 
-          <div className="cx-modal-body">
-            {/* Cabecera */}
-            <div className="cx-modal-head">
-              <div className="cx-modal-photo">
-                <img src={selectedSpecialist.img} alt={selectedSpecialist.name} onError={handleImageError} />
+          {/* Panel de perfil (izquierda) */}
+          <aside className="cx-modal-aside">
+            <div className="cx-modal-aside-glow" aria-hidden="true" />
+            <div className="cx-modal-photo">
+              <img src={selectedSpecialist.img} alt={selectedSpecialist.name} onError={handleImageError} />
+            </div>
+            <span className="cx-modal-eyebrow"><i className="bi bi-patch-check-fill" /> Especialista</span>
+            <h2 className="cx-modal-name">Lic. {selectedSpecialist.name}</h2>
+            <span className="cx-modal-role">{selectedSpecialist.title}</span>
+
+            <div className="cx-modal-credentials">
+              {selectedSpecialist.titulo_profesional && (
+                <p className="cx-modal-line"><i className="bi bi-award" /> {selectedSpecialist.titulo_profesional}</p>
+              )}
+              {selectedSpecialist.numero_colegiatura && (
+                <p className="cx-modal-line">
+                  <i className="bi bi-shield-check" />
+                  {inicialesColegio ? `${inicialesColegio}: ${selectedSpecialist.numero_colegiatura}` : `Colegiatura: ${selectedSpecialist.numero_colegiatura}`}
+                </p>
+              )}
+            </div>
+
+            {selectedSpecialist.areas && Array.isArray(selectedSpecialist.areas) && selectedSpecialist.areas.length > 0 && (
+              <div className="cx-modal-aside-tags">
+                {selectedSpecialist.areas.map((area, idx) => (
+                  <span key={idx} className="cx-tag-primary">
+                    {typeof area === 'string' ? area : area.nombre || JSON.stringify(area)}
+                  </span>
+                ))}
               </div>
-              <div className="cx-modal-headinfo">
-                <h2>Lic. {selectedSpecialist.name}</h2>
-                <span className="cx-modal-role">{selectedSpecialist.title}</span>
+            )}
 
-                {selectedSpecialist.titulo_profesional && (
-                  <p className="cx-modal-line"><i className="bi bi-award" /> {selectedSpecialist.titulo_profesional}</p>
-                )}
-                {selectedSpecialist.numero_colegiatura && (
-                  <p className="cx-modal-line">
-                    <i className="bi bi-shield-check" />
-                    {inicialesColegio ? ` ${inicialesColegio}: ${selectedSpecialist.numero_colegiatura}` : ` Colegiatura: ${selectedSpecialist.numero_colegiatura}`}
-                  </p>
-                )}
+            <Link to="/contactanos" className="cx-btn cx-btn-primary cx-modal-aside-cta">
+              <i className="bi bi-calendar-check" /> Agendar cita
+            </Link>
+          </aside>
 
-                <div className="cx-modal-block">
-                  <h4>Áreas de especialización</h4>
-                  <div className="cx-modal-tags">
-                    {selectedSpecialist.areas && Array.isArray(selectedSpecialist.areas) && selectedSpecialist.areas.map((area, idx) => (
-                      <span key={idx} className="cx-tag-primary">
-                        {typeof area === 'string' ? area : area.nombre || JSON.stringify(area)}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="cx-modal-block">
-                  <h4>Servicios ofrecidos</h4>
-                  <div className="cx-modal-tags">
-                    {selectedSpecialist.services.slice(0, 8).map((service, idx) => (
-                      <span key={idx} className="cx-tag-soft">{service}</span>
-                    ))}
-                    {selectedSpecialist.services.length > 8 && (
-                      <span className="cx-tag-soft">+{selectedSpecialist.services.length - 8} más</span>
-                    )}
-                  </div>
-                </div>
+          {/* Contenido (derecha, scrollea) */}
+          <div className="cx-modal-main">
+            <div className="cx-modal-section">
+              <h3><i className="bi bi-heart-pulse" /> Servicios ofrecidos ({selectedSpecialist.services.length})</h3>
+              <div className="cx-modal-tags">
+                {selectedSpecialist.services.map((service, idx) => (
+                  <span key={idx} className="cx-tag-soft">{service}</span>
+                ))}
               </div>
             </div>
 
             {/* Biografía */}
             {selectedSpecialist.biografia && (
               <div className="cx-modal-section">
-                <h3>Biografía profesional</h3>
+                <h3><i className="bi bi-person-lines-fill" /> Biografía profesional</h3>
                 <div className="cx-modal-bio" dangerouslySetInnerHTML={{ __html: selectedSpecialist.biografia }} />
               </div>
             )}
@@ -562,7 +585,7 @@ export const Staff = () => {
             {/* Formación académica */}
             {(selectedSpecialist.formaciones && selectedSpecialist.formaciones.length > 0) && (
               <div className="cx-modal-section">
-                <h3>Formación académica</h3>
+                <h3><i className="bi bi-mortarboard-fill" /> Formación académica</h3>
                 <div className="cx-modal-formaciones">
                   {selectedSpecialist.formaciones.map((formacion, idx) => (
                     <div key={idx} className="cx-modal-formacion">
@@ -585,7 +608,7 @@ export const Staff = () => {
             {/* Cursos y logros */}
             {(selectedSpecialist.cursos && selectedSpecialist.cursos.length > 0) && (
               <div className="cx-modal-section">
-                <h3>Formación y logros</h3>
+                <h3><i className="bi bi-trophy-fill" /> Formación y logros</h3>
                 <ul className="cx-modal-cursos">
                   {selectedSpecialist.cursos.map((curso, idx) => (
                     <li key={idx}>
@@ -596,13 +619,6 @@ export const Staff = () => {
                 </ul>
               </div>
             )}
-
-            {/* CTA */}
-            <div className="cx-modal-cta">
-              <Link to="/contactanos" className="cx-btn cx-btn-primary">
-                <i className="bi bi-calendar-check" /> Agendar cita con {selectedSpecialist.name.split(' ')[0]}
-              </Link>
-            </div>
           </div>
         </div>
       </div>
@@ -860,7 +876,6 @@ export const Staff = () => {
         </section>
 
 
-
         {/* Buscador */}
         <section className="cx-spec-searchband">
           <div className="cx-container">
@@ -968,45 +983,55 @@ export const Staff = () => {
                 {filteredSpecialists.map((specialist, index) => (
                   <Reveal
                     key={specialist.id}
-                    className="cx-spec-card"
+                    className={`cx-spec-card ${activeCard === specialist.id ? 'is-active' : ''}`}
                     delay={(index % 2) * 0.06}
                     y={20}
-                    onClick={() => handleVerDetalle(specialist)}
+                    onClick={() => handleCardClick(specialist)}
                   >
-                    <div className="cx-spec-top">
-                      <div className="cx-spec-photo">
-                        <img src={specialist.img} alt={specialist.name} onError={handleImageError} />
-                      </div>
-                      <div className="cx-spec-meta">
-                        <h3>Lic. {specialist.name}</h3>
-                        <span className="cx-spec-title">
-                          <i className="bi bi-patch-check-fill" /> {specialist.title}
-                        </span>
-                        <span className="cx-spec-areas">
-                          <i className="bi bi-people-fill" />
+                    <div className="cx-spec-media">
+                      <img src={specialist.img} alt={specialist.name} onError={handleImageError} />
+                      <span className="cx-spec-scrim" aria-hidden="true" />
+                    </div>
+
+                    <span className="cx-spec-badge">
+                      <i className="bi bi-patch-check-fill" /> {specialist.title}
+                    </span>
+
+                    <div className="cx-spec-overlay">
+                      <h3>Lic. {specialist.name}</h3>
+                      <span className="cx-spec-areas">
+                        <i className="bi bi-people-fill" />
+                        <span>
                           {Array.isArray(specialist.areas)
                             ? specialist.areas.map(a => typeof a === 'string' ? a : a.nombre).join(' • ')
                             : 'Sin área'}
                         </span>
+                      </span>
+
+                      <div className="cx-spec-reveal">
+                        <div className="cx-spec-tags">
+                          {specialist.services.length > 0 ? (
+                            <>
+                              {specialist.services.slice(0, 3).map((service, idx) => (
+                                <span key={idx}>{service}</span>
+                              ))}
+                              {specialist.services.length > 3 && (
+                                <span className="cx-spec-tag-more">+{specialist.services.length - 3}</span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="cx-spec-tag-empty">Sin servicios</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="cx-spec-btn"
+                          onClick={(e) => { e.stopPropagation(); handleVerDetalle(specialist); }}
+                        >
+                          Ver perfil <i className="bi bi-arrow-right" />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="cx-spec-services">
-                      <h4><i className="bi bi-heart-pulse" /> Servicios ({specialist.services.length})</h4>
-                      <div className="cx-spec-tags">
-                        {specialist.services.length > 0 ? (
-                          specialist.services.map((service, idx) => (
-                            <span key={idx}>{service}</span>
-                          ))
-                        ) : (
-                          <span className="cx-spec-tag-empty">Sin servicios</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className="cx-spec-btn">
-                      Ver perfil <i className="bi bi-arrow-right" />
-                    </span>
                   </Reveal>
                 ))}
               </div>
@@ -1020,6 +1045,60 @@ export const Staff = () => {
               </div>
             )}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===================== Por qué nuestro equipo ===================== */}
+        <section className="cx-section cx-section--soft">
+          <Decor variant="a" />
+          <div className="cx-container">
+            <Reveal className="cx-section-head">
+              <span className="cx-eyebrow"><i className="bi bi-patch-check" /> Nuestro sello</span>
+              <RevealText as="h2" text="Por qué confiar en nuestro equipo" />
+              <p>Detrás de cada terapia hay profesionales certificados y un acompañamiento genuinamente humano.</p>
+            </Reveal>
+            <div className="cx-features cx-features--tint">
+              {[
+                { icon: 'bi-patch-check-fill', title: 'Profesionales colegiados', desc: 'Cada especialista está certificado y habilitado por su colegio profesional.' },
+                { icon: 'bi-heart-fill', title: 'Enfoque humano y cálido', desc: 'Escuchamos y acompañamos con empatía y respeto en cada sesión.' },
+                { icon: 'bi-mortarboard-fill', title: 'Formación continua', desc: 'Nos actualizamos constantemente en nuevos enfoques y técnicas terapéuticas.' },
+                { icon: 'bi-clipboard2-pulse-fill', title: 'Plan personalizado', desc: 'Diseñamos la terapia a la medida de cada persona y de cada objetivo.' },
+              ].map((f, i) => (
+                <Reveal className="cx-feature" key={f.title} delay={0.07 * i} y={18}>
+                  <span className="ic"><i className={`bi ${f.icon}`} /></span>
+                  <h3>{f.title}</h3>
+                  <p>{f.desc}</p>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===================== Áreas de atención ===================== */}
+        <section className="cx-section cx-section--deco cx-section--deco-r">
+          <Decor variant="c" />
+          <div className="cx-container">
+            <Reveal className="cx-section-head">
+              <span className="cx-eyebrow"><i className="bi bi-diagram-3" /> Áreas de atención</span>
+              <RevealText as="h2" text="Acompañamos cada etapa de la vida" />
+              <p>Nuestros especialistas atienden a niños, adolescentes y adultos con enfoques adaptados a cada edad.</p>
+            </Reveal>
+            <div className="cx-cards cx-cards--tint">
+              {[
+                { icon: 'bi-balloon-heart-fill', title: 'Infantil', desc: 'Terapia de lenguaje, ocupacional, de aprendizaje, estimulación temprana y psicología infantil para el desarrollo de los más pequeños.' },
+                { icon: 'bi-mortarboard-fill', title: 'Adolescentes', desc: 'Acompañamiento emocional, vocacional y conductual durante una etapa llena de cambios y decisiones importantes.' },
+                { icon: 'bi-people-fill', title: 'Adultos', desc: 'Psicoterapia individual, de pareja y familiar, terapia de lenguaje y bienestar integral para la vida adulta.' },
+              ].map((a) => (
+                <Reveal className="cx-card" key={a.title} y={20}>
+                  <span className="ic"><i className={`bi ${a.icon}`} /></span>
+                  <h3>{a.title}</h3>
+                  <p>{a.desc}</p>
+                  <Link to="/servicios" className="cx-card-link">
+                    Ver servicios <i className="bi bi-arrow-right" />
+                  </Link>
+                </Reveal>
+              ))}
             </div>
           </div>
         </section>

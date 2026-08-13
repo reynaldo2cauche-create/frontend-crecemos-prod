@@ -7,6 +7,7 @@ export default defineConfig({
   // Servidor de desarrollo: permite exponerlo en la red / por túnel
   // para compartir el local sin desplegar. Solo afecta `npm run dev`.
   server: {
+    port: 5173,          // puerto fijo para este proyecto (evita chocar con otro dev en 5173)
     host: true,          // escucha en la red (0.0.0.0), habilita la Network URL
     allowedHosts: true,  // acepta dominios de túnel (ngrok / trycloudflare, etc.)
   },

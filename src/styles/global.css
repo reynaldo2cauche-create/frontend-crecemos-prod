@@ -22,7 +22,7 @@ body, html {
 }
 
 /* Padding SOLO para el contenido interno de las secciones, EXCEPTO contacto y modales */
-main > *:not(.contact) > *:not(.modal-detalle-paciente) {
+main > *:not(.contact):not(.cx-modal-backdrop) > *:not(.modal-detalle-paciente) {
   padding-left: clamp(1rem, 5vw, 6rem) !important;
   padding-right: clamp(1rem, 5vw, 6rem) !important;
 }
