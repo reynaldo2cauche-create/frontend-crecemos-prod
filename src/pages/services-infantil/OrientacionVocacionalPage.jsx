@@ -1,269 +1,176 @@
-// src/pages/services-infantil/OrientacionVocacionalPage.jsx
-import React from "react";
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { initializePageScripts } from '../../utils/initScripts';
+import Reveal from '../../components/public/Reveal';
+import RevealText from '../../components/public/RevealText';
+import Decor from '../../components/public/Decor';
 
-import  {initializePageScripts}  from '../../utils/initScripts';
+const bloques = [
+  {
+    eyebrow: '¿Por qué es importante?',
+    icon: 'bi-stars',
+    titulo: '¿Por qué es importante?',
+    intro: 'Elegir una carrera es una de las decisiones más importantes de la vida. Una buena orientación vocacional permite:',
+    imagen: '/assets/img/servicios/porqueelegircarrera.webp',
+    puntos: [
+      'Identificar habilidades, intereses y valores personales.',
+      'Explorar opciones de estudio y profesiones acordes al perfil.',
+      'Evitar frustraciones y cambios de carrera innecesarios.',
+      'Fomentar la motivación y seguridad en la elección profesional.',
+    ],
+    rev: false,
+  },
+  {
+    eyebrow: '¿A quién está dirigido?',
+    icon: 'bi-people',
+    titulo: '¿A quién está dirigido?',
+    intro: 'Nuestro servicio de orientación vocacional está diseñado para distintos perfiles:',
+    imagen: '/assets/img/servicios/aquienorientacion.webp',
+    puntos: [
+      'Estudiantes de secundaria que aún no deciden qué carrera seguir.',
+      'Jóvenes que desean confirmar si su elección es la adecuada.',
+      'Personas que buscan cambiar de profesión o especializarse.',
+    ],
+    rev: true,
+  },
+  {
+    eyebrow: '¿Cómo es el proceso?',
+    icon: 'bi-signpost-2',
+    titulo: '¿Cómo es el proceso?',
+    intro: 'Ofrecemos un proceso integral y personalizado que incluye:',
+    imagen: '/assets/img/servicios/procesoorientacion.webp',
+    puntos: [
+      'Evaluaciones psicométricas y test vocacionales.',
+      'Análisis de intereses, habilidades y aptitudes.',
+      'Asesoramiento individualizado con un especialista.',
+      'Información sobre el campo laboral y tendencias del mercado.',
+    ],
+    nota: 'Toma una decisión informada y construye tu futuro con confianza.',
+    rev: false,
+  },
+];
+
+const profesionales = [
+  {
+    nombre: 'Lic. Giselle Burgos',
+    cargo: 'Psicología',
+    credLabel: 'CPsP',
+    credNumero: '66683',
+    imagen: '/assets/img/servicios/Lic. Giselle (1).webp',
+  },
+];
 
 const OrientacionVocacionalPage = () => {
-
-
   useEffect(() => {
-       initializePageScripts();
-     }, []); 
-  
+    initializePageScripts();
+  }, []);
+
   return (
-    <main>
-      {/* Page Title */}
-      <div className="page-title page-title-custom" data-aos="fade">
-        <span className="bubble bubble1"></span>
-        <span className="bubble bubble2"></span>
-        <span className="bubble bubble3"></span>
-
-        <div className="container text-center">
-          <h1 className="section-title text-center">Orientación Vocacional</h1>
-          <p className="page-subtitle">
-            Te ayudamos a descubrir tu vocación, intereses y habilidades para
-            tomar decisiones acertadas sobre tu futuro académico y profesional
-            con especialistas calificados.
-          </p>
-          <nav className="breadcrumbs mt-3">
-            <ol>
-              <li><Link to="/">Inicio</Link></li>
-              <li><Link to="/servicios">Servicios</Link></li>
-              <li className="current">Orientación Vocacional</li>
-            </ol>
-          </nav>
+    <main className="cx-page">
+      {/* ============================ ENCABEZADO =========================== */}
+      <section className="cx-subhero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-compass" /> Área Infantil y Adolescentes</span>
+            <RevealText as="h1" text="Orientación Vocacional" />
+            <p>
+              Te ayudamos a descubrir tu vocación, intereses y habilidades para tomar decisiones
+              acertadas sobre tu futuro académico y profesional, con especialistas calificados.
+            </p>
+            <nav className="cx-breadcrumb">
+              <Link to="/">Inicio</Link>
+              <i className="bi bi-chevron-right" />
+              <Link to="/servicios">Servicios</Link>
+              <i className="bi bi-chevron-right" />
+              <span>Orientación Vocacional</span>
+            </nav>
+          </Reveal>
         </div>
-      </div>
+      </section>
 
-      {/* Features Section */}
-      <section id="orientacion-vocacional" className="features section">
-        <div className="container">
-          <div className="d-flex justify-content-center">
-            <ul className="nav nav-tabs" data-aos="fade-up" data-aos-delay="100">
-              <li className="nav-item">
-                <a
-                  className="nav-link active show"
-                  data-bs-toggle="tab"
-                  data-bs-target="#orientacion-tab-1"
-                >
-                  <h4>¿Por qué es importante?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#orientacion-tab-2"
-                >
-                  <h4>¿A quién va dirigido?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#orientacion-tab-3"
-                >
-                  <h4>¿Cómo es el proceso?</h4>
-                </a>
-              </li>
-            </ul>
+      {/* ===================== BLOQUES (antes tabs, ahora inline) ========== */}
+      {bloques.map((b, i) => (
+        <section
+          key={b.titulo}
+          className={`cx-section ${i % 2 === 0 ? 'cx-section--soft' : 'cx-section--deco'}`}
+        >
+          {i % 2 !== 0 && <Decor variant="b" />}
+          <div className="cx-container">
+            <div className={`cx-split ${b.rev ? 'cx-split--rev' : ''}`}>
+              <Reveal className="cx-media" direction={b.rev ? 'left' : 'right'} y={0}>
+                <img src={b.imagen} alt={b.titulo} loading="lazy" />
+              </Reveal>
+
+              <Reveal className="cx-split-body" direction={b.rev ? 'right' : 'left'} y={0} delay={0.1}>
+                <span className="cx-eyebrow"><i className={`bi ${b.icon}`} /> {b.eyebrow}</span>
+                <RevealText as="h2" text={b.titulo} />
+                <p>{b.intro}</p>
+                <ul className="cx-checks">
+                  {b.puntos.map((pt) => (
+                    <li key={pt}><i className="bi bi-check-circle-fill" /><span>{pt}</span></li>
+                  ))}
+                </ul>
+                {b.nota && (
+                  <p><i className="bi bi-lightbulb-fill" style={{ color: 'var(--cx-primary)' }} /> {b.nota}</p>
+                )}
+              </Reveal>
+            </div>
           </div>
+        </section>
+      ))}
 
-          <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
-            {/* Tab 1 */}
-            <div
-              className="tab-pane fade active show"
-              id="orientacion-tab-1"
-            >
-              <div className="row">
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>¿Por qué es importante?</h3>
-                  <p className="fst-italic">
-                    Elegir una carrera es una de las decisiones más importantes
-                    en la vida. Contar con una adecuada orientación vocacional
-                    permite:
-                  </p>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Identificar habilidades, intereses y valores personales.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Explorar opciones de estudio y profesiones acorde al
-                        perfil del estudiante.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Evitar frustraciones y cambios de carrera innecesarios.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Fomentar la motivación y seguridad en la elección
-                        profesional.
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img
-                    src="/assets/img/servicios/porqueelegircarrera.webp"
-                    alt="Por qué es importante la Orientación Vocacional"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+      {/* ============================ PROFESIONALES ======================= */}
+      <section className="cx-section cx-section--tight cx-section--alt">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-person-badge" /> Nuestro equipo</span>
+            <RevealText as="h2" text="Profesionales" />
+            <p>Conoce a la especialista encargada de brindar la orientación vocacional.</p>
+          </Reveal>
 
-            {/* Tab 2 */}
-            <div className="tab-pane fade" id="orientacion-tab-2">
-              <div className="row">
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>¿A quién está dirigido?</h3>
-                  <p className="fst-italic">
-                    Nuestro servicio de orientación vocacional está diseñado
-                    para diferentes perfiles de personas:
-                  </p>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Estudiantes de secundaria que aún no han decidido qué
-                        carrera seguir.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Jóvenes que desean confirmar si su elección es la
-                        adecuada.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Personas que buscan cambiar de profesión o especializarse
-                        en otro ámbito.
-                      </span>
-                    </li>
-                  </ul>
+          <div className="cx-pros">
+            {profesionales.map((p, i) => (
+              <Reveal className="cx-pro" key={p.credNumero} delay={0.08 * i} y={22}>
+                <div className="cx-pro-media">
+                  <img src={p.imagen} alt={p.nombre} loading="lazy" />
                 </div>
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img
-                    src="/assets/img/servicios/aquienorientacion.webp"
-                    alt="A quién va dirigida la Orientación Vocacional"
-                    className="img-fluid"
-                  />
+                <span className="cx-pro-hint"><i className="bi bi-hand-index-thumb" /> Ver información</span>
+                <div className="cx-pro-panel">
+                  <span className="cx-pro-role"><i className="bi bi-heart-pulse" /> {p.cargo}</span>
+                  <h3>{p.nombre}</h3>
+                  <span className="cx-pro-cred">
+                    <i className="bi bi-award-fill" /> {p.credLabel} <b>{p.credNumero}</b>
+                  </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Tab 3 */}
-            <div className="tab-pane fade" id="orientacion-tab-3">
-              <div className="row">
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>¿Cómo es el proceso?</h3>
-                  <p className="fst-italic">
-                    En nuestro centro ofrecemos un proceso integral y
-                    personalizado que incluye:
-                  </p>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Evaluaciones psicométricas y test vocacionales.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Análisis de intereses, habilidades y aptitudes.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Asesoramiento individualizado con un especialista.
-                      </span>
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i>{" "}
-                      <span>
-                        Información sobre el campo laboral y tendencias del
-                        mercado.
-                      </span>
-                    </li>
-                  </ul>
-                  <div className="mt-4">
-                    <p>
-                      <i className="bi bi-lightbulb-fill"></i> Toma una decisión
-                      informada y construye tu futuro con confianza.
-                    </p>
-                    <p>
-                      <i className="bi bi-calendar-check-fill"></i> ¡Agenda tu
-                      evaluación vocacional hoy mismo!
-                    </p>
-                  </div>
-                </div>
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img
-                    src="/assets/img/servicios/procesoorientacion.webp"
-                    alt="Proceso de Orientación Vocacional"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Team Section */}
-      <section
-        id="team"
-        className="team-area section-padding"
-        data-aos="fade-up"
-      >
-        <div className="container">
-          <div className="section-title text-center">
-            <h2>Profesionales</h2>
-            <p>
-              Conoce a las especialistas encargadas de brindar la orientación
-              vocacional.
-            </p>
-          </div>
-
-          <div className="row justify-content-center">
-            {/* Lic. Giselle Burgos */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/Lic. Giselle (1).webp"
-                  alt="Lic. Giselle Burgos"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Giselle Burgos</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">66683</span>
-                  </div>
-                </div>
+      {/* ============================== CTA FINAL ========================= */}
+      <section className="cx-section cx-section--pt-sm">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-calendar-check" /> Estamos para ayudarte</span>
+              <RevealText as="h2" text="Descubre tu carrera ideal" />
+              <p>Agenda tu evaluación vocacional y toma una decisión informada sobre tu futuro, con acompañamiento profesional.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Reservar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver más servicios
+                </Link>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>

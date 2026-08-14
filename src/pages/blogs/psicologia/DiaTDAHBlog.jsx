@@ -113,7 +113,7 @@ export default function DiaTDAHBlog() {
 
       {/* Aprendizaje y funciones ejecutivas */}
       <div className="mb-5" data-aos="fade-up">
-        <h3 style={{ color: '#9b59b6', fontWeight: '700', marginBottom: '1rem' }}>
+        <h3 style={{ color: 'var(--cx-primary-700)', fontWeight: '700', marginBottom: '1rem' }}>
           <i className="bi bi-mortarboard-fill me-2"></i>
           Aprendizaje y funciones ejecutivas
         </h3>
@@ -127,7 +127,7 @@ export default function DiaTDAHBlog() {
 
       {/* Regulación emocional */}
       <div className="mb-5" data-aos="fade-up">
-        <h3 style={{ color: '#e74c3c', fontWeight: '700', marginBottom: '1rem' }}>
+        <h3 style={{ color: 'var(--cx-primary-700)', fontWeight: '700', marginBottom: '1rem' }}>
           <i className="bi bi-heart-pulse-fill me-2"></i>
           Regulación emocional
         </h3>
@@ -142,7 +142,7 @@ export default function DiaTDAHBlog() {
 
       {/* Relaciones sociales */}
       <div className="mb-5" data-aos="fade-up">
-        <h3 style={{ color: '#3498db', fontWeight: '700', marginBottom: '1rem' }}>
+        <h3 style={{ color: 'var(--cx-primary-700)', fontWeight: '700', marginBottom: '1rem' }}>
           <i className="bi bi-people-fill me-2"></i>
           Relaciones sociales
         </h3>
@@ -158,7 +158,7 @@ export default function DiaTDAHBlog() {
 
       {/* Autoestima */}
       <div className="mb-5" data-aos="fade-up">
-        <h3 style={{ color: '#27ae60', fontWeight: '700', marginBottom: '1rem' }}>
+        <h3 style={{ color: 'var(--cx-primary-700)', fontWeight: '700', marginBottom: '1rem' }}>
           <i className="bi bi-emoji-smile-fill me-2"></i>
           Autoestima
         </h3>
@@ -267,17 +267,19 @@ export default function DiaTDAHBlog() {
         ].map((estrategia, i) => (
           <div className="col-md-6" data-aos="fade-up" data-aos-delay={i * 50} key={i}>
             <div style={{
-              background: '#f8e8ff',
-              border: '2px solid #9b59b6',
-              borderRadius: '12px',
-              padding: '1.25rem',
+              background: '#fff',
+              border: '1px solid var(--cx-line)',
+              borderLeft: '4px solid var(--cx-primary)',
+              borderRadius: 'var(--cx-r-md)',
+              padding: '1.25rem 1.4rem',
               display: 'flex',
               alignItems: 'center',
               gap: '1rem',
-              height: '100%'
+              height: '100%',
+              boxShadow: 'var(--cx-shadow-sm)'
             }}>
-              <i className="bi bi-check-circle-fill" style={{ fontSize: '1.75rem', color: '#9b59b6', flexShrink: 0 }}></i>
-              <span style={{ fontSize: '1.05rem', fontWeight: '600', color: '#555' }}>{estrategia}</span>
+              <i className="bi bi-check-circle-fill" style={{ fontSize: '1.5rem', color: 'var(--cx-primary)', flexShrink: 0 }}></i>
+              <span style={{ fontSize: '1.02rem', fontWeight: '600', color: 'var(--cx-ink-2)' }}>{estrategia}</span>
             </div>
           </div>
         ))}
@@ -328,7 +330,7 @@ export default function DiaTDAHBlog() {
       <hr className="my-5" />
 
       {/* Mensaje final */}
-      <div className="mb-5" data-aos="fade-up" style={{
+      <div className="mb-5 cx-blog-msgband" data-aos="fade-up" style={{
         background: 'linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%)',
         color: '#fff',
         borderRadius: '12px',
@@ -356,56 +358,24 @@ export default function DiaTDAHBlog() {
       <hr className="my-5" />
 
       {/* Bloque de autora */}
-      <div className="author-credits mb-5" data-aos="fade-up">
-        <div style={{
-          background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-          padding: '2rem',
-          borderRadius: '12px',
-          border: '2px solid #9b59b6'
-        }}>
-          <h4 style={{ marginBottom: '1.5rem', color: '#2d465e', fontWeight: '700', fontSize: '1.1rem' }}>
-            Elaborado por:
-          </h4>
-          <div className="d-flex align-items-start mb-3">
-            <div style={{
-              width: '60px',
-              height: '60px',
-              background: 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: '1rem',
-              flexShrink: '0'
-            }}>
-              <i className="bi bi-person-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
-            </div>
-            <div style={{ flex: '1' }}>
-              <h5 style={{ marginBottom: '0.5rem', color: '#2d465e', fontWeight: '700', fontSize: '1.15rem' }}>
-                Lic. Giselle Burgos Del Rosario
-              </h5>
-              <p style={{ marginBottom: '0.75rem', color: '#666', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                <i className="bi bi-award-fill me-2" style={{ color: '#9b59b6' }}></i>
-                Psicóloga Clínica - Centro Crecemos
-              </p>
-              <a
-                href="https://www.crecemos.com.pe"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#9b59b6',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  fontSize: '0.95rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <i className="bi bi-globe me-2"></i>
-                www.crecemos.com.pe
-              </a>
-            </div>
+      <div className="author-credits" data-aos="fade-up">
+        <div className="d-flex align-items-center gap-3">
+          <div className="author-avatar">
+            <i className="bi bi-person-circle" style={{ fontSize: '4rem', color: 'var(--cx-primary)' }}></i>
+          </div>
+          <div>
+            <h4 style={{ marginBottom: '0.25rem' }}>Lic. Giselle Burgos Del Rosario</h4>
+            <p style={{ marginBottom: '0.4rem', color: 'var(--cx-muted)', fontSize: '0.95rem' }}>
+              <strong>Psicóloga Clínica – Centro Crecemos</strong>
+            </p>
+            <a
+              href="https://www.crecemos.com.pe"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--cx-primary-700)', fontWeight: 600, fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <i className="bi bi-globe me-2"></i> www.crecemos.com.pe
+            </a>
           </div>
         </div>
       </div>
@@ -414,15 +384,15 @@ export default function DiaTDAHBlog() {
 
       {/* Referencias */}
       <div className="mb-5" style={{
-        background: '#f8f9fa',
-        border: '2px solid #ddd',
-        borderRadius: '12px',
+        background: 'var(--cx-surface)',
+        border: '1px solid var(--cx-line)',
+        borderRadius: 'var(--cx-r-lg)',
         padding: '2rem'
       }}>
-        <h3 style={{ fontWeight: '700', marginBottom: '1.5rem', color: '#333' }}>
+        <h3 style={{ fontWeight: '700', marginBottom: '1.5rem', color: 'var(--cx-ink)' }}>
           Referencias bibliográficas
         </h3>
-        <div style={{ fontSize: '0.95rem', lineHeight: '1.8', color: '#555' }}>
+        <div style={{ fontSize: '0.95rem', lineHeight: '1.8', color: 'var(--cx-ink-2)' }}>
           <p className="mb-3">
             <strong>American Academy of Pediatrics.</strong> (2019). Clinical Practice Guideline for the Diagnosis,
             Evaluation, and Treatment of ADHD in Children and Adolescents. <em>Pediatrics, 144</em>(4), e20192528.

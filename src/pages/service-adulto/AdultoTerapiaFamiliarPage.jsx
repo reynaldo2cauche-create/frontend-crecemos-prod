@@ -1,237 +1,182 @@
-import React from 'react'
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { initializePageScripts } from '../../utils/initScripts';
+import Reveal from '../../components/public/Reveal';
+import RevealText from '../../components/public/RevealText';
+import Decor from '../../components/public/Decor';
 
-import  {initializePageScripts}  from '../../utils/initScripts';
+const bloques = [
+  {
+    eyebrow: '¿Qué es?',
+    icon: 'bi-people-fill',
+    titulo: '¿Qué es la terapia familiar?',
+    intro: 'La terapia familiar ayuda a fortalecer los lazos, mejorar la comunicación y resolver conflictos que afectan la convivencia. Es un espacio seguro donde cada miembro puede expresar sus emociones y trabajar en soluciones conjuntas.',
+    imagen: '/assets/img/servicios/queesterapiafamiliar.webp',
+    puntos: [
+      'Sesiones presenciales y virtuales disponibles.',
+      'Acompañamiento de especialistas en terapia familiar.',
+      'Un espacio neutral donde todos son escuchados.',
+    ],
+    nota: 'Fortalezcamos juntos los lazos familiares.',
+    rev: false,
+  },
+  {
+    eyebrow: 'Señales',
+    icon: 'bi-clipboard-check',
+    titulo: '¿Cuándo acudir a terapia familiar?',
+    intro: 'Es un buen momento para acudir si en casa hay:',
+    imagen: '/assets/img/servicios/cuandoirterapiafamiliar.webp',
+    puntos: [
+      'Problemas de comunicación o discusiones frecuentes.',
+      'Cambios importantes: divorcio, mudanza o pérdida de un ser querido.',
+      'Dificultades en la crianza de los hijos.',
+      'Conflictos entre hermanos o familiares cercanos.',
+      'Estrés, ansiedad o depresión en algún miembro de la familia.',
+    ],
+    rev: true,
+  },
+  {
+    eyebrow: 'Nuestro enfoque',
+    icon: 'bi-signpost-2',
+    titulo: '¿Cómo trabajamos?',
+    intro: 'Acompañamos a la familia con un proceso claro y empático:',
+    imagen: '/assets/img/servicios/procesoterapiafamiliar.webp',
+    puntos: [
+      'Evaluación de la dinámica familiar y sus desafíos.',
+      'Técnicas para mejorar la comunicación y resolver conflictos.',
+      'Estrategias para fortalecer la unión y la empatía.',
+      'Acompañamiento emocional para adaptarse a los cambios.',
+    ],
+    nota: 'Reserven su cita y comiencen su proceso de cambio.',
+    rev: false,
+  },
+];
 
- const AdultoTerapiaFamiliarPage = () => {
+const profesionales = [
+  {
+    nombre: 'Lic. Giselle Burgos',
+    cargo: 'Psicología',
+    credLabel: 'CPsP',
+    credNumero: '66683',
+    imagen: '/assets/img/servicios/Lic. Giselle (1).webp',
+  },
+];
 
-    useEffect(() => {
-          initializePageScripts();
-        }, []); 
+const AdultoTerapiaFamiliarPage = () => {
+  useEffect(() => {
+    initializePageScripts();
+  }, []);
 
-    return (
-    <main>
-      {/* Título */}
-      <div className="page-title page-title-custom" data-aos="fade">
-        <span className="bubble bubble1"></span>
-        <span className="bubble bubble2"></span>
-        <span className="bubble bubble3"></span>
-
-        <div className="container text-center">
-          <h1 className="section-title text-center">Terapia Familiar</h1>
-          <p className="page-subtitle">
-            Ofrecemos un espacio seguro para familias con dificultades en la
-            comunicación o conflictos internos. Buscamos fortalecer los lazos y
-            promover una convivencia armoniosa con el apoyo de especialistas.
-          </p>
-          <nav className="breadcrumbs mt-3">
-            <ol>
-              <li><Link to="/">Inicio</Link></li>
-              <li><Link to="/servicios">Servicios</Link></li>
-              <li className="current">Terapia Familiar</li>
-            </ol>
-          </nav>
+  return (
+    <main className="cx-page">
+      {/* ============================ ENCABEZADO =========================== */}
+      <section className="cx-subhero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-people-fill" /> Área Adultos</span>
+            <RevealText as="h1" text="Terapia Familiar" />
+            <p>
+              Un espacio seguro para familias con dificultades en la comunicación o conflictos
+              internos, para fortalecer los lazos y promover una convivencia armoniosa.
+            </p>
+            <nav className="cx-breadcrumb">
+              <Link to="/">Inicio</Link>
+              <i className="bi bi-chevron-right" />
+              <Link to="/servicios">Servicios</Link>
+              <i className="bi bi-chevron-right" />
+              <span>Terapia Familiar</span>
+            </nav>
+          </Reveal>
         </div>
-      </div>
+      </section>
 
-      {/* Sección de Tabs */}
-      <section id="terapia-familiar" className="features section">
-        <div className="container">
-          <div className="d-flex justify-content-center">
-            <ul className="nav nav-tabs" data-aos="fade-up" data-aos-delay="100">
-              <li className="nav-item">
-                <a
-                  className="nav-link active show"
-                  data-bs-toggle="tab"
-                  data-bs-target="#familiar-tab-1"
-                >
-                  <h4>¿Qué es la Terapia Familiar?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#familiar-tab-2"
-                >
-                  <h4>¿Cuándo acudir?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#familiar-tab-3"
-                >
-                  <h4>¿Cómo trabajamos?</h4>
-                </a>
-              </li>
-            </ul>
+      {/* ===================== BLOQUES (inline, sin tabs) ================= */}
+      {bloques.map((b, i) => (
+        <section
+          key={b.titulo}
+          className={`cx-section ${i % 2 === 0 ? 'cx-section--soft' : 'cx-section--deco'}`}
+        >
+          {i % 2 !== 0 && <Decor variant="b" />}
+          <div className="cx-container">
+            <div className={`cx-split ${b.rev ? 'cx-split--rev' : ''}`}>
+              <Reveal className="cx-media" direction={b.rev ? 'left' : 'right'} y={0}>
+                <img src={b.imagen} alt={b.titulo} loading="lazy" />
+              </Reveal>
+
+              <Reveal className="cx-split-body" direction={b.rev ? 'right' : 'left'} y={0} delay={0.1}>
+                <span className="cx-eyebrow"><i className={`bi ${b.icon}`} /> {b.eyebrow}</span>
+                <RevealText as="h2" text={b.titulo} />
+                <p>{b.intro}</p>
+                <ul className="cx-checks">
+                  {b.puntos.map((pt) => (
+                    <li key={pt}><i className="bi bi-check-circle-fill" /><span>{pt}</span></li>
+                  ))}
+                </ul>
+                {b.nota && (
+                  <p><i className="bi bi-heart" style={{ color: 'var(--cx-primary)' }} /> {b.nota}</p>
+                )}
+              </Reveal>
+            </div>
           </div>
+        </section>
+      ))}
 
-          <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
-            {/* Qué es */}
-            <div className="tab-pane fade active show" id="familiar-tab-1">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>Terapia Familiar</h3>
-                  <p className="fst-italic">
-                    La terapia de familia ayuda a fortalecer los lazos
-                    familiares, mejorar la comunicación y resolver conflictos
-                    que afectan la convivencia. Es un espacio seguro donde cada
-                    miembro puede expresar sus emociones y trabajar en
-                    soluciones conjuntas.
-                  </p>
-                  <p>
-                    💻 Sesiones <strong>presenciales</strong> y{" "}
-                    <strong>virtuales</strong> disponibles para mayor comodidad.
-                  </p>
-                  <p
-                    className="fw-bold fst-italic"
-                    style={{ color: "var(--accent-color)" }}
-                  >
-                    ✨ ¡Fortalezcamos juntos los lazos familiares! Agenda tu
-                    consulta hoy mismo. 💙
-                  </p>
-                </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/queesterapiafamiliar.webp"
-                    alt="Terapia Familiar"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+      {/* ============================ PROFESIONALES ======================= */}
+      <section className="cx-section cx-section--tight cx-section--alt">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-person-badge" /> Nuestro equipo</span>
+            <RevealText as="h2" text="Profesionales" />
+            <p>Conoce a la especialista encargada de brindar la terapia familiar.</p>
+          </Reveal>
 
-            {/* Cuándo acudir */}
-            <div className="tab-pane fade" id="familiar-tab-2">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>¿Cuándo acudir a terapia de familia?</h3>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Problemas de
-                      comunicación o discusiones frecuentes.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Cambios importantes
-                      como divorcio, mudanza o pérdida de un ser querido.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Dificultades en la
-                      crianza de los hijos.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Conflictos entre
-                      hermanos o familiares cercanos.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Situaciones de
-                      estrés, ansiedad o depresión en algún miembro de la
-                      familia.
-                    </li>
-                  </ul>
+          <div className="cx-pros">
+            {profesionales.map((p, i) => (
+              <Reveal className="cx-pro" key={p.credNumero} delay={0.08 * i} y={22}>
+                <div className="cx-pro-media">
+                  <img src={p.imagen} alt={p.nombre} loading="lazy" />
                 </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/cuandoirterapiafamiliar.webp"
-                    alt="Cuándo acudir a Terapia Familiar"
-                    className="img-fluid"
-                  />
+                <span className="cx-pro-hint"><i className="bi bi-hand-index-thumb" /> Ver información</span>
+                <div className="cx-pro-panel">
+                  <span className="cx-pro-role"><i className="bi bi-heart-pulse" /> {p.cargo}</span>
+                  <h3>{p.nombre}</h3>
+                  <span className="cx-pro-cred">
+                    <i className="bi bi-award-fill" /> {p.credLabel} <b>{p.credNumero}</b>
+                  </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Cómo trabajamos */}
-            <div className="tab-pane fade" id="familiar-tab-3">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>¿Cómo trabajamos?</h3>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Evaluación de la
-                      dinámica familiar y sus desafíos.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Técnicas para mejorar
-                      la comunicación y la resolución de conflictos.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Estrategias para
-                      fortalecer la unión y la empatía en la familia.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Acompañamiento
-                      emocional para adaptarse a los cambios.
-                    </li>
-                  </ul>
-                  <div className="mt-4">
-                    <p>
-                      <i className="bi bi-calendar-check-fill"></i> Reserva tu
-                      cita ahora mismo y comienza tu proceso de cambio.
-                    </p>
-                    <a
-                      href="https://api.whatsapp.com/send?phone=+51957064401&text=Hola,%20me%20gustaría%20información%20sobre%20la%20terapia%20familiar."
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-warning fw-bold mt-2"
-                    >
-                      <i className="bi bi-whatsapp"></i> Reservar Cita
-                    </a>
-                  </div>
-                </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/procesoterapiafamiliar.webp"
-                    alt="Cómo trabajamos en Terapia Familiar"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Profesionales */}
-      <section id="team" className="team-area section-padding" data-aos="fade-up">
-        <div className="container">
-          <div className="section-title text-center">
-            <h2>Profesionales</h2>
-            <p>
-              Conoce a las especialistas encargadas de brindar las terapias
-              familiares.
-            </p>
-          </div>
-
-          <div className="row justify-content-center">
-            {/* Lic. Giselle Burgos */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/Lic. Giselle (1).webp"
-                  alt="Lic. Giselle Burgos"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Giselle Burgos</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">66683</span>
-                  </div>
-                </div>
+      {/* ============================== CTA FINAL ========================= */}
+      <section className="cx-section cx-section--pt-sm">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-people-fill" /> Estamos para ayudarte</span>
+              <RevealText as="h2" text="Reconstruyan lazos en familia" />
+              <p>Escríbenos y coordina la primera sesión, presencial o virtual. Un espacio neutral donde toda la familia es escuchada.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Reservar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver más servicios
+                </Link>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>
   );
-
 };
 
 export default AdultoTerapiaFamiliarPage;

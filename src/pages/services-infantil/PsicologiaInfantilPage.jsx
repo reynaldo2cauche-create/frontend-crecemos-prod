@@ -1,181 +1,199 @@
-import React from "react";
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { initializePageScripts } from '../../utils/initScripts';
+import Reveal from '../../components/public/Reveal';
+import RevealText from '../../components/public/RevealText';
+import Decor from '../../components/public/Decor';
 
-import  {initializePageScripts}  from '../../utils/initScripts';
+const tratamientos = [
+  {
+    imagen: '/assets/img/servicios/1.webp',
+    titulo: 'Terapia Cognitivo-Conductual (TCC)',
+    descripcion: 'Ayuda a modificar patrones de pensamiento y conducta en niños con ansiedad, depresión o problemas de comportamiento.',
+  },
+  {
+    imagen: '/assets/img/servicios/2.webp',
+    titulo: 'Terapia de Juego',
+    descripcion: 'Usa el juego para que los niños expresen emociones, superen traumas y desarrollen habilidades sociales.',
+  },
+  {
+    imagen: '/assets/img/servicios/3.webp',
+    titulo: 'Intervención en Problemas de Aprendizaje',
+    descripcion: 'Estrategias para superar dificultades como dislexia, déficit de atención o problemas de memoria.',
+  },
+  {
+    imagen: '/assets/img/servicios/4.webp',
+    titulo: 'Orientación y Apoyo Familiar',
+    descripcion: 'Herramientas para que los padres entiendan y manejen las necesidades emocionales y conductuales de sus hijos.',
+  },
+];
+
+const indicadores = [
+  'Tiene dificultades para gestionar emociones como tristeza, ira o ansiedad',
+  'Presenta problemas de conducta: agresividad, desobediencia o aislamiento',
+  'Le cuesta relacionarse con otros niños o expresar lo que piensa',
+  'Ha pasado por cambios importantes (separación, pérdida o mudanza)',
+  'Tiene diagnóstico de TEA, TDAH o señales de baja autoestima',
+  'Muestra miedos excesivos o recurrentes que afectan su día a día',
+];
+
+const profesionales = [
+  {
+    nombre: 'Lic. Cherly Quiquia',
+    cargo: 'Psicología',
+    credLabel: 'CPsP',
+    credNumero: '34980',
+    imagen: '/assets/img/servicios/terapeutica-cherQui.webp',
+  },
+  {
+    nombre: 'Lic. Giselle Burgos',
+    cargo: 'Psicología',
+    credLabel: 'CPsP',
+    credNumero: '66683',
+    imagen: '/assets/img/servicios/Lic. Giselle (1).webp',
+  },
+];
+
 const PsicologiaInfantilPage = () => {
-  
   useEffect(() => {
     initializePageScripts();
-  }, []); 
-
+  }, []);
 
   return (
-    <main>
-      {/* Título de página */}
-      <div className="page-title page-title-custom" data-aos="fade">
-        <span className="bubble bubble1"></span>
-        <span className="bubble bubble2"></span>
-        <span className="bubble bubble3"></span>
-
-        <div className="container text-center">
-          <h1 className="section-title text-center">Psicología Infantil</h1>
-          <p className="page-subtitle">
-            Brindamos apoyo emocional y conductual a niños y adolescentes, favoreciendo su desarrollo
-            integral, autoestima y bienestar psicológico, junto a sus familias.
-          </p>
-          <nav className="breadcrumbs mt-3">
-            <ol>
-              <li><Link to="/">Inicio</Link></li>
-              <li><Link to="/servicios">Servicios</Link></li>
-              <li className="current">Psicología Infantil</li>
-            </ol>
-          </nav>
-        </div>
-      </div>
-
-      {/* Tratamientos */}
-      <section id="features-psicologia" className="features-cards section">
-        <div className="container">
-          <div className="section-title text-center mb-5" data-aos="fade-up">
-            <h2>Principales Tratamientos en Psicología Infantil</h2>
+    <main className="cx-page">
+      {/* ============================ ENCABEZADO =========================== */}
+      <section className="cx-subhero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-heart" /> Área Infantil y Adolescentes</span>
+            <RevealText as="h1" text="Psicología Infantil" />
             <p>
-              Ofrecemos terapias especializadas para el manejo emocional, el desarrollo de habilidades
-              sociales y el fortalecimiento familiar.
+              Apoyo emocional y conductual para niños y adolescentes, favoreciendo su desarrollo
+              integral, autoestima y bienestar psicológico, junto a sus familias.
             </p>
-          </div>
+            <nav className="cx-breadcrumb">
+              <Link to="/">Inicio</Link>
+              <i className="bi bi-chevron-right" />
+              <Link to="/servicios">Servicios</Link>
+              <i className="bi bi-chevron-right" />
+              <span>Psicología Infantil</span>
+            </nav>
+          </Reveal>
+        </div>
+      </section>
 
-          <div className="row gy-4 justify-content-center">
-            {/* Card 1 */}
-            <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="100">
-              <div className="feature-box blue text-center">
-                <img src="/assets/img/servicios/1.webp" alt="Terapia Cognitivo-Conductual (TCC)" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
-                <h4>Terapia Cognitivo-Conductual (TCC)</h4>
-                <p>
-                  Ayuda a modificar patrones de pensamiento y comportamiento en niños con ansiedad, depresión,
-                  o problemas de conducta.
-                </p>
-              </div>
-            </div>
+      {/* ============================ TRATAMIENTOS ======================== */}
+      <section className="cx-section cx-section--soft">
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-stars" /> Lo que trabajamos</span>
+            <RevealText as="h2" text="Principales tratamientos" />
+            <p>Terapias especializadas para el manejo emocional, las habilidades sociales y el fortalecimiento familiar.</p>
+          </Reveal>
 
-            {/* Card 2 */}
-            <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="200">
-              <div className="feature-box green text-center">
-                <img src="/assets/img/servicios/2.webp" alt="Terapia de Juego" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
-                <h4>Terapia de Juego</h4>
-                <p>
-                  Utiliza el juego como herramienta para que los niños expresen emociones, superen traumas y
-                  desarrollen habilidades sociales.
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="300">
-              <div className="feature-box orange text-center">
-                <img src="/assets/img/servicios/3.webp" alt="Intervención en Problemas de Aprendizaje" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
-                <h4>Intervención en Problemas de Aprendizaje</h4>
-                <p>
-                  Ofrece estrategias para superar dificultades académicas como dislexia, déficit de atención
-                  o problemas de memoria.
-                </p>
-              </div>
-            </div>
-
-            {/* Card 4 */}
-            <div className="col-xl-6 col-md-6" data-aos="zoom-in" data-aos-delay="400">
-              <div className="feature-box blue text-center">
-                <img src="/assets/img/servicios/4.webp" alt="Orientación y Apoyo Familiar" className="img-fluid mb-3 rounded" style={{ width: "227px" }} />
-                <h4>Orientación y Apoyo Familiar</h4>
-                <p>
-                  Brinda herramientas a los padres para entender y manejar de manera efectiva las necesidades
-                  emocionales y conductuales de sus hijos.
-                </p>
-              </div>
-            </div>
+          <div className="cx-trats">
+            {tratamientos.map((t, i) => (
+              <Reveal className="cx-trat" key={t.titulo} delay={0.08 * i} y={22}>
+                <div className="cx-trat-media">
+                  <img src={t.imagen} alt={t.titulo} loading="lazy" />
+                </div>
+                <div className="cx-trat-body">
+                  <h3>{t.titulo}</h3>
+                  <p>{t.descripcion}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ¿Cuándo acudir? */}
-      <section id="featurestl" className="features section">
-        <div className="container">
-          <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
-            <div className="tab-pane fade active show" id="features-tab-1">
-              <div className="row">
-                {/* Texto */}
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>¿Cuándo acudir a Psicología Infantil?</h3>
-                  <p className="fst-italic">Considera acudir a Psicología Infantil si tu niño:</p>
-                  <ul>
-                    <li><i className="bi bi-check2-all"></i> Tiene dificultades para gestionar emociones como tristeza, ira o ansiedad.</li>
-                    <li><i className="bi bi-check2-all"></i> Presenta problemas de conducta, como agresividad, desobediencia o aislamiento.</li>
-                    <li><i className="bi bi-check2-all"></i> Enfrenta desafíos sociales, como dificultad para relacionarse con otros niños o expresar sus pensamientos.</li>
-                    <li><i className="bi bi-check2-all"></i> Ha pasado por cambios significativos en su vida, como separación de los padres, pérdida de un ser querido o mudanzas.</li>
-                    <li><i className="bi bi-check2-all"></i> Tiene diagnósticos como TEA, TDAH o problemas de aprendizaje, o señales de baja autoestima o inseguridad.</li>
-                    <li><i className="bi bi-check2-all"></i> Muestra miedos excesivos o recurrentes que afectan su día a día.</li>
-                  </ul>
-                  <p className="mt-3">
-                    La psicología infantil brinda apoyo emocional, herramientas de afrontamiento y estrategias para mejorar la conducta,
-                    fortalecer la autoestima y favorecer un desarrollo emocional saludable.
-                  </p>
-                </div>
+      {/* ===================== ¿CUÁNDO ACUDIR? ============================ */}
+      <section className="cx-section cx-section--deco">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <div className="cx-split">
+            <Reveal className="cx-media" direction="right" y={0}>
+              <img
+                src="/assets/img/servicios/psicologia.webp"
+                alt="Sesión de psicología infantil"
+              />
+            </Reveal>
 
-                {/* Imagen */}
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img src="/assets/img/servicios/psicologia.webp" alt="Psicología Infantil" className="img-fluid rounded" />
-                </div>
-              </div>
-            </div>
+            <Reveal className="cx-split-body" direction="left" y={0} delay={0.1}>
+              <span className="cx-eyebrow"><i className="bi bi-clipboard-check" /> Señales de alerta</span>
+              <RevealText as="h2" text="¿Cuándo acudir a psicología infantil?" />
+              <p>Considera una evaluación si tu niño o niña:</p>
+              <ul className="cx-checks">
+                {indicadores.map((item) => (
+                  <li key={item}><i className="bi bi-check-circle-fill" /><span>{item}</span></li>
+                ))}
+              </ul>
+              <p>
+                La psicología infantil brinda apoyo emocional, herramientas de afrontamiento
+                y estrategias para fortalecer la autoestima y un desarrollo emocional saludable.
+              </p>
+              <Link to="/contactanos" className="cx-btn cx-btn-primary" style={{ marginTop: 22 }}>
+                Agendar evaluación <i className="bi bi-arrow-right" />
+              </Link>
+            </Reveal>
           </div>
         </div>
       </section>
 
-      {/* Profesionales */}
-      <section id="team" className="team-area section-padding" data-aos="fade-up">
-        <div className="container">
-          <div className="section-title text-center">
-            <h2>Profesionales</h2>
+      {/* ============================ PROFESIONALES ======================= */}
+      <section className="cx-section cx-section--tight cx-section--alt">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-person-badge" /> Nuestro equipo</span>
+            <RevealText as="h2" text="Profesionales" />
             <p>Conoce a las especialistas encargadas de brindar la psicología infantil.</p>
-          </div>
+          </Reveal>
 
-          <div className="row justify-content-center">
-            {/* Lic. Cherly Quiquia */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img src="/assets/img/servicios/terapeutica-cherQui.webp" alt="Lic.Cherly Quiquia" />
-                <div className="team-content">
-                  <h3 className="title">Lic. Cherly Quiquia</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">34980</span>
-                  </div>
+          <div className="cx-pros">
+            {profesionales.map((p, i) => (
+              <Reveal className="cx-pro" key={p.credNumero} delay={0.08 * i} y={22}>
+                <div className="cx-pro-media">
+                  <img src={p.imagen} alt={p.nombre} loading="lazy" />
                 </div>
-              </div>
-            </div>
-
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img src="/assets/img/servicios/Lic. Giselle (1).webp" alt="Lic. Giselle Burgos" style={{ height: "300px" }} />
-                <div className="team-content">
-                  <h3 className="title">Lic. Giselle Burgos</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">66683</span>
-                  </div>
+                <span className="cx-pro-hint"><i className="bi bi-hand-index-thumb" /> Ver información</span>
+                <div className="cx-pro-panel">
+                  <span className="cx-pro-role"><i className="bi bi-heart-pulse" /> {p.cargo}</span>
+                  <h3>{p.nombre}</h3>
+                  <span className="cx-pro-cred">
+                    <i className="bi bi-award-fill" /> {p.credLabel} <b>{p.credNumero}</b>
+                  </span>
                 </div>
-              </div>
-            </div>
-
-          
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
-      
+
+      {/* ============================== CTA FINAL ========================= */}
+      <section className="cx-section cx-section--pt-sm">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-emoji-smile" /> Estamos para ayudarte</span>
+              <RevealText as="h2" text="Acompañamos el bienestar de tu niño" />
+              <p>Escríbenos y coordina una evaluación inicial. Te orientamos según el caso de tu niño, sin compromiso.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Reservar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver más servicios
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
     </main>
   );
 };

@@ -234,7 +234,7 @@ export default function DiaSindromeDownBlog() {
       {/* Referencias */}
       <h3 className="mb-4" data-aos="fade-up">Referencias</h3>
 
-      <div className="referencias-list mb-5" style={{ fontSize: '0.9rem', color: '#666', lineHeight: '1.8' }}>
+      <div className="referencias-list mb-5" style={{ fontSize: '0.9rem', color: 'var(--cx-ink-2)', lineHeight: '1.8' }}>
         <ul>
           <li>American Association on Intellectual and Developmental Disabilities. (2021). Intellectual disability: Definition, diagnosis, classification, and systems of supports (12th ed.).</li>
           <li>Chapman, R. S., & Hesketh, L. J. (2000). Behavioral phenotype of individuals with Down syndrome. <em>Mental Retardation and Developmental Disabilities Research Reviews</em>, 6(2), 84–95.</li>

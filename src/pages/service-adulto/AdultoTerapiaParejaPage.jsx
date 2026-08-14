@@ -1,252 +1,184 @@
-// src/pages/services-adultos/TerapiaParejaPage.jsx
-import React from "react";
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import  {initializePageScripts}  from '../../utils/initScripts';
- const AdultoTerapiaParejaPage = () => {
+import { initializePageScripts } from '../../utils/initScripts';
+import Reveal from '../../components/public/Reveal';
+import RevealText from '../../components/public/RevealText';
+import Decor from '../../components/public/Decor';
 
-   useEffect(() => {
-         initializePageScripts();
-  }, []); 
-  
+const bloques = [
+  {
+    eyebrow: '¿Qué es?',
+    icon: 'bi-heart-fill',
+    titulo: '¿Qué es la terapia de pareja?',
+    intro: 'La relación de pareja enfrenta desafíos a lo largo del tiempo, desde problemas de comunicación hasta conflictos emocionales o cambios en la dinámica familiar. Nuestra terapia ayuda a fortalecer el vínculo, mejorar la convivencia y construir una relación más saludable.',
+    imagen: '/assets/img/servicios/queesterapiapeareja.webp',
+    puntos: [
+      'Sesiones presenciales y virtuales disponibles.',
+      'Acompañamiento de especialistas en terapia de pareja.',
+      'Un espacio neutral, empático y confidencial.',
+    ],
+    nota: 'No esperes a que los problemas se agraven: fortalece tu relación hoy.',
+    rev: false,
+  },
+  {
+    eyebrow: 'Señales',
+    icon: 'bi-clipboard-check',
+    titulo: '¿Cuándo acudir a terapia de pareja?',
+    intro: 'Es un buen momento para acudir si notan:',
+    imagen: '/assets/img/servicios/cuandoirterapiaparema.webp',
+    puntos: [
+      'Dificultades en la comunicación y malentendidos frecuentes.',
+      'Conflictos constantes sin solución efectiva.',
+      'Falta de confianza o situaciones de infidelidad.',
+      'Pérdida de conexión emocional o afectiva.',
+      'Estrés por cambios familiares o laborales.',
+      'Diferencias en la crianza o en la toma de decisiones.',
+      'Sensación de estancamiento en la relación.',
+    ],
+    rev: true,
+  },
+  {
+    eyebrow: 'Nuestro enfoque',
+    icon: 'bi-signpost-2',
+    titulo: '¿Cómo trabajamos?',
+    intro: 'Acompañamos a la pareja con un proceso claro y práctico:',
+    imagen: '/assets/img/servicios/procesoterapiapareja.webp',
+    puntos: [
+      'Evaluación inicial: identificamos los principales problemas y necesidades.',
+      'Técnicas efectivas de comunicación y resolución de conflictos.',
+      'Estrategias para fortalecer la relación y recuperar la confianza.',
+      'Espacios de escucha activa y empatía para mejorar la convivencia.',
+    ],
+    nota: 'Reserven su cita y comiencen su proceso de cambio.',
+    rev: false,
+  },
+];
+
+const profesionales = [
+  {
+    nombre: 'Lic. Giselle Burgos',
+    cargo: 'Psicología',
+    credLabel: 'CPsP',
+    credNumero: '66683',
+    imagen: '/assets/img/servicios/Lic. Giselle (1).webp',
+  },
+];
+
+const AdultoTerapiaParejaPage = () => {
+  useEffect(() => {
+    initializePageScripts();
+  }, []);
+
   return (
-    <main>
-      {/* Page Title */}
-      <div className="page-title page-title-custom" data-aos="fade">
-        <span className="bubble bubble1"></span>
-        <span className="bubble bubble2"></span>
-        <span className="bubble bubble3"></span>
-
-        <div className="container text-center">
-          <h1 className="section-title text-center">Terapia de Pareja</h1>
-          <p className="page-subtitle">
-            Acompañamos a las parejas en la mejora de su comunicación, el
-            fortalecimiento de la confianza y la resolución de conflictos,
-            promoviendo relaciones saludables y duraderas con el apoyo de
-            especialistas en terapia de pareja.
-          </p>
-          <nav className="breadcrumbs mt-3">
-            <ol>
-              <li><Link to="/">Inicio</Link></li>
-              <li><Link to="/servicios">Servicios</Link></li>
-              <li className="current">Terapia de Pareja</li>
-            </ol>
-          </nav>
+    <main className="cx-page">
+      {/* ============================ ENCABEZADO =========================== */}
+      <section className="cx-subhero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-heart-fill" /> Área Adultos</span>
+            <RevealText as="h1" text="Terapia de Pareja" />
+            <p>
+              Acompañamos a las parejas a mejorar su comunicación, fortalecer la confianza
+              y resolver conflictos, promoviendo relaciones saludables y duraderas.
+            </p>
+            <nav className="cx-breadcrumb">
+              <Link to="/">Inicio</Link>
+              <i className="bi bi-chevron-right" />
+              <Link to="/servicios">Servicios</Link>
+              <i className="bi bi-chevron-right" />
+              <span>Terapia de Pareja</span>
+            </nav>
+          </Reveal>
         </div>
-      </div>
+      </section>
 
-      {/* Features Section */}
-      <section id="terapia-pareja" className="features section">
-        <div className="container">
-          <div className="d-flex justify-content-center">
-            <ul className="nav nav-tabs" data-aos="fade-up" data-aos-delay="100">
-              <li className="nav-item">
-                <a
-                  className="nav-link active show"
-                  data-bs-toggle="tab"
-                  data-bs-target="#pareja-tab-1"
-                >
-                  <h4>¿Qué es la Terapia de Pareja?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#pareja-tab-2"
-                >
-                  <h4>¿Cuándo acudir?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#pareja-tab-3"
-                >
-                  <h4>¿Cómo trabajamos?</h4>
-                </a>
-              </li>
-            </ul>
+      {/* ===================== BLOQUES (inline, sin tabs) ================= */}
+      {bloques.map((b, i) => (
+        <section
+          key={b.titulo}
+          className={`cx-section ${i % 2 === 0 ? 'cx-section--soft' : 'cx-section--deco'}`}
+        >
+          {i % 2 !== 0 && <Decor variant="b" />}
+          <div className="cx-container">
+            <div className={`cx-split ${b.rev ? 'cx-split--rev' : ''}`}>
+              <Reveal className="cx-media" direction={b.rev ? 'left' : 'right'} y={0}>
+                <img src={b.imagen} alt={b.titulo} loading="lazy" />
+              </Reveal>
+
+              <Reveal className="cx-split-body" direction={b.rev ? 'right' : 'left'} y={0} delay={0.1}>
+                <span className="cx-eyebrow"><i className={`bi ${b.icon}`} /> {b.eyebrow}</span>
+                <RevealText as="h2" text={b.titulo} />
+                <p>{b.intro}</p>
+                <ul className="cx-checks">
+                  {b.puntos.map((pt) => (
+                    <li key={pt}><i className="bi bi-check-circle-fill" /><span>{pt}</span></li>
+                  ))}
+                </ul>
+                {b.nota && (
+                  <p><i className="bi bi-heart" style={{ color: 'var(--cx-primary)' }} /> {b.nota}</p>
+                )}
+              </Reveal>
+            </div>
           </div>
+        </section>
+      ))}
 
-          <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
-            {/* Qué es */}
-            <div
-              className="tab-pane fade active show"
-              id="pareja-tab-1"
-            >
-              <div className="row">
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>Terapia de Pareja</h3>
-                  <p className="fst-italic">
-                    La relación de pareja enfrenta diversos desafíos a lo largo
-                    del tiempo, desde problemas de comunicación hasta conflictos
-                    emocionales o cambios en la dinámica familiar. Nuestra
-                    terapia está diseñada para ayudar a fortalecer la relación,
-                    mejorar la convivencia y fomentar un vínculo más saludable.
-                  </p>
-                  <p>
-                    💻 Sesiones <strong>presenciales</strong> y{" "}
-                    <strong>virtuales</strong> disponibles.
-                  </p>
-                  <p
-                    className="fw-bold fst-italic"
-                    style={{ color: "var(--accent-color)" }}
-                  >
-                    ❤️ ¡No esperes a que los problemas se agraven! Agenda una
-                    consulta y empieza a fortalecer tu relación.
-                  </p>
-                </div>
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img
-                    src="/assets/img/servicios/queesterapiapeareja.webp"
-                    alt="Terapia de Pareja"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+      {/* ============================ PROFESIONALES ======================= */}
+      <section className="cx-section cx-section--tight cx-section--alt">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-person-badge" /> Nuestro equipo</span>
+            <RevealText as="h2" text="Profesionales" />
+            <p>Conoce a la especialista encargada de brindar la terapia de pareja.</p>
+          </Reveal>
 
-            {/* Cuándo acudir */}
-            <div className="tab-pane fade" id="pareja-tab-2">
-              <div className="row">
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>¿Cuándo acudir a terapia de pareja?</h3>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Dificultades en la
-                      comunicación y frecuentes malentendidos.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Conflictos constantes
-                      sin solución efectiva.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Falta de confianza o
-                      situaciones de infidelidad.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Pérdida de conexión
-                      emocional o afectiva.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Estrés por cambios
-                      familiares o laborales.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Diferencias en la
-                      crianza de los hijos o toma de decisiones.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Sensación de
-                      estancamiento en la relación.
-                    </li>
-                  </ul>
+          <div className="cx-pros">
+            {profesionales.map((p, i) => (
+              <Reveal className="cx-pro" key={p.credNumero} delay={0.08 * i} y={22}>
+                <div className="cx-pro-media">
+                  <img src={p.imagen} alt={p.nombre} loading="lazy" />
                 </div>
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img
-                    src="/assets/img/servicios/cuandoirterapiaparema.webp"
-                    alt="Cuándo acudir a Terapia de Pareja"
-                    className="img-fluid"
-                  />
+                <span className="cx-pro-hint"><i className="bi bi-hand-index-thumb" /> Ver información</span>
+                <div className="cx-pro-panel">
+                  <span className="cx-pro-role"><i className="bi bi-heart-pulse" /> {p.cargo}</span>
+                  <h3>{p.nombre}</h3>
+                  <span className="cx-pro-cred">
+                    <i className="bi bi-award-fill" /> {p.credLabel} <b>{p.credNumero}</b>
+                  </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Cómo trabajamos */}
-            <div className="tab-pane fade" id="pareja-tab-3">
-              <div className="row">
-                <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                  <h3>¿Cómo trabajamos?</h3>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Evaluación inicial:
-                      identificamos los principales problemas y necesidades de
-                      la pareja.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Terapia basada en
-                      técnicas efectivas de comunicación y resolución de
-                      conflictos.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Desarrollo de
-                      estrategias para fortalecer la relación y recuperar la
-                      confianza.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Espacios de escucha
-                      activa y empatía para mejorar la convivencia.
-                    </li>
-                  </ul>
-                  <div className="mt-4">
-                    <p>
-                      <i className="bi bi-calendar-check-fill"></i> Reserva tu
-                      cita ahora mismo y comienza tu proceso de cambio.
-                    </p>
-                    <a
-                      href="https://api.whatsapp.com/send?phone=+51957064401&text=%E2%9D%A4%EF%B8%8F%20%C2%A1Hola!%20Estoy%20interesado%20en%20la%20terapia%20de%20pareja,%20%C2%BFme%20pueden%20dar%20detalles?"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn-warning fw-bold mt-2"
-                    >
-                      <i className="bi bi-whatsapp"></i> Reservar Cita
-                    </a>
-                  </div>
-                </div>
-                <div className="col-lg-6 order-1 order-lg-2 text-center">
-                  <img
-                    src="/assets/img/servicios/procesoterapiapareja.webp"
-                    alt="Cómo trabajamos en Terapia de Pareja"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Profesionales */}
-      <section
-        id="team"
-        className="team-area section-padding"
-        data-aos="fade-up"
-      >
-        <div className="container">
-          <div className="section-title text-center">
-            <h2>Profesionales</h2>
-            <p>
-              Conoce a las especialistas encargadas de brindar las terapias de
-              pareja.
-            </p>
-          </div>
-
-          <div className="row justify-content-center">
-            {/* Lic. Giselle Burgos */}
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/Lic. Giselle (1).webp"
-                  alt="Lic. Giselle Burgos"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Giselle Burgos</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">66683</span>
-                  </div>
-                </div>
+      {/* ============================== CTA FINAL ========================= */}
+      <section className="cx-section cx-section--pt-sm">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-heart-fill" /> Estamos para ayudarte</span>
+              <RevealText as="h2" text="Fortalezcan su relación juntos" />
+              <p>Escríbenos y coordina su primera sesión, presencial o virtual. Un espacio neutral y confidencial para reconectar.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Reservar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver más servicios
+                </Link>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>
   );
 };
+
 export default AdultoTerapiaParejaPage;

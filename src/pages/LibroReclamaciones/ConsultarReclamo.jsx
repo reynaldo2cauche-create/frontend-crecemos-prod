@@ -71,8 +71,9 @@ const ConsultarReclamo = () => {
               </div>
 
               {/* Formulario de consulta */}
-              <div className="lr-item" data-aos="fade-up" data-aos-delay="60">
-                <h3 data-numero="1">Datos de Consulta</h3>
+              <div className="lr-panel" data-aos="fade-up" data-aos-delay="60">
+                <div className="lr-item">
+                <h3>Datos de Consulta</h3>
 
                 <form onSubmit={handleConsultar}>
                   <div className="row g-3">
@@ -99,14 +100,15 @@ const ConsultarReclamo = () => {
 
                   {error && <div className="lr-error mt-3">{error}</div>}
                 </form>
+                </div>
               </div>
 
               {/* Resultado */}
               {reclamo && (
-                <>
+                <div className="lr-panel">
                   {/* Encabezado resultado */}
                   <div className="lr-resultado-header" data-aos="fade-up">
-                    <h3 data-numero="2">Resultado de la Consulta</h3>
+                    <h3>Resultado de la Consulta</h3>
                   </div>
 
                   {/* Información del reclamo en tarjeta */}
@@ -242,7 +244,7 @@ const ConsultarReclamo = () => {
                       </button>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
             </div>

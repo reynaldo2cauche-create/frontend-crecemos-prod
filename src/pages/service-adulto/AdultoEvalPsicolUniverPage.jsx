@@ -1,255 +1,193 @@
-import React from 'react'
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { initializePageScripts } from '../../utils/initScripts';
+import Reveal from '../../components/public/Reveal';
+import RevealText from '../../components/public/RevealText';
+import Decor from '../../components/public/Decor';
 
-import  {initializePageScripts}  from '../../utils/initScripts';
+const bloques = [
+  {
+    eyebrow: '¿Qué es?',
+    icon: 'bi-mortarboard',
+    titulo: 'Evaluación Psicológica Universitaria',
+    intro: 'Un proceso claro, confidencial y alineado con los requerimientos de cada universidad. Contamos con psicólogos colegiados y capacitados en evaluación vocacional, emocional y cognitiva, garantizando un diagnóstico ético y confiable.',
+    imagen: '/assets/img/servicios/queesevaluacionuniversidad.webp',
+    puntos: [
+      'Psicólogos colegiados y capacitados.',
+      'Proceso confidencial y ético.',
+      'Alineado con los requisitos de cada institución.',
+    ],
+    nota: 'Orientamos tu futuro con respaldo profesional.',
+    rev: false,
+  },
+  {
+    eyebrow: '¿Cuándo?',
+    icon: 'bi-clipboard-check',
+    titulo: '¿Cuándo solicitar este servicio?',
+    intro: 'Este servicio es ideal en casos como:',
+    imagen: '/assets/img/servicios/cuandoirevapsicouniversidad.webp',
+    puntos: [
+      'Para cumplir un requisito de ingreso a la universidad.',
+      'Cuando la universidad solicita una evaluación académica o emocional.',
+      'Para decidir sobre cambio de carrera, manejo del estrés u organización del tiempo.',
+    ],
+    rev: true,
+  },
+  {
+    eyebrow: 'Incluye',
+    icon: 'bi-card-checklist',
+    titulo: '¿Qué incluye?',
+    intro: 'El paquete de evaluación contempla:',
+    imagen: '/assets/img/servicios/incluyeevapsicouniversidad.webp',
+    puntos: [
+      'Entrevista clínica.',
+      'Pruebas psicológicas actualizadas.',
+      'Informe psicológico oficial.',
+      'Recomendaciones personalizadas.',
+    ],
+    rev: false,
+  },
+  {
+    eyebrow: 'Ventajas',
+    icon: 'bi-patch-check',
+    titulo: '¿Por qué elegirnos?',
+    intro: 'Nos distingue el acompañamiento cercano y profesional:',
+    imagen: '/assets/img/servicios/porqueelegirnospsicouniversidad.webp',
+    puntos: [
+      'Atención rápida y empática.',
+      'Informes con estándares profesionales.',
+      'Acompañamiento durante todo el proceso.',
+    ],
+    nota: 'Agenda tu cita y prepárate para tu futuro universitario con seguridad.',
+    rev: true,
+  },
+];
 
+const profesionales = [
+  {
+    nombre: 'Lic. Giselle Burgos',
+    cargo: 'Psicología',
+    credLabel: 'CPsP',
+    credNumero: '66683',
+    imagen: '/assets/img/servicios/Lic. Giselle (1).webp',
+  },
+];
 
- const AdultoEvalPsicolUniverPage = () => {
-
-
-   useEffect(() => {
-       initializePageScripts();
-     }, []); 
-
+const AdultoEvalPsicolUniverPage = () => {
+  useEffect(() => {
+    initializePageScripts();
+  }, []);
 
   return (
-    <main>
-      {/* Título de la página */}
-      <div className="page-title page-title-custom" data-aos="fade">
-        <span className="bubble bubble1"></span>
-        <span className="bubble bubble2"></span>
-        <span className="bubble bubble3"></span>
-
-        <div className="container text-center">
-          <h1 className="section-title text-center">
-            Evaluación Psicológica Universitaria
-          </h1>
-          <p className="page-subtitle">
-            En Centro de Terapias CRECEMOS ofrecemos un servicio especializado
-            de Evaluación Psicológica para ingreso o permanencia universitaria,
-            dirigido a estudiantes que requieren presentar un informe profesional
-            ante instituciones educativas superiores.
-          </p>
-         <nav className="breadcrumbs mt-3">
-          <ol>
-            <li><Link to="/">Inicio</Link></li>
-            <li><Link to="/servicios">Servicios</Link></li>
-            <li className="current">Evaluación Psicológica Universitaria</li>
-          </ol>
-        </nav>
+    <main className="cx-page">
+      {/* ============================ ENCABEZADO =========================== */}
+      <section className="cx-subhero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-mortarboard" /> Área Adultos</span>
+            <RevealText as="h1" text="Evaluación Psicológica Universitaria" />
+            <p>
+              Evaluación para ingreso o permanencia universitaria, con informes que cumplen
+              los requisitos institucionales y respaldo de profesionales colegiados.
+            </p>
+            <nav className="cx-breadcrumb">
+              <Link to="/">Inicio</Link>
+              <i className="bi bi-chevron-right" />
+              <Link to="/servicios">Servicios</Link>
+              <i className="bi bi-chevron-right" />
+              <span>Evaluación Psicológica Universitaria</span>
+            </nav>
+          </Reveal>
         </div>
-      </div>
+      </section>
 
-      {/* Features Section */}
-      <section
-        id="eval-psicologica-universitaria"
-        className="features section"
-      >
-        <div className="container">
-          <div className="d-flex justify-content-center">
-            <ul
-              className="nav nav-tabs"
-              data-aos="fade-up"
-              data-aos-delay="100"
-            >
-              <li className="nav-item">
-                <a
-                  className="nav-link active show"
-                  data-bs-toggle="tab"
-                  data-bs-target="#eval-tab-1"
-                >
-                  <h4>¿Qué es?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#eval-tab-2"
-                >
-                  <h4>¿Cuándo solicitarlo?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#eval-tab-3"
-                >
-                  <h4>¿Qué incluye?</h4>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className="nav-link"
-                  data-bs-toggle="tab"
-                  data-bs-target="#eval-tab-4"
-                >
-                  <h4>¿Por qué elegirnos?</h4>
-                </a>
-              </li>
-            </ul>
+      {/* ===================== BLOQUES (inline, sin tabs) ================= */}
+      {bloques.map((b, i) => (
+        <section
+          key={b.titulo}
+          className={`cx-section ${i % 2 === 0 ? 'cx-section--soft' : 'cx-section--deco'}`}
+        >
+          {i % 2 !== 0 && <Decor variant="b" />}
+          <div className="cx-container">
+            <div className={`cx-split ${b.rev ? 'cx-split--rev' : ''}`}>
+              <Reveal className="cx-media" direction={b.rev ? 'left' : 'right'} y={0}>
+                <img src={b.imagen} alt={b.titulo} loading="lazy" />
+              </Reveal>
+
+              <Reveal className="cx-split-body" direction={b.rev ? 'right' : 'left'} y={0} delay={0.1}>
+                <span className="cx-eyebrow"><i className={`bi ${b.icon}`} /> {b.eyebrow}</span>
+                <RevealText as="h2" text={b.titulo} />
+                <p>{b.intro}</p>
+                <ul className="cx-checks">
+                  {b.puntos.map((pt) => (
+                    <li key={pt}><i className="bi bi-check-circle-fill" /><span>{pt}</span></li>
+                  ))}
+                </ul>
+                {b.nota && (
+                  <p><i className="bi bi-stars" style={{ color: 'var(--cx-primary)' }} /> {b.nota}</p>
+                )}
+              </Reveal>
+            </div>
           </div>
+        </section>
+      ))}
 
-          <div
-            className="tab-content"
-            data-aos="fade-up"
-            data-aos-delay="200"
-          >
-            {/* Qué es */}
-            <div className="tab-pane fade active show" id="eval-tab-1">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>Evaluación Psicológica Universitaria</h3>
-                  <p className="fst-italic">
-                    Nuestro proceso está diseñado para ser claro, confidencial y
-                    alineado con los requerimientos de cada universidad.
-                    Contamos con psicólogos colegiados y capacitados en
-                    evaluación vocacional, emocional y cognitiva, garantizando
-                    un diagnóstico ético y confiable.
-                  </p>
-                  <p
-                    className="fw-bold fst-italic"
-                    style={{ color: "var(--accent-color)" }}
-                  >
-                    🎓 Orientamos tu futuro con respaldo profesional.
-                  </p>
-                </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/queesevaluacionuniversidad.webp"
-                    alt="Evaluación Psicológica Universitaria"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+      {/* ============================ PROFESIONALES ======================= */}
+      <section className="cx-section cx-section--tight cx-section--alt">
+        <Decor variant="b" />
+        <div className="cx-container">
+          <Reveal className="cx-section-head">
+            <span className="cx-eyebrow"><i className="bi bi-person-badge" /> Nuestro equipo</span>
+            <RevealText as="h2" text="Profesionales" />
+            <p>Conoce a la especialista encargada de realizar las evaluaciones.</p>
+          </Reveal>
 
-            {/* Cuándo acudir */}
-            <div className="tab-pane fade" id="eval-tab-2">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>¿Cuándo solicitar este servicio?</h3>
-                  <ul>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Para cumplir con un
-                      requisito de ingreso a la universidad.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Cuando la universidad
-                      solicite una evaluación por razones académicas o
-                      emocionales.
-                    </li>
-                    <li>
-                      <i className="bi bi-check2-all"></i> Para tomar decisiones
-                      sobre cambio de carrera, manejo del estrés u organización
-                      del tiempo.
-                    </li>
-                  </ul>
+          <div className="cx-pros">
+            {profesionales.map((p, i) => (
+              <Reveal className="cx-pro" key={p.credNumero} delay={0.08 * i} y={22}>
+                <div className="cx-pro-media">
+                  <img src={p.imagen} alt={p.nombre} loading="lazy" />
                 </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/cuandoirevapsicouniversidad.webp"
-                    alt="Cuándo solicitar Evaluación Psicológica Universitaria"
-                    className="img-fluid"
-                  />
+                <span className="cx-pro-hint"><i className="bi bi-hand-index-thumb" /> Ver información</span>
+                <div className="cx-pro-panel">
+                  <span className="cx-pro-role"><i className="bi bi-heart-pulse" /> {p.cargo}</span>
+                  <h3>{p.nombre}</h3>
+                  <span className="cx-pro-cred">
+                    <i className="bi bi-award-fill" /> {p.credLabel} <b>{p.credNumero}</b>
+                  </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Qué incluye */}
-            <div className="tab-pane fade" id="eval-tab-3">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>¿Qué incluye?</h3>
-                  <ul>
-                    <li><i className="bi bi-check2-all"></i> Entrevista clínica.</li>
-                    <li><i className="bi bi-check2-all"></i> Pruebas psicológicas actualizadas.</li>
-                    <li><i className="bi bi-check2-all"></i> Informe psicológico oficial.</li>
-                    <li><i className="bi bi-check2-all"></i> Recomendaciones personalizadas.</li>
-                  </ul>
-                </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/incluyeevapsicouniversidad.webp"
-                    alt="Qué incluye Evaluación Psicológica Universitaria"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Por qué elegirnos */}
-            <div className="tab-pane fade" id="eval-tab-4">
-              <div className="row">
-                <div className="col-lg-6 d-flex flex-column justify-content-center">
-                  <h3>¿Por qué elegirnos?</h3>
-                  <ul>
-                    <li><i className="bi bi-check2-all"></i> Atención rápida y empática.</li>
-                    <li><i className="bi bi-check2-all"></i> Informes con estándares profesionales.</li>
-                    <li><i className="bi bi-check2-all"></i> Acompañamiento durante todo el proceso.</li>
-                  </ul>
-                  <div className="mt-4">
-                    <p>
-                      <i className="bi bi-calendar-check-fill"></i> 📍 Agenda tu
-                      cita y prepárate para tu futuro universitario con
-                      seguridad.
-                    </p>
-                    <a
-                      href="https://api.whatsapp.com/send?phone=+51957064401&text=Hola.%20Deseo%20información%20sobre%20la%20Evaluación%20Psicológica%20Universitaria."
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-warning fw-bold mt-2"
-                    >
-                      <i className="bi bi-whatsapp"></i> Reservar Cita
-                    </a>
-                  </div>
-                </div>
-                <div className="col-lg-6 text-center">
-                  <img
-                    src="/assets/img/servicios/porqueelegirnospsicouniversidad.webp"
-                    alt="Por qué elegirnos Evaluación Psicológica Universitaria"
-                    className="img-fluid"
-                  />
-                </div>
-              </div>
-            </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Profesionales */}
-      <section id="team" className="team-area section-padding" data-aos="fade-up">
-        <div className="container">
-          <div className="section-title text-center">
-            <h2>Profesionales</h2>
-            <p>Conoce a las especialistas encargadas de las evaluaciones.</p>
-          </div>
-
-          <div className="row justify-content-center">
-            <div className="col-lg-4 col-md-6 col-sm-12">
-              <div className="our-team">
-                <img
-                  src="/assets/img/servicios/Lic. Giselle (1).webp"
-                  alt="Lic. Giselle Burgos"
-                  style={{ height: "300px" }}
-                />
-                <div className="team-content">
-                  <h3 className="title">Lic. Giselle Burgos</h3>
-                  <span className="post">Psicología</span>
-                  <div className="credential-info">
-                    <i className="bi bi-award-fill"></i>
-                    <span className="credential-label">CPsP:</span>
-                    <span className="credential-number">66683</span>
-                  </div>
-                </div>
+      {/* ============================== CTA FINAL ========================= */}
+      <section className="cx-section cx-section--pt-sm">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-mortarboard" /> Estamos para ayudarte</span>
+              <RevealText as="h2" text="Prepárate para tu futuro universitario" />
+              <p>Escríbenos y agenda tu evaluación. Te entregamos un informe con validez oficial y acompañamiento en todo el proceso.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Reservar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/servicios" className="cx-btn cx-cta-btn-ghost">
+                  Ver más servicios
+                </Link>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>
   );
 };
+
 export default AdultoEvalPsicolUniverPage;

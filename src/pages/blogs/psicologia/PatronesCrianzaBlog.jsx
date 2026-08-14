@@ -615,18 +615,7 @@ export default function PatronesCrianzaBlog() {
 
       <hr className="my-5" />
 
-      {/* Llamado a la acción final */}
-      <div className="text-center p-5" style={{ backgroundColor: '#f8f9fa', borderRadius: '12px' }} data-aos="fade-up">
-        <h3 className="mb-3">¿Necesitas apoyo en tu proceso de crianza?</h3>
-        <p className="mb-4">
-          En Centro Crecemos contamos con profesionales especializados en acompañamiento familiar
-          y crianza positiva.
-        </p>
-        <a href="/servicios" className="btn btn-primary btn-lg">
-          <i className="bi bi-calendar-check me-2"></i>
-          Agenda una Consulta
-        </a>
-      </div>
+     
     </>
   );
 }

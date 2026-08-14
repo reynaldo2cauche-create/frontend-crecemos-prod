@@ -801,6 +801,8 @@
   aspect-ratio: 4 / 3;
 }
 .cx-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* variante: imagen a la derecha en desktop (en móvil sigue arriba) */
+@media (min-width: 861px) { .cx-split--rev .cx-media { order: 2; } }
 .cx-split-body .cx-eyebrow { margin-bottom: 12px; display: inline-flex; }
 .cx-split-body h2 { font-size: clamp(1.7rem, 3vw, 2.4rem); margin-bottom: 18px; }
 .cx-split-body p { margin-bottom: 14px; }
@@ -2170,6 +2172,428 @@
   .cx-cta-actions .cx-btn { width: 100%; }
   .cx-subhero p { font-size: 1rem; }
   .cx-split-body h2 { margin-bottom: 14px; }
+}
+
+/* =====================================================================
+   PÁGINAS DE SERVICIO · tarjeta de profesional (.cx-pros / .cx-pro)
+   Reutilizable en todas las páginas de detalle de servicio.
+   ===================================================================== */
+/* FIX: la descripción del header (subhero) quedaba pegada a la izquierda porque
+   `.cx-site .cx-page p { margin: 0 }` (0,2,1) le ganaba a `.cx-subhero p` (0,1,1)
+   y le anulaba el `margin: 0 auto`. Con `.cx-site .cx-subhero p` (0,2,1) + orden
+   posterior, recuperamos el centrado del párrafo bajo el título en TODAS las páginas. */
+.cx-site .cx-subhero p { max-width: 600px; margin-left: auto; margin-right: auto; }
+
+/* Modificadores de espaciado compacto (reutilizables) */
+.cx-section--tight { padding-top: clamp(36px, 5vw, 64px); padding-bottom: clamp(36px, 5vw, 64px); }
+.cx-section--pt-sm { padding-top: clamp(24px, 3.5vw, 44px); }
+.cx-section--pb-sm { padding-bottom: clamp(24px, 3.5vw, 44px); }
+
+.cx-pros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
+  gap: 26px;
+  justify-content: center;
+}
+/* Retrato: solo foto por defecto; en HOVER se revela el panel con todos
+   los datos del profesional (como el card antiguo, pero renovado). */
+.cx-pro {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--cx-r-lg);
+  overflow: hidden;
+  box-shadow: var(--cx-shadow);
+  isolation: isolate;
+  transition: transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s;
+}
+.cx-pro:hover { transform: translateY(-8px); box-shadow: var(--cx-shadow-lg); }
+.cx-pro-media {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--cx-primary-050), var(--cx-lila-100));
+}
+.cx-pro-media img {
+  width: 100%; height: 100%; display: block;
+  object-fit: cover; object-position: top center;
+  transition: transform .7s cubic-bezier(.2,.8,.2,1);
+}
+.cx-pro:hover .cx-pro-media img { transform: scale(1.07); }
+/* borde luminoso de marca al pasar el cursor */
+.cx-pro::before {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  border-radius: inherit; border: 1.5px solid transparent;
+  transition: border-color .45s ease, box-shadow .45s ease;
+}
+.cx-pro:hover::before { border-color: rgba(194,99,249,.55); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+
+/* pista sutil (aparece solo cuando NO hay hover) */
+.cx-pro-hint {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 2;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 15px; border-radius: var(--cx-r-pill);
+  background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.34);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap;
+  transition: opacity .35s ease;
+}
+.cx-pro-hint i { color: #ffd9c4; }
+.cx-pro:hover .cx-pro-hint { opacity: 0; }
+
+/* PANEL que se desliza desde abajo en hover con todos los datos */
+.cx-pro-panel {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  padding: 30px 26px 28px;
+  display: flex; flex-direction: column; align-items: flex-start;
+  background: linear-gradient(180deg, rgba(30,20,44,0) 0%, rgba(28,17,44,.72) 34%, rgba(22,13,36,.95) 100%);
+  transform: translateY(101%);
+  transition: transform .5s cubic-bezier(.2,.8,.2,1);
+}
+.cx-pro:hover .cx-pro-panel { transform: translateY(0); }
+/* contenido con leve stagger al entrar */
+.cx-pro-panel > * { opacity: 0; transform: translateY(12px); transition: opacity .4s ease, transform .5s cubic-bezier(.2,.8,.2,1); }
+.cx-pro:hover .cx-pro-panel > * { opacity: 1; transform: translateY(0); }
+.cx-pro:hover .cx-pro-panel > *:nth-child(1) { transition-delay: .1s; }
+.cx-pro:hover .cx-pro-panel > *:nth-child(2) { transition-delay: .16s; }
+.cx-pro:hover .cx-pro-panel > *:nth-child(3) { transition-delay: .22s; }
+.cx-pro-role {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: #ffd9c4; margin: 0 0 8px;
+}
+.cx-site .cx-pro-panel h3 {
+  font-family: var(--cx-display); font-weight: 500; font-size: 1.55rem;
+  color: #fff; margin: 0 0 16px; line-height: 1.15;
+  text-shadow: 0 2px 14px rgba(0,0,0,.4);
+}
+.cx-pro-cred {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: var(--cx-r-pill);
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.32);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #fff; font-size: .82rem; font-weight: 700;
+}
+.cx-pro-cred i { color: #ffd9c4; }
+.cx-pro-cred b { font-weight: 800; letter-spacing: .02em; }
+
+@media (hover: none) {
+  /* en táctil no hay hover: mostramos el panel siempre y ocultamos la pista */
+  .cx-pro-hint { display: none; }
+  .cx-pro-panel { transform: translateY(0); }
+  .cx-pro-panel > * { opacity: 1; transform: none; }
+}
+
+/* Lista de indicadores en el split de servicio (checks en tarjetas suaves) */
+.cx-checks { list-style: none; padding: 0; margin: 4px 0 26px; display: grid; gap: 12px; }
+.cx-checks li {
+  display: flex; gap: 12px; align-items: flex-start;
+  color: var(--cx-ink-2); font-size: .98rem; line-height: 1.55;
+}
+.cx-checks li i {
+  flex: 0 0 auto; margin-top: .12em; font-size: 1.15rem; color: var(--cx-primary);
+}
+
+/* Tarjetas de tratamiento CON IMAGEN (foto arriba + texto) */
+.cx-trats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
+.cx-trat {
+  position: relative; display: flex; flex-direction: column; overflow: hidden;
+  background: #fff; border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
+  box-shadow: var(--cx-shadow-sm);
+  transition: transform .38s cubic-bezier(.2,.8,.2,1), box-shadow .38s, border-color .38s;
+}
+.cx-trat:hover { transform: translateY(-7px); box-shadow: var(--cx-shadow); border-color: var(--cx-primary-100); }
+.cx-trat::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; z-index: 2; height: 4px;
+  background: linear-gradient(90deg, var(--cx-primary), var(--cx-primary-700));
+  transform: scaleX(0); transform-origin: left; transition: transform .4s ease;
+}
+.cx-trat:hover::before { transform: scaleX(1); }
+.cx-trat-media {
+  position: relative; aspect-ratio: 4 / 3; overflow: hidden;
+  background: linear-gradient(135deg, var(--cx-primary-050), var(--cx-lila-100));
+}
+.cx-trat-media img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+  transition: transform .6s cubic-bezier(.2,.8,.2,1);
+}
+.cx-trat:hover .cx-trat-media img { transform: scale(1.07); }
+.cx-trat-body { padding: 22px 22px 24px; text-align: center; }
+.cx-site .cx-trat-body h3 {
+  font-family: var(--cx-font); font-weight: 700; font-size: 1.08rem;
+  color: var(--cx-ink); margin: 0 0 8px; line-height: 1.3; text-align: center;
+}
+.cx-site .cx-trat-body p { color: var(--cx-muted); font-size: .92rem; margin: 0; text-align: center; }
+
+/* --------------------------------------------------------------------
+   PLANES / PRECIOS (páginas de evaluación) — .cx-plans / .cx-plan
+   -------------------------------------------------------------------- */
+.cx-plans {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 26px; max-width: 920px; margin-inline: auto; align-items: stretch;
+}
+.cx-plan {
+  position: relative; display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
+  padding: 40px 34px 34px; box-shadow: var(--cx-shadow-sm);
+  transition: transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s, border-color .4s;
+}
+.cx-plan:hover { transform: translateY(-8px); box-shadow: var(--cx-shadow); border-color: var(--cx-primary-100); }
+/* plan destacado (fondo de marca) */
+.cx-plan--popular {
+  border: none; color: #fff; isolation: isolate;
+  background:
+    radial-gradient(100% 120% at 0% 0%, rgba(194,99,249,.45), transparent 46%),
+    linear-gradient(155deg, #574584 0%, #7a5aa8 50%, #a35fc9 100%);
+  box-shadow: var(--cx-shadow-lg);
+}
+.cx-plan-badge {
+  position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+  padding: 7px 20px; border-radius: var(--cx-r-pill); white-space: nowrap;
+  background: linear-gradient(135deg, var(--cx-primary), var(--cx-primary-600)); color: #fff;
+  font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  box-shadow: 0 12px 26px -10px rgba(169,62,240,.7);
+}
+.cx-plan--popular .cx-plan-badge { background: #fff; color: var(--cx-primary-700); }
+.cx-site .cx-plan h3 {
+  font-family: var(--cx-font); font-weight: 700; font-size: 1.22rem; line-height: 1.3;
+  color: var(--cx-ink); margin: 0 0 16px; min-height: 2.6em;
+}
+.cx-site .cx-plan--popular h3 { color: #fff; }
+.cx-plan-price { margin-bottom: 6px; }
+.cx-plan-orig { display: block; text-decoration: line-through; color: var(--cx-muted); font-size: .95rem; font-weight: 600; }
+.cx-plan--popular .cx-plan-orig { color: rgba(255,255,255,.7); }
+.cx-plan-now { display: flex; align-items: baseline; gap: 4px; }
+.cx-plan-cur { font-weight: 700; font-size: 1.1rem; color: var(--cx-primary-700); }
+.cx-plan-amt {
+  font-family: var(--cx-display); font-weight: 500; line-height: 1;
+  font-size: clamp(2.4rem, 4vw, 3.1rem);
+  background: linear-gradient(120deg, var(--cx-primary) 0%, var(--cx-primary-700) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.cx-plan--popular .cx-plan-cur { color: #ffe1cd; }
+.cx-plan--popular .cx-plan-amt {
+  background: linear-gradient(120deg, #ffffff 0%, #ffe1cd 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+/* nota: se usa `.cx-site .cx-page p` (0,2,1) que pisaba el color; por eso
+   los <p> del contenido van con especificidad mayor para que se lean. */
+.cx-site .cx-plan .cx-plan-desc { color: var(--cx-ink-2); font-size: .95rem; margin: 14px 0 20px; }
+.cx-site .cx-plan--popular .cx-plan-desc { color: rgba(255,255,255,.92); }
+.cx-site .cx-plan .cx-plan-inc { font-family: var(--cx-font); font-weight: 700; font-size: .95rem; color: var(--cx-ink); margin: 0 0 12px; }
+.cx-site .cx-plan--popular .cx-plan-inc { color: #fff; }
+.cx-plan-feats { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 11px; }
+.cx-plan-feats li { display: flex; gap: 10px; align-items: flex-start; font-size: .92rem; color: var(--cx-ink-2); line-height: 1.5; }
+.cx-plan--popular .cx-plan-feats li { color: rgba(255,255,255,.92); }
+.cx-plan-feats li > i { flex: 0 0 auto; margin-top: .12em; color: var(--cx-primary); font-size: 1.05rem; }
+.cx-plan--popular .cx-plan-feats li > i { color: #ffd9c4; }
+.cx-plan-feats li.sub { margin-left: 26px; color: var(--cx-muted); font-size: .88rem; }
+.cx-plan--popular .cx-plan-feats li.sub { color: rgba(255,255,255,.8); }
+.cx-plan-feats li.gift > i { color: #c76b3f; }
+.cx-plan--popular .cx-plan-feats li.gift > i { color: #ffd9c4; }
+.cx-plan .cx-btn { margin-top: auto; align-self: flex-start; }
+.cx-plan--popular .cx-btn-primary { background: #fff; color: var(--cx-primary-700); }
+.cx-plan--popular .cx-btn-primary:hover { background: #fff; color: var(--cx-primary-700); transform: translateY(-3px); }
+@media (max-width: 720px) { .cx-plans { grid-template-columns: 1fr; max-width: 460px; } }
+
+/* =====================================================================
+   BLOG · artículo (detalle) — .cx-blogpost / .cx-blogpost-article
+   Reemplaza el <style> antiguo de BlogDetailPage. Da estilo cx- al hero,
+   la portada, la tipografía y a TODAS las clases que usan los blogs.
+   ===================================================================== */
+/* Hero */
+.cx-blogpost-head { max-width: 820px; margin: 0 auto; text-align: center; position: relative; z-index: 1; }
+.cx-site .cx-blogpost-hero h1 { font-size: clamp(1.9rem, 3.6vw, 3rem); margin: 14px 0 18px; text-wrap: balance; }
+.cx-blogpost-meta { display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center; color: var(--cx-muted); font-size: .92rem; font-weight: 600; }
+.cx-blogpost-meta i { color: var(--cx-primary); margin-right: 6px; }
+.cx-blogpost-hero .cx-breadcrumb { margin-top: 20px; }
+
+/* Layout del cuerpo */
+.cx-blogpost-wrap { max-width: 860px; margin: 0 auto; }
+.cx-blogpost-cover {
+  border-radius: var(--cx-r-lg); overflow: hidden; box-shadow: var(--cx-shadow-lg);
+  margin-bottom: clamp(30px, 5vw, 52px);
+  background: linear-gradient(135deg, var(--cx-primary-050), var(--cx-lila-100));
+}
+.cx-blogpost-cover img { display: block; width: 100%; height: auto; }
+
+/* Tipografía del artículo */
+.cx-blogpost-article { font-family: var(--cx-font); font-size: 1.08rem; line-height: 1.85; color: var(--cx-ink-2); }
+.cx-site .cx-blogpost-article p { margin: 0 0 1.4rem; color: var(--cx-ink-2); }
+.cx-blogpost-article strong { color: var(--cx-ink); font-weight: 700; }
+.cx-blogpost-article em { font-style: italic; }
+.cx-blogpost-article a { color: var(--cx-primary-700); font-weight: 600; text-decoration: underline; }
+.cx-blogpost-article .lead {
+  font-size: 1.24rem !important; line-height: 1.8 !important; color: var(--cx-ink) !important;
+  font-weight: 500; border-left: 4px solid var(--cx-primary); padding-left: 22px;
+}
+.cx-blogpost-article hr { border: 0; height: 1px; background: var(--cx-line); margin: 2.6rem 0; opacity: 1; }
+
+/* Títulos de sección */
+.cx-site .cx-blogpost-article .section-title {
+  font-family: var(--cx-display); font-weight: 500; color: var(--cx-ink) !important;
+  font-size: clamp(1.5rem, 2.4vw, 2rem); line-height: 1.2;
+  margin: 0 0 1.4rem; padding-bottom: .8rem; position: relative;
+}
+.cx-blogpost-article .section-title::after {
+  content: ""; position: absolute; left: 0; bottom: 0; width: 62px; height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--cx-primary), var(--cx-primary-700));
+}
+
+/* Listas con check */
+.cx-blogpost-article .feature-list { list-style: none; padding: 0; margin: 0 0 1.6rem; display: grid; gap: .7rem; }
+.cx-blogpost-article .feature-list li { display: flex; gap: .75rem; align-items: flex-start; padding: 0; font-size: 1.02rem; color: var(--cx-ink-2); line-height: 1.6; }
+.cx-blogpost-article .feature-list li i { flex: 0 0 auto; margin-top: .15em; font-size: 1.15rem; color: var(--cx-primary) !important; }
+
+/* Tarjetas de beneficio/idea — mismo lenguaje premium que el resto del sitio
+   (barra superior con degradado + brillo diagonal + lift, ícono tintado). */
+.cx-blogpost-article .benefit-card,
+.cx-blogpost-article .idea-card {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: #fff; border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
+  padding: 30px 26px; height: 100%; box-shadow: var(--cx-shadow-sm);
+  transition: transform .38s cubic-bezier(.2,.8,.2,1), box-shadow .38s, border-color .38s;
+}
+.cx-blogpost-article .benefit-card:hover,
+.cx-blogpost-article .idea-card:hover { transform: translateY(-7px); box-shadow: var(--cx-shadow); border-color: var(--cx-primary-100); }
+/* barra superior de marca que aparece en hover */
+.cx-blogpost-article .benefit-card::before,
+.cx-blogpost-article .idea-card::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; z-index: 2;
+  background: linear-gradient(90deg, var(--cx-primary), var(--cx-primary-700));
+  transform: scaleX(0); transform-origin: left; transition: transform .4s ease;
+}
+.cx-blogpost-article .benefit-card:hover::before,
+.cx-blogpost-article .idea-card:hover::before { transform: scaleX(1); }
+/* brillo diagonal al pasar el cursor */
+.cx-blogpost-article .benefit-card::after,
+.cx-blogpost-article .idea-card::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,.5) 48%, transparent 64%);
+  transform: translateX(-130%); transition: transform .85s cubic-bezier(.2,.8,.2,1);
+}
+.cx-blogpost-article .benefit-card:hover::after,
+.cx-blogpost-article .idea-card:hover::after { transform: translateX(130%); }
+.cx-blogpost-article .idea-card { text-align: center; }
+.cx-blogpost-article .benefit-icon {
+  width: 58px; height: 58px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+  margin-bottom: 1.2rem; font-size: 1.5rem;
+  color: var(--cx-primary-700); background: var(--cx-primary-100);
+  transition: transform .35s ease, background .35s ease, color .35s ease;
+}
+.cx-blogpost-article .benefit-card:hover .benefit-icon {
+  background: linear-gradient(135deg, var(--cx-primary), var(--cx-primary-600)); color: #fff; transform: rotate(-6deg) scale(1.05);
+}
+.cx-blogpost-article .benefit-icon i { font-size: 1.5rem; }
+.cx-site .cx-blogpost-article .benefit-card h3,
+.cx-site .cx-blogpost-article .benefit-card h4,
+.cx-site .cx-blogpost-article .idea-card h3,
+.cx-site .cx-blogpost-article .idea-card h4 { font-family: var(--cx-font); font-weight: 700; font-size: 1.12rem; color: var(--cx-ink) !important; margin: 0 0 .5rem; }
+.cx-blogpost-article .benefit-card p,
+.cx-blogpost-article .idea-card p { color: var(--cx-muted) !important; margin: 0; font-size: .95rem; }
+.cx-blogpost-article .idea-card i { font-size: 2.6rem; color: var(--cx-primary) !important; margin-bottom: .8rem; }
+
+/* Pasos numerados (recipe-*) */
+.cx-blogpost-article .recipe-section { position: relative; padding-left: 76px; margin-bottom: 2.6rem; }
+.cx-blogpost-article .recipe-number {
+  position: absolute; left: 0; top: 0; width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--cx-font); font-weight: 800; font-size: 1.3rem; color: #fff !important;
+  background: linear-gradient(135deg, var(--cx-primary), var(--cx-primary-600));
+  box-shadow: 0 12px 24px -10px rgba(169,62,240,.6);
+}
+.cx-site .cx-blogpost-article .recipe-title { font-family: var(--cx-font); font-weight: 700; font-size: 1.25rem; color: var(--cx-ink) !important; margin: 0 0 1rem; }
+.cx-blogpost-article .recipe-content { background: var(--cx-surface); border: 1px solid var(--cx-line); border-radius: var(--cx-r-md); padding: 1.8rem; }
+
+/* Imágenes dentro del artículo */
+.cx-blogpost-article .recipe-image-placeholder { border-radius: var(--cx-r-lg); overflow: hidden; box-shadow: var(--cx-shadow); }
+.cx-blogpost-article .recipe-image-placeholder img { display: block; width: 100%; border-radius: var(--cx-r-lg) !important; }
+
+/* Cajas de nota (defaults; algunos blogs las tintan con estilo inline) */
+.cx-blogpost-article .alert-info {
+  background: var(--cx-sky); border-left: 4px solid #3f6ea5; border-radius: var(--cx-r-sm);
+  padding: 1.1rem 1.4rem; color: #244a72; font-weight: 600;
+}
+.cx-blogpost-article .tips-box,
+.cx-blogpost-article .warning-box {
+  border-radius: var(--cx-r-md); padding: 1.6rem 1.8rem; display: flex; gap: 1.3rem; align-items: flex-start;
+}
+.cx-blogpost-article .tips-box { background: #fff8e8; border-left: 4px solid #e0a52b; }
+.cx-blogpost-article .warning-box { background: #fdecef; border-left: 4px solid #d6446b; }
+.cx-blogpost-article .tips-box > i { font-size: 2rem; color: #e0a52b; flex-shrink: 0; }
+.cx-blogpost-article .warning-box > i { font-size: 2rem; color: #d6446b; flex-shrink: 0; }
+.cx-blogpost-article .tips-box ul,
+.cx-blogpost-article .warning-box ul { margin-bottom: 0; }
+.cx-site .cx-blogpost-article .tips-box h3,
+.cx-site .cx-blogpost-article .tips-box h4 { font-family: var(--cx-font); font-weight: 700; }
+
+/* Créditos del autor */
+.cx-blogpost-article .author-credits {
+  background: var(--cx-surface); border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
+  padding: 1.6rem 1.8rem; box-shadow: var(--cx-shadow-sm); margin-top: 2.4rem;
+}
+.cx-site .cx-blogpost-article .author-credits h4 { font-family: var(--cx-font); font-weight: 700; color: var(--cx-ink) !important; }
+
+/* Compartir */
+.cx-blogpost-share {
+  margin-top: 3rem; padding: 1.8rem 2rem; background: var(--cx-surface);
+  border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
+}
+.cx-blogpost-share-title { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--cx-ink); margin-bottom: 1rem; font-size: 1.02rem; }
+.cx-blogpost-share-title i { color: var(--cx-primary); }
+.cx-blogpost-share-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.cx-share {
+  display: inline-flex; align-items: center; gap: .5rem; padding: .7rem 1.3rem;
+  border-radius: var(--cx-r-pill); font-weight: 700; font-size: .92rem; color: #fff !important;
+  transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
+}
+.cx-share:hover { transform: translateY(-3px); filter: brightness(1.06); box-shadow: var(--cx-shadow-sm); }
+.cx-share--fb { background: #1877f2; }
+.cx-share--tw { background: #111827; }
+.cx-share--wa { background: #25d366; }
+.cx-blogpost-back { margin-top: 2.5rem; text-align: center; }
+
+/* Unifica al mood de marca: neutraliza los colores "bootstrap" (naranja, azul,
+   rojo…) que traen los blogs en estilos inline, para que combinen con la web
+   (crema + lila + morado). Usa !important para ganarle a los style inline. */
+.cx-blogpost-article .section-title > i { color: var(--cx-primary) !important; }
+.cx-blogpost-article .benefit-card { border-color: var(--cx-line) !important; border-left-width: 1px !important; }
+.cx-blogpost-article .benefit-icon { background: var(--cx-primary-100) !important; color: var(--cx-primary-700) !important; }
+.cx-blogpost-article .benefit-icon i { color: var(--cx-primary-700) !important; }
+.cx-blogpost-article .benefit-card:hover .benefit-icon { background: linear-gradient(135deg, var(--cx-primary), var(--cx-primary-600)) !important; color: #fff !important; }
+.cx-blogpost-article .benefit-card:hover .benefit-icon i { color: #fff !important; }
+.cx-blogpost-article .tips-box { background: var(--cx-primary-050) !important; border-left: 4px solid var(--cx-primary) !important; }
+.cx-blogpost-article .tips-box i { color: var(--cx-primary-700) !important; }
+.cx-site .cx-blogpost-article .tips-box h3,
+.cx-site .cx-blogpost-article .tips-box h4 { color: var(--cx-ink) !important; }
+.cx-blogpost-article .warning-box { background: var(--cx-peach-100) !important; border-left: 4px solid #c76b3f !important; }
+.cx-blogpost-article .warning-box > i { color: #c76b3f !important; }
+.cx-blogpost-article .alert-info { background: var(--cx-lila-100) !important; border: 1px solid var(--cx-lila-100) !important; border-left: 4px solid var(--cx-lila-600) !important; border-radius: var(--cx-r-sm) !important; color: var(--cx-ink) !important; }
+.cx-blogpost-article .alert-info i { color: var(--cx-lila-600) !important; }
+/* banda de mensaje con fondo morado: forzar texto blanco (las reglas globales
+   .cx-site .cx-page h2/p le pisaban el color y quedaba oscuro/ilegible). */
+.cx-site .cx-blogpost-article .cx-blog-msgband h2,
+.cx-site .cx-blogpost-article .cx-blog-msgband h3,
+.cx-site .cx-blogpost-article .cx-blog-msgband h4 { color: #fff !important; }
+.cx-blogpost-article .cx-blog-msgband p,
+.cx-blogpost-article .cx-blog-msgband strong,
+.cx-blogpost-article .cx-blog-msgband li,
+.cx-blogpost-article .cx-blog-msgband i { color: #fff !important; }
+/* notas semánticas en tonos de la paleta (no bootstrap) */
+.cx-blogpost-article .alert-warning { background: var(--cx-peach-100) !important; border: 1px solid #ecccae !important; border-left: 4px solid #c76b3f !important; border-radius: var(--cx-r-sm) !important; color: var(--cx-ink) !important; padding: 1.4rem 1.6rem !important; }
+.cx-blogpost-article .alert-warning i { color: #c76b3f !important; }
+.cx-blogpost-article .alert-success { background: var(--cx-mint) !important; border: 1px solid #bcd8c4 !important; border-left: 4px solid #3f8a5f !important; border-radius: var(--cx-r-sm) !important; color: var(--cx-ink) !important; padding: 1.4rem 1.6rem !important; }
+.cx-blogpost-article .alert-success i { color: #3f8a5f !important; }
+.cx-blogpost-article .alert-danger { background: #fdecef !important; border: 1px solid #f2c4d0 !important; border-left: 4px solid #d6446b !important; border-radius: var(--cx-r-sm) !important; color: var(--cx-ink) !important; padding: 1.6rem 1.8rem !important; }
+.cx-blogpost-article .alert-danger i { color: #d6446b !important; }
+/* h4 dentro de estas cajas → tipografía y color de marca */
+.cx-site .cx-blogpost-article .alert-info h4,
+.cx-site .cx-blogpost-article .alert-warning h4,
+.cx-site .cx-blogpost-article .alert-success h4 { font-family: var(--cx-font); color: var(--cx-ink) !important; }
+.cx-site .cx-blogpost-article .alert-info h4 i { color: var(--cx-primary) !important; }
+
+@media (max-width: 576px) {
+  .cx-blogpost-article .recipe-section { padding-left: 0; padding-top: 68px; }
+  .cx-blogpost-article .recipe-number { left: 50%; transform: translateX(-50%); }
+  .cx-blogpost-article .recipe-content { padding: 1.3rem; }
+  .cx-blogpost-article .benefit-card { padding: 1.4rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

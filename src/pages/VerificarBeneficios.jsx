@@ -188,10 +188,7 @@ const VerificarBeneficios = () => {
           <Reveal className="cx-subhero-inner">
             <span className="cx-eyebrow"><i className="bi bi-gift-fill" /> Beneficios para pacientes</span>
             <RevealText as="h1" text="Consulta tus beneficios" />
-            <p>
-              Verifica los convenios y descuentos exclusivos disponibles para los pacientes
-              activos del Centro de Terapias Crecemos.
-            </p>
+            <p>Convenios y descuentos exclusivos para pacientes activos de Crecemos.</p>
 
             <form className={`vb-searchbar ${error && estado === 'error' ? 'is-error' : ''}`} onSubmit={handleValidar}>
               <i className="bi bi-person-vcard vb-searchbar-ic" />
@@ -426,17 +423,36 @@ const VerificarBeneficios = () => {
         /* menos espacio entre buscador y resultados */
         .cx-page .vb-section { padding-top: clamp(28px, 3.5vw, 44px); }
 
+        /* Un solo fondo continuo — hero y secciones transparentes, sin franjas duras */
+        .cx-site .cx-page.vb-page {
+          background:
+            radial-gradient(90% 52% at 50% -6%, var(--cx-primary-050) 0%, transparent 56%),
+            radial-gradient(70% 44% at 50% 108%, var(--cx-lila-050) 0%, transparent 60%),
+            var(--cx-bg);
+        }
+        .cx-page.vb-page .vb-hero,
+        .cx-page.vb-page .vb-section { background: transparent; }
+        /* Grano fino sobre todo — textura sutil, quita lo plano */
+        .cx-page.vb-page::after {
+          content: ''; position: fixed; inset: 0; z-index: 50; pointer-events: none;
+          opacity: .05; mix-blend-mode: soft-light;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
         /* ===== Barra de búsqueda protagonista (estilo Webflow) ===== */
         .vb-searchbar {
           display: flex; align-items: center; gap: 10px;
           width: 100%; max-width: 480px; margin: clamp(26px, 4vw, 38px) auto 0;
           padding: 7px 7px 7px 18px;
-          background: var(--cx-surface); border: 1px solid var(--cx-line);
+          background: rgba(255, 255, 255, .55);
+          backdrop-filter: saturate(160%) blur(14px);
+          -webkit-backdrop-filter: saturate(160%) blur(14px);
+          border: 1px solid rgba(255, 255, 255, .6);
           border-radius: var(--cx-r-pill);
-          box-shadow: 0 20px 44px -26px rgba(58, 43, 74, .4);
+          box-shadow: 0 20px 44px -26px rgba(58, 43, 74, .4), inset 0 1px 0 rgba(255, 255, 255, .5);
           transition: border-color .3s, box-shadow .3s, transform .3s;
         }
-        .vb-searchbar:focus-within { border-color: var(--cx-primary-200); box-shadow: 0 26px 52px -26px rgba(141, 40, 143, .4); transform: translateY(-2px); }
+        .vb-searchbar:focus-within { border-color: rgba(255, 255, 255, .9); box-shadow: 0 26px 52px -26px rgba(141, 40, 143, .35), inset 0 1px 0 rgba(255, 255, 255, .6); transform: translateY(-2px); }
         .vb-searchbar.is-error { border-color: #e5484d; }
         .vb-searchbar-ic { flex: 0 0 auto; color: var(--cx-primary-700); font-size: 1.25rem; }
         .vb-searchbar-input {
@@ -473,20 +489,32 @@ const VerificarBeneficios = () => {
         .vb-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
         .vb-step {
           position: relative; text-align: center; padding: 30px 24px 26px;
-          background: var(--cx-surface); border: 1px solid var(--cx-line); border-radius: var(--cx-r-lg);
-          box-shadow: var(--cx-shadow-sm);
+          background: rgba(255, 255, 255, .5);
+          backdrop-filter: saturate(160%) blur(12px);
+          -webkit-backdrop-filter: saturate(160%) blur(12px);
+          border: 1px solid rgba(255, 255, 255, .6); border-radius: var(--cx-r-lg);
+          box-shadow: 0 1px 2px rgba(50, 20, 80, .05), 0 10px 24px -14px rgba(50, 20, 80, .18), 0 26px 50px -30px rgba(50, 20, 80, .26), inset 0 1px 0 rgba(255, 255, 255, .55);
           transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s, border-color .3s;
         }
-        .vb-step:hover { transform: translateY(-6px); box-shadow: var(--cx-shadow); border-color: var(--cx-primary-200); }
+        .vb-step:hover { transform: translateY(-6px); box-shadow: 0 2px 4px rgba(50, 20, 80, .06), 0 16px 32px -16px rgba(50, 20, 80, .22), 0 40px 70px -34px rgba(50, 20, 80, .36), inset 0 1px 0 rgba(255, 255, 255, .6); border-color: rgba(255, 255, 255, .9); }
         .vb-step-n {
           position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
           width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
-          background: linear-gradient(135deg, var(--cx-primary), var(--cx-primary-600)); color: #fff; font-weight: 800; font-size: .92rem;
-          box-shadow: 0 12px 22px -8px rgba(169,62,240,.65);
+          color: #fff; font-weight: 800; font-size: .92rem;
         }
-        .vb-step-ic { display: block; font-size: 2rem; color: var(--cx-primary-700); margin: 12px 0 12px; }
+        .vb-step-ic { display: block; font-size: 2rem; margin: 12px 0 12px; transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+        .vb-step:hover .vb-step-ic { transform: scale(1.14) rotate(-5deg); }
         .cx-site .vb-step h3 { font-family: var(--cx-font); font-size: 1.06rem; font-weight: 700; color: var(--cx-ink); margin: 0 0 8px; }
         .vb-step p { color: var(--cx-muted); font-size: .9rem; line-height: 1.6; margin: 0; }
+
+        /* Superficie neutra (glass); el color vive solo en el número e ícono */
+        .vb-step:nth-child(1) .vb-step-n { background: linear-gradient(135deg, #3d7bd6, #174ea6); box-shadow: 0 10px 20px -8px rgba(23,78,166,.4); }
+        .vb-step:nth-child(1) .vb-step-ic { color: #206ad0; }
+        .vb-step:nth-child(2) .vb-step-n { background: linear-gradient(135deg, #c263f9, #a93ef0); box-shadow: 0 10px 20px -8px rgba(169,62,240,.45); }
+        .vb-step:nth-child(2) .vb-step-ic { color: #a93ef0; }
+        .vb-step:nth-child(3) .vb-step-n { background: linear-gradient(135deg, #4fc08a, #2fa37a); box-shadow: 0 10px 20px -8px rgba(47,163,122,.38); }
+        .vb-step:nth-child(3) .vb-step-ic { color: #2b9c6f; }
+
         @media (max-width: 720px) { .vb-steps { grid-template-columns: 1fr; } }
 
         /* ===== Resultados ===== */
@@ -523,9 +551,13 @@ const VerificarBeneficios = () => {
         /* ===== Lista acordeón de beneficios (2 columnas) ===== */
         .vb-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
         .vb-item {
-          background: var(--cx-surface); border: 1px solid var(--cx-line);
-          border-radius: var(--cx-r-md); overflow: hidden; box-shadow: var(--cx-shadow-sm);
-          transition: border-color .25s, box-shadow .25s;
+          background: rgba(255, 255, 255, .55);
+          backdrop-filter: saturate(160%) blur(12px);
+          -webkit-backdrop-filter: saturate(160%) blur(12px);
+          border: 1px solid rgba(255, 255, 255, .6);
+          border-radius: var(--cx-r-md); overflow: hidden;
+          box-shadow: 0 1px 2px rgba(50, 20, 80, .05), 0 12px 28px -18px rgba(50, 20, 80, .2), inset 0 1px 0 rgba(255, 255, 255, .5);
+          transition: border-color .25s, box-shadow .25s, transform .25s;
         }
         .vb-item:hover { border-color: var(--cx-primary-200); box-shadow: var(--cx-shadow-sm), inset 3px 0 0 var(--cx-primary-200); }
         .vb-item.is-open { border-color: var(--cx-primary-200); box-shadow: var(--cx-shadow), inset 3px 0 0 var(--cx-primary); }

@@ -5,17 +5,15 @@ export default function DiaDepresionBlog() {
     <>
       {/* Introducción principal */}
       <div className="lead mb-5" style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#555' }}>
-        En este día resulta fundamental reconocer la lucha que atraviesan las personas que viven con 
-        depresión. En muchos casos, esta condición se presenta en silencio, en personas que continúan 
+        En este día resulta fundamental reconocer la lucha que atraviesan las personas que viven con
+        depresión. En muchos casos, esta condición se presenta en silencio, en personas que continúan
         cumpliendo con sus responsabilidades, trabajando, estudiando y sonriendo.
       </div>
 
-      
-
       <p className="mb-4">
-        Personas que escuchan frases como <em>"no parece que estés mal"</em>, mientras internamente 
-        sienten que todo les resulta más pesado de lo habitual. La Organización Mundial de la Salud 
-        señala que la depresión no siempre es visible externamente, pero sí genera un impacto profundo 
+        Personas que escuchan frases como <em>"no parece que estés mal"</em>, mientras internamente
+        sienten que todo les resulta más pesado de lo habitual. La Organización Mundial de la Salud
+        señala que la depresión no siempre es visible externamente, pero sí genera un impacto profundo
         en el funcionamiento emocional y cotidiano.
       </p>
 
@@ -58,8 +56,8 @@ export default function DiaDepresionBlog() {
       <h2 className="section-title" data-aos="fade-up">Más que tristeza</h2>
 
       <p className="mb-4">
-        Desde la psicología clínica, la depresión no se entiende únicamente como tristeza. Implica una 
-        alteración significativa en la manera en que la persona se percibe a sí misma, interpreta lo que 
+        Desde la psicología clínica, la depresión no se entiende únicamente como tristeza. Implica una
+        alteración significativa en la manera en que la persona se percibe a sí misma, interpreta lo que
         le ocurre y se relaciona con su entorno.
       </p>
 
@@ -74,19 +72,19 @@ export default function DiaDepresionBlog() {
       </div>
 
       <p className="mb-4">
-        Afecta el estado de ánimo, pero también el cuerpo, los pensamientos y la energía necesaria para 
+        Afecta el estado de ánimo, pero también el cuerpo, los pensamientos y la energía necesaria para
         afrontar la vida diaria, interfiriendo en distintas áreas del funcionamiento personal y social.
       </p>
 
-      <div className="tips-box mb-5" data-aos="fade-up" style={{ 
-        background: 'linear-gradient(135deg, #fff9e6 0%, #fff0cc 100%)', 
-        borderLeft: '4px solid #5ba3c1' 
+      <div className="tips-box mb-5" data-aos="fade-up" style={{
+        background: 'linear-gradient(135deg, #fff9e6 0%, #fff0cc 100%)',
+        borderLeft: '4px solid #5ba3c1'
       }}>
         <i className="bi bi-lightbulb-fill"></i>
         <div>
           <p className="mb-0">
-            <strong>Importante recordar:</strong> Cada persona experimenta la depresión de forma diferente. 
-            Por ello, al hablar de esta condición, se habla de procesos individuales y no de experiencias 
+            <strong>Importante recordar:</strong> Cada persona experimenta la depresión de forma diferente.
+            Por ello, al hablar de esta condición, se habla de procesos individuales y no de experiencias
             uniformes.
           </p>
         </div>
@@ -98,8 +96,8 @@ export default function DiaDepresionBlog() {
       <h2 className="section-title" data-aos="fade-up">Lo que se ve y lo que no</h2>
 
       <p className="mb-4">
-        Existen manifestaciones más visibles, como el aislamiento, el llanto frecuente, la irritabilidad 
-        o la pérdida de interés. Sin embargo, gran parte del malestar suele permanecer oculto incluso 
+        Existen manifestaciones más visibles, como el aislamiento, el llanto frecuente, la irritabilidad
+        o la pérdida de interés. Sin embargo, gran parte del malestar suele permanecer oculto incluso
         para el entorno cercano.
       </p>
 
@@ -114,7 +112,7 @@ export default function DiaDepresionBlog() {
       </div>
 
       <p className="mb-4">
-        A nivel interno, muchas personas experimentan pensamientos autocríticos, sentimientos de culpa 
+        A nivel interno, muchas personas experimentan pensamientos autocríticos, sentimientos de culpa
         persistentes y un agotamiento emocional constante.
       </p>
 
@@ -175,7 +173,7 @@ export default function DiaDepresionBlog() {
         <i className="bi bi-info-circle-fill"></i>
         <div>
           <p className="mb-0">
-            La depresión no siempre se manifiesta de forma evidente, pero se vive con gran intensidad 
+            La depresión no siempre se manifiesta de forma evidente, pero se vive con gran intensidad
             a nivel interno.
           </p>
         </div>
@@ -187,8 +185,8 @@ export default function DiaDepresionBlog() {
       <h2 className="section-title" data-aos="fade-up">Cuidar las palabras y los diagnósticos</h2>
 
       <p className="mb-4">
-        Es importante señalar que no toda tristeza corresponde a una depresión, ni todo momento difícil 
-        requiere un diagnóstico o una intervención clínica. Nombrar una condición sin una evaluación 
+        Es importante señalar que no toda tristeza corresponde a una depresión, ni todo momento difícil
+        requiere un diagnóstico o una intervención clínica. Nombrar una condición sin una evaluación
         adecuada puede generar confusión, temor o estigmatización innecesaria.
       </p>
 
@@ -202,16 +200,16 @@ export default function DiaDepresionBlog() {
         />
       </div>
 
-      <div className="tips-box mb-5" data-aos="fade-up" style={{ 
-        background: 'linear-gradient(135deg, #f0f8ff 0%, #e0f0ff 100%)', 
-        borderLeft: '4px solid #5ba3c1' 
+      <div className="tips-box mb-5" data-aos="fade-up" style={{
+        background: 'linear-gradient(135deg, #f0f8ff 0%, #e0f0ff 100%)',
+        borderLeft: '4px solid #5ba3c1'
       }}>
         <i className="bi bi-clipboard2-pulse"></i>
         <div>
           <p className="mb-0">
-            <strong>El diagnóstico implica:</strong> Observar, escuchar y evaluar la duración, la intensidad 
-            y el impacto del malestar en la vida de la persona. Se trata de un proceso que requiere 
-            responsabilidad profesional y cuyo objetivo no es etiquetar, sino comprender qué está ocurriendo 
+            <strong>El diagnóstico implica:</strong> Observar, escuchar y evaluar la duración, la intensidad
+            y el impacto del malestar en la vida de la persona. Se trata de un proceso que requiere
+            responsabilidad profesional y cuyo objetivo no es etiquetar, sino comprender qué está ocurriendo
             y qué tipo de acompañamiento resulta más adecuado.
           </p>
         </div>
@@ -223,8 +221,8 @@ export default function DiaDepresionBlog() {
       <h2 className="section-title" data-aos="fade-up">Para quienes atraviesan un cuadro depresivo</h2>
 
       <p className="mb-4">
-        Cuando una persona se identifica con estas experiencias, es importante recordar que su malestar 
-        es válido. No se trata de falta de carácter ni de debilidad personal. Pedir ayuda no resta valor; 
+        Cuando una persona se identifica con estas experiencias, es importante recordar que su malestar
+        es válido. No se trata de falta de carácter ni de debilidad personal. Pedir ayuda no resta valor;
         por el contrario, puede convertirse en un factor protector clave.
       </p>
 
@@ -250,8 +248,8 @@ export default function DiaDepresionBlog() {
             Un mensaje de esperanza
           </h4>
           <p className="mb-0" style={{ fontSize: '1.05rem', lineHeight: '1.7' }}>
-            La depresión es una condición que puede abordarse. Aunque el proceso no siempre es lineal 
-            y puede incluir avances y retrocesos, el acompañamiento psicológico y el apoyo adecuado 
+            La depresión es una condición que puede abordarse. Aunque el proceso no siempre es lineal
+            y puede incluir avances y retrocesos, el acompañamiento psicológico y el apoyo adecuado
             favorecen la recuperación del equilibrio emocional y del sentido personal.
           </p>
         </div>
@@ -263,8 +261,8 @@ export default function DiaDepresionBlog() {
       <h2 className="section-title" data-aos="fade-up">Para quienes acompañan desde cerca</h2>
 
       <p className="mb-4">
-        Acompañar a una persona con depresión es un proceso que requiere constancia, paciencia y 
-        comprensión. No se trata de ofrecer soluciones inmediatas ni de mantener un ánimo permanente, 
+        Acompañar a una persona con depresión es un proceso que requiere constancia, paciencia y
+        comprensión. No se trata de ofrecer soluciones inmediatas ni de mantener un ánimo permanente,
         sino de estar disponibles, escuchar sin juzgar y respetar los tiempos emocionales.
       </p>
 
@@ -278,18 +276,18 @@ export default function DiaDepresionBlog() {
         />
       </div>
 
-      <div className="tips-box mb-5" data-aos="fade-up" style={{ 
-        background: 'linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%)', 
-        borderLeft: '4px solid #5ba3c1' 
+      <div className="tips-box mb-5" data-aos="fade-up" style={{
+        background: 'linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%)',
+        borderLeft: '4px solid #5ba3c1'
       }}>
         <i className="bi bi-people-fill"></i>
         <div>
           <p className="mb-3">
-            <strong>La validación emocional,</strong> junto con la orientación adecuada, contribuye de 
+            <strong>La validación emocional,</strong> junto con la orientación adecuada, contribuye de
             manera significativa al proceso de recuperación.
           </p>
           <p className="mb-0" style={{ fontStyle: 'italic', fontSize: '1.05rem' }}>
-            Acompañar no es obligar a alguien a salir del dolor, es caminar a su lado, respetar su ritmo 
+            Acompañar no es obligar a alguien a salir del dolor, es caminar a su lado, respetar su ritmo
             y, cuando es posible, ayudarle a encontrar pequeñas formas de avanzar sin sentirse solo.
           </p>
         </div>
@@ -310,7 +308,7 @@ export default function DiaDepresionBlog() {
             13 de Enero: Día de la Lucha contra la Depresión
           </h3>
           <p className="mb-0" style={{ fontSize: '1.15rem', lineHeight: '1.8', maxWidth: '800px', margin: '0 auto' }}>
-            Recordemos que hablar con respeto, comprender con profundidad y acompañar con presencia 
+            Recordemos que hablar con respeto, comprender con profundidad y acompañar con presencia
             también es una forma de cuidado.
           </p>
         </div>
@@ -330,12 +328,14 @@ export default function DiaDepresionBlog() {
             <div className="col-md-6">
               <ul style={{ listStyle: 'none', paddingLeft: '0' }}>
                 <li className="mb-3">
-                  <strong><i className="bi bi-telephone-fill me-2" style={{ color: '#5ba3c1' }}></i>Línea 113 (Salud Mental):</strong> 
+                  <strong><i className="bi bi-telephone-fill me-2" style={{ color: '#5ba3c1' }}></i>Línea 113 (Salud Mental):</strong>{' '}
                   Atención de salud mental gratuita.{' '}
-                  <a href="https://www.gob.pe/institucion/minsa/noticias/767395-minsa-pone-en-funcionamiento-linea-113-opcion-5-de-atencion-en-salud-mental"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     style={{ color: '#0d6efd', fontSize: '0.9rem', textDecoration: 'none' }}>
+                  <a
+                    href="https://www.gob.pe/institucion/minsa/noticias/767395-minsa-pone-en-funcionamiento-linea-113-opcion-5-de-atencion-en-salud-mental"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#0d6efd', fontSize: '0.9rem', textDecoration: 'none' }}
+                  >
                     [Más información]
                   </a>
                 </li>
@@ -344,12 +344,14 @@ export default function DiaDepresionBlog() {
             <div className="col-md-6">
               <ul style={{ listStyle: 'none', paddingLeft: '0' }}>
                 <li className="mb-3">
-                  <strong><i className="bi bi-building me-2" style={{ color: '#5ba3c1' }}></i>Centros de Salud Mental Comunitarios:</strong> 
+                  <strong><i className="bi bi-building me-2" style={{ color: '#5ba3c1' }}></i>Centros de Salud Mental Comunitarios:</strong>{' '}
                   Atención psicológica especializada.{' '}
-                  <a href="https://www.gob.pe/institucion/minsa/colecciones/1772-centros-de-salud-mental-comunitaria"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     style={{ color: '#0d6efd', fontSize: '0.9rem', textDecoration: 'none' }}>
+                  <a
+                    href="https://www.gob.pe/institucion/minsa/colecciones/1772-centros-de-salud-mental-comunitaria"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#0d6efd', fontSize: '0.9rem', textDecoration: 'none' }}
+                  >
                     [Ubicar un centro]
                   </a>
                 </li>
@@ -362,90 +364,60 @@ export default function DiaDepresionBlog() {
       <hr className="my-5" />
 
       {/* Referencias */}
-      <div className="mb-5" data-aos="fade-up" style={{
-        background: '#f8f9fa',
-        padding: '2rem',
-        borderRadius: '12px',
-        border: '1px solid #dee2e6'
+      <div className="mb-5" style={{
+        background: 'var(--cx-surface)',
+        border: '1px solid var(--cx-line)',
+        borderRadius: 'var(--cx-r-lg)',
+        padding: '2rem'
       }}>
-        <h4 style={{ color: '#2d465e', fontWeight: '700', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-          Referencias
-        </h4>
-        <ul style={{ listStyle: 'none', paddingLeft: '0', fontSize: '0.95rem', lineHeight: '1.8' }}>
-          <li className="mb-2">
-            • American Psychiatric Association. (2022). <em>DSM-5-TR. Manual diagnóstico y estadístico de los trastornos mentales</em> (5.ª ed., texto revisado).
-          </li>
-          <li className="mb-2">
-            • Beck, A. T., Rush, A. J., Shaw, B. F., & Emery, G. (1979). <em>Terapia cognitiva de la depresión</em>.
-          </li>
-          <li className="mb-2">
-            • Linehan, M. M. (2015). <em>Manual de habilidades de terapia dialéctico-conductual</em>.
-          </li>
-          <li className="mb-2">
-            • Organización Mundial de la Salud. (2017). <em>Depresión y otros trastornos mentales comunes</em>.
-          </li>
-          <li className="mb-2">
-            • Organización Mundial de la Salud. (2023). <em>Depresión: datos y cifras</em>.
-          </li>
-          <li className="mb-2">
-            • Rogers, C. R. (1957). <em>Las condiciones necesarias y suficientes del cambio terapéutico</em>.
-          </li>
-        </ul>
+        <h3 style={{ fontWeight: '700', marginBottom: '1.5rem', color: 'var(--cx-ink)' }}>
+          Referencias bibliográficas
+        </h3>
+        <div style={{ fontSize: '0.95rem', lineHeight: '1.8', color: 'var(--cx-ink-2)' }}>
+          <p className="mb-3">
+            <strong>American Psychiatric Association.</strong> (2022). <em>DSM-5-TR. Manual diagnóstico y
+            estadístico de los trastornos mentales</em> (5.ª ed., texto revisado).
+          </p>
+          <p className="mb-3">
+            <strong>Beck, A. T., Rush, A. J., Shaw, B. F., &amp; Emery, G.</strong> (1979). <em>Terapia cognitiva de
+            la depresión</em>.
+          </p>
+          <p className="mb-3">
+            <strong>Linehan, M. M.</strong> (2015). <em>Manual de habilidades de terapia dialéctico-conductual</em>.
+          </p>
+          <p className="mb-3">
+            <strong>Organización Mundial de la Salud.</strong> (2017). <em>Depresión y otros trastornos mentales
+            comunes</em>.
+          </p>
+          <p className="mb-3">
+            <strong>Organización Mundial de la Salud.</strong> (2023). <em>Depresión: datos y cifras</em>.
+          </p>
+          <p className="mb-0">
+            <strong>Rogers, C. R.</strong> (1957). <em>Las condiciones necesarias y suficientes del cambio
+            terapéutico</em>.
+          </p>
+        </div>
       </div>
 
-      {/* Créditos - Autora */}
-      <div className="author-credits mb-5" data-aos="fade-up">
-        <div style={{
-          background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-          padding: '2rem',
-          borderRadius: '12px',
-          border: '2px solid #5ba3c1'
-        }}>
-          <h4 style={{ marginBottom: '1.5rem', color: '#2d465e', fontWeight: '700', fontSize: '1.1rem' }}>
-            Elaborado por:
-          </h4>
-          <div className="d-flex align-items-start mb-3">
-            <div style={{
-              width: '60px',
-              height: '60px',
-              background: 'linear-gradient(135deg, #5ba3c1 0%, #7bb8d1 100%)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: '1rem',
-              flexShrink: '0'
-            }}>
-              <i className="bi bi-person-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
-            </div>
-            <div style={{ flex: '1' }}>
-              <h5 style={{ marginBottom: '0.5rem', color: '#2d465e', fontWeight: '700', fontSize: '1.15rem' }}>
-                Centro Crecemos
-              </h5>
-              <p style={{ marginBottom: '0.75rem', color: '#666', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                <i className="bi bi-award-fill me-2" style={{ color: '#5ba3c1' }}></i>
-                Equipo de Psicología Clínica
-              </p>
-              <a
-                href="https://www.crecemos.com.pe"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#5ba3c1',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  fontSize: '0.95rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-                onMouseOut={(e) => e.target.style.textDecoration = 'none'}
-              >
-                <i className="bi bi-globe me-2"></i>
-                www.crecemos.com.pe
-              </a>
-            </div>
+      {/* Autor */}
+      <div className="author-credits" data-aos="fade-up">
+        <div className="d-flex align-items-center gap-3">
+          <div className="author-avatar">
+            <i className="bi bi-person-circle" style={{ fontSize: '4rem', color: 'var(--cx-primary)' }}></i>
+          </div>
+          <div>
+            <h4 style={{ marginBottom: '0.25rem' }}>Lic. Giselle Burgos Del Rosario</h4>
+            <p style={{ marginBottom: '0.4rem', color: 'var(--cx-muted)', fontSize: '0.95rem' }}>
+              <strong>Psicóloga Clínica – Centro Crecemos</strong>
+            </p>
+            <a
+              href="https://www.crecemos.com.pe"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--cx-primary-700)', fontWeight: 600, fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <i className="bi bi-globe me-2"></i> www.crecemos.com.pe
+            </a>
           </div>
         </div>
       </div>

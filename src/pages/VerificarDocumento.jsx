@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import archivosOficialesService from '../services/archivosOficialesService';
-
+import Reveal from '../components/public/Reveal';
+import RevealText from '../components/public/RevealText';
+import Decor from '../components/public/Decor';
 
 const VerificarDocumentos = () => {
   const [codigo, setCodigo] = useState('');
@@ -48,11 +51,6 @@ const VerificarDocumentos = () => {
       }
 
       setDocumento(data);
-
-      // Scroll automático hacia los resultados
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
     } catch (err) {
       console.error('Error completo:', err);
 
@@ -77,19 +75,25 @@ const VerificarDocumentos = () => {
       setEstado('error');
       setEstadoTexto('Error en validación');
       setDocumento(null);
-
-      // Scroll automático hacia el error
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
     } finally {
       setLoading(false);
     }
   };
 
+  // Al terminar la consulta, desplazar suavemente al resultado
+  useEffect(() => {
+    if (!loading && (documento || error)) {
+      const el = resultsRef.current;
+      if (el) {
+        const y = el.getBoundingClientRect().top + window.pageYOffset - 100;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }
+  }, [loading, documento, error]);
+
   const formatDate = (dateStr) => {
     if (!dateStr) return 'No especificado';
-    
+
     try {
       const [year, month, day] = dateStr.split('-').map(Number);
       const meses = [
@@ -114,12 +118,12 @@ const VerificarDocumentos = () => {
 
   const handleValidar = (e) => {
     e.preventDefault();
-    
+
     setDocumento(null);
     setError('');
     setEstado('idle');
     setEstadoTexto('Validando...');
-    
+
     const codigoNormalizado = codigo.trim().toUpperCase();
 
     if (!/^CTC-[A-Z0-9]{3,50}$/.test(codigoNormalizado)) {
@@ -134,7 +138,7 @@ const VerificarDocumentos = () => {
 
   const handleImprimirComprobante = () => {
     const printWindow = window.open('', '_blank', 'width=1000,height=800');
-    
+
     const printContent = `
       <!DOCTYPE html>
       <html lang="es">
@@ -153,17 +157,17 @@ const VerificarDocumentos = () => {
             margin: 0 auto;
           }
           .comprobante-container {
-            border: 3px solid #174ea6;
+            border: 3px solid #8d288f;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
           }
           .header {
-            background: linear-gradient(135deg, #174ea6 0%, #2d3748 100%);
+            background: linear-gradient(135deg, #8d288f 0%, #3a2b4a 100%);
             color: white;
             padding: 30px;
             text-align: center;
-            border-bottom: 4px solid #A3C644;
+            border-bottom: 4px solid #c263f9;
           }
           .status-banner {
             text-align: center;
@@ -192,7 +196,7 @@ const VerificarDocumentos = () => {
           .section-title {
             font-size: 16px;
             font-weight: 700;
-            color: #2d3748;
+            color: #3a2b4a;
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid #cbd5e0;
@@ -217,20 +221,20 @@ const VerificarDocumentos = () => {
             font-size: 20px;
             font-weight: 800;
             letter-spacing: 2px;
-            color: #174ea6;
-            background: #edf2f7;
+            color: #8d288f;
+            background: #f7f3fb;
             padding: 12px;
             border-radius: 8px;
             text-align: center;
             margin: 10px 0;
-            border: 2px solid #cbd5e0;
+            border: 2px solid #e3d5ef;
           }
           .footer {
-            background: #174ea6;
+            background: #8d288f;
             color: white;
             padding: 25px;
             text-align: center;
-            border-top: 4px solid #A3C644;
+            border-top: 4px solid #c263f9;
           }
           .print-controls {
             text-align: center;
@@ -238,7 +242,7 @@ const VerificarDocumentos = () => {
             background: #f7fafc;
           }
           .print-button {
-            background: #174ea6;
+            background: #8d288f;
             color: white;
             border: none;
             padding: 15px 30px;
@@ -259,9 +263,9 @@ const VerificarDocumentos = () => {
             <div style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">CENTRO DE TERAPIAS CRECEMOS</div>
             <div style="font-size: 16px;">COMPROBANTE DE VALIDACIÓN OFICIAL</div>
           </div>
-          
+
           <div class="status-banner">${estadoTexto.toUpperCase()}</div>
-          
+
           <div class="document-grid">
             <div class="document-section">
               <div class="section-title">INFORMACIÓN DEL DOCUMENTO</div>
@@ -283,7 +287,7 @@ const VerificarDocumentos = () => {
                 <div class="field-value">${formatDate(documento.fechaEmision)}</div>
               </div>
             </div>
-            
+
             <div class="document-section">
               <div class="section-title">${documento.tipoDestinatario === 'paciente' ? 'INFORMACIÓN DEL PACIENTE' : 'INFORMACIÓN DEL TRABAJADOR'}</div>
               <div class="field">
@@ -300,13 +304,13 @@ const VerificarDocumentos = () => {
               </div>
             </div>
           </div>
-          
+
           <div class="footer">
             <div>Centro de Terapias Crecemos</div>
             <div>Sistema de Validación Oficial</div>
           </div>
         </div>
-        
+
         <div class="print-controls">
           <button class="print-button" onclick="window.print()">🖨️ Imprimir</button>
           <button class="print-button" onclick="window.close()">Cerrar</button>
@@ -336,7 +340,7 @@ const VerificarDocumentos = () => {
   const handleCompartir = async () => {
     if (!documento) return;
     const url = `${window.location.origin}${window.location.pathname}?code=${encodeURIComponent(documento.codigo)}`;
-    
+
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Validador CTC', text: 'Verificación de documento', url });
@@ -350,1552 +354,498 @@ const VerificarDocumentos = () => {
   };
 
   return (
-
-<>
-     <style>{`
-      
-      
-
-   
-  /* ============================================
-   VERIFICADOR DE DOCUMENTOS - VERSIÓN FINAL CORREGIDA
-   - Badge ultra visible
-   - Input sin icono que tape placeholder
-   - Números de steps bien posicionados
-   ============================================ */
-
-/* Variables CSS */
-:root {
-  --primary-color: #174ea6;
-  --secondary-color: #A3C644;
-  --accent-gradient: linear-gradient(135deg, #174ea6 0%, #A3C644 100%);
-  --text-dark: #1a202c;
-  --text-light: #4a5568;
-  --bg-light: #f8fafc;
-  --bg-white: #ffffff;
-  --border-color: #e2e8f0;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
-  --transition: all 0.3s ease;
-  --success-color: #22c55e;
-  --warning-color: #f59e0b;
-  --error-color: #dc2626;
-}
-
-/* ============================================
-   CONTAINER PRINCIPAL
-   ============================================ */
-.verificador-container {
-  min-height: 100vh;
-  background: var(--bg-light);
-  position: relative;
-  overflow-x: hidden;
-}
-
-/* ============================================
-   FLOATING SHAPES
-   ============================================ */
-.floating-shapes {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.floating-shapes .shape {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.03;
-  animation: float 20s infinite ease-in-out;
-}
-
-.shape-1 {
-  width: 250px;
-  height: 250px;
-  background: var(--primary-color);
-  top: 10%;
-  left: 5%;
-  animation-delay: 0s;
-}
-
-.shape-2 {
-  width: 180px;
-  height: 180px;
-  background: var(--secondary-color);
-  top: 60%;
-  right: 10%;
-  animation-delay: 2s;
-}
-
-.shape-3 {
-  width: 200px;
-  height: 200px;
-  background: var(--primary-color);
-  bottom: 10%;
-  left: 15%;
-  animation-delay: 4s;
-}
-
-.shape-4 {
-  width: 130px;
-  height: 130px;
-  background: var(--secondary-color);
-  top: 30%;
-  right: 25%;
-  animation-delay: 6s;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-30px) rotate(180deg);
-  }
-}
-
-/* ============================================
-   HERO SECTION - CON PADDING SUPERIOR AUMENTADO
-   ============================================ */
-.hero-verificador {
-  padding: 140px 20px 60px;
-  position: relative;
-  z-index: 1;
-  text-align: center;
-}
-
-.hero-content {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-/* ============================================
-   BADGE - ULTRA VISIBLE, COMPLETAMENTE OPACO, SIN ANIMACIONES
-   ============================================ */
-.company-badge {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 36px;
-  background: #FFFFFF !important;
-  border: 2px solid #174ea6 !important;
-  border-radius: 50px;
-  font-size: 17px;
-  font-weight: 900 !important;
-  color: #174ea6 !important;
-  box-shadow: 0 8px 24px rgba(23, 78, 166, 0.5) !important;
-  margin-bottom: 28px;
-  position: relative;
-  z-index: 9999 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  animation: none !important;
-  transition: none !important;
-}
-
-.company-badge i {
-  font-size: 24px !important;
-  color: #174ea6 !important;
-  font-weight: 900 !important;
-  opacity: 1 !important;
-}
-
-.company-badge span {
-  font-weight: 900 !important;
-  letter-spacing: 0.5px;
-  color: #174ea6 !important;
-  opacity: 1 !important;
-}
-
-/* Hero Title */
-.hero-title {
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 800;
-  line-height: 1.2;
-  color: var(--text-dark);
-  margin-bottom: 20px;
-  margin-top: 0;
-}
-
-.accent-text {
-  position: relative;
-  display: inline-block;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.title-underline {
-  position: absolute;
-  bottom: -8px;
-  left: 0;
-  width: 100%;
-  height: 10px;
-}
-
-.title-underline path {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: drawLine 1.5s ease forwards;
-  animation-delay: 0.5s;
-}
-
-@keyframes drawLine {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Hero Description */
-.hero-description {
-  font-size: 1rem;
-  color: var(--text-light);
-  line-height: 1.6;
-  max-width: 700px;
-  margin: 0 auto 28px;
-}
-
-/* Hero Stats */
-.hero-stats {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 24px;
-}
-
-.stat-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 50px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dark);
-  transition: var(--transition);
-}
-
-.stat-badge:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.stat-badge i {
-  font-size: 16px;
-  color: var(--primary-color);
-}
-
-/* ============================================
-   SEARCH SECTION - SIN ICONO QUE TAPE PLACEHOLDER
-   ============================================ */
-.search-section {
-  padding: 30px 20px;
-  position: relative;
-  z-index: 1;
-}
-
-.search-container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.search-form {
-  animation: fadeIn 0.6s ease;
-  animation-delay: 0.2s;
-  animation-fill-mode: both;
-}
-
-/* Search box - SIN ICONO INTERNO */
-.search-box {
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 3px solid #174ea6;
-  border-radius: 16px;
-  padding: 16px 20px;
-  box-shadow: 0 6px 20px rgba(23, 78, 166, 0.2);
-  transition: var(--transition);
-  gap: 16px;
-}
-
-.search-box:focus-within {
-  border-color: #A3C644;
-  box-shadow: 0 8px 24px rgba(23, 78, 166, 0.25);
-  transform: translateY(-2px);
-}
-
-/* Input - SIN ICONO, PLACEHOLDER COMPLETAMENTE VISIBLE, FONDO TRANSPARENTE */
-.search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 1.05rem;
-  font-weight: 500;
-  color: var(--text-dark);
-  padding: 0;
-  min-width: 0;
-  background: transparent !important;
-  transition: none;
-}
-
-.search-input::placeholder {
-  color: #6b7280;
-  opacity: 1;
-  font-weight: 400;
-}
-
-.search-input:focus {
-  background: transparent !important;
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.search-input:active {
-  background: transparent !important;
-}
-
-/* Botón search - bien proporcionado */
-.search-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 28px;
-  background: linear-gradient(135deg, #A3C644 0%, #8fb53a 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: var(--transition);
-  white-space: nowrap;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(163, 198, 68, 0.35);
-  height: 48px;
-}
-
-
-
-.search-button i {
-  font-size: 20px;
-}
-
-.search-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(163, 198, 68, 0.45);
-}
-
-.search-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.search-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 16px;
-  font-size: 0.875rem;
-  color: var(--text-light);
-  text-align: center;
-}
-
-.search-hint i {
-  font-size: 16px;
-  color: var(--primary-color);
-}
-
-/* ============================================
-   RESULTS SECTION
-   ============================================ */
-.results-section {
-  padding: 40px 20px 80px;
-  position: relative;
-  z-index: 1;
-}
-
-.results-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  animation: fadeIn 0.4s ease;
-}
-
-/* Status Alert */
-.status-alert {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 24px;
-  background: white;
-  border-radius: 12px;
-  margin-bottom: 28px;
-  box-shadow: var(--shadow-md);
-  animation: slideInDown 0.4s ease;
-}
-
-.status-icon-wrapper {
-  flex-shrink: 0;
-}
-
-.status-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 24px;
-  position: relative;
-  animation: bounceIn 0.6s ease;
-}
-
-.status-alert.status-success .status-icon {
-  background: #f0fdf4;
-  color: var(--success-color);
-  border: 2px solid var(--success-color);
-}
-
-.status-alert.status-warning .status-icon {
-  background: #fffbeb;
-  color: var(--warning-color);
-  border: 2px solid var(--warning-color);
-}
-
-.status-alert.status-error .status-icon {
-  background: #fef2f2;
-  color: var(--error-color);
-  border: 2px solid var(--error-color);
-}
-
-.status-content h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin: 0 0 6px 0;
-}
-
-.status-content p {
-  font-size: 0.95rem;
-  color: var(--text-light);
-  margin: 0;
-}
-
-/* Error Message */
-.error-message {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 20px 24px;
-  background: #fef2f2;
-  border: 2px solid var(--error-color);
-  border-radius: 12px;
-  margin-bottom: 28px;
-  animation: shake 0.5s ease;
-}
-
-.error-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border-radius: 50%;
-  font-size: 20px;
-  color: var(--error-color);
-  flex-shrink: 0;
-}
-
-.error-content strong {
-  display: block;
-  font-size: 1rem;
-  color: var(--text-dark);
-  margin-bottom: 6px;
-}
-
-.error-content p {
-  color: var(--text-light);
-  margin-bottom: 10px;
-  font-size: 0.95rem;
-}
-
-.error-content code {
-  display: inline-block;
-  padding: 6px 12px;
-  background: white;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  color: var(--error-color);
-  font-family: 'Courier New', monospace;
-}
-
-@keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-10px);
-  }
-  75% {
-    transform: translateX(10px);
-  }
-}
-
-/* ============================================
-   DOCUMENT INFO
-   ============================================ */
-.document-info {
-  animation: fadeInUp 0.6s ease;
-}
-
-/* Código Principal */
-.codigo-principal {
-  padding: 24px;
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 16px;
-  margin-bottom: 24px;
-  text-align: center;
-  box-shadow: var(--shadow-md);
-  position: relative;
-  overflow: hidden;
-}
-
-.codigo-principal::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: var(--accent-gradient);
-}
-
-.codigo-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.codigo-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-gradient);
-  border-radius: 10px;
-  font-size: 18px;
-  color: white;
-}
-
-.codigo-label {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-light);
-}
-
-.codigo-value {
-  font-family: 'Courier New', monospace;
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--primary-color);
-  background: #f8fafc;
-  padding: 16px;
-  border-radius: 10px;
-  margin: 16px 0;
-  border: 2px solid var(--border-color);
-}
-
-.codigo-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: rgba(23, 78, 166, 0.08);
-  border: 1px solid rgba(23, 78, 166, 0.2);
-  border-radius: 50px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-/* Info Cards Grid */
-.info-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.info-card {
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
-}
-
-.info-card:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  background: #f8fafc;
-  border-bottom: 2px solid var(--border-color);
-}
-
-.card-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-gradient);
-  border-radius: 10px;
-  font-size: 20px;
-  color: white;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.icon-bg {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: inherit;
-  border-radius: inherit;
-  opacity: 0.3;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0;
-  }
-}
-
-.card-header h4 {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin: 0;
-}
-
-.card-body {
-  padding: 20px;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-.info-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-light);
-}
-
-.info-value {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-dark);
-  text-align: right;
-}
-
-.text-success {
-  color: var(--success-color) !important;
-}
-
-.text-danger {
-  color: var(--error-color) !important;
-}
-
-/* Badge */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 50px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.badge-active {
-  background: #f0fdf4;
-  color: var(--success-color);
-  border: 1px solid var(--success-color);
-}
-
-.badge-inactive {
-  background: #f8fafc;
-  color: var(--text-light);
-  border: 1px solid var(--border-color);
-}
-
-/* URL Verificación */
-.url-verificacion {
-  padding: 20px 24px;
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
-}
-
-.url-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.url-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-gradient);
-  border-radius: 8px;
-  font-size: 16px;
-  color: white;
-}
-
-.url-header h4 {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin: 0;
-}
-
-.url-code {
-  display: block;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
-  color: var(--primary-color);
-  word-break: break-all;
-  margin-bottom: 10px;
-}
-
-.url-description {
-  display: flex;
-  align-items: center;
-  font-size: 0.875rem;
-  color: var(--text-light);
-  margin: 0;
-}
-
-/* Warning Boxes */
-.warning-box {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-.warning-box.warning {
-  background: #fffbeb;
-  border: 2px solid var(--warning-color);
-}
-
-.warning-box.danger {
-  background: #fef2f2;
-  border: 2px solid var(--error-color);
-}
-
-.warning-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border-radius: 50%;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.warning-box.warning .warning-icon {
-  color: var(--warning-color);
-}
-
-.warning-box.danger .warning-icon {
-  color: var(--error-color);
-}
-
-.warning-content strong {
-  display: block;
-  font-size: 0.95rem;
-  color: var(--text-dark);
-  margin-bottom: 4px;
-}
-
-.warning-content span {
-  font-size: 0.875rem;
-  color: var(--text-light);
-}
-
-/* Action Buttons */
-.action-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  border: 2px solid transparent;
-}
-
-.btn-action.btn-primary {
-  background: var(--accent-gradient);
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-action.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-action.btn-secondary {
-  background: white;
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-.btn-action.btn-secondary:hover {
-  background: var(--primary-color);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-/* ============================================
-   INFO SECTION - NÚMEROS BIEN POSICIONADOS
-   ============================================ */
-.info-section {
-  padding: 60px 20px;
-  background: white;
-  position: relative;
-  z-index: 1;
-}
-
-.info-container {
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.section-header-info {
-  text-align: center;
-  margin-bottom: 48px;
-}
-
-.section-header-info h3 {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--text-dark);
-  margin-bottom: 12px;
-}
-
-.section-header-info p {
-  font-size: 1rem;
-  color: var(--text-light);
-}
-
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 28px;
-}
-
-.step-item {
-  text-align: center;
-  padding: 32px 20px;
-  background: #ffffff;
-  border: 2px solid var(--border-color);
-  border-radius: 16px;
-  transition: var(--transition);
-  position: relative;
-}
-
-.step-item:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-md);
-}
-
-/* NÚMERO DEL STEP - BIEN POSICIONADO ARRIBA A LA DERECHA */
-.step-number-badge {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #A3C644 0%, #8fb53a 100%);
-  border-radius: 50%;
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: white;
-  box-shadow: 0 4px 12px rgba(163, 198, 68, 0.4);
-  z-index: 5;
-}
-
-.step-content {
-  position: relative;
-  z-index: 2;
-  margin-top: 10px;
-}
-
-/* ICONOS DE STEPS - TAMAÑO CORRECTO */
-.step-icon {
-  width: 70px;
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
-  background: linear-gradient(135deg, #174ea6 0%, #2563b5 100%);
-  border: 3px solid white;
-  border-radius: 18px;
-  font-size: 32px;
-  color: white;
-  position: relative;
-  z-index: 10;
-  box-shadow: 0 6px 16px rgba(23, 78, 166, 0.25),
-              0 0 0 4px rgba(23, 78, 166, 0.1);
-  transition: all 0.3s ease;
-}
-
-.step-item:hover .step-icon {
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: 0 8px 20px rgba(23, 78, 166, 0.35),
-              0 0 0 5px rgba(23, 78, 166, 0.15);
-}
-
-.step-icon i {
-  position: relative;
-  z-index: 11;
-}
-
-.step-content h4 {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--text-dark);
-  margin-bottom: 10px;
-}
-
-.step-content p {
-  font-size: 0.95rem;
-  color: var(--text-light);
-  line-height: 1.5;
-}
-
-/* ============================================
-   ANIMACIONES - SIN FADEINUP EN HERO
-   ============================================ */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bounceIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.3);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.05);
-  }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-@media (max-width: 768px) {
-  .hero-verificador {
-    padding: 120px 20px 50px;
-  }
-
-  .hero-title {
-    font-size: 1.875rem;
-  }
-
-  .company-badge {
-    font-size: 16px !important;
-    padding: 14px 30px !important;
-    border: 4px solid #174ea6 !important;
-    background: #FFFFFF !important;
-    opacity: 1 !important;
-    font-weight: 900 !important;
-  }
-  
-  .company-badge i {
-    font-size: 22px !important;
-  }
-
-  .hero-stats {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .stat-badge {
-    width: 100%;
-    max-width: 300px;
-    justify-content: center;
-  }
-
-  .search-box {
-    padding: 14px 18px;
-    gap: 12px;
-  }
-
-  .search-input {
-    font-size: 1rem;
-  }
-
-  .search-button {
-    padding: 10px 24px;
-    font-size: 0.95rem;
-    height: 44px;
-  }
-
-  .status-alert {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .info-cards-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  .btn-action {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .steps-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .codigo-value {
-    font-size: 1.25rem;
-    letter-spacing: 1.5px;
-  }
-
-  .step-number-badge {
-    top: 16px;
-    right: 16px;
-    width: 36px;
-    height: 36px;
-    font-size: 1.125rem;
-  }
-
-  .step-icon {
-    width: 64px;
-    height: 64px;
-    font-size: 28px;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero-title {
-    font-size: 1.625rem;
-  }
-  
-  .hero-verificador {
-    padding: 110px 20px 50px;
-  }
-
-  .company-badge {
-    font-size: 15px !important;
-    padding: 12px 26px !important;
-    border: 4px solid #174ea6 !important;
-    background: #FFFFFF !important;
-    opacity: 1 !important;
-    font-weight: 900 !important;
-  }
-
-  .company-badge i {
-    font-size: 20px !important;
-  }
-
-  .search-box {
-    padding: 12px 16px;
-    gap: 10px;
-  }
-
-  .search-input {
-    font-size: 0.95rem;
-  }
-
-  .search-button {
-    padding: 8px 20px;
-    font-size: 0.9rem;
-    height: 40px;
-  }
-
-  .codigo-value {
-    font-size: 1.125rem;
-    padding: 12px;
-  }
-
-  .step-number-badge {
-    top: 14px;
-    right: 14px;
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
-  }
-
-  .step-icon {
-    width: 58px;
-    height: 58px;
-    font-size: 26px;
-  }
-}
-
-      
-      `}</style>
-    <div className="verificador-container">
-      {/* Partículas decorativas de fondo */}
-      <div className="floating-shapes">
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-        <div className="shape shape-3"></div>
-        <div className="shape shape-4"></div>
-      </div>
-
-      {/* Hero Section */}
-      <section className="hero-verificador">
-        <div className="hero-content">
-          {/* Badge ULTRA VISIBLE con fondo blanco sólido */}
-          <div className="company-badge p-2">
-            <i className="bi bi-shield-check"></i>
-            <span>Sistema Oficial de Validación</span>
-          </div>
-
-          <h1 className="hero-title">
-            Verificador de <br />
-            <span className="accent-text">
-              Documentos
-              <svg className="title-underline" viewBox="0 0 200 12">
-                <path d="M0,6 Q50,0 100,6 T200,6" stroke="url(#gradient)" strokeWidth="3" fill="none"/>
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#174ea6" />
-                    <stop offset="100%" stopColor="#A3C644" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </span>
-          </h1>
-
-          <p className="hero-description">
-            Valida la autenticidad de certificados y constancias emitidos por el
-            Centro de Terapias Crecemos de forma rápida y segura
-          </p>
-
-          {/* Stats rápidos */}
-          <div className="hero-stats">
-            <div className="stat-badge">
-              <i className="bi bi-file-earmark-check"></i>
-              <span>100% Verificable</span>
-            </div>
-            <div className="stat-badge">
-              <i className="bi bi-lightning-charge"></i>
-              <span>Validación Instantánea</span>
-            </div>
-            <div className="stat-badge">
-              <i className="bi bi-shield-lock"></i>
-              <span>Sistema Seguro</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Search Section - SIN ICONO QUE TAPE EL PLACEHOLDER */}
-      <section className="search-section">
-        <div className="search-container">
-          <form onSubmit={handleValidar} className="search-form">
-            <div className="search-box">
+    <main className="cx-page vd-page">
+      {/* ===================== Hero ===================== */}
+      <section className="cx-subhero vd-hero">
+        <Decor variant="a" />
+        <div className="cx-container">
+          <Reveal className="cx-subhero-inner">
+            <span className="cx-eyebrow"><i className="bi bi-shield-check" /> Sistema oficial de validación</span>
+            <RevealText as="h1" text="Verifica tus documentos" />
+            <p>Comprueba la autenticidad de los certificados de Crecemos en segundos.</p>
+
+            <form className={`vd-searchbar ${error && estado === 'error' ? 'is-error' : ''}`} onSubmit={handleValidar}>
+              <i className="bi bi-qr-code vd-searchbar-ic" />
               <input
-                type="text"
-                className="search-input"
-                placeholder="Ingrese el código de validación"
+                className="vd-searchbar-input"
+                placeholder="Ingresa el código (CTC-XXXXX)"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value.toUpperCase())}
                 autoComplete="off"
+                aria-label="Código de validación"
               />
-              <button type="submit" className="search-button" disabled={loading}>
+              <button type="submit" className="vd-searchbar-btn" disabled={loading}>
                 {loading ? (
-                  <>
-                    <span className="spinner"></span>
-                    <span>Verificando</span>
-                  </>
+                  <><span className="cx-btn-spinner" /> <span className="vd-searchbar-btn-txt">Verificando…</span></>
                 ) : (
-                  <>
-                    <i className="bi bi-search"></i>
-                    <span>Verificar</span>
-                  </>
+                  <><span className="vd-searchbar-btn-txt">Verificar</span> <i className="bi bi-arrow-right" /></>
                 )}
               </button>
+            </form>
+            <p className="vd-hint"><i className="bi bi-info-circle-fill" /> El código está en la parte superior de tu documento oficial.</p>
+
+            <div className="vd-trust">
+              <span className="vd-chip"><i className="bi bi-patch-check-fill" /> 100% verificable</span>
+              <span className="vd-chip"><i className="bi bi-lightning-charge-fill" /> Validación instantánea</span>
+              <span className="vd-chip"><i className="bi bi-shield-lock-fill" /> Seguro y oficial</span>
             </div>
-            <p className="search-hint">
-              <i className="bi bi-info-circle"></i>
-              El código se encuentra en la parte superior de su documento oficial
-            </p>
-          </form>
+          </Reveal>
         </div>
       </section>
 
-      {/* Results Section */}
-      {(documento || error) && (
-        <section className="results-section" ref={resultsRef}>
-          <div className="results-container">
-            
-            {/* Status Alert */}
-            <div className={`status-alert status-${estado}`}>
-              <div className="status-icon-wrapper">
-                <div className="status-icon">
-                  {estado === 'success' && <i className="bi bi-check-circle-fill"></i>}
-                  {estado === 'error' && <i className="bi bi-x-circle-fill"></i>}
-                  {estado === 'warning' && <i className="bi bi-exclamation-triangle-fill"></i>}
-                </div>
+      {/* ===================== Cómo funciona + Resultados ===================== */}
+      <section className="cx-section cx-section--deco cx-section--soft vd-section">
+        <Decor variant="b" />
+        <div className="cx-container">
+          {/* Cómo funciona (solo antes de validar) */}
+          {!documento && !error && (
+            <Reveal className="vd-how" y={24}>
+              <div className="vd-how-head">
+                <span className="cx-eyebrow"><i className="bi bi-stars" /> Cómo funciona</span>
+                <RevealText as="h2" text="Valida tu documento en 3 pasos" />
               </div>
-              <div className="status-content">
-                <h3>{estadoTexto}</h3>
-                {documento && <p>{documento.tipoDocumento}</p>}
+              <div className="vd-steps">
+                {[
+                  { icon: 'bi-search', title: 'Localiza el código', desc: 'Encuentra el código en tu documento oficial (formato CTC-XXXXX).' },
+                  { icon: 'bi-keyboard', title: 'Ingresa el código', desc: 'Escríbelo en el buscador superior y presiona verificar.' },
+                  { icon: 'bi-patch-check', title: 'Verifica al instante', desc: 'Obtén la validación oficial con todos los datos del documento.' },
+                ].map((s, i) => (
+                  <div className="vd-step" key={s.title}>
+                    <span className="vd-step-n">{i + 1}</span>
+                    <i className={`bi ${s.icon} vd-step-ic`} />
+                    <h3>{s.title}</h3>
+                    <p>{s.desc}</p>
+                  </div>
+                ))}
               </div>
-            </div>
+            </Reveal>
+          )}
 
-            {/* Error Message */}
-            {error && (
-              <div className="error-message">
-                <div className="error-icon">
-                  <i className="bi bi-exclamation-circle"></i>
+          {/* Resultados */}
+          {(documento || error) && (
+            <div className="vd-results" ref={resultsRef}>
+              {/* Error */}
+              {error && (
+                <div className="vd-alert vd-alert--error">
+                  <i className="bi bi-x-circle-fill" />
+                  <div>
+                    <strong>Error de validación. </strong>{error}
+                    <br />
+                    <small>Código consultado: <strong>{codigo.trim().toUpperCase()}</strong></small>
+                  </div>
                 </div>
-                <div className="error-content">
-                  <strong>Error de validación</strong>
-                  <p>{error}</p>
-                  <code>Código: {codigo.trim().toUpperCase()}</code>
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Document Info */}
-            {documento && (
-              <>
-                <div className="document-info">
-                  
-                  {/* Código Principal */}
-                  <div className="codigo-principal">
-                    <div className="codigo-header">
-                      <div className="codigo-icon">
-                        <i className="bi bi-qr-code"></i>
-                      </div>
-                      <span className="codigo-label">Código de Validación</span>
+              {/* Credencial de verificación */}
+              {documento && (
+                <Reveal className={`vd-cred vd-cred--${estado}`} y={20}>
+                  {/* Banda superior: sello animado + estado */}
+                  <div className="vd-cred-top">
+                    <div className="vd-seal">
+                      <svg className="vd-seal-svg" viewBox="0 0 100 100" aria-hidden="true">
+                        <circle className="vd-seal-ring" cx="50" cy="50" r="46" />
+                        <circle className="vd-seal-disc" cx="50" cy="50" r="37" />
+                        {estado === 'success' && <path className="vd-seal-mark" d="M31 51 l13 13 l25 -27" />}
+                        {estado === 'warning' && <path className="vd-seal-mark" d="M50 28 L50 56 M50 67 L50 70" />}
+                        {estado === 'error' && <path className="vd-seal-mark" d="M36 36 L64 64 M64 36 L36 64" />}
+                      </svg>
                     </div>
-                    <div className="codigo-value">{documento.codigo}</div>
-                    <div className="codigo-badge">
-                      <i className="bi bi-shield-check"></i>
-                      <span>Código Oficial CTC</span>
+                    <div className="vd-cred-status">
+                      <span className="vd-cred-eyebrow"><i className="bi bi-patch-check-fill" /> Verificación oficial CTC</span>
+                      <h3>{estadoTexto}</h3>
+                      <p>{documento.tipoDocumento}</p>
                     </div>
                   </div>
 
-                  {/* Info Cards Grid */}
-                  <div className="info-cards-grid">
-                    <div className="info-card">
-                      <div className="card-header">
-                        <div className="card-icon">
-                          <div className="icon-bg"></div>
-                          <i className="bi bi-file-text"></i>
-                        </div>
-                        <h4>Información del Documento</h4>
-                      </div>
-                      <div className="card-body">
-                        <div className="info-item">
-                          <span className="info-label">Tipo</span>
-                          <strong className="info-value">{documento.tipoDocumento}</strong>
-                        </div>
-                        {documento.terapeuta && (
-                          <div className="info-item">
-                            <span className="info-label">Terapeuta</span>
-                            <strong className="info-value">
-                              Lic. {documento.terapeuta.nombres} {documento.terapeuta.apellidos}
-                            </strong>
-                          </div>
-                        )}
-                        <div className="info-item">
-                          <span className="info-label">Emisión</span>
-                          <strong className="info-value">{formatDate(documento.fechaEmision)}</strong>
-                        </div>
-                        <div className="info-item">
-                          <span className="info-label">Vigencia</span>
-                          <strong className={`info-value ${!documento.vigente ? 'text-danger' : 'text-success'}`}>
-                            {documento.fechaVigencia
-                              ? (documento.vigente
-                                  ? `Hasta ${formatDate(documento.fechaVigencia)}`
-                                  : `Expiró ${formatDate(documento.fechaVigencia)}`)
-                              : 'Permanente'
-                            }
-                          </strong>
-                        </div>
-                      </div>
+                  {/* Cuerpo: talón con código + datos */}
+                  <div className="vd-cred-body">
+                    <div className="vd-stub">
+                      <span className="vd-stub-label"><i className="bi bi-qr-code" /> Código</span>
+                      <span className="vd-stub-code">{documento.codigo}</span>
+                      <span className="vd-stub-badge"><i className="bi bi-shield-fill-check" /> Oficial</span>
                     </div>
 
-                    {documento.destinatario && (
-                      <div className="info-card">
-                        <div className="card-header">
-                          <div className="card-icon">
-                            <div className="icon-bg"></div>
-                            <i className="bi bi-person"></i>
-                          </div>
-                          <h4>
-                            {documento.tipoDestinatario === 'paciente' ? 'Datos del Paciente' : 'Datos del Trabajador'}
-                          </h4>
+                    <dl className="vd-cred-grid">
+                      <div className="vd-field">
+                        <dt>Tipo de documento</dt>
+                        <dd>{documento.tipoDocumento}</dd>
+                      </div>
+                      {documento.terapeuta && (
+                        <div className="vd-field">
+                          <dt>Terapeuta responsable</dt>
+                          <dd>Lic. {documento.terapeuta.nombres} {documento.terapeuta.apellidos}</dd>
                         </div>
-                        <div className="card-body">
-                          <div className="info-item">
-                            <span className="info-label">Nombre</span>
-                            <strong className="info-value">
-                              {documento.destinatario.nombres} {documento.destinatario.apellidos}
-                            </strong>
+                      )}
+                      <div className="vd-field">
+                        <dt>Fecha de emisión</dt>
+                        <dd>{formatDate(documento.fechaEmision)}</dd>
+                      </div>
+                      <div className="vd-field">
+                        <dt>Vigencia</dt>
+                        <dd className={!documento.vigente ? 'is-danger' : 'is-accent'}>
+                          {documento.fechaVigencia
+                            ? (documento.vigente
+                                ? `Hasta ${formatDate(documento.fechaVigencia)}`
+                                : `Expiró ${formatDate(documento.fechaVigencia)}`)
+                            : 'Permanente'}
+                        </dd>
+                      </div>
+
+                      {documento.destinatario && (
+                        <>
+                          <div className="vd-field-head">
+                            <i className="bi bi-person-vcard" />
+                            {documento.tipoDestinatario === 'paciente' ? 'Datos del paciente' : 'Datos del trabajador'}
                           </div>
-                          <div className="info-item">
-                            <span className="info-label">DNI</span>
-                            <strong className="info-value">{mostrarDNI(documento.destinatario.dni)}</strong>
+                          <div className="vd-field">
+                            <dt>Nombre completo</dt>
+                            <dd>{documento.destinatario.nombres} {documento.destinatario.apellidos}</dd>
+                          </div>
+                          <div className="vd-field">
+                            <dt>DNI</dt>
+                            <dd>{mostrarDNI(documento.destinatario.dni)}</dd>
                           </div>
                           {documento.tipoDestinatario === 'trabajador' ? (
-                            <div className="info-item">
-                              <span className="info-label">Especialidad</span>
-                              <strong className="info-value">
-                                {documento.destinatario.especialidad?.nombre || 'No especificada'}
-                              </strong>
+                            <div className="vd-field">
+                              <dt>Especialidad</dt>
+                              <dd>{documento.destinatario.especialidad?.nombre || 'No especificada'}</dd>
                             </div>
                           ) : (
-                            <div className="info-item">
-                              <span className="info-label">Estado</span>
-                              <strong className="info-value">
-                                <span className={`badge ${esDestinatarioActivo(documento.destinatario.estado) ? 'badge-active' : 'badge-inactive'}`}>
+                            <div className="vd-field">
+                              <dt>Estado</dt>
+                              <dd>
+                                <span className={`vd-pill ${esDestinatarioActivo(documento.destinatario.estado) ? 'is-active' : 'is-inactive'}`}>
                                   {obtenerTextoEstado(documento.destinatario.estado)}
                                 </span>
-                              </strong>
+                              </dd>
                             </div>
                           )}
-                        </div>
+                        </>
+                      )}
+                    </dl>
+                  </div>
+
+                  {/* Pie: url + acciones */}
+                  <div className="vd-cred-foot">
+                    {documento.urlVerificacion && (
+                      <div className="vd-cred-url no-print">
+                        <i className="bi bi-link-45deg" />
+                        <code>{documento.urlVerificacion}</code>
                       </div>
                     )}
-                  </div>
-
-                  {/* URL Verificación */}
-                  <div className="url-verificacion">
-                    <div className="url-header">
-                      <div className="url-icon">
-                        <i className="bi bi-link-45deg"></i>
-                      </div>
-                      <h4>URL de Verificación</h4>
+                    <div className="vd-actions no-print">
+                      <button className="cx-btn cx-btn-ghost vd-abtn" onClick={handleImprimirComprobante}>
+                        <i className="bi bi-printer" /> Imprimir
+                      </button>
+                      <button className="cx-btn cx-btn-soft vd-abtn" onClick={handleCompartir}>
+                        <i className="bi bi-share" /> Compartir
+                      </button>
+                      <button className="cx-btn cx-btn-primary vd-abtn" onClick={handleDescargarPDF}>
+                        <i className="bi bi-download" /> Descargar PDF
+                      </button>
                     </div>
-                    <code className="url-code">{documento.urlVerificacion}</code>
-                    <p className="url-description">
-                      <i className="bi bi-info-circle"></i>
-                      Utilice este enlace para validar la autenticidad del documento
-                    </p>
                   </div>
-
-                  {/* Warnings */}
-                  {!documento.vigente && (
-                    <div className="warning-box warning">
-                      <div className="warning-icon">
-                        <i className="bi bi-exclamation-triangle"></i>
-                      </div>
-                      <div className="warning-content">
-                        <strong>Documento Expirado</strong>
-                        <span>Ha superado su fecha de vigencia</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {!documento.valido && (
-                    <div className="warning-box danger">
-                      <div className="warning-icon">
-                        <i className="bi bi-x-circle"></i>
-                      </div>
-                      <div className="warning-content">
-                        <strong>Documento Inválido</strong>
-                        <span>No es válido en el sistema</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="action-buttons">
-                    <button className="btn-action btn-primary" onClick={handleDescargarPDF}>
-                      <i className="bi bi-download"></i>
-                      <span>Descargar PDF</span>
-                    </button>
-                    <button className="btn-action btn-secondary" onClick={handleImprimirComprobante}>
-                      <i className="bi bi-printer"></i>
-                      <span>Imprimir</span>
-                    </button>
-                    <button className="btn-action btn-secondary" onClick={handleCompartir}>
-                      <i className="bi bi-share"></i>
-                      <span>Compartir</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Info Section */}
-      <section className="info-section">
-        <div className="info-container">
-          <div className="section-header-info">
-            <h3>¿Cómo funciona?</h3>
-            <p>Sigue estos sencillos pasos para verificar tu documento</p>
-          </div>
-          
-          <div className="steps-grid">
-            <div className="step-item">
-              <div className="step-number-badge">1</div>
-              <div className="step-content">
-                <div className="step-icon">
-                  <i className="bi bi-search"></i>
-                </div>
-                <h4>Localiza el código</h4>
-                <p>Encuentra el código en tu documento oficial (formato: CTC-XXXXX)</p>
-              </div>
+                </Reveal>
+              )}
             </div>
-
-            <div className="step-item">
-              <div className="step-number-badge">2</div>
-              <div className="step-content">
-                <div className="step-icon">
-                  <i className="bi bi-keyboard"></i>
-                </div>
-                <h4>Ingresa el código</h4>
-                <p>Escribe el código en el campo de búsqueda superior</p>
-              </div>
-            </div>
-
-            <div className="step-item">
-              <div className="step-number-badge">3</div>
-              <div className="step-content">
-                <div className="step-icon">
-                  <i className="bi bi-check-circle"></i>
-                </div>
-                <h4>Verifica</h4>
-                <p>Obtén la validación instantánea de tu documento</p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
-    </div>
-    </>
+
+      {/* ===================== CTA final ===================== */}
+      <section className="cx-section">
+        <div className="cx-container">
+          <Reveal className="cx-cta-band" y={30}>
+            <span className="cx-cta-glow" aria-hidden="true" />
+            <span className="cx-cta-glow cx-cta-glow--2" aria-hidden="true" />
+            <div className="cx-cta-content">
+              <span className="cx-cta-eyebrow"><i className="bi bi-shield-check" /> Documentos verificables</span>
+              <RevealText as="h2" text="¿Necesitas un certificado oficial?" />
+              <p>Los pacientes de Crecemos reciben certificados y constancias con código de validación oficial. Agenda tu cita y accede a documentos 100% verificables.</p>
+              <div className="cx-cta-actions">
+                <Link to="/contactanos" className="cx-btn cx-cta-btn">
+                  <span>Agendar cita</span>
+                  <i className="bi bi-arrow-right" />
+                </Link>
+                <Link to="/verificar-beneficios" className="cx-btn cx-cta-btn-ghost">
+                  Consultar beneficios
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <style>{`
+        /* ===== Hero ===== */
+        .vd-hero { padding-bottom: clamp(40px, 5vw, 60px); }
+        .cx-site .vd-hero .cx-subhero-inner { text-align: center; }
+        .cx-site .vd-hero .cx-subhero-inner > p,
+        .cx-site .vd-hero .vd-hint {
+          color: var(--cx-ink-2); font-weight: 500;
+          text-align: center; margin-left: auto; margin-right: auto;
+        }
+        .cx-site .vd-hero .cx-subhero-inner > p { max-width: 600px; }
+        .cx-page .vd-section { padding-top: clamp(28px, 3.5vw, 44px); }
+
+        /* Un solo fondo continuo — hero y secciones transparentes, sin franjas duras */
+        .cx-site .cx-page.vd-page {
+          background:
+            radial-gradient(90% 52% at 50% -6%, var(--cx-primary-050) 0%, transparent 56%),
+            radial-gradient(70% 44% at 50% 108%, var(--cx-lila-050) 0%, transparent 60%),
+            var(--cx-bg);
+        }
+        .cx-page.vd-page .vd-hero,
+        .cx-page.vd-page .vd-section { background: transparent; }
+        /* Grano fino sobre todo — textura sutil, quita lo plano */
+        .cx-page.vd-page::after {
+          content: ''; position: fixed; inset: 0; z-index: 50; pointer-events: none;
+          opacity: .05; mix-blend-mode: soft-light;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* ===== Barra de búsqueda ===== */
+        .vd-searchbar {
+          display: flex; align-items: center; gap: 10px;
+          width: 100%; max-width: 520px; margin: clamp(26px, 4vw, 38px) auto 0;
+          padding: 7px 7px 7px 18px;
+          background: rgba(255, 255, 255, .55);
+          backdrop-filter: saturate(160%) blur(14px);
+          -webkit-backdrop-filter: saturate(160%) blur(14px);
+          border: 1px solid rgba(255, 255, 255, .6);
+          border-radius: var(--cx-r-pill);
+          box-shadow: 0 20px 44px -26px rgba(58, 43, 74, .4), inset 0 1px 0 rgba(255, 255, 255, .5);
+          transition: border-color .3s, box-shadow .3s, transform .3s;
+        }
+        .vd-searchbar:focus-within { border-color: rgba(255, 255, 255, .9); box-shadow: 0 26px 52px -26px rgba(141, 40, 143, .35), inset 0 1px 0 rgba(255, 255, 255, .6); transform: translateY(-2px); }
+        .vd-searchbar.is-error { border-color: #e5484d; }
+        .vd-searchbar-ic { flex: 0 0 auto; color: #174ea6; font-size: 1.25rem; }
+        .vd-searchbar-input {
+          flex: 1; min-width: 0; border: 0; background: none; outline: none; text-align: center;
+          padding: 12px 4px; color: var(--cx-ink);
+          font-family: var(--cx-font); font-size: 1.02rem; font-weight: 700; letter-spacing: .06em;
+        }
+        .vd-searchbar-input::placeholder { letter-spacing: normal; font-weight: 500; color: var(--cx-muted); }
+        .vd-searchbar-btn {
+          flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer;
+          padding: 13px 22px; border-radius: var(--cx-r-pill); color: #fff; font-family: var(--cx-font); font-weight: 700; font-size: .95rem;
+          background: linear-gradient(120deg, #4fc08a, #2fa37a);
+          box-shadow: 0 12px 24px -12px rgba(47, 163, 122, .6);
+          transition: transform .25s, box-shadow .25s;
+        }
+        .vd-searchbar-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 18px 34px -12px rgba(47, 163, 122, .75); }
+        .vd-searchbar-btn:disabled { opacity: .7; cursor: not-allowed; }
+        .vd-searchbar-btn i { transition: transform .25s; }
+        .vd-searchbar-btn:hover:not(:disabled) i { transform: translateX(3px); }
+        .vd-hint { margin-top: 16px; text-align: center; color: var(--cx-ink-2); font-size: .88rem; font-weight: 500; }
+        .vd-hint i { color: var(--cx-primary-700); margin-right: 5px; }
+
+        /* Chips de confianza — un toque de vida y color en el hero */
+        .vd-trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 22px; }
+        .vd-chip {
+          display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: var(--cx-r-pill);
+          background: rgba(255, 255, 255, .55);
+          backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px);
+          border: 1px solid rgba(255, 255, 255, .6);
+          box-shadow: 0 8px 20px -14px rgba(50, 20, 80, .3), inset 0 1px 0 rgba(255, 255, 255, .5);
+          font-size: .82rem; font-weight: 700; color: var(--cx-ink-2);
+          transition: transform .25s, box-shadow .25s, border-color .25s;
+        }
+        .vd-chip:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, .9); box-shadow: 0 12px 26px -14px rgba(50, 20, 80, .4), inset 0 1px 0 rgba(255, 255, 255, .6); }
+        .vd-chip i { font-size: .98rem; }
+        .vd-chip:nth-child(1) i { color: #206ad0; }
+        .vd-chip:nth-child(2) i { color: #a93ef0; }
+        .vd-chip:nth-child(3) i { color: #2b9c6f; }
+
+        @media (max-width: 520px) {
+          .vd-searchbar { flex-wrap: wrap; border-radius: var(--cx-r-lg); padding: 14px; gap: 10px; }
+          .vd-searchbar-ic { display: none; }
+          .vd-searchbar-input { flex: 1 1 100%; padding: 12px 6px; text-align: center; }
+          .vd-searchbar-btn { flex: 1 1 100%; justify-content: center; }
+        }
+
+        /* ===== Cómo funciona (3 pasos) ===== */
+        .vd-how { margin-top: clamp(44px, 6vw, 66px); }
+        .vd-how-head { text-align: center; margin-bottom: clamp(26px, 3.4vw, 40px); }
+        .cx-site .vd-how-head h2 { font-size: clamp(1.5rem, 3vw, 2.15rem); margin-top: 12px; }
+        .vd-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .vd-step {
+          position: relative; text-align: center; padding: 30px 24px 26px;
+          background: rgba(255, 255, 255, .5);
+          backdrop-filter: saturate(160%) blur(12px);
+          -webkit-backdrop-filter: saturate(160%) blur(12px);
+          border: 1px solid rgba(255, 255, 255, .6); border-radius: var(--cx-r-lg);
+          box-shadow: 0 1px 2px rgba(50, 20, 80, .05), 0 10px 24px -14px rgba(50, 20, 80, .18), 0 26px 50px -30px rgba(50, 20, 80, .26), inset 0 1px 0 rgba(255, 255, 255, .55);
+          transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s, border-color .3s;
+        }
+        .vd-step:hover { transform: translateY(-6px); box-shadow: 0 2px 4px rgba(50, 20, 80, .06), 0 16px 32px -16px rgba(50, 20, 80, .22), 0 40px 70px -34px rgba(50, 20, 80, .36), inset 0 1px 0 rgba(255, 255, 255, .6); border-color: rgba(255, 255, 255, .9); }
+        .vd-step-n {
+          position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+          width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+          color: #fff; font-weight: 800; font-size: .92rem;
+        }
+        .vd-step-ic { display: block; font-size: 2rem; margin: 12px 0 12px; transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+        .vd-step:hover .vd-step-ic { transform: scale(1.14) rotate(-5deg); }
+        .cx-site .vd-step h3 { font-family: var(--cx-font); font-size: 1.06rem; font-weight: 700; color: var(--cx-ink); margin: 0 0 8px; }
+        .vd-step p { color: var(--cx-muted); font-size: .9rem; line-height: 1.6; margin: 0; }
+
+        /* Superficie neutra (glass); mismo orden de color que Beneficios: azul → morado → verde */
+        .vd-step:nth-child(1) .vd-step-n { background: linear-gradient(135deg, #3d7bd6, #174ea6); box-shadow: 0 10px 20px -8px rgba(23,78,166,.4); }
+        .vd-step:nth-child(1) .vd-step-ic { color: #206ad0; }
+        .vd-step:nth-child(2) .vd-step-n { background: linear-gradient(135deg, #c263f9, #a93ef0); box-shadow: 0 10px 20px -8px rgba(169,62,240,.45); }
+        .vd-step:nth-child(2) .vd-step-ic { color: #a93ef0; }
+        .vd-step:nth-child(3) .vd-step-n { background: linear-gradient(135deg, #4fc08a, #2fa37a); box-shadow: 0 10px 20px -8px rgba(47,163,122,.38); }
+        .vd-step:nth-child(3) .vd-step-ic { color: #2b9c6f; }
+
+        @media (max-width: 720px) { .vd-steps { grid-template-columns: 1fr; } }
+
+        /* ===== Resultados ===== */
+        .vd-results { margin-top: clamp(8px, 1.5vw, 18px); }
+        .vd-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .vd-abtn { padding: 11px 18px; font-size: .9rem; }
+
+        /* ===== Alertas (error de búsqueda) ===== */
+        .vd-alert {
+          display: flex; gap: 14px; align-items: flex-start;
+          padding: 18px 22px; border-radius: var(--cx-r-md);
+          font-size: .95rem; line-height: 1.6; margin-bottom: 22px;
+        }
+        .vd-alert i { font-size: 1.4rem; flex: 0 0 auto; line-height: 1.4; }
+        .vd-alert strong { font-weight: 700; }
+        .vd-alert--error   { background: #fbe4e4; color: #8a2a28; }
+        .vd-alert--error i { color: #d33; }
+
+        /* ============================================================
+           CREDENCIAL DE VERIFICACIÓN — color con significado según estado
+           ============================================================ */
+        .vd-cred {
+          --acc: var(--cx-primary-600); --acc-2: var(--cx-primary-700);
+          --acc-soft: var(--cx-primary-050); --acc-ink: var(--cx-primary-700); --acc-rgb: 169,62,240;
+          position: relative; overflow: hidden;
+          background: rgba(255, 255, 255, .55);
+          backdrop-filter: saturate(160%) blur(18px);
+          -webkit-backdrop-filter: saturate(160%) blur(18px);
+          border: 1px solid rgba(255, 255, 255, .6);
+          border-radius: var(--cx-r-xl);
+          box-shadow: 0 2px 4px rgba(50, 20, 80, .05), 0 14px 30px -16px rgba(50, 20, 80, .16), 0 44px 80px -40px rgba(50, 20, 80, .32), inset 0 1px 0 rgba(255, 255, 255, .6);
+          transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s;
+        }
+        .vd-cred:hover { transform: translateY(-4px); box-shadow: 0 3px 6px rgba(50, 20, 80, .06), 0 20px 40px -18px rgba(50, 20, 80, .2), 0 56px 96px -44px rgba(50, 20, 80, .38), inset 0 1px 0 rgba(255, 255, 255, .65); }
+        .vd-cred--success { --acc: #2fa37a; --acc-2: #27906b; --acc-soft: #e9f6ef; --acc-ink: #256b4f; --acc-rgb: 47,163,122; }
+        .vd-cred--warning { --acc: #e0912a; --acc-2: #c67d1e; --acc-soft: #f8ecd6; --acc-ink: #8a5a1a; --acc-rgb: 224,145,42; }
+        .vd-cred--error   { --acc: #e0524f; --acc-2: #c73f3c; --acc-soft: #fbe4e4; --acc-ink: #a3312f; --acc-rgb: 224,82,79; }
+        /* Halo de color suave difuminado — ambiente, no bloque duro */
+        .vd-cred::before {
+          content: ''; position: absolute; top: -40%; left: 50%; transform: translateX(-50%);
+          width: 120%; height: 80%; z-index: 0; pointer-events: none;
+          background: radial-gradient(50% 60% at 50% 0%, rgba(var(--acc-rgb), .22), transparent 70%);
+        }
+        .vd-cred > * { position: relative; z-index: 1; }
+
+        /* --- Banda superior: sello + estado --- */
+        .vd-cred-top {
+          display: flex; align-items: center; gap: 22px;
+          padding: 34px 32px 26px;
+          background: linear-gradient(180deg, rgba(var(--acc-rgb), .10), transparent 92%);
+        }
+        .vd-seal { position: relative; flex: 0 0 auto; width: 88px; height: 88px; filter: drop-shadow(0 12px 22px rgba(var(--acc-rgb), .35)); }
+        .vd-seal::before {
+          content: ''; position: absolute; inset: -10px; border-radius: 50%; z-index: 0;
+          background: radial-gradient(circle, rgba(var(--acc-rgb), .3), transparent 68%);
+          animation: vd-pulse 2.6s ease-in-out infinite;
+        }
+        .vd-seal-svg { position: relative; z-index: 1; width: 100%; height: 100%; display: block; }
+        @keyframes vd-pulse { 0%, 100% { transform: scale(.9); opacity: .45; } 50% { transform: scale(1.14); opacity: .85; } }
+        .vd-seal-ring { fill: none; stroke: var(--acc); stroke-width: 2.5; stroke-dasharray: 5 6; opacity: .55; transform-origin: 50% 50%; animation: vd-spin 16s linear infinite; }
+        .vd-seal-disc { fill: var(--acc); }
+        .vd-seal-mark { fill: none; stroke: #fff; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 130; stroke-dashoffset: 130; animation: vd-draw .8s .25s cubic-bezier(.2,.8,.2,1) forwards; }
+        @keyframes vd-spin { to { transform: rotate(360deg); } }
+        @keyframes vd-draw { to { stroke-dashoffset: 0; } }
+        @media (prefers-reduced-motion: reduce) { .vd-seal-ring, .vd-seal::before { animation: none; } .vd-seal-mark { animation: none; stroke-dashoffset: 0; } }
+
+        .vd-cred-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--acc-ink); }
+        .cx-site .vd-cred-status h3 { font-family: var(--cx-display); font-weight: 400; font-size: clamp(1.5rem, 3.6vw, 2rem); color: var(--cx-ink); margin: 7px 0 3px; line-height: 1.15; }
+        .vd-cred-status p { color: var(--cx-ink-2); font-weight: 600; margin: 0; }
+
+        /* --- Cuerpo: talón (ticket) + datos --- */
+        .vd-cred-body { position: relative; display: flex; align-items: stretch; }
+        .vd-cred-body::before, .vd-cred-body::after {
+          content: ''; position: absolute; left: 240px; width: 22px; height: 22px; border-radius: 50%;
+          background: var(--cx-bg-soft); border: 1px solid var(--cx-line); transform: translate(-50%, -50%); z-index: 2;
+        }
+        .vd-cred-body::before { top: 0; }
+        .vd-cred-body::after { top: 100%; }
+
+        .vd-stub {
+          position: relative; flex: 0 0 240px; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 30px 22px;
+          background:
+            repeating-linear-gradient(45deg, rgba(var(--acc-rgb), .05) 0 2px, transparent 2px 10px),
+            rgba(var(--acc-rgb), .08);
+        }
+        .vd-stub::after {
+          content: ''; position: absolute; top: 16px; bottom: 16px; right: -1px; width: 2px;
+          background-image: linear-gradient(var(--acc) 45%, transparent 0);
+          background-size: 2px 12px; background-repeat: repeat-y; opacity: .3;
+        }
+        .vd-stub-label { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--acc-ink); }
+        .vd-stub-code { font-family: 'Courier New', monospace; font-weight: 800; font-size: clamp(1.1rem, 4vw, 1.45rem); letter-spacing: .08em; color: var(--cx-ink); word-break: break-all; line-height: 1.2; }
+        .vd-stub-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: var(--cx-r-pill); background: var(--acc); color: #fff; font-size: .72rem; font-weight: 700; box-shadow: 0 8px 16px -8px rgba(var(--acc-rgb), .7); }
+
+        .vd-cred-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 30px; margin: 0; padding: 26px 30px; }
+        .vd-field { display: flex; flex-direction: column; gap: 3px; padding: 9px 0; }
+        .vd-field dt { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--cx-muted); margin: 0; }
+        .vd-field dd { margin: 0; font-size: .95rem; font-weight: 700; color: var(--cx-ink); }
+        .vd-field dd.is-accent { color: var(--acc-ink); }
+        .vd-field dd.is-danger { color: #a3312f; }
+        .vd-field-head {
+          grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
+          margin-top: 12px; padding-top: 15px; border-top: 1px dashed var(--cx-line);
+          font-size: .76rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--acc-ink);
+        }
+        .vd-field-head i { color: var(--acc); font-size: 1rem; }
+        .vd-pill { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: var(--cx-r-pill); font-size: .8rem; font-weight: 700; }
+        .vd-pill.is-active { background: var(--cx-mint); color: #2f6a48; }
+        .vd-pill.is-inactive { background: var(--cx-bg-soft); color: var(--cx-muted); border: 1px solid var(--cx-line); }
+
+        /* --- Pie: url + acciones --- */
+        .vd-cred-foot {
+          display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+          padding: 18px 30px 22px; border-top: 1px solid rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .32);
+        }
+        .vd-cred-url { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; color: var(--cx-muted); font-size: .82rem; }
+        .vd-cred-url i { color: var(--acc); font-size: 1.15rem; flex: 0 0 auto; }
+        .vd-cred-url code { font-family: 'Courier New', monospace; color: var(--cx-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 720px) {
+          .vd-cred-body { flex-direction: column; }
+          .vd-cred-body::before, .vd-cred-body::after { display: none; }
+          .vd-stub { flex: none; border-bottom: 2px dashed var(--acc); }
+          .vd-stub::after { display: none; }
+          .vd-cred-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+          .vd-cred-top { flex-direction: column; text-align: center; gap: 14px; padding: 28px 20px 22px; }
+          .vd-cred-grid { padding: 22px 20px; gap: 2px 20px; }
+          .vd-stub { padding: 26px 20px; }
+          .vd-cred-foot { flex-direction: column; align-items: stretch; padding: 16px 20px 20px; }
+          .vd-cred-url { justify-content: center; }
+          .vd-actions { width: 100%; }
+          .vd-actions .cx-btn { flex: 1; justify-content: center; }
+        }
+        @media (max-width: 420px) {
+          .vd-trust { gap: 8px; }
+          .vd-chip { padding: 8px 13px; font-size: .78rem; }
+          .vd-cred-url code { font-size: .76rem; }
+        }
+
+        @media print {
+          .no-print { display: none !important; }
+        }
+      `}</style>
+    </main>
   );
 };
-
-
 
 export default VerificarDocumentos;

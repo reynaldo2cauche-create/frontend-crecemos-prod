@@ -83,7 +83,20 @@
       "Bash(where python3 *)",
       "Bash(py --version)",
       "Bash(xargs grep -l -i \"ui-pro\\\\|ui-ux-pro\")",
-      "Bash(grep -n \"Modal de términos\\\\|</section>\\\\|</div>\\\\s*$\" src/pages/VerificarBeneficios.jsx)"
+      "Bash(grep -n \"Modal de términos\\\\|</section>\\\\|</div>\\\\s*$\" src/pages/VerificarBeneficios.jsx)",
+      "Bash(npx esbuild *)",
+      "Bash(grep -rn \"^section\\\\s*{\\\\|^section,\\\\| section {\\\\|section {\" src/styles/global.css public/assets/css/main.css)",
+      "Bash(grep -iE \"^puppeteer|^ws$|playwright\")",
+      "Bash(taskkill //F //IM msedge.exe)",
+      "Bash(pkill -f \"5179\")",
+      "Bash(pkill -f vite)",
+      "Bash(pkill -f \"5181\")",
+      "Bash(pkill -f \"5183\")",
+      "Bash(pkill -f \"5184\")",
+      "Bash(pkill -f \"5185\")",
+      "Bash(pkill -f \"5186\")",
+      "Bash(grep -oE \"[0-9]+$\")",
+      "Bash(pkill -f \"5188\")"
     ],
     "deny": [],
     "ask": []
