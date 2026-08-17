@@ -252,59 +252,25 @@ export default function ChocloBlog() {
 
       <hr className="my-5" />
 
-      {/* Créditos */}
-      <div className="author-credits mb-5" data-aos="fade-up">
-        <div style={{
-          background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-          padding: '2rem',
-          borderRadius: '12px',
-          border: '2px solid #c263f9'
-        }}>
-          <h4 style={{ marginBottom: '1.5rem', color: '#2d465e', fontWeight: '700', fontSize: '1.1rem' }}>
-            Elaborado por:
-          </h4>
-          <div className="d-flex align-items-start mb-3">
-            <div style={{
-              width: '60px',
-              height: '60px',
-              background: 'linear-gradient(135deg, #c263f9 0%, #d99ffd 100%)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: '1rem',
-              flexShrink: '0'
-            }}>
-              <i className="bi bi-person-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
-            </div>
-            <div style={{ flex: '1' }}>
-              <h5 style={{ marginBottom: '0.5rem', color: '#2d465e', fontWeight: '700', fontSize: '1.15rem' }}>
-                Leonardo Yactayo Uceda
-              </h5>
-              <p style={{ marginBottom: '0.75rem', color: '#666', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                <i className="bi bi-award-fill me-2" style={{ color: '#c263f9' }}></i>
-                Curso en Nutrición y Alimentación Infantil – Universidad Científica del Sur
-              </p>
-              <a
-                href="https://www.crecemos.com.pe"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#c263f9',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  fontSize: '0.95rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-                onMouseOut={(e) => e.target.style.textDecoration = 'none'}
-              >
-                <i className="bi bi-globe me-2"></i>
-                www.crecemos.com.pe
-              </a>
-            </div>
+      {/* Autor */}
+      <div className="author-credits" data-aos="fade-up">
+        <div className="d-flex align-items-center gap-3">
+          <div className="author-avatar">
+            <i className="bi bi-person-circle" style={{ fontSize: '4rem', color: 'var(--cx-primary)' }}></i>
+          </div>
+          <div>
+            <h4 style={{ marginBottom: '0.25rem' }}>Leonardo Yactayo Uceda</h4>
+            <p style={{ marginBottom: '0.4rem', color: 'var(--cx-muted)', fontSize: '0.95rem' }}>
+              <strong>Curso en Nutrición y Alimentación Infantil – Universidad Científica del Sur</strong>
+            </p>
+            <a
+              href="https://www.crecemos.com.pe"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--cx-primary-700)', fontWeight: 600, fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <i className="bi bi-globe me-2"></i> www.crecemos.com.pe
+            </a>
           </div>
         </div>
       </div>
