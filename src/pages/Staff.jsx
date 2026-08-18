@@ -9,6 +9,15 @@ import Reveal from '../components/public/Reveal';
 import RevealText from '../components/public/RevealText';
 import Decor from '../components/public/Decor';
 
+// Detecta si un cargo corresponde a un interno (ej. "Interno de Psicología")
+const esCargoInterno = (cargo) => {
+  const nombre = typeof cargo === 'string' ? cargo : (cargo?.nombre || '');
+  return /\bIntern[oa]\b/i.test(nombre);
+};
+
+// Prefijo del nombre: "Int." para internos, "Lic." para el resto
+const prefijoNombre = (esInterno) => (esInterno ? 'Int.' : 'Lic.');
+
 export const Staff = () => {
   const [specialists, setSpecialists] = useState([]);
   const [filteredSpecialists, setFilteredSpecialists] = useState([]);
@@ -153,6 +162,7 @@ export const Staff = () => {
                    item.trabajador?.cargo?.nombre ||
                    item.descripcion_especialidad ||
                    'Terapeuta',
+            esInterno: esCargoInterno(item.trabajador?.cargo),
             specialties: item.descripcion_especialidad || 'Profesional de la salud dedicado al bienestar de nuestros pacientes.',
             services: serviciosMostrar,
             areas: areas,
@@ -533,7 +543,7 @@ export const Staff = () => {
               <img src={selectedSpecialist.img} alt={selectedSpecialist.name} onError={handleImageError} />
             </div>
             <span className="cx-modal-eyebrow"><i className="bi bi-patch-check-fill" /> Especialista</span>
-            <h2 className="cx-modal-name">Lic. {selectedSpecialist.name}</h2>
+            <h2 className="cx-modal-name">{prefijoNombre(selectedSpecialist.esInterno)} {selectedSpecialist.name}</h2>
             <span className="cx-modal-role">{selectedSpecialist.title}</span>
 
             <div className="cx-modal-credentials">
@@ -998,7 +1008,7 @@ export const Staff = () => {
                     </span>
 
                     <div className="cx-spec-overlay">
-                      <h3>Lic. {specialist.name}</h3>
+                      <h3>{prefijoNombre(specialist.esInterno)} {specialist.name}</h3>
                       <span className="cx-spec-areas">
                         <i className="bi bi-people-fill" />
                         <span>

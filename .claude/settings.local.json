@@ -96,7 +96,9 @@
       "Bash(pkill -f \"5185\")",
       "Bash(pkill -f \"5186\")",
       "Bash(grep -oE \"[0-9]+$\")",
-      "Bash(pkill -f \"5188\")"
+      "Bash(pkill -f \"5188\")",
+      "Bash(command -v mysql)",
+      "Bash(command -v mysqladmin)"
     ],
     "deny": [],
     "ask": []
