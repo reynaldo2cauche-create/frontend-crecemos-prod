@@ -38,26 +38,21 @@ const cargarImagen = (src) =>
     img.src = src;
   });
 
-// Genera solo el QR ondeado (morado claro) con el logo y lo devuelve como <img>.
+// Genera solo el QR ondeado (morado claro) con fondo transparente y lo
+// devuelve como <img>. El logo NO se incrusta aquí: se dibuja aparte en el
+// canvas (con su caja blanca) para poder dejar el resto del PNG transparente.
 const generarQRImg = async (codigo, size) => {
   const qr = new QRCodeStyling({
     width: size,
     height: size,
     type: 'canvas',
     data: construirUrlValidacion(codigo),
-    image: LOGO_PATH,
     margin: 0,
     qrOptions: { errorCorrectionLevel: 'H' },
     dotsOptions: { type: 'extra-rounded', color: MORADO },
     cornersSquareOptions: { type: 'extra-rounded', color: MORADO },
     cornersDotOptions: { type: 'dot', color: MORADO },
-    backgroundOptions: { color: '#FFFFFF' },
-    imageOptions: {
-      crossOrigin: 'anonymous',
-      margin: 8,
-      imageSize: 0.3,
-      hideBackgroundDots: true,
-    },
+    backgroundOptions: { color: 'transparent' },
   });
 
   const blob = await qr.getRawData('png');
@@ -102,9 +97,7 @@ export const generarQRDataURL = async (codigo, opts = {}) => {
   canvas.height = height;
   const ctx = canvas.getContext('2d');
 
-  // Fondo blanco
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, width, height);
+  // Sin fondo: el PNG queda transparente (solo el QR, el logo y los textos).
 
   ctx.textAlign = 'center';
 
@@ -113,8 +106,28 @@ export const generarQRDataURL = async (codigo, opts = {}) => {
   ctx.font = "bold 40px 'Segoe UI', Arial, sans-serif";
   ctx.fillText('Código de verificación', width / 2, topTitulo);
 
-  // QR centrado
+  // QR centrado (fondo transparente)
   ctx.drawImage(qrImg, padX, qrTop, qrSize, qrSize);
+
+  // Logo centrado con su caja blanca. El QR usa corrección de errores 'H',
+  // así que tapar el centro (~30-40%) no impide la lectura.
+  const logoImg = await cargarImagen(LOGO_PATH);
+  const cx = padX + qrSize / 2;
+  const cy = qrTop + qrSize / 2;
+  const logoW = qrSize * 0.40;
+  const logoH = logoW * (logoImg.naturalHeight / logoImg.naturalWidth);
+  const boxPad = qrSize * 0.03;
+  const boxW = logoW + boxPad * 2;
+  const boxH = logoH + boxPad * 2;
+  const boxX = cx - boxW / 2;
+  const boxY = cy - boxH / 2;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY, boxW, boxH, 14);
+  ctx.fill();
+
+  ctx.drawImage(logoImg, cx - logoW / 2, cy - logoH / 2, logoW, logoH);
 
   // Código (morado claro)
   ctx.fillStyle = MORADO;
