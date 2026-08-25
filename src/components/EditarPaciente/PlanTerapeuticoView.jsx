@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ClipboardList, Plus, Check, CheckCircle2, Clock, Circle, Trash2, X,
   Pencil, Target, AlertCircle, Calendar, User as UserIcon, Timer, DollarSign,
-  CalendarClock, Users, ChevronDown, ChevronLeft, ChevronRight, ListChecks, Search,
+  CalendarClock, Users, ChevronDown, ChevronLeft, ChevronRight, Search,
   Ear, MessageCircle, Brain, Eye, Smile, Hand, BookOpen, Activity, Music, Utensils,
 } from 'lucide-react';
 import {
@@ -48,6 +48,12 @@ const progresoColor = (pct) => {
   if (pct >= 40) return { bar: 'bg-amber-500', text: 'text-amber-600', stroke: '#f59e0b', label: 'En proceso' };
   return { bar: 'bg-red-500', text: 'text-red-600', stroke: '#ef4444', label: 'En riesgo' };
 };
+// Estado del objetivo específico (badge tipo "Logrado / En proceso / No logrado").
+const estadoEsp = (pct) => {
+  if (pct >= 80) return { label: 'Logrado', text: 'text-emerald-700', bg: 'bg-emerald-50' };
+  if (pct >= 40) return { label: 'En proceso', text: 'text-amber-700', bg: 'bg-amber-50' };
+  return { label: 'No logrado', text: 'text-red-700', bg: 'bg-red-50' };
+};
 // Ícono según el área de trabajo (por palabra clave en el nombre).
 const ICONOS_AREA = [
   { kw: ['comprens', 'recept', 'escucha', 'auditiv'], Icon: Ear },
@@ -67,12 +73,6 @@ const areaIcon = (nombre = '') => {
   const found = ICONOS_AREA.find((m) => m.kw.some((k) => n.includes(k)));
   return found ? found.Icon : Target;
 };
-// Estado del objetivo específico (badge tipo "Logrado / En proceso / No logrado").
-const estadoEsp = (pct) => {
-  if (pct >= 80) return { label: 'Logrado', text: 'text-emerald-700', bg: 'bg-emerald-50' };
-  if (pct >= 40) return { label: 'En proceso', text: 'text-amber-700', bg: 'bg-amber-50' };
-  return { label: 'No logrado', text: 'text-red-700', bg: 'bg-red-50' };
-};
 // Fecha de hoy en formato 'YYYY-MM-DD' (hora local), para comparar con las fechas de las sesiones.
 const hoyISO = () => {
   const d = new Date();
@@ -84,7 +84,7 @@ const fmtFecha = (f, year) => {
   return isNaN(d) ? null : d.toLocaleDateString('es-PE', year ? { day: '2-digit', month: '2-digit', year: 'numeric' } : { day: '2-digit', month: '2-digit' });
 };
 
-const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
+const PlanTerapeuticoView = ({ pacienteId, user }) => {
   const [servicios, setServicios] = useState([]);
   const [servicioId, setServicioId] = useState(null);
   const [plan, setPlan] = useState(null);
@@ -226,6 +226,62 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
     } catch (e) { toast('error', e.response?.data?.message || 'No se pudieron actualizar los objetivos'); }
   };
 
+  // ── Crear un objetivo nuevo y asignarlo directo a la sesión activa ──
+  // Como cada objetivo mayormente se usa una vez, se crea + asigna + (opcional) registra
+  // actividad/materiales en un solo paso desde la sesión. Si el área aún no existe como
+  // objetivo general, se crea primero.
+  const handleCrearObjetivoEnSesion = async ({ generalId, areaId, descripcion, actividad, materiales }) => {
+    try {
+      let gid = generalId;
+      if (!gid && areaId) {
+        const cg = await crearGeneral({
+          plan_id: plan.plan.id,
+          area_id: areaId,
+          frecuencia_id: null,
+          descripcion: null,
+          plazo_sesiones: null,
+          fecha_inicio: null,
+          fecha_logro_est: null,
+        });
+        gid = cg?.id ?? cg?.general?.id;
+        if (!gid) {
+          const data = await recargarPlan();
+          gid = (data?.generales || []).find((g) => g.area_id === areaId)?.id;
+        }
+      }
+      if (!gid) throw new Error('No se pudo determinar el área del objetivo');
+
+      const ce = await crearEspecifico({ objetivo_general_id: gid, descripcion });
+      let eid = ce?.id ?? ce?.especifico?.id;
+      if (!eid) {
+        const data = await recargarPlan();
+        const g = (data?.generales || []).find((x) => x.id === gid);
+        eid = [...(g?.especificos || [])].reverse().find((e) => e.descripcion === descripcion)?.id;
+      }
+      if (!eid) throw new Error('No se pudo crear el objetivo específico');
+
+      await asignarObjetivoSesion({ objetivo_especifico_id: eid, numero_sesion: sesionActiva });
+
+      const actTrim = (actividad || '').trim();
+      const matTrim = (materiales || '').trim();
+      if (actTrim || matTrim) {
+        await guardarRegistro({
+          objetivo_especifico_id: eid,
+          numero_sesion: sesionActiva,
+          resultado: null,
+          observaciones: null,
+          actividad: actTrim || null,
+          materiales: matTrim || null,
+        });
+      }
+
+      await recargarPlan();
+      toast('success', `Objetivo agregado a la Sesión ${sesionActiva}`);
+    } catch (e) {
+      toast('error', e.response?.data?.message || e.message || 'No se pudo agregar el objetivo');
+    }
+  };
+
   // ── Render ──
   if (loading && !plan) return <div className="h-40 bg-gray-50 rounded-2xl animate-pulse" />;
 
@@ -271,27 +327,37 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
         {servicioSel?.terapeuta_nombre && <span className="text-[11px] text-gray-500 ml-auto">Terapeuta: {servicioSel.terapeuta_nombre}</span>}
       </div>
 
-      {vista === 'plan' ? (
-        <TabPlan
-          plan={plan} generales={generales} maxGen={maxGen} maxEsp={maxEsp} puedeGestionar={puedeGestionar}
-          esAdmin={esAdmin}
-          onAddGeneral={() => setModalGeneral({ mode: 'add', data: {} })}
-          onEditGeneral={(g) => setModalGeneral({ mode: 'edit', data: g })}
-          onDeleteGeneral={(g) => setConfirmDelete({ tipo: 'general', id: g.id, label: g.area_nombre })}
-          onAddEspecifico={(g) => setModalEspecifico({ mode: 'add', generalId: g.id, data: {} })}
-          onEditEspecifico={(g, e) => setModalEspecifico({ mode: 'edit', generalId: g.id, data: e })}
-          onDeleteEspecifico={(e) => setConfirmDelete({ tipo: 'especifico', id: e.id, label: e.descripcion })}
-        />
-      ) : (
-        <TabSesiones
-          plan={plan} generales={generales} sesiones={sesiones} resultados={resultados}
-          sesionActiva={sesionActiva} setSesionActiva={setSesionActiva} sesionSel={sesionSel}
-          puedeGestionar={puedeGestionar} esAdmin={esAdmin}
-          onResultado={handleResultado} onObs={handleObs}
-          onActividad={handleActividad} onMateriales={handleMateriales}
-          onGuardarObjetivos={handleGuardarObjetivosSesion}
-        />
-      )}
+      {/* SECCIÓN 1 · Plan de tratamiento (arriba, ancho completo) */}
+      <SeccionPlan
+        plan={plan} generales={generales} maxGen={maxGen} maxEsp={maxEsp}
+        puedeGestionar={puedeGestionar} esAdmin={esAdmin}
+        onAddGeneral={() => setModalGeneral({ mode: 'add', data: {} })}
+        onEditGeneral={(g) => setModalGeneral({ mode: 'edit', data: g })}
+        onDeleteGeneral={(g) => setConfirmDelete({ tipo: 'general', id: g.id, label: g.area_nombre })}
+        onAddEspecifico={(g) => setModalEspecifico({ mode: 'add', generalId: g.id, data: {} })}
+        onEditEspecifico={(g, e) => setModalEspecifico({ mode: 'edit', generalId: g.id, data: e })}
+        onDeleteEspecifico={(e) => setConfirmDelete({ tipo: 'especifico', id: e.id, label: e.descripcion })}
+      />
+
+      {/* separador entre secciones */}
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Registro por sesión</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      {/* SECCIÓN 2 · Sesiones (abajo, ancho completo) */}
+      <SeccionSesiones
+        generales={generales} sesiones={sesiones} resultados={resultados}
+        areas={areas} areasUsadas={areasUsadas} maxGen={maxGen} maxEsp={maxEsp}
+        sesionActiva={sesionActiva} setSesionActiva={setSesionActiva} sesionSel={sesionSel}
+        puedeGestionar={puedeGestionar} esAdmin={esAdmin}
+        onResultado={handleResultado} onObs={handleObs}
+        onActividad={handleActividad} onMateriales={handleMateriales}
+        onGuardarObjetivos={handleGuardarObjetivosSesion}
+        onCrearObjetivo={handleCrearObjetivoEnSesion}
+        onEditEspecifico={(e) => setModalEspecifico({ mode: 'edit', generalId: e.objetivo_general_id, data: e })}
+      />
 
       {modalGeneral && (
         <GeneralModal mode={modalGeneral.mode} data={modalGeneral.data} areas={areas}
@@ -311,208 +377,11 @@ const PlanTerapeuticoView = ({ pacienteId, user, vista = 'plan' }) => {
   );
 };
 
-// ════════════════════════════════════════════════════════════════════
-// TAB · PLAN DE TRATAMIENTO
-// ════════════════════════════════════════════════════════════════════
-const TabPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
-  const progresoPlan = plan?.plan?.progreso ?? 0;
-  const totalSes = plan?.servicio?.total_sesiones ?? 0;
-  const revisionCada = plan?.plan?.revision_cada ?? 8;
-  const reunionCada = plan?.plan?.reunion_padres_cada ?? 24;
-  const faltanRevision = revisionCada - (totalSes % revisionCada || revisionCada) + (totalSes % revisionCada === 0 ? revisionCada : 0);
-  const faltanReunion = reunionCada - (totalSes % reunionCada || reunionCada) + (totalSes % reunionCada === 0 ? reunionCada : 0);
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
-      {/* Columna principal: objetivos generales */}
-      <div className="lg:col-span-3 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-gray-800">Plan de tratamiento</h3>
-            {plan?.plan?.metodologia && <p className="text-[11px] text-gray-400">{plan.plan.metodologia}</p>}
-          </div>
-          {puedeGestionar && (
-            <button onClick={onAddGeneral} disabled={generales.length >= maxGen}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
-              <Plus className="w-3.5 h-3.5" /> Objetivo general
-            </button>
-          )}
-        </div>
-
-        {generales.length === 0 && (
-          <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-            <Target className="w-9 h-9 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">Aún no hay objetivos generales. Agrega hasta {maxGen} áreas de trabajo.</p>
-          </div>
-        )}
-
-        {generales.map((g, i) => (
-          <GeneralCard key={g.id} g={g} maxEsp={maxEsp} color={AREA_COLORS[i % AREA_COLORS.length]} puedeGestionar={puedeGestionar} esAdmin={esAdmin}
-            onEditGeneral={onEditGeneral} onDeleteGeneral={onDeleteGeneral}
-            onAddEspecifico={onAddEspecifico} onEditEspecifico={onEditEspecifico} onDeleteEspecifico={onDeleteEspecifico} />
-        ))}
-      </div>
-
-      {/* Sidebar: progreso general + próximas fechas */}
-      <div className="space-y-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Progreso general</h4>
-          <p className="text-[10px] text-gray-400 mb-2">Avance general del plan terapéutico</p>
-          <div className="flex justify-center my-2"><Donut pct={progresoPlan} /></div>
-          <div className="space-y-2 mt-3">
-            {generales.map((g, i) => {
-              const c = progresoColor(g.progreso);
-              const col = AREA_COLORS[i % AREA_COLORS.length];
-              const AreaIcon = areaIcon(g.area_nombre);
-              return (
-                <div key={g.id}>
-                  <div className="flex items-center justify-between mb-0.5 gap-2">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span className={`w-6 h-6 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-3.5 h-3.5 ${col.icon}`} /></span>
-                      <span className="text-[11px] font-semibold text-gray-700 truncate">{g.area_nombre}</span>
-                    </span>
-                    <span className={`text-[11px] font-bold ${c.text} flex-shrink-0`}>{g.progreso}%</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></div>
-                </div>
-              );
-            })}
-            {generales.length === 0 && <p className="text-[11px] text-gray-400">Sin objetivos aún.</p>}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Próximas fechas importantes</h4>
-          <div className="flex items-center gap-2 py-1.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><Calendar className="w-4 h-4 text-blue-500" /></div>
-            <div className="flex-1"><p className="text-[11px] font-semibold text-gray-700">Revisión clínica</p><p className="text-[10px] text-gray-400">cada {revisionCada} sesiones</p></div>
-            <span className="text-xs font-bold text-gray-700">{faltanRevision} <span className="text-[10px] font-normal text-gray-400">faltan</span></span>
-          </div>
-          <div className="flex items-center gap-2 py-1.5 border-t border-gray-50">
-            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0"><Users className="w-4 h-4 text-[#7B1FA2]" /></div>
-            <div className="flex-1"><p className="text-[11px] font-semibold text-gray-700">Reunión con padres</p><p className="text-[10px] text-gray-400">cada {reunionCada} sesiones</p></div>
-            <span className="text-xs font-bold text-gray-700">{faltanReunion} <span className="text-[10px] font-normal text-gray-400">faltan</span></span>
-          </div>
-          <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-50">Las fechas pueden ajustarse según la evolución del paciente.</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Tarjeta de un objetivo general: panel izquierdo (área + progreso) + tabla de específicos.
-const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
-  // Crear objetivos específicos: quien gestiona objetivos o el administrador.
-  const puedeGestionarEspecifico = puedeGestionar || esAdmin;
-  const [abierto, setAbierto] = useState(true);
-  const c = progresoColor(g.progreso);
-  const col = color || AREA_COLORS[0];
-  const especificos = g.especificos || [];
-  const AreaIcon = areaIcon(g.area_nombre);
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <div className="flex flex-col lg:flex-row">
-        {/* Panel izquierdo: área + descripción + progreso general */}
-        <div className={`lg:w-64 flex-shrink-0 ${col.soft} border-l-4 ${col.accent} p-4 lg:border-r lg:border-r-gray-100`}>
-          <div className="flex items-start gap-2.5">
-            <div className={`w-9 h-9 rounded-xl ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-4 h-4 ${col.icon}`} /></div>
-            <h4 className={`text-sm font-bold uppercase tracking-wide leading-tight ${col.icon}`}>{g.area_nombre}</h4>
-          </div>
-          {g.descripcion && <p className="text-xs text-gray-600 mt-2 leading-snug">{g.descripcion}</p>}
-          <div className="mt-4">
-            <p className="text-[11px] text-gray-500">Progreso general</p>
-            <p className={`text-2xl font-bold ${c.text}`}>{g.progreso}%</p>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1"><div className={`h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></div>
-          </div>
-        </div>
-
-        {/* Panel derecho: meta + tabla de específicos */}
-        <div className="flex-1 min-w-0 p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-gray-600">
-              {g.plazo_sesiones != null && <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Plazo estimado</span>{g.plazo_sesiones} sesiones</span></span>}
-              {g.fecha_inicio && <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Inicio</span>{fmtFecha(g.fecha_inicio, true)}</span></span>}
-              {g.frecuencia_nombre && <span className="flex items-center gap-1.5"><CalendarClock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Frecuencia</span>{g.frecuencia_nombre}</span></span>}
-              {g.fecha_logro_est && <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Logro estimado</span>{fmtFecha(g.fecha_logro_est, true)}</span></span>}
-            </div>
-            {puedeGestionar && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => onEditGeneral(g)} className="p-1.5 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => onDeleteGeneral(g)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <button onClick={() => setAbierto((v) => !v)} className="flex items-center gap-1.5 text-[11px] font-bold text-gray-600 uppercase tracking-wide">
-                Objetivos específicos (máx. {maxEsp})
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
-              </button>
-              {puedeGestionarEspecifico && (
-                <button onClick={() => onAddEspecifico(g)} disabled={especificos.length >= maxEsp}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-[#7B1FA2] hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
-                  <Plus className="w-3 h-3" /> Específico
-                </button>
-              )}
-            </div>
-
-            {abierto && (
-              especificos.length === 0 ? (
-                <p className="text-[11px] text-gray-400 py-2">Sin objetivos específicos.</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left border-b border-gray-100">
-                      <th className="py-1.5 pr-2 w-6 text-[9px] font-bold text-gray-400 uppercase">#</th>
-                      <th className="py-1.5 pr-2 text-[9px] font-bold text-gray-400 uppercase">Objetivo específico</th>
-                      <th className="py-1.5 px-2 text-[9px] font-bold text-gray-400 uppercase text-center w-24">Estado</th>
-                      <th className="py-1.5 pl-2 text-[9px] font-bold text-gray-400 uppercase w-40">Progreso</th>
-                      <th className="w-12" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {especificos.map((e, i) => {
-                      const ec = progresoColor(e.progreso);
-                      const est = estadoEsp(e.progreso);
-                      return (
-                        <tr key={e.id} className="border-b border-gray-50 group align-middle">
-                          <td className="py-2 pr-2"><span className="w-5 h-5 rounded-md bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center">{i + 1}</span></td>
-                          <td className="py-2 pr-2 text-xs text-gray-700 leading-snug">{e.descripcion}</td>
-                          <td className="py-2 px-2 text-center"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${est.text} ${est.bg}`}>{est.label}</span></td>
-                          <td className="py-2 pl-2">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden"><div className={`h-full ${ec.bar} rounded-full`} style={{ width: `${e.progreso}%` }} /></div>
-                              <span className="text-[11px] font-bold text-gray-700 w-9 text-right">{e.progreso}%</span>
-                            </div>
-                          </td>
-                          <td className="py-2">
-                            {/* Editar y eliminar objetivos específicos: solo el Administrador */}
-                            {esAdmin && (
-                              <div className="flex items-center gap-0.5">
-                                <button onClick={() => onEditEspecifico(g, e)} title="Editar objetivo específico" className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3 h-3" /></button>
-                                <button onClick={() => onDeleteEspecifico(e)} title="Eliminar objetivo específico" className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ════════════════════════════════════════════════════════════════════
-// TAB · SESIONES
+// SECCIÓN · Registro por sesión (abajo de la página, ancho completo)
 // ════════════════════════════════════════════════════════════════════
-const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, esAdmin, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos }) => {
+const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, maxGen, maxEsp, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, esAdmin, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos, onCrearObjetivo, onEditEspecifico }) => {
   // Todos los específicos del plan (con su área).
   const filasTodas = useMemo(
     () => generales.flatMap((g) => (g.especificos || []).map((e) => ({ ...e, area_nombre: g.area_nombre }))),
@@ -523,7 +392,6 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
     () => filasTodas.filter((e) => (e.sesiones_asignadas || []).includes(sesionActiva)),
     [filasTodas, sesionActiva],
   );
-  const totalEspecificos = filasTodas.length;
   // Agrupar las filas por área (objetivo general) para unir la celda de "Área de trabajo".
   const grupos = useMemo(() => {
     const out = [];
@@ -536,7 +404,7 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
     return out;
   }, [filas]);
   const colorGen = useMemo(() => coloresPorGeneral(generales), [generales]);
-  const [gestionarOpen, setGestionarOpen] = useState(false);
+  const [agregarOpen, setAgregarOpen] = useState(false);
   const [confirmQuitar, setConfirmQuitar] = useState(null); // objetivo específico a quitar del bloque
   const editable = !!sesionSel?.puede_registrar;
 
@@ -569,8 +437,7 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
   const bloquesPagina = bloquesOrden.slice(pag * BLOQUES_POR_PAGINA, pag * BLOQUES_POR_PAGINA + BLOQUES_POR_PAGINA);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 items-start">
-      <div className="lg:col-span-3 space-y-3">
+    <div className="space-y-3">
         {/* Sesiones en acordeones de 4, paginados — reciente primero */}
         <div className="space-y-2">
           {bloquesPagina.map(({ bloque, bi }) => {
@@ -651,17 +518,15 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
               <p className="text-[11px] text-gray-400">Objetivos de la Sesión {sesionActiva}</p>
             </div>
             {puedeGestionar && (
-              <button onClick={() => setGestionarOpen(true)}
+              <button onClick={() => setAgregarOpen(true)}
                 className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg">
-                <ListChecks className="w-3.5 h-3.5" /> Gestionar objetivos
+                <Plus className="w-3.5 h-3.5" /> Agregar objetivo
               </button>
             )}
           </div>
           {filas.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              {totalEspecificos === 0
-                ? 'Define objetivos en el tab "Plan de tratamiento" para poder asignarlos aquí.'
-                : `Esta sesión aún no tiene objetivos. Usa "Gestionar objetivos" para elegir cuáles trabajar en la Sesión ${sesionActiva}.`}
+              {`Esta sesión aún no tiene objetivos. Usa "Agregar objetivo" para crear uno nuevo o reutilizar uno existente en la Sesión ${sesionActiva}.`}
             </p>
           ) : (
             <table className="w-full text-sm table-fixed">
@@ -700,12 +565,20 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
                         <td className="px-2 py-2.5 text-[11px] text-gray-700 break-words">
                           <div className="group/obj flex items-start justify-between gap-1">
                             <span>{e.descripcion}</span>
-                            {puedeGestionar && (
-                              <button onClick={() => setConfirmQuitar(e)} title="Quitar objetivo de este bloque"
-                                className="opacity-0 group-hover/obj:opacity-100 transition-opacity p-0.5 text-gray-300 hover:text-red-500 flex-shrink-0">
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
+                            <span className="flex items-center gap-0.5 opacity-0 group-hover/obj:opacity-100 transition-opacity flex-shrink-0">
+                              {esAdmin && (
+                                <button onClick={() => onEditEspecifico(e)} title="Editar objetivo específico"
+                                  className="p-0.5 text-gray-300 hover:text-[#7B1FA2]">
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              )}
+                              {puedeGestionar && (
+                                <button onClick={() => setConfirmQuitar(e)} title="Quitar objetivo de esta sesión"
+                                  className="p-0.5 text-gray-300 hover:text-red-500">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </div>
                         </td>
                         <td className="px-2 py-2.5">
@@ -747,47 +620,13 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
             </p>
           )}
         </div>
-      </div>
 
-      {/* Sidebar: progreso de objetivos generales */}
-      <div className="space-y-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Progreso de objetivos generales</h4>
-          <div className="space-y-2.5">
-            {generales.map((g, i) => {
-              const c = progresoColor(g.progreso);
-              const col = colorGen[g.id] || AREA_COLORS[i % AREA_COLORS.length];
-              return (
-                <div key={g.id}>
-                  <div className="flex items-center justify-between mb-0.5 gap-2">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${col.dot}`} />
-                      <span className="text-[11px] font-semibold text-gray-700 truncate">{i + 1}. {g.area_nombre}</span>
-                    </span>
-                    <span className={`text-[11px] font-bold ${c.text} flex-shrink-0`}>{g.progreso}%</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></div>
-                  <span className={`text-[9px] ${c.text}`}>{c.label}</span>
-                </div>
-              );
-            })}
-            {generales.length === 0 && <p className="text-[11px] text-gray-400">Sin objetivos aún.</p>}
-          </div>
-          <div className="mt-3 pt-2 border-t border-gray-50 space-y-1">
-            <p className="text-[9px] text-gray-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Óptimo (80–100%)</p>
-            <p className="text-[9px] text-gray-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> En proceso (40–79%)</p>
-            <p className="text-[9px] text-gray-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> En riesgo (0–39%)</p>
-          </div>
-        </div>
-        <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-3">
-          <p className="text-[10px] text-blue-700">Solo se trabajan {plan?.limites?.max_generales ?? 3} objetivos generales y cada uno con máximo {plan?.limites?.max_especificos ?? 3} objetivos específicos.</p>
-        </div>
-      </div>
-
-      {gestionarOpen && (
-        <ObjetivosSesionModal sesion={sesionActiva} generales={generales}
-          onClose={() => setGestionarOpen(false)}
-          onGuardar={(addIds, removeIds) => onGuardarObjetivos(sesionActiva, addIds, removeIds)} />
+      {agregarOpen && (
+        <AgregarObjetivoModal sesion={sesionActiva} generales={generales} areas={areas}
+          areasUsadas={areasUsadas} maxGen={maxGen} maxEsp={maxEsp} puedeGestionar={puedeGestionar}
+          onClose={() => setAgregarOpen(false)}
+          onCrear={onCrearObjetivo}
+          onAsignarExistentes={(addIds) => onGuardarObjetivos(sesionActiva, addIds, [])} />
       )}
 
       {confirmQuitar && (
@@ -801,108 +640,368 @@ const TabSesiones = ({ plan, generales, sesiones, resultados, sesionActiva, setS
 };
 
 // ════════════════════════════════════════════════════════════════════
-// MODAL · Gestionar objetivos de una sesión
+// MODAL · Agregar objetivo a una sesión (crear nuevo o reutilizar existente)
 // ════════════════════════════════════════════════════════════════════
-const ObjetivosSesionModal = ({ sesion, generales, onClose, onGuardar }) => {
-  const inicial = useMemo(
-    () => new Set(
-      generales.flatMap((g) => (g.especificos || [])
-        .filter((e) => (e.sesiones_asignadas || []).includes(sesion))
-        .map((e) => e.id)),
-    ),
-    [generales, sesion],
-  );
-  const [checked, setChecked] = useState(() => new Set(inicial));
-  const [q, setQ] = useState('');
-  const [confirmar, setConfirmar] = useState(false);
+const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, maxEsp, onClose, onCrear, onAsignarExistentes }) => {
+  const [modo, setModo] = useState('nuevo'); // 'nuevo' | 'existente'
 
-  const toggle = (id) => setChecked((prev) => {
-    const n = new Set(prev);
-    n.has(id) ? n.delete(id) : n.add(id);
-    return n;
-  });
+  // ── NUEVO: crear objetivo (en área existente o creando una nueva) y asignarlo a la sesión ──
+  const areasNuevas = (areas || []).filter((a) => !areasUsadas?.has(a.id));
+  const puedeCrearArea = generales.length < maxGen;
+  const [areaSel, setAreaSel] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [actividad, setActividad] = useState('');
+  const [materiales, setMateriales] = useState('');
 
-  const ql = q.trim().toLowerCase();
-  const norm = (s) => (s || '').toLowerCase();
-  // ¿el específico tiene registros (resultado u observación) en esta sesión?
-  const tieneRegistros = (e) => !!e.registros?.[sesion];
+  const parsed = useMemo(() => {
+    if (!areaSel) return { generalId: null, areaId: null };
+    const [t, id] = areaSel.split(':');
+    return t === 'g' ? { generalId: Number(id), areaId: null } : { generalId: null, areaId: Number(id) };
+  }, [areaSel]);
+  const generalSel = parsed.generalId ? generales.find((g) => g.id === parsed.generalId) : null;
+  const generalLleno = generalSel && (generalSel.especificos?.length || 0) >= maxEsp;
+  const puedeGuardarNuevo = !!areaSel && descripcion.trim() && !generalLleno;
 
-  const todos = useMemo(() => generales.flatMap((g) => g.especificos || []), [generales]);
-  const addIds = [...checked].filter((id) => !inicial.has(id));
-  const removeIds = [...inicial].filter((id) => !checked.has(id));
-  const removalsConData = todos.filter((e) => removeIds.includes(e.id) && tieneRegistros(e));
-  const sinCambios = addIds.length === 0 && removeIds.length === 0;
-
-  const handleGuardar = () => {
-    if (removalsConData.length && !confirmar) { setConfirmar(true); return; }
-    onGuardar(addIds, removeIds);
+  const guardarNuevo = () => {
+    if (!puedeGuardarNuevo) return;
+    onCrear({ generalId: parsed.generalId, areaId: parsed.areaId, descripcion: descripcion.trim(), actividad, materiales });
     onClose();
   };
 
-  const hayEspecificos = todos.length > 0;
+  // ── EXISTENTE: reutilizar un objetivo ya creado (no asignado aún a esta sesión) ──
+  const [q, setQ] = useState('');
+  const [checked, setChecked] = useState(() => new Set());
+  const ql = q.trim().toLowerCase();
+  const norm = (s) => (s || '').toLowerCase();
+  const disponibles = useMemo(
+    () => generales
+      .map((g) => ({ g, items: (g.especificos || []).filter((e) => !(e.sesiones_asignadas || []).includes(sesion)) }))
+      .filter((x) => x.items.length),
+    [generales, sesion],
+  );
+  const hayDisponibles = disponibles.length > 0;
+  const toggle = (id) => setChecked((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const guardarExistentes = () => { if (checked.size) { onAsignarExistentes([...checked]); onClose(); } };
 
   return (
     <Overlay onClose={onClose} wide>
-      <Header title={`Objetivos de la Sesión ${sesion}`} onClose={onClose} />
-      <div className="px-5 pt-4">
-        <p className="text-[11px] text-gray-400 mb-2">Marca los objetivos que se trabajarán en la Sesión {sesion}.</p>
-        <div className="relative">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar objetivo…"
-            className="w-full pl-9 pr-3 py-2 border-2 border-gray-200 rounded-lg text-sm outline-none focus:border-[#7B1FA2]" />
-        </div>
+      <Header title={`Agregar objetivo · Sesión ${sesion}`} onClose={onClose} />
+      <div className="px-5 pt-3 flex gap-1">
+        {[['nuevo', 'Nuevo objetivo'], ['existente', 'Reutilizar existente']].map(([k, label]) => (
+          <button key={k} onClick={() => setModo(k)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${modo === k ? 'bg-[#7B1FA2] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="px-5 py-3 max-h-[50vh] overflow-y-auto space-y-4">
-        {!hayEspecificos && (
-          <p className="text-sm text-gray-400 text-center py-6">Primero crea objetivos en el tab "Plan de tratamiento".</p>
-        )}
-        {generales.map((g) => {
-          const AreaIcon = areaIcon(g.area_nombre);
-          const items = (g.especificos || []).filter((e) => !ql || norm(e.descripcion).includes(ql) || norm(g.area_nombre).includes(ql));
-          if (!items.length) return null;
-          return (
-            <div key={g.id}>
-              <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#7B1FA2] uppercase tracking-wide mb-1.5">
-                <AreaIcon className="w-3.5 h-3.5" /> {g.area_nombre}
-              </p>
-              <div className="space-y-1">
-                {items.map((e) => {
-                  const on = checked.has(e.id);
-                  const conData = tieneRegistros(e);
-                  return (
-                    <button key={e.id} onClick={() => toggle(e.id)}
-                      className={`w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-left border transition-all ${on ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                      <span className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${on ? 'bg-[#7B1FA2] border-[#7B1FA2]' : 'border-gray-300 bg-white'}`}>
-                        {on && <Check className="w-3 h-3 text-white" />}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-xs text-gray-700 leading-snug">{e.descripcion}</span>
-                        {conData && <span className="block text-[9px] text-amber-600 mt-0.5">Tiene registros en esta sesión</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+      {modo === 'nuevo' ? (
+        <>
+          <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto">
+            <Field label="Área de trabajo" required>
+              <select value={areaSel} onChange={(e) => setAreaSel(e.target.value)} className="inp">
+                <option value="">Selecciona un área…</option>
+                {generales.length > 0 && (
+                  <optgroup label="Áreas del plan">
+                    {generales.map((g) => (
+                      <option key={`g${g.id}`} value={`g:${g.id}`}>
+                        {g.area_nombre}{(g.especificos?.length || 0) >= maxEsp ? ' (lleno)' : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {puedeCrearArea && areasNuevas.length > 0 && (
+                  <optgroup label="Crear nueva área">
+                    {areasNuevas.map((a) => <option key={`a${a.id}`} value={`a:${a.id}`}>＋ {a.nombre}</option>)}
+                  </optgroup>
+                )}
+              </select>
+            </Field>
+            {generalLleno && <p className="text-[11px] text-red-500">Esta área ya tiene el máximo de {maxEsp} objetivos. Elige otra área.</p>}
+            <Field label="Objetivo específico" required>
+              <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2} className="inp resize-none" placeholder="Ej. Sigue instrucciones de 1 paso" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Actividad / ejemplo"><textarea value={actividad} onChange={(e) => setActividad(e.target.value)} rows={2} className="inp resize-none" placeholder="Opcional" /></Field>
+              <Field label="Materiales"><textarea value={materiales} onChange={(e) => setMateriales(e.target.value)} rows={2} className="inp resize-none" placeholder="Opcional" /></Field>
             </div>
-          );
-        })}
-        {hayEspecificos && ql && todos.every((e) => !norm(e.descripcion).includes(ql)) && (
-          <p className="text-[11px] text-gray-400 text-center py-2">Sin coincidencias para "{q}".</p>
-        )}
+            <p className="text-[11px] text-gray-400">El objetivo se creará y quedará asignado a la Sesión {sesion}. La actividad y los materiales son opcionales; puedes editarlos luego en la tabla.</p>
+          </div>
+          <Footer onClose={onClose} onSave={guardarNuevo} disabled={!puedeGuardarNuevo} saveLabel="Crear y agregar" />
+        </>
+      ) : (
+        <>
+          <div className="px-5 pt-4">
+            <p className="text-[11px] text-gray-400 mb-2">Reutiliza un objetivo ya definido (que no esté en esta sesión) en la Sesión {sesion}.</p>
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar objetivo…"
+                className="w-full pl-9 pr-3 py-2 border-2 border-gray-200 rounded-lg text-sm outline-none focus:border-[#7B1FA2]" />
+            </div>
+          </div>
+          <div className="px-5 py-3 max-h-[50vh] overflow-y-auto space-y-4">
+            {!hayDisponibles && (
+              <p className="text-sm text-gray-400 text-center py-6">No hay objetivos para reutilizar. Crea uno nuevo en la pestaña “Nuevo objetivo”.</p>
+            )}
+            {disponibles.map(({ g, items }) => {
+              const AreaIcon = areaIcon(g.area_nombre);
+              const vis = items.filter((e) => !ql || norm(e.descripcion).includes(ql) || norm(g.area_nombre).includes(ql));
+              if (!vis.length) return null;
+              return (
+                <div key={g.id}>
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#7B1FA2] uppercase tracking-wide mb-1.5">
+                    <AreaIcon className="w-3.5 h-3.5" /> {g.area_nombre}
+                  </p>
+                  <div className="space-y-1">
+                    {vis.map((e) => {
+                      const on = checked.has(e.id);
+                      return (
+                        <button key={e.id} onClick={() => toggle(e.id)}
+                          className={`w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-left border transition-all ${on ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          <span className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${on ? 'bg-[#7B1FA2] border-[#7B1FA2]' : 'border-gray-300 bg-white'}`}>
+                            {on && <Check className="w-3 h-3 text-white" />}
+                          </span>
+                          <span className="min-w-0 flex-1"><span className="block text-xs text-gray-700 leading-snug">{e.descripcion}</span></span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Footer onClose={onClose} onSave={guardarExistentes} disabled={checked.size === 0} saveLabel={`Agregar (${checked.size})`} />
+        </>
+      )}
+      <style>{`.inp{width:100%;padding:.55rem .75rem;border:2px solid #e5e7eb;border-radius:.6rem;font-size:.85rem;outline:none}.inp:focus{border-color:#7B1FA2}`}</style>
+    </Overlay>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════
+// SECCIÓN · Plan de tratamiento y progreso (arriba de la página, ancho completo)
+// ════════════════════════════════════════════════════════════════════
+const SeccionPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+  const [abierto, setAbierto] = useState(false); // colapsado por defecto → las sesiones quedan arriba
+  const progresoPlan = plan?.plan?.progreso ?? 0;
+  const cp = progresoColor(progresoPlan);
+  const totalSes = plan?.servicio?.total_sesiones ?? 0;
+  const revisionCada = plan?.plan?.revision_cada ?? 8;
+  const reunionCada = plan?.plan?.reunion_padres_cada ?? 24;
+  const faltanRevision = revisionCada - (totalSes % revisionCada || revisionCada) + (totalSes % revisionCada === 0 ? revisionCada : 0);
+  const faltanReunion = reunionCada - (totalSes % reunionCada || reunionCada) + (totalSes % reunionCada === 0 ? reunionCada : 0);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      {/* Barra compacta (siempre visible) — no empuja las sesiones */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <button onClick={() => setAbierto((v) => !v)} className="flex items-center gap-2 min-w-0 text-left">
+          <ClipboardList className="w-5 h-5 text-[#7B1FA2] flex-shrink-0" />
+          <h2 className="text-base font-bold text-gray-800">Plan de tratamiento</h2>
+          {generales.length > 0 && <span className={`text-sm font-bold ${cp.text}`}>· {progresoPlan}%</span>}
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
+        </button>
+        <div className="flex items-center gap-2">
+          {puedeGestionar && (
+            <button onClick={onAddGeneral} disabled={generales.length >= maxGen}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
+              <Plus className="w-3.5 h-3.5" /> Área
+            </button>
+          )}
+          <button onClick={() => setAbierto((v) => !v)}
+            className="text-xs font-semibold text-[#7B1FA2] bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg">
+            {abierto ? 'Ocultar objetivos' : 'Ver / editar objetivos'}
+          </button>
+        </div>
       </div>
 
-      {confirmar && removalsConData.length > 0 && (
-        <div className="px-5 py-2 bg-amber-50 border-t border-amber-100">
-          <p className="text-[11px] text-amber-700">
-            Vas a quitar {removalsConData.length} objetivo(s) que ya tienen registros en esta sesión; se borrarán esos resultados/observaciones. Pulsa "Confirmar y guardar" para continuar.
-          </p>
+      {/* Tira compacta de progreso por área (siempre visible; se acomoda sola si hay muchas) */}
+      {generales.length > 0 ? (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {generales.map((g, i) => {
+            const c = progresoColor(g.progreso);
+            const col = AREA_COLORS[i % AREA_COLORS.length];
+            const AreaIcon = areaIcon(g.area_nombre);
+            return (
+              <button key={g.id} onClick={() => setAbierto(true)} title={`${g.area_nombre} · ${g.progreso}%`}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-gray-100 bg-gray-50/60 hover:bg-gray-50 transition-all min-w-[150px] max-w-[220px]">
+                <span className={`w-7 h-7 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-4 h-4 ${col.icon}`} /></span>
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block text-[11px] font-semibold text-gray-700 truncate">{g.area_nombre}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden"><span className={`block h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></span>
+                    <span className={`text-[10px] font-bold ${c.text}`}>{g.progreso}%</span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
+      ) : (
+        <p className="text-[11px] text-gray-400 mt-2">Aún no hay áreas. Usa “+ Área” para crear la primera (hasta {maxGen}).</p>
       )}
 
-      <Footer onClose={onClose} onSave={handleGuardar} disabled={sinCambios}
-        saveLabel={confirmar && removalsConData.length ? 'Confirmar y guardar' : 'Guardar'} />
-    </Overlay>
+      {/* Detalle completo (solo al desplegar) */}
+      {abierto && (
+        <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+          <div className="lg:col-span-3 space-y-3">
+            <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wide">Áreas de trabajo y objetivos</h3>
+            {generales.length === 0 && (
+              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                <Target className="w-9 h-9 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Aún no hay áreas. Agrega hasta {maxGen} áreas de trabajo.</p>
+              </div>
+            )}
+            {generales.map((g, i) => (
+              <GeneralCard key={g.id} g={g} maxEsp={maxEsp} color={AREA_COLORS[i % AREA_COLORS.length]} puedeGestionar={puedeGestionar} esAdmin={esAdmin}
+                onEditGeneral={onEditGeneral} onDeleteGeneral={onDeleteGeneral}
+                onAddEspecifico={onAddEspecifico} onEditEspecifico={onEditEspecifico} onDeleteEspecifico={onDeleteEspecifico} />
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Avance general</h4>
+              <p className="text-[10px] text-gray-400 mb-2">Promedio de todos los objetivos generales</p>
+              <div className="flex justify-center my-2"><Donut pct={progresoPlan} /></div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Próximas fechas importantes</h4>
+              <div className="flex items-center gap-2 py-1.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><Calendar className="w-4 h-4 text-blue-500" /></div>
+                <div className="flex-1"><p className="text-[11px] font-semibold text-gray-700">Revisión clínica</p><p className="text-[10px] text-gray-400">cada {revisionCada} sesiones</p></div>
+                <span className="text-xs font-bold text-gray-700">{faltanRevision} <span className="text-[10px] font-normal text-gray-400">faltan</span></span>
+              </div>
+              <div className="flex items-center gap-2 py-1.5 border-t border-gray-50">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0"><Users className="w-4 h-4 text-[#7B1FA2]" /></div>
+                <div className="flex-1"><p className="text-[11px] font-semibold text-gray-700">Reunión con padres</p><p className="text-[10px] text-gray-400">cada {reunionCada} sesiones</p></div>
+                <span className="text-xs font-bold text-gray-700">{faltanReunion} <span className="text-[10px] font-normal text-gray-400">faltan</span></span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-3">
+              <p className="text-[10px] text-blue-700">Solo se trabajan {plan?.limites?.max_generales ?? 3} objetivos generales y cada uno con máximo {plan?.limites?.max_especificos ?? 3} objetivos específicos.</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Tarjeta de un objetivo general: panel izquierdo (área + progreso) + tabla de específicos.
+const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
+  const puedeGestionarEspecifico = puedeGestionar || esAdmin;
+  const [abierto, setAbierto] = useState(true);
+  const c = progresoColor(g.progreso);
+  const col = color || AREA_COLORS[0];
+  const especificos = g.especificos || [];
+  const AreaIcon = areaIcon(g.area_nombre);
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="flex flex-col lg:flex-row">
+        {/* Panel izquierdo: área + descripción + progreso general */}
+        <div className={`lg:w-64 flex-shrink-0 ${col.soft} border-l-4 ${col.accent} p-4 lg:border-r lg:border-r-gray-100`}>
+          <div className="flex items-start gap-2.5">
+            <div className={`w-9 h-9 rounded-xl ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-4 h-4 ${col.icon}`} /></div>
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Área</p>
+              <h4 className={`text-sm font-bold uppercase tracking-wide leading-tight ${col.icon}`}>{g.area_nombre}</h4>
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Objetivo general</p>
+            {g.descripcion
+              ? <p className="text-xs text-gray-600 leading-snug">{g.descripcion}</p>
+              : <p className="text-xs text-gray-400 italic">Sin texto.</p>}
+          </div>
+          <div className="mt-4">
+            <p className="text-[11px] text-gray-500">Progreso general</p>
+            <p className={`text-2xl font-bold ${c.text}`}>{g.progreso}%</p>
+            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1"><div className={`h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></div>
+          </div>
+        </div>
+
+        {/* Panel derecho: meta + tabla de específicos */}
+        <div className="flex-1 min-w-0 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-gray-600">
+              {g.plazo_sesiones != null && <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Plazo estimado</span>{g.plazo_sesiones} sesiones</span></span>}
+              {g.fecha_inicio && <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Inicio</span>{fmtFecha(g.fecha_inicio, true)}</span></span>}
+              {g.frecuencia_nombre && <span className="flex items-center gap-1.5"><CalendarClock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Frecuencia</span>{g.frecuencia_nombre}</span></span>}
+              {g.fecha_logro_est && <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Logro estimado</span>{fmtFecha(g.fecha_logro_est, true)}</span></span>}
+            </div>
+            {puedeGestionar && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => onEditGeneral(g)} className="p-1.5 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => onDeleteGeneral(g)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={() => setAbierto((v) => !v)} className="flex items-center gap-1.5 text-[11px] font-bold text-gray-600 uppercase tracking-wide">
+                Objetivos específicos (máx. {maxEsp})
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
+              </button>
+              {puedeGestionarEspecifico && (
+                <button onClick={() => onAddEspecifico(g)} disabled={especificos.length >= maxEsp}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#7B1FA2] hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
+                  <Plus className="w-3 h-3" /> Específico
+                </button>
+              )}
+            </div>
+
+            {abierto && (
+              especificos.length === 0 ? (
+                <p className="text-[11px] text-gray-400 py-2">Sin objetivos específicos.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left border-b border-gray-100">
+                      <th className="py-1.5 pr-2 w-6 text-[9px] font-bold text-gray-400 uppercase">#</th>
+                      <th className="py-1.5 pr-2 text-[9px] font-bold text-gray-400 uppercase">Objetivo específico</th>
+                      <th className="py-1.5 px-2 text-[9px] font-bold text-gray-400 uppercase text-center w-24">Estado</th>
+                      <th className="py-1.5 pl-2 text-[9px] font-bold text-gray-400 uppercase w-40">Progreso</th>
+                      <th className="w-12" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {especificos.map((e, i) => {
+                      const ec = progresoColor(e.progreso);
+                      const est = estadoEsp(e.progreso);
+                      return (
+                        <tr key={e.id} className="border-b border-gray-50 group align-middle">
+                          <td className="py-2 pr-2"><span className="w-5 h-5 rounded-md bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center">{i + 1}</span></td>
+                          <td className="py-2 pr-2 text-xs text-gray-700 leading-snug">{e.descripcion}</td>
+                          <td className="py-2 px-2 text-center"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${est.text} ${est.bg}`}>{est.label}</span></td>
+                          <td className="py-2 pl-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden"><div className={`h-full ${ec.bar} rounded-full`} style={{ width: `${e.progreso}%` }} /></div>
+                              <span className="text-[11px] font-bold text-gray-700 w-9 text-right">{e.progreso}%</span>
+                            </div>
+                          </td>
+                          <td className="py-2">
+                            {esAdmin && (
+                              <div className="flex items-center gap-0.5">
+                                <button onClick={() => onEditEspecifico(g, e)} title="Editar objetivo específico" className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3 h-3" /></button>
+                                <button onClick={() => onDeleteEspecifico(e)} title="Eliminar objetivo específico" className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -1018,7 +1117,7 @@ const EspecificoModal = ({ mode, data, onClose, onSave }) => {
       <Header title={mode === 'add' ? 'Nuevo objetivo específico' : 'Editar objetivo específico'} onClose={onClose} />
       <div className="p-5 space-y-3">
         <Field label="Objetivo específico" required><textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} rows={2} className="inp resize-none" placeholder="Ej. Sigue instrucciones de 1 paso" /></Field>
-        <p className="text-[11px] text-gray-400">La actividad y los materiales se definen por sesión en el tab "Sesiones".</p>
+        <p className="text-[11px] text-gray-400">La actividad y los materiales se definen por sesión, dentro de cada sesión.</p>
       </div>
       <Footer onClose={onClose} onSave={() => form.descripcion.trim() && onSave(form)} disabled={!form.descripcion.trim()} />
       <style>{`.inp{width:100%;padding:.55rem .75rem;border:2px solid #e5e7eb;border-radius:.6rem;font-size:.85rem;outline:none}.inp:focus{border-color:#7B1FA2}`}</style>

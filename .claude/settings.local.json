@@ -98,7 +98,14 @@
       "Bash(grep -oE \"[0-9]+$\")",
       "Bash(pkill -f \"5188\")",
       "Bash(command -v mysql)",
-      "Bash(command -v mysqladmin)"
+      "Bash(command -v mysqladmin)",
+      "Read(//c/Users/Lucero/Desktop/frontend_vaxa_prod/**)",
+      "Read(//c/Users/Lucero/Desktop/frontend_vaxa_prod/src/**)",
+      "Bash(nslookup centro-demo.lvh.me)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(git cherry-pick *)"
     ],
     "deny": [],
     "ask": []

@@ -24,9 +24,11 @@ import {
   FileCheck,
   AlertTriangle,
   Grid3x3,
-  List
+  List,
+  QrCode
 } from 'lucide-react';
 import { getPacientesAll } from '../services/pacienteService';
+import { generarQRDataURL, descargarQR, construirUrlValidacion } from '../utils/qrValidacion';
 import { getTrabajadores } from '../services/trabajadorService';
 import archivosOficialesService from '../services/archivosOficialesService';
 import { getTiposDocumento } from '../services/tiposArchivoService';
@@ -80,6 +82,11 @@ const GestionArchivosOficiales = () => {
   const [terapeutaSeleccionado, setTerapeutaSeleccionado] = useState(null);
   const [codigoGeneradoPreview, setCodigoGeneradoPreview] = useState('');
   const [loadingCodigoPreview, setLoadingCodigoPreview] = useState(false);
+  const [qrPreview, setQrPreview] = useState('');
+  const [qrExito, setQrExito] = useState('');
+  const [qrDetalle, setQrDetalle] = useState('');
+  const [loadingQrDetalle, setLoadingQrDetalle] = useState(false);
+  const [mostrarQrDetalle, setMostrarQrDetalle] = useState(false);
   const [dialogExito, setDialogExito] = useState(false);
   const [codigoGenerado, setCodigoGenerado] = useState(null);
   const [error, setError] = useState('');
@@ -144,6 +151,33 @@ const GestionArchivosOficiales = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Reiniciar el QR del detalle al cambiar de documento (se genera bajo demanda)
+  useEffect(() => {
+    setQrDetalle('');
+    setMostrarQrDetalle(false);
+    setLoadingQrDetalle(false);
+  }, [modalVer?.id]);
+
+  // Muestra/oculta el QR del detalle; lo genera la primera vez que se abre
+  const toggleQrDetalle = async () => {
+    if (mostrarQrDetalle) {
+      setMostrarQrDetalle(false);
+      return;
+    }
+    setMostrarQrDetalle(true);
+    if (!qrDetalle && modalVer?.codigoValidacion) {
+      try {
+        setLoadingQrDetalle(true);
+        const qr = await generarQRDataURL(modalVer.codigoValidacion);
+        setQrDetalle(qr);
+      } catch (e) {
+        console.error('Error al generar QR del detalle:', e);
+      } finally {
+        setLoadingQrDetalle(false);
+      }
+    }
+  };
 
   useEffect(() => {
     let filtered = [...documentos];
@@ -335,10 +369,19 @@ const GestionArchivosOficiales = () => {
       
       const response = await archivosOficialesService.generarCodigoPreview();
       const codigo = response.data?.codigo || response.codigo;
-      
+
       setCodigoGeneradoPreview(codigo);
       setFormData(prev => ({ ...prev, codigoManual: codigo }));
-      
+
+      // Generar el QR de validación (con logo) para el código recién creado
+      try {
+        const qr = await generarQRDataURL(codigo);
+        setQrPreview(qr);
+      } catch (qrErr) {
+        console.error('Error al generar QR:', qrErr);
+        setQrPreview('');
+      }
+
       setSuccess('Código generado. Añádalo al documento antes de subirlo.');
       setTimeout(() => setSuccess(''), 5000);
     } catch (error) {
@@ -548,6 +591,16 @@ const GestionArchivosOficiales = () => {
       
       if (resultado.success) {
         setCodigoGenerado(resultado.data);
+
+        // QR de validación (con logo) para el documento subido
+        try {
+          const qr = await generarQRDataURL(resultado.data?.codigoValidacion);
+          setQrExito(qr);
+        } catch (qrErr) {
+          console.error('Error al generar QR:', qrErr);
+          setQrExito('');
+        }
+
         setDialogExito(true);
         cargarDocumentos();
 
@@ -566,6 +619,7 @@ const GestionArchivosOficiales = () => {
         setTerapeutaSeleccionado(null);
         setArchivo(null);
         setCodigoGeneradoPreview('');
+        setQrPreview('');
         setTipoDestinatario('paciente');
         setTipoSeleccionado(null);
         setSearchPaciente('');
@@ -1274,15 +1328,50 @@ const GestionArchivosOficiales = () => {
                         </div>
                       </div>
 
+                      {/* QR de validación con logo */}
+                      {qrPreview && (
+                        <div className="bg-white border-2 border-[#7B1FA2]/30 rounded-xl p-5 mb-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <QrCode className="w-5 h-5 text-[#7B1FA2]" />
+                            <p className="text-xs font-bold text-[#7B1FA2] uppercase tracking-wide">
+                              Código QR de validación
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row items-center gap-5">
+                            <img
+                              src={qrPreview}
+                              alt={`QR de validación ${codigoGeneradoPreview}`}
+                              className="w-48 h-auto rounded-lg border border-gray-200"
+                            />
+                            <div className="flex-1 text-center sm:text-left">
+                              <p className="text-sm text-gray-600 mb-1">
+                                Al escanearlo abre el validador oficial y verifica el documento automáticamente.
+                              </p>
+                              <p className="text-[11px] text-gray-400 break-all mb-3">
+                                {construirUrlValidacion(codigoGeneradoPreview)}
+                              </p>
+                              <button
+                                onClick={() => descargarQR(codigoGeneradoPreview)}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
+                              >
+                                <Download className="w-4 h-4" />
+                                Descargar QR
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="bg-amber-100 border border-amber-300 rounded-xl p-3 mb-3">
                         <p className="text-xs font-semibold text-amber-900">
-                          <strong>IMPORTANTE:</strong> Añada este código al documento antes de subirlo.
+                          <strong>IMPORTANTE:</strong> Añada este código y el QR al documento antes de subirlo.
                         </p>
                       </div>
 
                       <button
                         onClick={() => {
                           setCodigoGeneradoPreview('');
+                          setQrPreview('');
                           setFormData(prev => ({ ...prev, codigoManual: '' }));
                         }}
                         className="text-sm font-medium text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all"
@@ -1751,6 +1840,50 @@ const GestionArchivosOficiales = () => {
                 </div>
               </div>
 
+              {/* QR de validación — compacto, disponible siempre desde el registro */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-gray-50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <QrCode className="w-4 h-4 text-[#7B1FA2] flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-700 truncate">QR de validación</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={toggleQrDetalle}
+                      className="text-xs font-medium text-gray-600 hover:text-[#7B1FA2] px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-all"
+                    >
+                      {mostrarQrDetalle ? 'Ocultar' : 'Ver'}
+                    </button>
+                    <button
+                      onClick={() => descargarQR(modalVer.codigoValidacion)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7B1FA2] text-white rounded-lg text-xs font-semibold hover:bg-[#9C27B0] transition-all"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Descargar
+                    </button>
+                  </div>
+                </div>
+                {mostrarQrDetalle && (
+                  <div className="flex justify-center p-4 border-t border-gray-200">
+                    {loadingQrDetalle ? (
+                      <div className="w-44 h-44 flex items-center justify-center">
+                        <div className="w-8 h-8 border-4 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
+                      </div>
+                    ) : qrDetalle ? (
+                      <img
+                        src={qrDetalle}
+                        alt={`QR de validación ${modalVer.codigoValidacion}`}
+                        className="w-44 h-auto rounded-lg border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-44 h-20 flex items-center justify-center text-xs text-gray-400">
+                        No se pudo generar el QR
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Información */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -2160,10 +2293,34 @@ const GestionArchivosOficiales = () => {
                 )}
               </button>
 
+              {/* QR de validación con logo */}
+              {qrExito && (
+                <div className="bg-white border-2 border-[#7B1FA2]/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <QrCode className="w-4 h-4 text-[#7B1FA2]" />
+                    <p className="text-xs font-bold text-[#7B1FA2] uppercase tracking-wide">
+                      Código QR de validación
+                    </p>
+                  </div>
+                  <img
+                    src={qrExito}
+                    alt={`QR de validación ${codigoGenerado?.codigoValidacion}`}
+                    className="w-48 h-auto rounded-lg border border-gray-200 mx-auto mb-3"
+                  />
+                  <button
+                    onClick={() => descargarQR(codigoGenerado?.codigoValidacion)}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all mx-auto"
+                  >
+                    <Download className="w-4 h-4" />
+                    Descargar QR
+                  </button>
+                </div>
+              )}
+
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
                 <p className="text-xs text-blue-900">
                   Este código puede validarse públicamente en: <br />
-                  <strong>www.crecemos.com.pe/validar</strong>
+                  <strong>www.crecemos.com.pe/verificar-documento</strong>
                 </p>
               </div>
 
@@ -2172,6 +2329,7 @@ const GestionArchivosOficiales = () => {
                   onClick={() => {
                     setDialogExito(false);
                     setCodigoGenerado(null);
+                    setQrExito('');
                   }}
                   className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all"
                 >
@@ -2181,6 +2339,7 @@ const GestionArchivosOficiales = () => {
                   onClick={async () => {
                     setDialogExito(false);
                     setCodigoGenerado(null);
+                    setQrExito('');
                     setTabValue(0);
                     // Recargar documentos
                     await cargarDocumentos();
