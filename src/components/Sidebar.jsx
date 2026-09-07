@@ -35,6 +35,7 @@ import {
   BuildingOfficeIcon,
   UsersIcon,
   MegaphoneIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 export const SidebarContext = createContext();
@@ -128,6 +129,7 @@ const menuSections = [
       { text: 'Empleados',          path: '/intranet/rrhh/empleados',       icon: UserIcon },
       { text: 'Gratificaciones',    path: '/intranet/rrhh/gratificaciones', icon: CurrencyDollarIcon },
       { text: 'Vacaciones',         path: '/intranet/rrhh/vacaciones',      icon: CalendarIcon },
+      { text: 'Asistencia y ausencias', path: '/intranet/rrhh/solicitudes', icon: ExclamationTriangleIcon },
       { text: 'Historial de Pagos', path: '/intranet/rrhh/historial',       icon: ClockIcon },
       { text: 'Cumpleaños',         path: '/intranet/rrhh/cumpleanos',      icon: GiftIcon },
       { text: 'Dashboard RRHH',     path: '/intranet/rrhh/dashboard',       icon: ChartBarIcon },

@@ -25,6 +25,7 @@ import {
   abrirArchivo,
   getTrabajadorById
 } from '../services/trabajadorService';
+import MiAsistencia from '../components/MiAsistencia/MiAsistencia';
 
 const MiPerfil = () => {
   const [perfil, setPerfil] = useState(null);
@@ -1009,6 +1010,9 @@ const MiPerfil = () => {
 
         {/* Divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-10"></div>
+
+        {/* Mi asistencia (permisos / vacaciones) */}
+        {!modoEdicion && <MiAsistencia perfil={perfil} />}
 
         {/* Content - List Style */}
         <div className="space-y-10">

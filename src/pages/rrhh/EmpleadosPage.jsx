@@ -25,7 +25,7 @@ import {
 // ← NUEVA
   getTrabajadorById
 } from '../../services/trabajadorService';
-import { registrarPagoMensual, crearCuentaBancaria } from '../../services/rrhhService';
+import { registrarPagoMensual, crearCuentaBancaria, getDescuentoMensual } from '../../services/rrhhService';
 import { getServicios, getGeneros, getEstadosCiviles, getParentescos, getProvincias, getDistritosByProvincia, getNivelesEducacion } from '../../services/catalogoService';
 import { asignarServicio, getServiciosByTrabajador, desactivarServicio } from '../../services/trabajadorServicioService';
 import api from '../../services/api';
@@ -93,6 +93,56 @@ function ColumnasServiciosPorArea({ servicios, seleccionados, onToggle }) {
     </div>
   );
 }
+
+// Selector de días laborables (guarda CSV ISO: 1=Lun..7=Dom)
+const DIAS_SEMANA_OPTS = [
+  { iso: 1, corto: 'L' }, { iso: 2, corto: 'M' }, { iso: 3, corto: 'X' },
+  { iso: 4, corto: 'J' }, { iso: 5, corto: 'V' }, { iso: 6, corto: 'S' }, { iso: 7, corto: 'D' },
+];
+
+const DiasLaborablesSelector = ({ value, onChange }) => {
+  const seleccionados = (value || '')
+    .split(',')
+    .map((d) => parseInt(d.trim(), 10))
+    .filter((n) => !isNaN(n));
+
+  const toggle = (iso) => {
+    const set = new Set(seleccionados);
+    if (set.has(iso)) set.delete(iso); else set.add(iso);
+    const csv = [...set].sort((a, b) => a - b).join(',');
+    onChange(csv);
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Días que labora <span className="text-gray-400 font-normal">(para descuento de faltas)</span>
+      </label>
+      <div className="flex gap-2 flex-wrap">
+        {DIAS_SEMANA_OPTS.map((d) => {
+          const activo = seleccionados.includes(d.iso);
+          return (
+            <button
+              key={d.iso}
+              type="button"
+              onClick={() => toggle(d.iso)}
+              className={`w-10 h-10 rounded-lg text-sm font-bold transition-all border-2 ${
+                activo
+                  ? 'bg-[#7B1FA2] text-white border-[#7B1FA2] shadow-sm'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-[#7B1FA2]/50'
+              }`}
+            >
+              {d.corto}
+            </button>
+          );
+        })}
+      </div>
+      {seleccionados.length > 0 && (
+        <p className="text-xs text-gray-500 mt-2">{seleccionados.length} día(s) por semana</p>
+      )}
+    </div>
+  );
+};
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([]);
@@ -1060,6 +1110,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
     fecha_inicio_estudio: '',
     fecha_termino_estudio: '',
     sueldo_base: '',
+    dias_laborables: '',
     fecha_ingreso: '',
     numero_cuenta: '',
     banco: '',
@@ -1296,6 +1347,7 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
 
         // Datos financieros
         sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
+        dias_laborables: formData.dias_laborables || null,
         fecha_ingreso: formData.fecha_ingreso || null,
         banco: formData.banco || null,
         numero_cuenta: formData.numero_cuenta || null,
@@ -1794,6 +1846,12 @@ const ModalNuevoEmpleado = ({ onClose, roles, especialidades, cargos, servicios,
                 <InputField label="Sueldo Base (S/)" name="sueldo_base" type="number" step="0.01" value={formData.sueldo_base} onChange={handleChange} />
                 <InputField label="Fecha de Ingreso" name="fecha_ingreso" type="date" value={formData.fecha_ingreso} onChange={handleChange} />
               </div>
+              <div className="mb-4">
+                <DiasLaborablesSelector
+                  value={formData.dias_laborables}
+                  onChange={(csv) => setFormData({ ...formData, dias_laborables: csv })}
+                />
+              </div>
 
               {/* Cuentas Bancarias (modo local: se guardan al crear el empleado) */}
               <div className="border border-gray-200 rounded-xl p-4 mt-2">
@@ -1886,6 +1944,7 @@ const ModalEditarEmpleado = ({ empleado, onClose, roles, especialidades, cargos,
     archivo_cv: empleado.archivo_cv || '',
     archivo_dni: empleado.archivo_dni || '',
     sueldo_base: empleado.sueldo_base || '',
+    dias_laborables: empleado.dias_laborables || '',
     fecha_ingreso: empleado.fecha_ingreso || ''
   });
   
@@ -2211,6 +2270,7 @@ const refrescarEmpleado = async () => {
         // archivo_cv: formData.archivo_cv || null,
         // archivo_dni: formData.archivo_dni || null,
         sueldo_base: formData.sueldo_base ? parseFloat(formData.sueldo_base) : null,
+        dias_laborables: formData.dias_laborables || null,
         fecha_ingreso: formData.fecha_ingreso || null,
 
         // ✅ AGREGAR EL ID DEL USUARIO LOGUEADO (ADMINISTRADOR)
@@ -2693,6 +2753,12 @@ const refrescarEmpleado = async () => {
                 <InputField label="Sueldo Base (S/)" name="sueldo_base" type="number" step="0.01" value={formData.sueldo_base} onChange={handleChange} />
                 <InputField label="Fecha de Ingreso" name="fecha_ingreso" type="date" value={formData.fecha_ingreso} onChange={handleChange} />
               </div>
+              <div className="mb-4">
+                <DiasLaborablesSelector
+                  value={formData.dias_laborables}
+                  onChange={(csv) => setFormData({ ...formData, dias_laborables: csv })}
+                />
+              </div>
               
               <div className="mt-4">
                 <CuentasBancarias 
@@ -3061,6 +3127,32 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
   });
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [descuento, setDescuento] = useState({ totalDescuento: 0, netoSugerido: null, faltas: [] });
+  const [monto, setMonto] = useState(Number(empleado.sueldo_base) || 0);
+
+  // Cargar faltas descontables del mes/año y sugerir el neto
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const data = await getDescuentoMensual({
+          empleadoId: empleado.id,
+          mesId: pagoData.mesId,
+          anio: pagoData.anio,
+        });
+        if (!activo) return;
+        setDescuento(data);
+        setMonto(parseFloat(Number(data.netoSugerido).toFixed(2)));
+      } catch (error) {
+        console.error('Error al obtener descuento mensual:', error);
+        if (activo) {
+          setDescuento({ totalDescuento: 0, netoSugerido: null, faltas: [] });
+          setMonto(parseFloat((Number(empleado.sueldo_base) || 0).toFixed(2)));
+        }
+      }
+    })();
+    return () => { activo = false; };
+  }, [empleado.id, pagoData.mesId, pagoData.anio]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -3072,22 +3164,14 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
     setLoading(true);
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const montoNumero = parseFloat(parseFloat(empleado.sueldo_base).toFixed(2));
-
-      console.log('Datos del pago:', {
-        empleadoId: empleado.id,
-        mesId: pagoData.mesId,
-        anio: pagoData.anio,
-        monto: montoNumero,
-        fechaPago: pagoData.fechaPago,
-        userId: user.id
-      });
+      const montoNumero = parseFloat(parseFloat(monto).toFixed(2));
 
       await registrarPagoMensual({
         empleadoId: empleado.id,
         mesId: pagoData.mesId,
         anio: pagoData.anio,
         monto: montoNumero,
+        montoDescuento: Number(descuento.totalDescuento) || 0,
         fechaPago: pagoData.fechaPago,
         userId: user.id
       });
@@ -3177,6 +3261,46 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
                 </div>
               </div>
 
+              {/* Descuento por faltas del mes */}
+              {Number(descuento.totalDescuento) > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-red-700">Descuento por faltas</span>
+                    <span className="text-sm font-bold text-red-700">
+                      − S/ {Number(descuento.totalDescuento).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {descuento.faltas?.map((f) => (
+                      <div key={f.id} className="flex items-center justify-between text-xs text-gray-600">
+                        <span>{f.tipo?.nombre} ({Number(f.dias)} día{Number(f.dias) === 1 ? '' : 's'})</span>
+                        <span>S/ {Number(f.monto_descuento).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Monto a Pagar (neto)
+                  {descuento.netoSugerido != null && (
+                    <span className="text-xs text-gray-400 font-normal ml-1">
+                      sugerido: S/ {Number(descuento.netoSugerido).toFixed(2)}
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={monto}
+                  onChange={(e) => setMonto(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-semibold text-lg"
+                  required
+                />
+              </div>
+
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
@@ -3247,11 +3371,27 @@ const ModalPago = ({ empleado, onClose, onSuccess, onError }) => {
                     {pagoData.fechaPago.split('-').reverse().join('/')}
                   </span>
                 </div>
+                {Number(descuento.totalDescuento) > 0 && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Sueldo base</span>
+                      <span className="font-semibold text-gray-900">
+                        S/ {Number(empleado.sueldo_base).toLocaleString('es-PE', {minimumFractionDigits: 2})}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Descuento por faltas</span>
+                      <span className="font-semibold text-red-600">
+                        − S/ {Number(descuento.totalDescuento).toLocaleString('es-PE', {minimumFractionDigits: 2})}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="pt-3 border-t-2 border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-base font-bold text-gray-900">Monto a Pagar</span>
                     <span className="text-xl font-bold text-green-600">
-                      S/ {Number(empleado.sueldo_base).toLocaleString('es-PE', {minimumFractionDigits: 2})}
+                      S/ {Number(monto).toLocaleString('es-PE', {minimumFractionDigits: 2})}
                     </span>
                   </div>
                 </div>

@@ -57,6 +57,8 @@ import HistorialPagosPage from '../pages/rrhh/HistorialPagosPage';
 import DashboardRRHH from '../pages/rrhh/DashboardRRHH';
 import CumpleanosTrabajadores from '../pages/rrhh/CumpleanosTrabajadores';
 import VacacionesPage from '../pages/rrhh/VacacionesPage';
+import FaltasPage from '../pages/rrhh/FaltasPage';
+import SolicitudesPage from '../pages/rrhh/SolicitudesPage';
 import ConveniosPage from '../pages/ConveniosPage';
 import GestionStaff from '../pages/GestionStaff';
 import SorteoPacientes from '../pages/SorteoPacientes';
@@ -218,6 +220,28 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <VacacionesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/rrhh/faltas" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <FaltasPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/rrhh/solicitudes" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <SolicitudesPage />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

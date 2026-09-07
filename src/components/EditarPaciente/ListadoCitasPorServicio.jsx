@@ -144,7 +144,11 @@ useEffect(() => {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return '-';
-    const d = new Date(fecha);
+    // Extraer solo la parte de fecha (YYYY-MM-DD) y construir la fecha en hora local
+    // para evitar el desfase de un día por interpretar el string como UTC.
+    const soloFecha = String(fecha).split('T')[0].split(' ')[0];
+    const [año, mes, dia] = soloFecha.split('-').map(Number);
+    const d = new Date(año, mes - 1, dia);
     const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return `${diasSemana[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
