@@ -141,7 +141,11 @@
       "Bash(unzip -o \"ASISTENCIAS Y FALTAS.docx\" \"word/media/*\" -d /c/Users/Lucero/AppData/Local/Temp/claude/C--Users-Lucero-Desktop-frontend-crecemos-prod/f89c283a-e252-4741-84f9-15739c539487/scratchpad/docx_img)",
       "Bash(ls -la /c/Users/Lucero/AppData/Local/Temp/claude/C--Users-Lucero-Desktop-frontend-crecemos-prod/f89c283a-e252-4741-84f9-15739c539487/scratchpad/docx_img/word/media/)",
       "Bash(\" | head)",
-      "Bash(grep -iE \"CREATE TABLE|PRIMARY|fecha|`\" | head)"
+      "Bash(grep -iE \"CREATE TABLE|PRIMARY|fecha|`\" | head)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(ls -la dist/rrhh/solicitudes.service.js)",
+      "Bash(grep -c \"bloquearAgendaPorSolicitud\" dist/rrhh/solicitudes.service.js)",
+      "Bash(grep -iE \"deploy|rsync|scp|ftp|upload|\\\\.sh$\")"
     ],
     "deny": [],
     "ask": []
