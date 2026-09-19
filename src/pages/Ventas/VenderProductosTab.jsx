@@ -623,7 +623,7 @@ const VenderProductosTab = ({
               <DocumentTextIcon className="w-4 h-4" />Tipo de Comprobante
             </label>
             <div className="flex flex-wrap gap-3">
-              {tiposComprobante.map(tc => (
+              {tiposComprobante.filter(tc => tc.id !== 4).map(tc => (
                 <button key={tc.id} type="button" onClick={() => setTipoComprobante(tc.id)}
                   disabled={bloqueado}
                   className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${tipoComprobante === tc.id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>

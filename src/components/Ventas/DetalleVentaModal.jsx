@@ -4,6 +4,7 @@ import {
   CubeIcon,
   XMarkIcon,
   PrinterIcon,
+  ReceiptRefundIcon,
 } from '@heroicons/react/24/outline';
 import PrintPreviewModal, { getServicioNombre, getMotivoCita } from './TicketComponents';
 import {
@@ -16,8 +17,11 @@ import {
   PanelPromocionesDetalle,
 } from './VentaUtils';
 
-const DetalleVentaModal = ({ venta, tipo, onClose }) => {
+const nombreTrabajador = (t) => t ? [t.nombres, t.apellidos].filter(Boolean).join(' ') : null;
+
+const DetalleVentaModal = ({ venta, tipo, onClose, esAdministrador = false, onValidarNotaCredito }) => {
   const [mostrarPrint, setMostrarPrint] = useState(false);
+  const [validandoNC, setValidandoNC] = useState(false);
   const { base, igv, conIgv } = calcularIgv(venta.total, venta.tipo_comprobante?.id);
   const promociones = venta.promociones_aplicadas || [];
 
@@ -311,6 +315,90 @@ const DetalleVentaModal = ({ venta, tipo, onClose }) => {
                 <span>TOTAL:</span><span>{formatMonto(venta.total)}</span>
               </div>
             </div>
+
+            {/* Nota de crédito / Devolución */}
+            {venta.nota_credito && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                  <ReceiptRefundIcon className="w-4 h-4" />
+                  Devolución / Nota de crédito
+                  {venta.nota_credito.codigo && (
+                    <span className="font-mono font-bold text-amber-900">{venta.nota_credito.codigo}</span>
+                  )}
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-500">Fecha:</span>{' '}
+                    <span className="font-semibold text-gray-800">{formatFecha(venta.nota_credito.fecha)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Monto devuelto:</span>{' '}
+                    <span className="font-semibold text-amber-700">{formatMonto(venta.nota_credito.monto_devuelto)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Citas anuladas:</span>{' '}
+                    <span className="font-semibold text-gray-800">{venta.nota_credito.citas_anuladas}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Sesiones anuladas:</span>{' '}
+                    <span className="font-semibold text-gray-800">{venta.nota_credito.sesiones_anuladas}</span>
+                  </div>
+                  {venta.nota_credito.modalidad_pago?.nombre && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Método de devolución:</span>{' '}
+                      <span className="font-semibold text-gray-800">{venta.nota_credito.modalidad_pago.nombre}</span>
+                    </div>
+                  )}
+                  {venta.nota_credito.motivo && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Motivo:</span>{' '}
+                      <span className="text-gray-700 whitespace-pre-wrap">{venta.nota_credito.motivo}</span>
+                    </div>
+                  )}
+                  {nombreTrabajador(venta.nota_credito.user_crea) && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Registrada por:</span>{' '}
+                      <span className="font-semibold text-gray-800">{nombreTrabajador(venta.nota_credito.user_crea)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Validación de la devolución */}
+                <div className="mt-3 pt-3 border-t border-amber-200 flex items-center justify-between gap-2">
+                  {venta.nota_credito.validado ? (
+                    <span className="flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="flex items-center gap-1 font-semibold text-green-700">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 12 10" fill="none">
+                          <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Validada
+                      </span>
+                      {nombreTrabajador(venta.nota_credito.validado_por_trabajador) && (
+                        <span className="text-green-600">por {nombreTrabajador(venta.nota_credito.validado_por_trabajador)}</span>
+                      )}
+                      {venta.nota_credito.validado_at && (
+                        <span className="text-gray-400">
+                          · {new Date(venta.nota_credito.validado_at).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-xs text-gray-400 italic">Devolución pendiente de validación</span>
+                      {esAdministrador && onValidarNotaCredito && (
+                        <button
+                          onClick={async () => { setValidandoNC(true); try { await onValidarNotaCredito(venta.nota_credito.id); } finally { setValidandoNC(false); } }}
+                          disabled={validandoNC}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {validandoNC ? 'Validando…' : 'Validar devolución'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Nota interna y Observaciones */}
             {(venta.nota || venta.observaciones) && (

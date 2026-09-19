@@ -102,6 +102,30 @@ export const verificarVentaServicioTieneCitas = (id) =>
 export const eliminarVentaServicio = (id) =>
   api.delete(`/ventas/servicios/${id}`).then(r => r.data);
 
+/**
+ * Vista previa de una devolución / nota de crédito de una venta de servicio.
+ * Devuelve cuántas citas futuras pendientes se anularían, cuántas sesiones
+ * sin asignar se perderían y un monto sugerido a devolver.
+ * @param {number} id - ID de la venta de servicio
+ */
+export const previewDevolucion = (id) =>
+  api.get(`/ventas/servicios/${id}/devolucion/preview`).then(r => r.data);
+
+/**
+ * Registrar la nota de crédito (devolución total) de una venta de servicio.
+ * @param {number} id - ID de la venta de servicio
+ * @param {Object} dto - { fecha?, motivo?, monto_devuelto?, modalidad_pago_id? }
+ */
+export const crearNotaCredito = (id, dto) =>
+  api.post(`/ventas/servicios/${id}/nota-credito`, dto).then(r => r.data);
+
+/**
+ * Validar (aprobar) una nota de crédito.
+ * @param {number} notaId - ID de la nota de crédito
+ */
+export const validarNotaCredito = (notaId) =>
+  api.patch(`/ventas/servicios/nota-credito/${notaId}/validar`).then(r => r.data);
+
 // ============================================================
 // VENTAS — PRODUCTOS
 // ============================================================

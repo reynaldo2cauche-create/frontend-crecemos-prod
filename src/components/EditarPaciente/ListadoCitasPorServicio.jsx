@@ -160,7 +160,15 @@ useEffect(() => {
   };
 
   // ── Badge con verificación de asistencia de terapeuta Y admisión ──────────────────────
-  const AsistenciaBadge = ({ recepcion_estado_id, terapeuta_estado_id, programada }) => {
+  const AsistenciaBadge = ({ recepcion_estado_id, terapeuta_estado_id, programada, anulada }) => {
+    // Cita anulada por devolución / nota de crédito
+    if (anulada) return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-semibold border border-amber-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+        Anulada
+      </span>
+    );
+
     // Si no está programada, mostrar "Por agendar"
     if (programada === false) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-semibold border border-blue-100">
@@ -297,17 +305,19 @@ useEffect(() => {
           });
 
           const citasProgramadas = citasOrdenadas.filter(c => c.programada !== false);
-          const citasPorAgendar  = citasOrdenadas.filter(c => c.programada === false);
+          // "Por agendar" reales = sin cita y NO anuladas (las anuladas se cuentan aparte)
+          const citasPorAgendar  = citasOrdenadas.filter(c => c.programada === false && !c.anulada);
 
-          const asistidas   = citasProgramadas.filter(c => c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
-          const noAsistidas = citasProgramadas.filter(c =>
+          const anuladas    = citasOrdenadas.filter(c => c.anulada).length;
+          const asistidas   = citasProgramadas.filter(c => !c.anulada && c.terapeuta_estado_id === 7 && c.recepcion_estado_id === 7).length;
+          const noAsistidas = citasProgramadas.filter(c => !c.anulada && (
             (c.recepcion_estado_id && c.recepcion_estado_id !== 7) ||
             (c.terapeuta_estado_id && c.terapeuta_estado_id !== 7)
-          ).length;
-          const pendientes  = citasProgramadas.filter(c => !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
+          )).length;
+          const pendientes  = citasProgramadas.filter(c => !c.anulada && !c.recepcion_estado_id && !c.terapeuta_estado_id).length;
 
           const sesionesTotales = citasOrdenadas.length;
-          const sesionesUsadas  = citasProgramadas.length;
+          const sesionesUsadas  = citasProgramadas.filter(c => !c.anulada).length;
           const porcentaje      = sesionesTotales > 0 ? Math.round((sesionesUsadas / sesionesTotales) * 100) : 0;
 
           return (
@@ -399,6 +409,12 @@ useEffect(() => {
                           {pendientes} pendiente{pendientes > 1 ? 's' : ''}
                         </span>
                       )}
+                      {anuladas > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          {anuladas} anulada{anuladas > 1 ? 's' : ''}
+                        </span>
+                      )}
                       {citasPorAgendar.length > 0 && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-blue-500 font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
@@ -440,27 +456,30 @@ useEffect(() => {
                   </div>
 
                   {citasOrdenadas.map((cita, citaIdx) => {
-                    const esPendiente = cita.programada === false;
+                    const esAnulada = !!cita.anulada;
+                    const esPendiente = cita.programada === false && !esAnulada;
                     return (
                       <div
                         key={cita.id ?? `pending-${citaIdx}`}
                         className={`grid items-center px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${
-                          esPendiente
-                            ? 'bg-blue-50/30 border-dashed'
-                            : citaIdx % 2 === 0
-                              ? 'bg-white hover:bg-gray-50/60'
-                              : 'bg-gray-50/30 hover:bg-gray-50/60'
+                          esAnulada
+                            ? 'bg-amber-50/40'
+                            : esPendiente
+                              ? 'bg-blue-50/30 border-dashed'
+                              : citaIdx % 2 === 0
+                                ? 'bg-white hover:bg-gray-50/60'
+                                : 'bg-gray-50/30 hover:bg-gray-50/60'
                         }`}
                         style={{ gridTemplateColumns: '28px 1fr 60px 1fr 1fr 1fr' }}
                       >
                         <span className={`text-xs font-semibold ${esPendiente ? 'text-blue-300' : 'text-gray-400'}`}>
                           {citaIdx + 1}
                         </span>
-                        <span className={`text-xs font-medium ${esPendiente ? 'text-blue-300 italic' : 'text-gray-700'}`}>
-                          {esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
+                        <span className={`text-xs font-medium ${esPendiente ? 'text-blue-300 italic' : esAnulada ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                          {esAnulada ? (cita.fecha ? formatearFecha(cita.fecha) : 'Anulada') : esPendiente ? 'Sin agendar' : formatearFecha(cita.fecha)}
                         </span>
                         <span className={`text-xs ${esPendiente ? 'text-blue-300' : 'text-gray-500'}`}>
-                          {esPendiente ? '-' : formatearHora(cita.hora)}
+                          {esPendiente || esAnulada ? '-' : formatearHora(cita.hora)}
                         </span>
                         <span className={`text-xs truncate ${esPendiente ? 'text-blue-300' : 'text-gray-600'}`}>
                           {cita.especialista || '-'}
@@ -472,6 +491,7 @@ useEffect(() => {
                           recepcion_estado_id={cita.recepcion_estado_id}
                           terapeuta_estado_id={cita.terapeuta_estado_id}
                           programada={cita.programada}
+                          anulada={cita.anulada}
                         />
                       </div>
                     );

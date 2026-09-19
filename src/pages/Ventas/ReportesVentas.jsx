@@ -9,6 +9,7 @@ import {
   ArrowDownTrayIcon,
   TagIcon,
   UserGroupIcon,
+  ReceiptRefundIcon,
 } from '@heroicons/react/24/outline';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -42,6 +43,8 @@ const ReportesVentas = () => {
   const [metricas, setMetricas] = useState({
     totalVentas: 0,
     totalIngresos: 0,
+    totalIngresosBruto: 0,
+    totalDevoluciones: 0,
     ventasProductos: 0,
     ventasServicios: 0,
     ticketPromedio: 0,
@@ -294,9 +297,9 @@ const ReportesVentas = () => {
       Icon: ShoppingCartIcon,
     },
     {
-      label: 'Total ingresos',
+      label: 'Total ingresos (neto)',
       value: formatCurrency(metricas.totalIngresos),
-      sub: `Ticket prom: ${formatCurrency(metricas.ticketPromedio)}`,
+      sub: `Bruto: ${formatCurrency(metricas.totalIngresosBruto)} · Ticket: ${formatCurrency(metricas.ticketPromedio)}`,
       gradient: 'from-green-50 to-emerald-100', border: 'border-green-200',
       text: 'text-green-600', num: 'text-green-900', iconBg: 'bg-green-200', iconColor: 'text-green-700',
       Icon: CurrencyDollarIcon,
@@ -324,6 +327,14 @@ const ReportesVentas = () => {
       gradient: 'from-red-50 to-red-100', border: 'border-red-200',
       text: 'text-red-600', num: 'text-red-900', iconBg: 'bg-red-200', iconColor: 'text-red-700',
       Icon: TagIcon,
+    },
+    {
+      label: 'Devoluciones',
+      value: formatCurrency(metricas.totalDevoluciones),
+      sub: 'Notas de crédito del período',
+      gradient: 'from-amber-50 to-amber-100', border: 'border-amber-200',
+      text: 'text-amber-600', num: 'text-amber-900', iconBg: 'bg-amber-200', iconColor: 'text-amber-700',
+      Icon: ReceiptRefundIcon,
     },
   ];
 

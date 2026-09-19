@@ -9,6 +9,7 @@ import {
   PencilIcon,
   TrashIcon,
   CheckBadgeIcon,
+  ReceiptRefundIcon,
 } from '@heroicons/react/24/outline';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
@@ -24,12 +25,14 @@ import {
   verificarVentaServicioTieneCitas,
   validarPagoVentaServicio,
   validarPagoVentaProducto,
+  validarNotaCredito,
 } from '../../services/ventasService';
 import { verificarVentaTieneSolicitudInforme } from '../../services/solicitudInformeService';
 import PrintPreviewModal, { getServicioNombre, getMotivoCita } from '../../components/Ventas/TicketComponents';
 import DetalleVentaModal from '../../components/Ventas/DetalleVentaModal';
 import EditarVentaModal from '../../components/Ventas/EditarVentaModal';
 import ConfirmarEliminarModal from '../../components/Ventas/ConfirmarEliminarModal';
+import DevolucionModal from '../../components/Ventas/DevolucionModal';
 import FeedbackModal from '../../components/Ventas/FeedbackModal';
 import {
   formatFecha,
@@ -48,10 +51,12 @@ const HistorialVentasTab = () => {
   const [totalVentas, setTotalVentas]       = useState(0);
   const [totalMontoFiltrado, setTotalMontoFiltrado] = useState(0);
   const [totalMontoGlobal, setTotalMontoGlobal] = useState(0);
+  const [totalDevoluciones, setTotalDevoluciones] = useState(0);
+  const [totalDevolucionesGlobal, setTotalDevolucionesGlobal] = useState(0);
   const [totalServicios, setTotalServicios] = useState(0);
   const [totalProductos, setTotalProductos] = useState(0);
   const [loading, setLoading]               = useState(true);
-  const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '', metodoPagoId: '' });
+  const [filtros, setFiltros]               = useState({ tipo: 'todos', fechaDesde: '', fechaHasta: '', metodoPagoId: '', tipoComprobante: '' });
   const [modalidades, setModalidades]       = useState([]);
   const [queryPaciente, setQueryPaciente]   = useState('');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
@@ -61,6 +66,7 @@ const HistorialVentasTab = () => {
   const [tipoDetalle, setTipoDetalle]       = useState(null);
   const [ventaImprimir, setVentaImprimir]   = useState(null);
   const [ventaEliminar, setVentaEliminar]   = useState(null);
+  const [ventaDevolucion, setVentaDevolucion] = useState(null);
   const [ventaEditar, setVentaEditar]       = useState(null);
   const [procesando, setProcesando]         = useState(false);
   const [page, setPage]                     = useState(0);
@@ -102,12 +108,15 @@ const HistorialVentasTab = () => {
       if (filtros.fechaDesde) params.desde = filtros.fechaDesde;
       if (filtros.fechaHasta) params.hasta = filtros.fechaHasta;
       if (filtros.metodoPagoId) params.metodoPagoId = filtros.metodoPagoId;
+      if (filtros.tipoComprobante) params.tipoComprobante = filtros.tipoComprobante;
       if (pacienteSeleccionado) params.pacienteId = pacienteSeleccionado.id;
       const res = await getHistorialVentas(params);
       setHistorialData(res.data || []);
       setTotalVentas(res.total || 0);
       setTotalMontoFiltrado(res.totalMonto || 0);
       setTotalMontoGlobal(res.totalMontoGlobal || 0);
+      setTotalDevoluciones(res.totalDevoluciones || 0);
+      setTotalDevolucionesGlobal(res.totalDevolucionesGlobal || 0);
 
       // Totales por tipo sobre todo el conjunto filtrado (no solo la página visible)
       if (res.totalServicios != null && res.totalProductos != null) {
@@ -245,8 +254,36 @@ const HistorialVentasTab = () => {
     }
   };
 
-  const hayFiltros = filtros.tipo !== 'todos' || filtros.fechaDesde || filtros.fechaHasta || filtros.metodoPagoId || pacienteSeleccionado;
+  const handleVerDetalle = async (v) => {
+    if (v.es_nota_credito) {
+      if (!v.venta_servicio_id) return;
+      try {
+        const venta = await getVentaServicioById(v.venta_servicio_id);
+        setVentaDetalle({ ...venta, tipo: 'servicio' });
+        setTipoDetalle('servicio');
+      } catch {
+        setFeedback({ tipo: 'error', mensaje: 'No se pudo cargar la venta original' });
+      }
+      return;
+    }
+    setVentaDetalle(v);
+    setTipoDetalle(v.tipo);
+  };
+
+  const handleValidarNotaCredito = async (notaId) => {
+    try {
+      const nc = await validarNotaCredito(notaId);
+      setVentaDetalle(prev => prev ? { ...prev, nota_credito: nc } : prev);
+      setFeedback({ tipo: 'exito', mensaje: 'Devolución validada' });
+      await cargarVentas();
+    } catch (err) {
+      setFeedback({ tipo: 'error', mensaje: err.response?.data?.message || 'No se pudo validar la devolución' });
+    }
+  };
+
+  const hayFiltros = filtros.tipo !== 'todos' || filtros.fechaDesde || filtros.fechaHasta || filtros.metodoPagoId || filtros.tipoComprobante || pacienteSeleccionado;
   const totalMonto = hayFiltros ? totalMontoFiltrado : totalMontoGlobal;
+  const devMostrar = hayFiltros ? totalDevoluciones : totalDevolucionesGlobal;
   const ventasPaginadas = historialData;
   const totalPages = Math.ceil(totalVentas / rowsPerPage);
 
@@ -265,7 +302,7 @@ const HistorialVentasTab = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: 'Total Ventas',   value: totalVentas,             icon: <ShoppingCartIcon className="w-5 h-5 text-[#7B1FA2]" />, bg: 'bg-[#7B1FA2]/10' },
-              { label: 'Total Ingresos', value: formatMonto(totalMonto), icon: <span className="text-lg font-bold text-green-600">S/</span>, bg: 'bg-green-50' },
+              { label: 'Total Ingresos', value: formatMonto(totalMonto), sub: devMostrar > 0 ? `− ${formatMonto(devMostrar)} devuelto` : null, icon: <span className="text-lg font-bold text-green-600">S/</span>, bg: 'bg-green-50' },
               { label: 'Servicios',      value: totalServicios, icon: <ShoppingCartIcon className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
               { label: 'Productos',      value: totalProductos, icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
             ].map((s, i) => (
@@ -275,6 +312,7 @@ const HistorialVentasTab = () => {
                   <div>
                     <div className="text-xl font-bold text-gray-900">{s.value}</div>
                     <div className="text-xs text-gray-500 font-medium">{s.label}</div>
+                    {s.sub && <div className="text-[11px] text-amber-600 font-semibold mt-0.5">{s.sub}</div>}
                   </div>
                 </div>
               </div>
@@ -283,7 +321,7 @@ const HistorialVentasTab = () => {
         )}
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
             <div className="relative sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">Paciente</label>
               <div className="relative">
@@ -327,6 +365,17 @@ const HistorialVentasTab = () => {
                 <option value="todos">Todos</option>
                 <option value="servicios">Solo Servicios</option>
                 <option value="productos">Solo Productos</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo de Comprobante</label>
+              <select value={filtros.tipoComprobante} onChange={e => { setFiltros(f => ({ ...f, tipoComprobante: e.target.value })); setPage(0); }}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]">
+                <option value="">Todos</option>
+                <option value="1">Nota de Venta</option>
+                <option value="2">Boleta</option>
+                <option value="3">Factura</option>
+                <option value="4">Nota de Crédito</option>
               </select>
             </div>
             <div>
@@ -404,7 +453,9 @@ const HistorialVentasTab = () => {
                     return (
                       <tr key={`${v.tipo}-${v.id}`} className="hover:bg-gray-50 transition-colors">
                         <td className="px-3 py-3 align-top">
-                          {v.tipo === 'servicio'
+                          {v.es_nota_credito
+                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold"><ReceiptRefundIcon className="w-3.5 h-3.5" />Devolución</span>
+                            : v.tipo === 'servicio'
                             ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">Servicio</span>
                             : <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold">Producto</span>}
                         </td>
@@ -431,7 +482,9 @@ const HistorialVentasTab = () => {
                             : v.comprador_externo ? v.comprador_externo.nombre : '—'}
                         </td>
                         <td className="px-2.5 py-3 text-center align-top">
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">{(v.detalles || []).length}</span>
+                          {v.es_nota_credito
+                            ? <span className="text-gray-300 text-xs">—</span>
+                            : <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">{(v.detalles || []).length}</span>}
                         </td>
                         <td className="px-2.5 py-3 text-center align-top">
                           {promos.length > 0
@@ -443,7 +496,7 @@ const HistorialVentasTab = () => {
                         <td className="px-2.5 py-3 text-right text-xs text-gray-500 align-top whitespace-nowrap">
                           {conIgv ? formatMonto(igv) : <span className="text-gray-300 text-xs">—</span>}
                         </td>
-                        <td className="px-2.5 py-3 text-right text-sm font-bold text-gray-900 align-top whitespace-nowrap">{formatMonto(v.total)}</td>
+                        <td className={`px-2.5 py-3 text-right text-sm font-bold align-top whitespace-nowrap ${v.es_nota_credito ? 'text-red-600' : 'text-gray-900'}`}>{formatMonto(v.total)}</td>
 
                         {/* Nro Operación */}
                         <td className="px-2.5 py-3 align-top">
@@ -524,20 +577,28 @@ const HistorialVentasTab = () => {
 
                         <td className="px-3 py-3 align-top">
                           <div className="flex items-center justify-center gap-0.5">
-                            <button onClick={() => { setVentaDetalle(v); setTipoDetalle(v.tipo); }} title="Ver detalle"
+                            <button onClick={() => handleVerDetalle(v)} title={v.es_nota_credito ? 'Ver venta original' : 'Ver detalle'}
                               className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
                               <EyeIcon className="w-4 h-4" />
                             </button>
-                            <button onClick={() => setVentaImprimir(v)} title="Imprimir"
-                              className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
-                              <PrinterIcon className="w-4 h-4" />
-                            </button>
-                            {!esAdmision && (
+                            {!v.es_nota_credito && (
+                              <button onClick={() => setVentaImprimir(v)} title="Imprimir"
+                                className="p-1.5 rounded-lg text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 transition-colors">
+                                <PrinterIcon className="w-4 h-4" />
+                              </button>
+                            )}
+                            {!esAdmision && !v.es_nota_credito && (
                               <>
                                 <button onClick={() => handleClickEditar(v)} title="Editar venta"
                                   className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                                   <PencilIcon className="w-4 h-4" />
                                 </button>
+                                {v.tipo === 'servicio' && (
+                                  <button onClick={() => setVentaDevolucion(v)} title="Devolución / Nota de crédito"
+                                    className="p-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                                    <ReceiptRefundIcon className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <button onClick={() => handleClickEliminar(v)} title="Eliminar venta"
                                   className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
                                   <TrashIcon className="w-4 h-4" />
@@ -604,6 +665,8 @@ const HistorialVentasTab = () => {
         <DetalleVentaModal
           venta={ventaDetalle}
           tipo={tipoDetalle}
+          esAdministrador={esAdministrador}
+          onValidarNotaCredito={handleValidarNotaCredito}
           onClose={() => { setVentaDetalle(null); setTipoDetalle(null); }}
         />
       )}
@@ -617,6 +680,22 @@ const HistorialVentasTab = () => {
           onConfirm={handleEliminarVenta}
           onClose={() => setVentaEliminar(null)}
           loading={procesando}
+        />
+      )}
+      {ventaDevolucion && (
+        <DevolucionModal
+          venta={ventaDevolucion}
+          modalidades={modalidades}
+          onClose={() => setVentaDevolucion(null)}
+          onDone={async (res) => {
+            setVentaDevolucion(null);
+            const nc = res?.nota_credito?.codigo ? ` (${res.nota_credito.codigo})` : '';
+            setFeedback({
+              tipo: 'exito',
+              mensaje: `Devolución registrada${nc}. Se anularon ${res?.citas_anuladas ?? 0} cita(s) y ${res?.sesiones_anuladas ?? 0} sesión(es) sin asignar.`,
+            });
+            await cargarVentas();
+          }}
         />
       )}
       {ventaEditar && (
