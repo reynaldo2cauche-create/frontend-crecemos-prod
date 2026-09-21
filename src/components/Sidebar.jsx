@@ -84,7 +84,7 @@ const menuSections = [
       },
       {
         text: 'Asistencias', icon: ClipboardDocumentCheckIcon, isDropdown: true,
-        roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION],
+        roles: [ROLES.ADMINISTRADOR],
         subItems: [
           { text: 'Por Terapeuta',    path: '/intranet/asistencias/terapeuta',        icon: UserIcon },
           { text: 'Por Paciente',     path: '/intranet/asistencias/paciente',          icon: UserGroupIcon },

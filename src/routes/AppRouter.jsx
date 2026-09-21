@@ -271,7 +271,7 @@ export const AppRouter = () => {
 
         {/* Rutas de Asistencias */}
         <Route path="/intranet/asistencias/terapeuta" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>
@@ -282,7 +282,7 @@ export const AppRouter = () => {
         } />
 
         <Route path="/intranet/asistencias/paciente" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>
@@ -293,7 +293,7 @@ export const AppRouter = () => {
         } />
 
         <Route path="/intranet/asistencias/inconsistencias" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>
@@ -304,7 +304,7 @@ export const AppRouter = () => {
         } />
 
         <Route path="/intranet/asistencias/sesiones" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>
