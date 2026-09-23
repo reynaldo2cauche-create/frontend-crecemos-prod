@@ -33,6 +33,7 @@ import Sidebar, { SidebarProvider, SidebarContentWrapper } from '../components/S
 import Login from '../components/Login';
 import PrivateRoute from '../components/PrivateRoute';
 import GeofencingGuard from '../components/GeofencingGuard';
+import ScrollToTop from '../components/ScrollToTop';
 
 import MiPerfil from '../pages/MiPerfil';
 import Agenda from '../pages/Agenda';
@@ -98,6 +99,7 @@ import ObstetriciaPage from '../pages/service-adulto/AdultoObstetricia';
 export const AppRouter = () => {
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route path="/intranet" element={<Login />} />
         <Route path="/test-ubicacion" element={<TestUbicacion />} />

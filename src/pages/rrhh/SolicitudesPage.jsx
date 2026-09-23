@@ -11,6 +11,7 @@ import {
   PaperClipIcon,
   InboxIcon,
   TrashIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { SERVER_BASE_URL } from '../../services/api';
 import {
@@ -18,6 +19,7 @@ import {
   getSolicitudes,
   getSolicitud,
   revisarSolicitud,
+  actualizarSolicitud,
   eliminarSolicitud,
 } from '../../services/rrhhService';
 import FaltasPanel from './FaltasPage';
@@ -76,6 +78,7 @@ export default function SolicitudesPage() {
   const [filtro, setFiltro] = useState('pendiente'); // pendiente | '' (todas)
   const [loading, setLoading] = useState(false);
   const [seleccionId, setSeleccionId] = useState(null);
+  const [abrirEnEdicion, setAbrirEnEdicion] = useState(false);
   const [notif, setNotif] = useState(null);
   const [tab, setTab] = useState('solicitudes'); // 'solicitudes' | 'faltas'
   const [porEliminar, setPorEliminar] = useState(null); // id de la solicitud a eliminar
@@ -304,6 +307,13 @@ export default function SolicitudesPage() {
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
                         <button
+                          onClick={(ev) => { ev.stopPropagation(); setSeleccionId(s.id); setAbrirEnEdicion(true); }}
+                          className="p-2 text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
+                          title="Editar solicitud"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={(ev) => pedirEliminar(s.id, ev)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                           title="Eliminar solicitud"
@@ -326,8 +336,10 @@ export default function SolicitudesPage() {
       {seleccionId && (
         <PanelDetalle
           id={seleccionId}
-          onClose={() => setSeleccionId(null)}
-          onRevisada={() => { setSeleccionId(null); tras(); }}
+          autoEditar={abrirEnEdicion}
+          onClose={() => { setSeleccionId(null); setAbrirEnEdicion(false); }}
+          onRevisada={() => { setSeleccionId(null); setAbrirEnEdicion(false); tras(); }}
+          onEditada={() => { setSeleccionId(null); setAbrirEnEdicion(false); tras(); }}
           onPedirEliminar={(sid) => setPorEliminar(sid)}
           notify={showNotif}
         />
@@ -349,27 +361,75 @@ export default function SolicitudesPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Panel lateral: Detalle de la solicitud
 // ─────────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ id, onClose, onRevisada, onPedirEliminar, notify }) {
+function PanelDetalle({ id, autoEditar, onClose, onRevisada, onEditada, onPedirEliminar, notify }) {
   const [sol, setSol] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [comentario, setComentario] = useState('');
   const [procesando, setProcesando] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [form, setForm] = useState(null);
 
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      setCargando(true);
-      try {
-        const data = await getSolicitud(id);
-        if (vivo) setSol(data);
-      } catch (e) {
-        notify('Error al cargar el detalle', 'error');
-      } finally {
-        if (vivo) setCargando(false);
-      }
-    })();
-    return () => { vivo = false; };
+  const soloFecha = (v) => String(v || '').split('T')[0];
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const data = await getSolicitud(id);
+      setSol(data);
+    } catch (e) {
+      notify('Error al cargar el detalle', 'error');
+    } finally {
+      setCargando(false);
+    }
   }, [id]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const iniciarEdicion = () => {
+    setForm({
+      tipo: sol.tipo,
+      fecha_inicio: soloFecha(sol.fecha_inicio),
+      fecha_fin: soloFecha(sol.fecha_fin),
+      hora_desde: sol.hora_desde ? sol.hora_desde.slice(0, 5) : '',
+      hora_hasta: sol.hora_hasta ? sol.hora_hasta.slice(0, 5) : '',
+      motivo: sol.motivo || '',
+    });
+    setEditando(true);
+  };
+
+  // Si se abrió con el lápiz de la fila, entrar directo en modo edición al cargar.
+  useEffect(() => {
+    if (autoEditar && sol && !editando) iniciarEdicion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEditar, sol]);
+
+  const guardar = async () => {
+    if (!form.fecha_inicio) { notify('La fecha de inicio es obligatoria', 'error'); return; }
+    if (form.fecha_fin && form.fecha_fin < form.fecha_inicio) {
+      notify('La fecha fin no puede ser anterior a la de inicio', 'error'); return;
+    }
+    setGuardando(true);
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      await actualizarSolicitud(id, {
+        tipo: form.tipo,
+        fechaInicio: form.fecha_inicio,
+        fechaFin: form.fecha_fin || null,
+        horaDesde: form.hora_desde || null,
+        horaHasta: form.hora_hasta || null,
+        motivo: form.motivo?.trim() || null,
+        userId: user.id,
+      });
+      notify('Solicitud actualizada', 'success');
+      setEditando(false);
+      onEditada();
+    } catch (e) {
+      notify(e.response?.data?.message || 'No se pudo actualizar', 'error');
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const revisar = async (estado) => {
     setProcesando(true);
@@ -401,6 +461,15 @@ function PanelDetalle({ id, onClose, onRevisada, onPedirEliminar, notify }) {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {!cargando && sol && !editando && (
+                <button
+                  onClick={iniciarEdicion}
+                  className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all"
+                  title="Editar solicitud"
+                >
+                  <PencilSquareIcon className="w-5 h-5" />
+                </button>
+              )}
               {!cargando && sol && (
                 <button
                   onClick={() => onPedirEliminar?.(sol.id)}
@@ -420,6 +489,98 @@ function PanelDetalle({ id, onClose, onRevisada, onPedirEliminar, notify }) {
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {cargando || !sol ? (
             <p className="text-sm text-gray-500 text-center py-10">Cargando...</p>
+          ) : editando ? (
+            <>
+              <div className="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3">
+                <p className="text-xs font-medium text-[#7B1FA2]">
+                  Editando la solicitud de {nombreCompleto(sol.trabajador)}. Corrige lo que el colaborador ingresó mal.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo</label>
+                <select
+                  value={form.tipo}
+                  onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] bg-white"
+                >
+                  {Object.entries(LABEL_TIPO).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fecha inicio</label>
+                  <input
+                    type="date"
+                    value={form.fecha_inicio}
+                    onChange={(e) => setForm((f) => ({ ...f, fecha_inicio: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fecha fin</label>
+                  <input
+                    type="date"
+                    value={form.fecha_fin}
+                    min={form.fecha_inicio}
+                    onChange={(e) => setForm((f) => ({ ...f, fecha_fin: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Hora desde (opc.)</label>
+                  <input
+                    type="time"
+                    value={form.hora_desde}
+                    onChange={(e) => setForm((f) => ({ ...f, hora_desde: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Hora hasta (opc.)</label>
+                  <input
+                    type="time"
+                    value={form.hora_hasta}
+                    onChange={(e) => setForm((f) => ({ ...f, hora_hasta: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Motivo</label>
+                <textarea
+                  rows="3"
+                  value={form.motivo}
+                  onChange={(e) => setForm((f) => ({ ...f, motivo: e.target.value }))}
+                  placeholder="Motivo de la solicitud..."
+                  className="w-full px-3 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] resize-none bg-white"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditando(false)}
+                  disabled={guardando}
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-all disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardar}
+                  disabled={guardando}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#7B1FA2] text-white rounded-lg text-sm font-semibold hover:bg-[#6A1B9A] transition-all disabled:opacity-50"
+                >
+                  <CheckIcon className="w-4 h-4" /> {guardando ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </>
           ) : (
             <>
               <div className="flex items-center justify-between">
@@ -512,7 +673,7 @@ function PanelDetalle({ id, onClose, onRevisada, onPedirEliminar, notify }) {
           )}
         </div>
 
-        {pendiente && !cargando && (
+        {pendiente && !cargando && !editando && (
           <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
             <button
               onClick={() => revisar('rechazado')}

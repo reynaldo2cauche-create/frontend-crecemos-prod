@@ -150,7 +150,16 @@
       "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -h localhost -u root -padmin crecemos_website -e 'SHOW TABLES LIKE '\\\\''nota_credito'\\\\''; SELECT id,nombre FROM estado_cita WHERE id=9;')",
       "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -h localhost -u root -padmin crecemos_website -e 'SHOW COLUMNS FROM nota_credito;')",
       "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -h localhost -u root -padmin crecemos_website -e 'ALTER TABLE nota_credito ADD COLUMN validado TINYINT\\(1\\) NOT NULL DEFAULT 0 AFTER user_crea_id, ADD COLUMN validado_por INT NULL AFTER validado, ADD COLUMN validado_at TIMESTAMP NULL AFTER validado_por; SHOW COLUMNS FROM nota_credito LIKE '\\\\''validado%'\\\\'';')",
-      "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -h localhost -u root -padmin crecemos_website -e 'SELECT id,nombre FROM rol ORDER BY id;')"
+      "Bash('/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe' -h localhost -u root -padmin crecemos_website -e 'SELECT id,nombre FROM rol ORDER BY id;')",
+      "Bash(ls \"/c/xampp/mysql/bin/mysql.exe\")",
+      "Bash(ls \"/c/wamp64/bin/mysql/\"*/bin/mysql.exe)",
+      "Bash(ls \"/c/Program Files/MySQL/\"*/bin/mysql.exe)",
+      "Bash(ls \"/c/laragon/bin/mysql/\"*/bin/mysql.exe)",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe\" -h localhost -P 3306 -u root -padmin crecemos_website)",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe\" -h localhost -P 3306 -u root -padmin crecemos_website -e \"SHOW COLUMNS FROM bloqueo_horarios LIKE 'falta_id';\")",
+      "Bash(pm2 list *)",
+      "Bash(powershell *)",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe\" -h localhost -P 3306 -u root -padmin crecemos_website -e \"DESCRIBE bloqueo_horarios;\")"
     ],
     "deny": [],
     "ask": []

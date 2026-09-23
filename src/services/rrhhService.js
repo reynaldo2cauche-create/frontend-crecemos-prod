@@ -227,6 +227,14 @@ export const revisarSolicitud = async (id, data) => {
   return response.data;
 };
 
+// Editar una solicitud pendiente (administración corrige lo que el colaborador se equivocó)
+export const actualizarSolicitud = async (id, data) => {
+  const response = await axios.patch(`${API_BASE_URL}/solicitudes/${id}`, data, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 // Resumen mensual (4 indicadores). Sin trabajadorId = vista admin.
 export const getResumenAsistencia = async ({ mes, anio, trabajadorId } = {}) => {
   const params = new URLSearchParams();
