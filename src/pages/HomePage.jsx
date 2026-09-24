@@ -14,7 +14,7 @@ import Decor from '../components/public/Decor';
 // añade su ruta aquí. Con 2+ fotos aparecen los puntos de navegación.
 // Recomendado: horizontal 2560×1440 px (16:9), WebP optimizado (<400 KB).
 const heroImages = [
-  '/assets/img/index/Carrusel servicios.webp',
+  '/hero.png',
   // '/assets/img/index/hero-2.webp',
   // '/assets/img/index/hero-3.webp',
 ];

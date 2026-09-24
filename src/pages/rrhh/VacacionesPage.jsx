@@ -190,7 +190,7 @@ export default function VacacionesPage() {
     vac.diasDisponibles > 0 &&
     (
       `${vac.nombres} ${vac.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vac.cargo.toLowerCase().includes(searchTerm.toLowerCase())
+      (vac.cargo?.nombre || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 

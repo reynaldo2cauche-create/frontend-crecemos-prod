@@ -217,7 +217,7 @@ export const AppRouter = () => {
         } />
 
         <Route path="/intranet/rrhh/vacaciones" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>
@@ -228,7 +228,7 @@ export const AppRouter = () => {
         } />
 
         <Route path="/intranet/rrhh/faltas" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>
@@ -239,7 +239,7 @@ export const AppRouter = () => {
         } />
 
         <Route path="/intranet/rrhh/solicitudes" element={
-          <PrivateRoute>
+          <PrivateRoute roles={[1]}>
             <SidebarProvider>
               <Sidebar />
               <SidebarContentWrapper>

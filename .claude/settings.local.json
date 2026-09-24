@@ -159,7 +159,8 @@
       "Bash(\"/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe\" -h localhost -P 3306 -u root -padmin crecemos_website -e \"SHOW COLUMNS FROM bloqueo_horarios LIKE 'falta_id';\")",
       "Bash(pm2 list *)",
       "Bash(powershell *)",
-      "Bash(\"/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe\" -h localhost -P 3306 -u root -padmin crecemos_website -e \"DESCRIBE bloqueo_horarios;\")"
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 9.7/bin/mysql.exe\" -h localhost -P 3306 -u root -padmin crecemos_website -e \"DESCRIBE bloqueo_horarios;\")",
+      "PowerShell(Set-Location *)"
     ],
     "deny": [],
     "ask": []
