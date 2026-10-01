@@ -37,6 +37,7 @@ const ReportesVentas = () => {
   const [loading, setLoading] = useState(false);
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [mes, setMes] = useState(''); // selector por mes (autocompleta rango del día 1 al último)
   const [tipoReporte, setTipoReporte] = useState('general');
   const [historialVentas, setHistorialVentas] = useState([]);
 
@@ -346,6 +347,20 @@ const ReportesVentas = () => {
 
   const totalPaginas = Math.ceil(ventasSinCita.length / filasPorPagina);
 
+  // Al elegir un mes, toma del primer al último día de ese mes
+  const seleccionarMes = (val) => {
+    setMes(val);
+    if (!val) return;
+    const [anio, m] = val.split('-').map(Number);
+    const ultimoDia = new Date(anio, m, 0).getDate();
+    setFechaInicio(`${val}-01`);
+    setFechaFin(`${val}-${String(ultimoDia).padStart(2, '0')}`);
+  };
+
+  // Si edita las fechas a mano, se deselecciona el mes (es un rango personalizado)
+  const cambiarFechaInicio = (v) => { setMes(''); setFechaInicio(v); };
+  const cambiarFechaFin = (v) => { setMes(''); setFechaFin(v); };
+
   const filtros = { fechaInicio, fechaFin, tipoReporte };
 
   const BtnExcel = ({ id, onClick, disabled }) => {
@@ -377,13 +392,22 @@ const ReportesVentas = () => {
 
       {/* Filtros */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Mes</label>
+            <input
+              type="month"
+              value={mes}
+              onChange={(e) => seleccionarMes(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+            />
+          </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha inicio</label>
             <input
               type="date"
               value={fechaInicio}
-              onChange={(e) => setFechaInicio(e.target.value)}
+              onChange={(e) => cambiarFechaInicio(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
             />
           </div>
@@ -392,7 +416,7 @@ const ReportesVentas = () => {
             <input
               type="date"
               value={fechaFin}
-              onChange={(e) => setFechaFin(e.target.value)}
+              onChange={(e) => cambiarFechaFin(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
             />
           </div>

@@ -94,7 +94,9 @@ import { Campanas } from '../pages/Campanas/Campanas';
 import GestionInformesPage from '../pages/Informes/GestionInformesPage';
 import CentroOperativo from '../pages/CentroOperativo/CentroOperativo';
 import ReporteActividades from '../pages/CentroOperativo/ReporteActividades';
+import MesaPartes from '../pages/MesaPartes/MesaPartes';
 import ObstetriciaPage from '../pages/service-adulto/AdultoObstetricia';
+import FichaSeguimientoEscolar from '../pages/FichaSeguimientoEscolar';
 
 export const AppRouter = () => {
   return (
@@ -103,6 +105,8 @@ export const AppRouter = () => {
       <Routes>
         <Route path="/intranet" element={<Login />} />
         <Route path="/test-ubicacion" element={<TestUbicacion />} />
+        {/* Ficha de Seguimiento Escolar — link público que llena la docente (sin login) */}
+        <Route path="/ficha-seguimiento/:token" element={<FichaSeguimientoEscolar />} />
      
         <Route path="/intranet/lista-pacientes" element={
           <PrivateRoute>
@@ -528,6 +532,17 @@ export const AppRouter = () => {
               <Sidebar />
               <SidebarContentWrapper>
                 <GestionInformesPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+
+        <Route path="/intranet/mesa-partes" element={
+          <PrivateRoute>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <MesaPartes />
               </SidebarContentWrapper>
             </SidebarProvider>
           </PrivateRoute>

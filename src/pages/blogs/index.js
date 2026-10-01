@@ -34,6 +34,8 @@ import SemanaTCABlog from './psicologia/SemanaTCABlog';
 import DiaTDAHBlog from './psicologia/DiaTDAHBlog';
 import CuandoLlevarPsicologoBlog from './psicologia/CuandoLlevarPsicologoBlog';
 import RabietaRegulacionEmocionalBlog from './psicologia/RabietaRegulacionEmocionalBlog';
+import IdeacionSuicidaBlog from './psicologia/IdeacionSuicidaBlog';
+import TLPBlog from './psicologia/TLPBlog';
 
 // Blogs de Efemérides
 import DiaDiscapacidadBlog from './efemerides/DiaDiscapacidadBlog';
@@ -97,6 +99,8 @@ export const blogComponents = {
   'diferenciar-rabieta-problema-regulacion-emocional-ninos': RabietaRegulacionEmocionalBlog,
   '8-marzo-dia-internacional-mujer-salud-mental': DiaMujerBlog,
   '21-marzo-dia-mundial-sindrome-down': DiaSindromeDownBlog,
+  'ideacion-suicida-comprender-saber-intervenir': IdeacionSuicidaBlog,
+  'trastorno-limite-personalidad-senales-causas-tratamiento': TLPBlog,
 
   // Agrega más blogs aquí...
   // 'slug-del-blog': ComponenteBlog,
@@ -128,4 +132,6 @@ export {
   ApraxiaHablaTeaPadresBlog,
   ApraxiaHablaTeaQueEsBlog,
   RabietaRegulacionEmocionalBlog,
+  IdeacionSuicidaBlog,
+  TLPBlog,
 };

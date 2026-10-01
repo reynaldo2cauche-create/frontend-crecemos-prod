@@ -36,6 +36,7 @@ import {
   UsersIcon,
   MegaphoneIcon,
   ExclamationTriangleIcon,
+  InboxArrowDownIcon,
 } from '@heroicons/react/24/outline';
 
 export const SidebarContext = createContext();
@@ -69,6 +70,7 @@ const menuSections = [
       { text: 'Venta de productos',  path: '/intranet/ventas/productos',   icon: CubeIcon },
       { text: 'Tarifario',           path: '/intranet/tarifario',          icon: CurrencyDollarIcon },
       { text: 'Historial de ventas', path: '/intranet/ventas/historial',   icon: ClipboardDocumentCheckIcon },
+      { text: 'Mesa de Partes',      path: '/intranet/mesa-partes',        icon: InboxArrowDownIcon },
     ],
   },
   {

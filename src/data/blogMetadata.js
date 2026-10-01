@@ -508,6 +508,32 @@ export const blogMetadata = [
   readTime: '14 min lectura',
   author: 'Lic. Giselle Burgos Del Rosario',
   heroImage: '/assets/img/blog/rabieta-portada.webp'
+},
+{
+  id: 40,
+  slug: 'ideacion-suicida-comprender-saber-intervenir',
+  title: 'Ideación suicida: comprender y saber intervenir',
+  excerpt: 'El malestar emocional no siempre se expresa con un "quiero morir". Aprende a reconocer frases que merecen una segunda pregunta, cómo preguntar sin miedo, cómo evaluar el nivel de riesgo y qué hacer ante una crisis, con un plan de seguridad basado en NIMH, SAMHSA y la OMS.',
+  image: '/assets/img/blog/ideacion-suicida-portada.webp',
+  date: '28 Septiembre 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '15 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/ideacion-suicida-portada.webp'
+},
+{
+  id: 41,
+  slug: 'trastorno-limite-personalidad-senales-causas-tratamiento',
+  title: 'Más allá de los cambios de ánimo: conoce el Trastorno Límite de la Personalidad',
+  excerpt: 'Inestabilidad emocional, miedo al abandono, impulsividad y una sensación profunda de vacío. Conoce qué es el Trastorno Límite de la Personalidad (TLP), sus signos de alerta, causas, factores de riesgo y las terapias (TCC y TDC) que ayudan a abordarlo, con la importancia de la intervención temprana.',
+  image: '/assets/img/blog/tlp-portada.webp',
+  date: '28 Septiembre 2026',
+  category: 'psicologia',
+  categoryName: 'Psicología',
+  readTime: '13 min lectura',
+  author: 'Centro Crecemos',
+  heroImage: '/assets/img/blog/tlp-portada.webp'
 }
   // Aquí agregas más blogs...
 ];

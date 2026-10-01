@@ -342,16 +342,15 @@ export default function FaltasPage({ embedded = false }) {
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">Hasta</th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">Días</th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">Descuento</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600">Estado</th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  <tr><td colSpan="8" className="px-6 py-16 text-center text-sm text-gray-500">Cargando...</td></tr>
+                  <tr><td colSpan="7" className="px-6 py-16 text-center text-sm text-gray-500">Cargando...</td></tr>
                 ) : faltasFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-16 text-center">
+                    <td colSpan="7" className="px-6 py-16 text-center">
                       <ExclamationTriangleIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-sm text-gray-500 font-medium">No hay faltas registradas</p>
                     </td>
@@ -373,13 +372,6 @@ export default function FaltasPage({ embedded = false }) {
                       <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900">{Number(f.dias)}</td>
                       <td className="px-6 py-4 text-center text-sm font-bold text-red-600">
                         {f.descuenta ? `S/ ${Number(f.monto_descuento).toFixed(2)}` : '—'}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {f.pago ? (
-                          <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700">Pagado</span>
-                        ) : (
-                          <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Pendiente</span>
-                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         {!f.pago && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User, FileCheck } from 'lucide-react';
+import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User, FileCheck, GraduationCap } from 'lucide-react';
 import { guardarReporteEvolucion, actualizarReporteEvolucion, obtenerReporteEvolucion } from '../../services/historiaClinicaService';
 import { getServiciosPorPaciente } from '../../services/pacienteService';
 
@@ -11,6 +11,7 @@ import EvaluacionTerapiaOcupacional from './HistoriaClinicaView/components/Evalu
 import IndicacionTerapeuticaView from './HistoriaClinicaView/components/IndicacionTerapeuticaView';
 import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
 import SolicitudInformeView from './HistoriaClinicaView/components/SolicitudInformeView';
+import SeguimientoEscolarView from './HistoriaClinicaView/components/SeguimientoEscolarView';
 
 // Ordena los reportes de evolución según su fecha de creación (registro),
 // del más reciente al más antiguo; desempata por id descendente.
@@ -326,6 +327,8 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         return <IndicacionTerapeuticaView paciente={paciente} user={user} />;
       case 'solicitud-informe':
         return <SolicitudInformeView paciente={paciente} user={user} />;
+      case 'seguimiento-escolar':
+        return <SeguimientoEscolarView paciente={paciente} user={user} />;
       default:
         return <div>Contenido no encontrado</div>;
     }
@@ -389,6 +392,14 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       description: 'Gestión de solicitudes de informes terapéuticos',
       icon: FileCheck,
       color: 'purple',
+      visible: true // Siempre visible
+    },
+    {
+      id: 'seguimiento-escolar',
+      title: 'Seguimiento Escolar',
+      description: 'Genera un enlace único para que la docente llene la ficha de seguimiento',
+      icon: GraduationCap,
+      color: 'blue',
       visible: true // Siempre visible
     }
   ].filter(s => s.visible);
