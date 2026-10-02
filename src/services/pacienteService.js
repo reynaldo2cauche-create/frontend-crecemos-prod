@@ -1,7 +1,8 @@
 import api from './api';
 
-export const buscarPacientes = async (query) => {
-  const response = await api.get(`/pacientes/buscar?q=${encodeURIComponent(query)}`);
+export const buscarPacientes = async (query, incluirInactivos = false) => {
+  const extra = incluirInactivos ? '&incluirInactivos=true' : '';
+  const response = await api.get(`/pacientes/buscar?q=${encodeURIComponent(query)}${extra}`);
   return response.data;
 };
 

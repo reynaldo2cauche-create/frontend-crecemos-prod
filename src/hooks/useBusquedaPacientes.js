@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as pacienteService from '../services/pacienteService';
 
-export const useBusquedaPacientes = (query, delay = 400) => {
+export const useBusquedaPacientes = (query, delay = 400, incluirInactivos = false) => {
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ export const useBusquedaPacientes = (query, delay = 400) => {
     setError(null);
 
     try {
-      const data = await pacienteService.buscarPacientes(searchQuery);
+      const data = await pacienteService.buscarPacientes(searchQuery, incluirInactivos);
       setPacientes(data || []);
     } catch (err) {
       console.error('Error al buscar pacientes:', err);
@@ -26,7 +26,7 @@ export const useBusquedaPacientes = (query, delay = 400) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [incluirInactivos]);
 
   // Debounce effect
   useEffect(() => {

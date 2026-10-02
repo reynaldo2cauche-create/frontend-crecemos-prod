@@ -61,7 +61,7 @@ const HistorialVentasTab = () => {
   const [queryPaciente, setQueryPaciente]   = useState('');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [showDropdownPaciente, setShowDropdownPaciente] = useState(false);
-  const { pacientes: resultadosPaciente, loading: loadingPaciente } = useBusquedaPacientes(queryPaciente);
+  const { pacientes: resultadosPaciente, loading: loadingPaciente } = useBusquedaPacientes(queryPaciente, 400, true);
   const [ventaDetalle, setVentaDetalle]     = useState(null);
   const [tipoDetalle, setTipoDetalle]       = useState(null);
   const [ventaImprimir, setVentaImprimir]   = useState(null);
