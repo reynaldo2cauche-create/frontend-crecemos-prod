@@ -166,7 +166,8 @@
       "PowerShell($tools = @\\(\\); foreach\\($t in 'magick','inkscape','rsvg-convert'\\){ $c = Get-Command $t -ErrorAction SilentlyContinue; if\\($c\\){ $tools += $t } }; if\\($tools\\){ \"FOUND: $\\($tools -join ', '\\)\" } else { \"NONE\" })",
       "PowerShell($edge = @\\(\"${env:ProgramFiles\\(x86\\)}\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"$env:ProgramFiles\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"\\) | Where-Object { Test-Path $_ } | Select-Object -First 1; if\\($edge\\){ \"EDGE: $edge\" } else { $chrome = @\\(\"$env:ProgramFiles\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\",\"${env:ProgramFiles\\(x86\\)}\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\"\\) | Where-Object { Test-Path $_ } | Select-Object -First 1; if\\($chrome\\){\"CHROME: $chrome\"} else {\"NONE\"} })",
       "Bash(tee /tmp/tsc.txt)",
-      "Bash(grep -rhoE \"get\\\\\\(['\\\\\"]\\\\/pacientes[^'\\\\\"]*\" services/*.js)"
+      "Bash(grep -rhoE \"get\\\\\\(['\\\\\"]\\\\/pacientes[^'\\\\\"]*\" services/*.js)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(s.get\\('id'\\), '|', s.get\\('nombre'\\), '| area:', \\(s.get\\('area'\\) or {}\\).get\\('nombre'\\), '| especialidad:', \\(s.get\\('especialidad'\\) or {}\\).get\\('nombre'\\) if isinstance\\(s.get\\('especialidad'\\),dict\\) else s.get\\('especialidad'\\), '| especialidad_id:', s.get\\('especialidad_id'\\)\\) for s in d]\")"
     ],
     "deny": [],
     "ask": []

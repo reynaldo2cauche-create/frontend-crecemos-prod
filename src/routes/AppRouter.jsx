@@ -97,6 +97,7 @@ import ReporteActividades from '../pages/CentroOperativo/ReporteActividades';
 import MesaPartes from '../pages/MesaPartes/MesaPartes';
 import ObstetriciaPage from '../pages/service-adulto/AdultoObstetricia';
 import FichaSeguimientoEscolar from '../pages/FichaSeguimientoEscolar';
+import FichaSeguimientoPsicologia from '../pages/FichaSeguimientoPsicologia';
 
 export const AppRouter = () => {
   return (
@@ -107,7 +108,9 @@ export const AppRouter = () => {
         <Route path="/test-ubicacion" element={<TestUbicacion />} />
         {/* Ficha de Seguimiento Escolar — link público que llena la docente (sin login) */}
         <Route path="/ficha-seguimiento/:token" element={<FichaSeguimientoEscolar />} />
-     
+        {/* Ficha de Seguimiento Psicología (Conners) — link público que llena la docente */}
+        <Route path="/ficha-seguimiento-psicologia/:token" element={<FichaSeguimientoPsicologia />} />
+
         <Route path="/intranet/lista-pacientes" element={
           <PrivateRoute>
             <GeofencingGuard>

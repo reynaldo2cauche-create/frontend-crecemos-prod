@@ -297,6 +297,44 @@ const SERVICIO_CONFIG = {
     ],
   },
 
+  // ── ORIENTACIÓN VOCACIONAL / EVALUACIONES PSICOLÓGICAS ──
+  // Cubre "Orientación Vocacional" (area Adolescentes id=6 y Adultos id=16),
+  // "Evaluación para la Universidad" y "Evaluación Psicológica para Colegio".
+  // No matcheaban ninguna config (el nombre no contiene 'psicolog'/'adolescente'),
+  // por eso al terapeuta —con el servicio bloqueado— no le salían las opciones.
+  // Usa el mismo contenido que Psicología Adolescentes. Todas las claves ya están
+  // en buildFormInicial, así que no hay inputs no controlados.
+  orientacion_vocacional: {
+    match: (s) => {
+      const n = s.nombre?.toLowerCase() || '';
+      return n.includes('vocacional') || n.includes('evaluación') || n.includes('evaluacion');
+    },
+    referencias: {
+      internas: [
+        { key: 'refInterTerapiaLenguaje',    label: 'Terapia de lenguaje' },
+        { key: 'refInterTerapiaOcupacional', label: 'Terapia ocupacional' },
+        { key: 'refInterPsicologia',         label: 'Psicología (Conducta / aprendizaje)' },
+        { key: 'refInterTerapiaParejaFam',   label: 'Terapia de pareja / T.Familiar' },
+        { key: 'refInterPsicoterapiaInd',    label: 'Psicoterapia individual' },
+      ],
+      externas: [
+        { key: 'refExterNeuropediatra',   label: 'Neuropediatra' },
+        { key: 'refExterNeuropsicologia', label: 'Neuropsicología' },
+        { key: 'refExterPsiquiatria',     label: 'Psiquiatría' },
+      ],
+    },
+    recomendaciones: [
+      { key: 'evitarConfrontacionesInmediatas', label: 'Evitar confrontaciones inmediatas después de la sesión; darle espacio para procesar lo trabajado.' },
+      { key: 'respetarEspacioTerapeutico',      label: 'Respetar el espacio del evaluado, evitando presionarlo a contar lo que trabaja en consulta.' },
+      { key: 'tenerPacienciaExpectativasRealistas', label: 'Tener paciencia y expectativas realistas; los resultados del proceso son graduales.' },
+      { key: 'informarCambios',                 label: 'Informar sobre cualquier cambio emocional, médico o escolar relevante que pueda influir en el proceso.' },
+      { key: 'cumplirTareasFamilia',            label: 'Cumplir con las tareas o pautas sugeridas por el profesional, cuando estas involucren a la familia.' },
+    ],
+    materiales: [
+      'hojasBond','plumones','lapizBorrador','cartulinaDuplex','cuaderno','folder','fotos','botellaAgua',
+    ],
+  },
+
   // ── TERAPIA DE PAREJA Y FAMILIAR (id=8, 9) ───────────────
   terapia_pareja_familiar: {
     match: (s) => s.id == 8 || s.id == 9,

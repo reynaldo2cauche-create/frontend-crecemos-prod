@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User, FileCheck, GraduationCap } from 'lucide-react';
+import { FileText, Users, Activity, ChevronDown, ChevronRight, X, ClipboardList, User, FileCheck, GraduationCap, Brain } from 'lucide-react';
 import { guardarReporteEvolucion, actualizarReporteEvolucion, obtenerReporteEvolucion } from '../../services/historiaClinicaService';
 import { getServiciosPorPaciente } from '../../services/pacienteService';
 
@@ -12,6 +12,7 @@ import IndicacionTerapeuticaView from './HistoriaClinicaView/components/Indicaci
 import EntrevistaAdultos from '../Pacientes/EntrevistaAdultos';
 import SolicitudInformeView from './HistoriaClinicaView/components/SolicitudInformeView';
 import SeguimientoEscolarView from './HistoriaClinicaView/components/SeguimientoEscolarView';
+import SeguimientoPsicologiaView from './HistoriaClinicaView/components/SeguimientoPsicologiaView';
 
 // Ordena los reportes de evolución según su fecha de creación (registro),
 // del más reciente al más antiguo; desempata por id descendente.
@@ -329,6 +330,8 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         return <SolicitudInformeView paciente={paciente} user={user} />;
       case 'seguimiento-escolar':
         return <SeguimientoEscolarView paciente={paciente} user={user} />;
+      case 'seguimiento-psicologia':
+        return <SeguimientoPsicologiaView paciente={paciente} user={user} />;
       default:
         return <div>Contenido no encontrado</div>;
     }
@@ -343,6 +346,20 @@ const HistoriaClinicaView = ({ paciente, user }) => {
   const edadCalculada = calcularEdad(paciente?.fecha_nacimiento);
   const edadPaciente = edadCalculada !== '' ? edadCalculada : Number(paciente?.edad ?? NaN);
   const esAdulto = Number.isFinite(edadPaciente) && edadPaciente >= 18;
+
+  // Seguimiento escolar (Terapia de Lenguaje): solo pacientes con el servicio asignado.
+  const tieneLenguaje = serviciosPaciente.some((s) =>
+    (s?.servicio?.nombre?.toLowerCase() || '').includes('lenguaje'),
+  );
+
+  // Seguimiento psicológico (Conners): solo pacientes con Psicología asignada
+  // en área Infantil (1) o Adolescentes (3) — no Adultos (2).
+  const AREAS_PSICOLOGIA_ESCOLAR = [1, 3];
+  const tienePsicologiaEscolar = serviciosPaciente.some((s) => {
+    const nombre = s?.servicio?.nombre?.toLowerCase() || '';
+    const areaId = s?.servicio?.area?.id;
+    return nombre.includes('psicolog') && AREAS_PSICOLOGIA_ESCOLAR.includes(areaId);
+  });
 
   // Configuración de las secciones con iconos
   const secciones = [
@@ -400,7 +417,15 @@ const HistoriaClinicaView = ({ paciente, user }) => {
       description: 'Genera un enlace único para que la docente llene la ficha de seguimiento',
       icon: GraduationCap,
       color: 'blue',
-      visible: true // Siempre visible
+      visible: tieneLenguaje // Solo con Terapia de Lenguaje asignada
+    },
+    {
+      id: 'seguimiento-psicologia',
+      title: 'Seguimiento Escolar (Psicología)',
+      description: 'Cuestionario para maestros (Conners) — enlace único para la docente del colegio',
+      icon: Brain,
+      color: 'purple',
+      visible: tienePsicologiaEscolar // Solo con Psicología en área Infantil o Adolescentes
     }
   ].filter(s => s.visible);
 
