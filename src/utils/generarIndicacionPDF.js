@@ -262,20 +262,38 @@ const drawListBox = (doc, items, y, minH = 10, cols = 1) => {
     return y + boxH + 1.5;
   }
 
-  // Varias columnas (ítems cortos, p. ej. materiales): grilla de filas fijas.
+  // Varias columnas (ítems cortos, p. ej. materiales): grilla con alto variable.
+  // Cada ítem puede ocupar varias líneas; se acumula la altura por columna para
+  // que los ítems largos no se superpongan con el siguiente.
   const perCol = Math.ceil(items.length / cols);
-  const boxH   = Math.max(perCol * lh + p * 2 + 1, minH);
+  const lineasPorItem = items.map(item => doc.splitTextToSize(String(item ?? ''), colW - 6));
 
+  // Alto de la caja = columna más alta (suma de líneas de sus ítems).
+  let maxColLineas = 0;
+  for (let c = 0; c < cols; c++) {
+    let colLineas = 0;
+    for (let r = 0; r < perCol; r++) {
+      const idx = c * perCol + r;
+      if (idx < items.length) colLineas += lineasPorItem[idx].length;
+    }
+    if (colLineas > maxColLineas) maxColLineas = colLineas;
+  }
+
+  const boxH = Math.max(maxColLineas * lh + p * 2 + 1, minH);
   doc.setDrawColor(...GRAY).setLineWidth(0.3).rect(M, y, TEXT_W, boxH);
 
-  items.forEach((item, idx) => {
-    const col  = Math.floor(idx / perCol);
-    const row  = idx % perCol;
-    const xBase = M + p + col * colW;
-    const yT   = y + p + 3.3 + row * lh;
-    doc.text('•', xBase, yT);
-    doc.text(item, xBase + 4, yT, { maxWidth: colW - 6 });
-  });
+  for (let c = 0; c < cols; c++) {
+    const xBase = M + p + c * colW;
+    let yT = y + p + 3.3;
+    for (let r = 0; r < perCol; r++) {
+      const idx = c * perCol + r;
+      if (idx >= items.length) break;
+      const lineas = lineasPorItem[idx];
+      doc.text('•', xBase, yT);
+      lineas.forEach((ln, i) => doc.text(ln, xBase + 4, yT + i * lh));
+      yT += lineas.length * lh;
+    }
+  }
 
   return y + boxH + 1.5;
 };
