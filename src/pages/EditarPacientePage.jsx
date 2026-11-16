@@ -210,6 +210,16 @@ useEffect(() => {
     if (id) cargarPaciente();
   }, [id]);
 
+  // Mostrar primer nombre y apellidos del paciente en el título de la pestaña
+  useEffect(() => {
+    if (paciente) {
+      const primerNombre = (paciente.nombres || '').trim().split(/\s+/)[0] || '';
+      const nombre = `${primerNombre} ${paciente.apellido_paterno || ''} ${paciente.apellido_materno || ''}`.replace(/\s+/g, ' ').trim();
+      document.title = nombre ? `${nombre} - Paciente` : 'Editar Paciente';
+    }
+    return () => { document.title = 'Centro Crecemos'; };
+  }, [paciente]);
+
   useEffect(() => {
     const cargarDatosAdicionales = async () => {
       try {
@@ -886,16 +896,16 @@ const handleEliminarConvenio = async () => {
   </div>
 
 <div className="mt-4 pt-4 border-t border-gray-100">
-  <div className="flex items-center justify-between">
+  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
     {/* Lado izquierdo: Título + Tabs */}
-    <div className="flex items-center gap-6">
-      
+    <div className="flex items-center gap-6 min-w-0 w-full lg:w-auto">
+
 
       {/* Tabs */}
-      <div className="flex gap-1">
+      <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:gap-1">
         <button
           onClick={() => setTabSeleccionado('filiacion')}
-          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
             tabSeleccionado === 'filiacion'
               ? 'bg-[#7B1FA2] text-white shadow-sm'
               : 'text-gray-600 hover:bg-gray-50'
@@ -908,7 +918,7 @@ const handleEliminarConvenio = async () => {
 
         <button
           onClick={() => setTabSeleccionado('historia')}
-          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
             tabSeleccionado === 'historia'
               ? 'bg-[#7B1FA2] text-white shadow-sm'
               : 'text-gray-600 hover:bg-gray-50'
@@ -921,7 +931,7 @@ const handleEliminarConvenio = async () => {
 
         <button
           onClick={() => setTabSeleccionado('archivos')}
-          className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
             tabSeleccionado === 'archivos'
               ? 'bg-[#7B1FA2] text-white shadow-sm'
               : 'text-gray-600 hover:bg-gray-50'
@@ -935,7 +945,7 @@ const handleEliminarConvenio = async () => {
         {user?.rol?.id !== ROLES.TERAPEUTA && (
           <button
             onClick={() => setTabSeleccionado('terapias')}
-            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
               tabSeleccionado === 'terapias'
                 ? 'bg-[#7B1FA2] text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-50'
@@ -949,7 +959,7 @@ const handleEliminarConvenio = async () => {
         {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.TERAPEUTA) && (
           <button
             onClick={() => setTabSeleccionado('plan')}
-            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
               tabSeleccionado === 'plan'
                 ? 'bg-[#7B1FA2] text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-50'

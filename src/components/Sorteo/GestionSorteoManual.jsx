@@ -590,7 +590,7 @@ const GestionSorteoManual = () => {
   // ==================== RENDER ====================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-6">
       {showConfetti && (
         <Confetti
           width={window.innerWidth}
@@ -933,12 +933,12 @@ const GestionSorteoManual = () => {
       {/* VISTA: PREPARACIÓN O FINALIZADO */}
       {vista === 'preparacion' && sorteoActual && (
         <div className="max-w-6xl mx-auto">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{sorteoActual.nombre}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{sorteoActual.nombre}</h1>
               <p className="text-gray-600 text-sm">{sorteoActual.descripcion || (sorteoActual.estado === 'finalizado' ? 'Resultados del sorteo' : 'Agrega participantes')}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {sorteoActual.estado === 'finalizado' && (
                 <button
                   onClick={handleDescargarPDF}
@@ -1030,13 +1030,13 @@ const GestionSorteoManual = () => {
                 {ganadoresGuardados
                   .sort((a, b) => a.posicion - b.posicion)
                   .map((ganador) => (
-                    <div key={ganador.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-200">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-600 text-white rounded-full flex items-center justify-center font-bold">
+                    <div key={ganador.id} className="flex items-center justify-between gap-2 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-200">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-amber-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                           {ganador.posicion}°
                         </div>
-                        <div>
-                          <div className="text-sm font-bold text-gray-900">
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-gray-900 break-words">
                             {getNombreCompleto(ganador.paciente || ganador)}
                           </div>
                           <div className="text-xs text-gray-600">
@@ -1044,7 +1044,7 @@ const GestionSorteoManual = () => {
                           </div>
                         </div>
                       </div>
-                      <Trophy className="w-5 h-5 text-amber-600" />
+                      <Trophy className="w-5 h-5 text-amber-600 flex-shrink-0" />
                     </div>
                   ))}
               </div>
@@ -1102,16 +1102,16 @@ const GestionSorteoManual = () => {
 
               <div className="space-y-2">
                 {getPacientesAgrupados().map(({ participante, cantidad }, index) => (
-                  <div key={participante.paciente_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="text-xs text-gray-500">{index + 1}</span>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{getNombreCompleto(participante)}</div>
+                  <div key={participante.paciente_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <span className="text-xs text-gray-500 mt-0.5">{index + 1}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-900 break-words">{getNombreCompleto(participante)}</div>
                         <div className="text-xs text-gray-600">DNI: {getDNI(participante)}</div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 self-end sm:self-auto">
                       <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-bold">
                         {cantidad}x
                       </span>
@@ -1152,16 +1152,16 @@ const GestionSorteoManual = () => {
 
               <div className="space-y-2">
                 {getPacientesAgrupados().map(({ participante, cantidad }, index) => (
-                  <div key={participante.paciente_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="text-xs text-gray-500">{index + 1}</span>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{getNombreCompleto(participante)}</div>
+                  <div key={participante.paciente_id} className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <span className="text-xs text-gray-500 mt-0.5">{index + 1}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-900 break-words">{getNombreCompleto(participante)}</div>
                         <div className="text-xs text-gray-600">DNI: {getDNI(participante)}</div>
                       </div>
                     </div>
 
-                    <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-bold">
+                    <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-bold flex-shrink-0">
                       {cantidad}x
                     </span>
                   </div>
@@ -1203,15 +1203,15 @@ const GestionSorteoManual = () => {
       {/* VISTA: SORTEO (Ruleta) */}
       {vista === 'sorteo' && sorteoActual && sorteoIniciado && (
         <div className="max-w-7xl mx-auto">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{sorteoActual.nombre}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{sorteoActual.nombre}</h1>
               <p className="text-gray-600 text-sm">Jala la palanca para seleccionar ganadores</p>
             </div>
             <button
               onClick={volverAPreparacion}
               disabled={isSpinning}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 disabled:opacity-50 self-start sm:self-auto"
             >
               <ArrowLeft className="w-4 h-4" />
               Volver
@@ -1219,22 +1219,22 @@ const GestionSorteoManual = () => {
           </div>
 
           {/* Estadísticas */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <div className="text-sm text-gray-600 mb-1">Ganadores</div>
-              <div className="text-2xl font-bold text-gray-900">{ganadores.length}/{cantidadGanadores}</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-600 mb-1">Ganadores</div>
+              <div className="text-lg sm:text-2xl font-bold text-gray-900">{ganadores.length}/{cantidadGanadores}</div>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <div className="text-sm text-gray-600 mb-1">Estado</div>
-              <div className="text-lg font-bold text-gray-900">
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-600 mb-1">Estado</div>
+              <div className="text-sm sm:text-lg font-bold text-gray-900">
                 {ganadores.length === cantidadGanadores ? 'Finalizado' : isSpinning ? 'Girando...' : 'En Proceso'}
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <div className="text-sm text-gray-600 mb-1">Participantes</div>
-              <div className="text-2xl font-bold text-gray-900">{participantes.length}</div>
+            <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-600 mb-1">Participantes</div>
+              <div className="text-lg sm:text-2xl font-bold text-gray-900">{participantes.length}</div>
             </div>
           </div>
 
@@ -1255,7 +1255,7 @@ const GestionSorteoManual = () => {
           </AnimatePresence>
 
           {/* Palanca y Ruleta */}
-          <div className="flex flex-col lg:flex-row items-center justify-center gap-8 mb-6">
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 mb-6">
             <PalancaCasino
               onPull={jalarPalanca}
               disabled={isSpinning || ganadores.length >= cantidadGanadores}

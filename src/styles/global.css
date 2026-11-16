@@ -7347,3 +7347,22 @@ body.no-bounce {
 .scrollbar-visible::-webkit-scrollbar-thumb:hover {
   background: #9C27B0;
 }
+
+/* Scrollbar oculto (para barras de tabs con scroll horizontal en mobile) */
+.scrollbar-hide {
+  -ms-overflow-style: none;   /* IE/Edge */
+  scrollbar-width: none;      /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;              /* Chrome/Safari */
+}
+
+/* Evita el auto-zoom de iOS/Android al enfocar campos de formulario:
+   los navegadores hacen zoom si el input tiene fuente < 16px */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

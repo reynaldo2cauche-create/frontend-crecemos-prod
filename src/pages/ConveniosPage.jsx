@@ -3,7 +3,7 @@ import {
   Plus, Edit2, Power, Check, X, Search, Eye, Trash2,
   CheckCircle, XCircle, Building2, FileText,
   Users, Calendar, AlertCircle, Upload, Gift, Tag,
-  AlertTriangle, List, ChevronUp, ChevronDown
+  AlertTriangle, List, ChevronUp, ChevronDown, ExternalLink
 } from 'lucide-react';
 import {
   getConvenios,
@@ -444,7 +444,7 @@ export default function ConveniosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-white p-4 sm:p-6">
       {/* Notification */}
       {notification.show && (
         <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
@@ -459,23 +459,23 @@ export default function ConveniosPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1.5">Gestión de Convenios</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1.5">Gestión de Convenios</h1>
             <p className="text-sm text-gray-500">Administra los convenios institucionales</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={handleAbrirBeneficios}
-              className="flex items-center gap-2 bg-white border-2 border-[#7B1FA2] text-[#7B1FA2] px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#7B1FA2] hover:text-white transition-all shadow-sm"
+              className="flex items-center justify-center gap-2 bg-white border-2 border-[#7B1FA2] text-[#7B1FA2] px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#7B1FA2] hover:text-white transition-all shadow-sm w-full sm:w-auto"
             >
               <Gift className="w-4 h-4" />
               Gestionar Beneficios
             </button>
             <button
               onClick={() => setModalNuevo(true)}
-              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+              className="flex items-center justify-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm w-full sm:w-auto"
             >
               <Plus className="w-4 h-4" />
               Nuevo Convenio
@@ -526,7 +526,7 @@ export default function ConveniosPage() {
 
         {/* Filtros */}
         <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[300px] relative">
+          <div className="flex-1 min-w-[180px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -829,6 +829,19 @@ const TarjetaConvenio = ({ convenio, onEditar, onToggleActivo, onVerDetalle, onD
             </span>
           </div>
         )}
+
+        {convenio.sitio_web && (
+          <a
+            href={normalizarUrl(convenio.sitio_web)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 text-xs text-[#7B1FA2] font-medium hover:underline w-fit"
+          >
+            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate max-w-[220px]">Visitar página</span>
+          </a>
+        )}
       </div>
 
       {/* Acciones */}
@@ -884,6 +897,7 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     empresa: '',
     descripcion: '',
+    sitio_web: '',
     activo: true
   });
   const [logoFile, setLogoFile] = useState(null);
@@ -1010,6 +1024,15 @@ const ModalNuevoConvenio = ({ onClose, onSuccess, onError }) => {
                   rows={3}
                 />
 
+                <InputField
+                  label="Sitio web / página"
+                  name="sitio_web"
+                  value={formData.sitio_web}
+                  onChange={handleChange}
+                  placeholder="https://www.ejemplo.com"
+                  type="url"
+                />
+
                 {/* Logo Upload */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
@@ -1124,6 +1147,7 @@ const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
   const [formData, setFormData] = useState({
     empresa: convenio.empresa || '',
     descripcion: convenio.descripcion || '',
+    sitio_web: convenio.sitio_web || '',
     activo: convenio.activo
   });
   const [logoFile, setLogoFile] = useState(null);
@@ -1249,6 +1273,15 @@ const ModalEditarConvenio = ({ convenio, onClose, onSuccess, onError }) => {
                   onChange={handleChange}
                   placeholder="Describe los beneficios, descuentos o características del convenio"
                   rows={3}
+                />
+
+                <InputField
+                  label="Sitio web / página"
+                  name="sitio_web"
+                  value={formData.sitio_web}
+                  onChange={handleChange}
+                  placeholder="https://www.ejemplo.com"
+                  type="url"
                 />
 
                 {/* Logo Upload */}
@@ -1421,6 +1454,21 @@ const ModalDetalleConvenio = ({ convenio, onClose, onEditar }) => {
                   <div className="py-2 border-b border-gray-100">
                     <span className="text-sm text-gray-500 block mb-1">Descripción</span>
                     <p className="text-sm text-gray-900">{convenio.descripcion}</p>
+                  </div>
+                )}
+
+                {convenio.sitio_web && (
+                  <div className="flex items-center justify-between gap-3 py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-500 flex-shrink-0">Sitio web</span>
+                    <a
+                      href={normalizarUrl(convenio.sitio_web)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-sm text-[#7B1FA2] font-medium hover:underline min-w-0"
+                    >
+                      <span className="truncate">{convenio.sitio_web}</span>
+                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                    </a>
                   </div>
                 )}
 
@@ -1597,6 +1645,14 @@ const Section = ({ title, icon: Icon, children }) => (
   </div>
 );
 
+// Normaliza una URL ingresada por el usuario (le agrega https:// si no tiene protocolo)
+const normalizarUrl = (url) => {
+  if (!url) return '';
+  const limpio = url.trim();
+  if (/^https?:\/\//i.test(limpio)) return limpio;
+  return `https://${limpio}`;
+};
+
 const InputField = ({ label, name, value, onChange, error, required, placeholder, type = 'text' }) => (
   <div>
     <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
@@ -1669,23 +1725,23 @@ const ModalBeneficios = ({ beneficios, convenios, loading, onClose, onNuevo, onE
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b-2 border-gray-100 px-6 py-5 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] rounded-xl flex items-center justify-center">
+        <div className="bg-white border-b-2 border-gray-100 px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-2 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] rounded-xl flex items-center justify-center flex-shrink-0">
               <Gift className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Gestión de Beneficios</h2>
-              <p className="text-xs text-gray-500">Administra los beneficios de los convenios</p>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 truncate">Gestión de Beneficios</h2>
+              <p className="text-xs text-gray-500 hidden sm:block">Administra los beneficios de los convenios</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <button
               onClick={onNuevo}
-              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              Nuevo Beneficio
+              <span className="hidden sm:inline">Nuevo Beneficio</span>
             </button>
             <button
               onClick={onClose}
@@ -1954,13 +2010,13 @@ const ModalNuevoBeneficio = ({
             </h3>
 
             {/* Agregar nuevo término */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <input
                 type="text"
                 value={nuevoTermino}
                 onChange={(e) => setNuevoTermino(e.target.value)}
                 placeholder="Escribe un término o condición..."
-                className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                className="flex-1 min-w-0 px-3 py-2 border-2 border-purple-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1971,7 +2027,7 @@ const ModalNuevoBeneficio = ({
               <button
                 type="button"
                 onClick={onAgregarTerminoTemp}
-                className="px-4 py-2 bg-[#7B1FA2] text-white rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-[#7B1FA2] text-white rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all flex items-center justify-center gap-2 flex-shrink-0 whitespace-nowrap w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Agregar
@@ -2180,13 +2236,13 @@ const ModalEditarBeneficio = ({
             </h3>
 
             {/* Agregar nuevo término */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <input
                 type="text"
                 value={nuevoTermino}
                 onChange={(e) => setNuevoTermino(e.target.value)}
                 placeholder="Escribe un término o condición..."
-                className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                className="flex-1 min-w-0 px-3 py-2 border-2 border-purple-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     onAgregarTermino(beneficio.id);
@@ -2195,7 +2251,7 @@ const ModalEditarBeneficio = ({
               />
               <button
                 onClick={() => onAgregarTermino(beneficio.id)}
-                className="px-4 py-2 bg-[#7B1FA2] text-white rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-[#7B1FA2] text-white rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all flex items-center justify-center gap-2 flex-shrink-0 whitespace-nowrap w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Agregar

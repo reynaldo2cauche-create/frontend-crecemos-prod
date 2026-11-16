@@ -157,22 +157,22 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
   return (
     <div className="space-y-6">
       {/* Header con Filtros */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <Ban className="w-5 h-5 text-red-600" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Horarios Bloqueados</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Horarios Bloqueados</h2>
               <p className="text-sm text-gray-500">Gestión de bloqueos de horarios</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <button
               onClick={cargarBloqueos}
-              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all flex items-center gap-2 flex-shrink-0"
               title="Recargar bloqueos"
             >
               <RefreshCw className="w-4 h-4" />
@@ -180,9 +180,9 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
 
             <button
               onClick={() => setModalOpen(true)}
-              className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30"
+              className="flex-1 sm:flex-none justify-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30 whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 flex-shrink-0" />
               Nuevo Bloqueo
             </button>
           </div>
@@ -318,14 +318,14 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
                   </div>
 
                   {/* Tipo y Fechas */}
-                  <div className="flex items-center gap-6 text-sm">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                     <div className="flex items-center gap-2 text-gray-600">
-                      <Calendar className="w-4 h-4" />
+                      <Calendar className="w-4 h-4 flex-shrink-0" />
                       <span className="font-medium">{obtenerDescripcionBloqueo(bloqueo)}</span>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-600">
-                      <Clock className="w-4 h-4" />
+                      <Clock className="w-4 h-4 flex-shrink-0" />
                       <span>
                         {bloqueo.todoElDia
                           ? 'Todo el día'

@@ -529,7 +529,78 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
               {`Esta sesión aún no tiene objetivos. Usa "Agregar objetivo" para crear uno nuevo o reutilizar uno existente en la Sesión ${sesionActiva}.`}
             </p>
           ) : (
-            <table className="w-full text-sm table-fixed">
+            <>
+            {/* Vista móvil: tarjetas apiladas */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {grupos.map((grupo) => {
+                const AreaIcon = areaIcon(grupo.area_nombre);
+                const col = colorGen[grupo.key] || AREA_COLORS[0];
+                return grupo.items.map((e) => {
+                  const reg = e.registros?.[sesionActiva] || {};
+                  const resultadoBloqueado   = !esAdmin && !!reg.resultado_codigo;
+                  const actividadBloqueada   = !esAdmin && !!(reg.actividad && String(reg.actividad).trim());
+                  const materialesBloqueados = !esAdmin && !!(reg.materiales && String(reg.materiales).trim());
+                  const obsBloqueada         = !esAdmin && !!(reg.observaciones && String(reg.observaciones).trim());
+                  return (
+                    <div key={e.id} className={`p-3 space-y-3 border-l-4 ${col.accent}`}>
+                      <div className="flex items-start gap-2">
+                        <div className={`w-7 h-7 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-3.5 h-3.5 ${col.icon}`} /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[10px] font-semibold uppercase tracking-wide ${col.icon}`}>{grupo.area_nombre}</p>
+                          <p className="text-xs text-gray-700 break-words leading-snug">{e.descripcion}</p>
+                        </div>
+                        <span className="flex items-center gap-0.5 flex-shrink-0">
+                          {esAdmin && (
+                            <button onClick={() => onEditEspecifico(e)} title="Editar objetivo específico" className="p-1 text-gray-400 hover:text-[#7B1FA2]"><Pencil className="w-3.5 h-3.5" /></button>
+                          )}
+                          {puedeGestionar && (
+                            <button onClick={() => setConfirmQuitar(e)} title="Quitar objetivo de esta sesión" className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                          )}
+                        </span>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Resultado</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {resultados.map((r) => {
+                            const sel = reg.resultado_codigo === r.codigo;
+                            const cc = COLOR_RES[r.color] || COLOR_RES.amber;
+                            return (
+                              <button key={r.codigo} disabled={!editable || resultadoBloqueado} onClick={() => onResultado(e, r.codigo)} title={r.nombre}
+                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md border whitespace-nowrap transition-all ${sel ? cc.solid : `bg-white ${cc.soft}`} ${(!editable || resultadoBloqueado) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                {r.nombre}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Actividad / Ejemplo</p>
+                        <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar} locked={actividadBloqueada}
+                          placeholder={puedeGestionar ? 'Actividad / ejemplo…' : '—'} onSave={(t) => onActividad(e, t)} />
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Materiales</p>
+                        <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar} locked={materialesBloqueados}
+                          placeholder={puedeGestionar ? 'Materiales…' : '—'} onSave={(t) => onMateriales(e, t)} />
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Observaciones</p>
+                        <ObsCell value={reg.observaciones || ''} disabled={!editable || obsBloqueada}
+                          placeholder="Observaciones…" onSave={(t) => onObs(e, t)} />
+                      </div>
+                    </div>
+                  );
+                });
+              })}
+            </div>
+
+            {/* Vista escritorio: tabla */}
+            <div className="hidden md:block overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm table-fixed">
               <colgroup>
                 <col style={{ width: '12%' }} /><col style={{ width: '19%' }} /><col style={{ width: '14%' }} />
                 <col style={{ width: '12%' }} /><col style={{ width: '25%' }} /><col style={{ width: '18%' }} />
@@ -613,6 +684,8 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
                 })}
               </tbody>
             </table>
+            </div>
+            </>
           )}
           {!editable && filas.length > 0 && (
             <p className="text-[11px] text-gray-400 px-4 py-2 border-t border-gray-50">

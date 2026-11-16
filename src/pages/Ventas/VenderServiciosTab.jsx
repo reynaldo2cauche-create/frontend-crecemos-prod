@@ -931,12 +931,12 @@ const VenderServiciosTab = ({
 
   return (
     <div className={modoEdicion ? '' : 'min-h-screen bg-gray-50'}>
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {!modoEdicion && (
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-1.5">
-              <ClipboardDocumentListIcon className="w-8 h-8 text-[#7B1FA2]" />
-              <h1 className="text-3xl font-bold text-gray-900">Venta de Servicios</h1>
+              <ClipboardDocumentListIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#7B1FA2] flex-shrink-0" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Venta de Servicios</h1>
             </div>
             <p className="text-sm text-gray-500">Registra ventas de sesiones individuales o paquetes</p>
           </div>
@@ -1359,7 +1359,7 @@ const VenderServiciosTab = ({
             </p>
             <div className="space-y-2 max-w-2xl">
               {pagos.map((pago) => (
-                <div key={pago.uid} className="flex items-center gap-2">
+                <div key={pago.uid} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                   <select
                     value={pago.modalidad_pago_id}
                     onChange={e => {
@@ -1369,11 +1369,11 @@ const VenderServiciosTab = ({
                       if (m && /tarjeta/i.test(m.nombre)) setMostrarModalSusii(true);
                     }}
                     disabled={!!ventaGuardada}
-                    className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100">
+                    className="w-full sm:flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100">
                     <option value="">Seleccionar método...</option>
                     {modalidadesPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                   </select>
-                  <div className="relative w-32 shrink-0">
+                  <div className="relative flex-1 sm:flex-none sm:w-32 shrink-0">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-semibold pointer-events-none">S/</span>
                     <input
                       type="number" step="0.01" min="0"
@@ -1395,13 +1395,13 @@ const VenderServiciosTab = ({
                     onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, referencia: e.target.value } : p))}
                     disabled={!!ventaGuardada}
                     placeholder="Nro. operación, código..."
-                    className="w-40 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                    className="flex-1 sm:flex-none sm:w-40 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
                   <input
                     type="date"
                     value={pago.fecha_pago ? pago.fecha_pago.slice(0, 10) : ''}
                     onChange={e => setPagos(prev => prev.map(p => p.uid === pago.uid ? { ...p, fecha_pago: e.target.value } : p))}
                     disabled={!!ventaGuardada}
-                    className="w-36 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
+                    className="flex-1 sm:flex-none sm:w-36 shrink-0 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] disabled:bg-gray-100" />
                   {!ventaGuardada && pagos.length > 1 && (
                     <button type="button" onClick={() => setPagos(prev => prev.filter(p => p.uid !== pago.uid))}
                       className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0">
@@ -1430,7 +1430,7 @@ const VenderServiciosTab = ({
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div className="flex flex-wrap items-center justify-end gap-3 px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
             {ventaGuardada ? (
               <>
                 <button onClick={handleNuevaVenta} className="px-6 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 flex items-center gap-2">
@@ -1467,7 +1467,7 @@ const VenderServiciosTab = ({
               </div>
               <span className="text-sm font-bold text-[#7B1FA2]">S/ {parseFloat(tarifaSeleccionada.precio || 0).toFixed(2)}/sesión</span>
             </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Sesión Individual */}
               <div className="border-2 border-gray-200 rounded-xl p-3 hover:border-blue-400 transition-all flex flex-col justify-between">
                 <div className="flex items-center gap-2 mb-2">

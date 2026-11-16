@@ -27,6 +27,12 @@ import api from '../../services/api';
 const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
 const esAdmin = () => getUser()?.rol?.id === ROLES.ADMINISTRADOR;
 
+// En dispositivos táctiles (puntero grueso) el drag-and-drop nativo HTML5 no
+// funciona y además bloquea el scroll horizontal del tablero. Lo desactivamos
+// ahí para permitir deslizar entre columnas.
+const SOPORTA_DRAG = typeof window !== 'undefined'
+  && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
 function formatTiempo(segundos) {
   const h = Math.floor(segundos / 3600);
   const m = Math.floor((segundos % 3600) / 60);
@@ -261,12 +267,12 @@ function TareaCard({ tarea, onEditar, onEliminar, onArchivar, onToggleTimer, onV
 
   return (
     <div
-      draggable
+      draggable={SOPORTA_DRAG}
       onDragStart={(e) => { e.dataTransfer.setData('dragType', 'tarea'); onDragStart(tarea); }}
       onDragEnd={() => onDragEnd()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); onDragOverCard?.(tarea); }}
       onClick={() => onVerDetalle(tarea)}
-      className={`group relative mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-md rounded-xl overflow-hidden ${
+      className={`group relative mb-2 transition-all duration-200 hover:shadow-md rounded-xl overflow-hidden ${SOPORTA_DRAG ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${
         isDragOver ? 'shadow-md ring-1 ring-[#7B1FA2]/40 scale-[1.01]' : ''
       } ${completada ? 'opacity-50 hover:opacity-80' : ''}`}
       style={{
@@ -1289,8 +1295,8 @@ function ReporteModal({ onCerrar }) {
                 ))}
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <table className="w-full text-xs">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+                <table className="w-full min-w-[480px] text-xs">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="text-left px-4 py-3 font-semibold text-gray-500">Tarea</th>
@@ -1566,7 +1572,7 @@ function VistaPorPersonas({ tareas, columnas, usuarios, roles, onEditar, onElimi
           <p className="text-gray-300 text-xs">para ver sus tareas asignadas</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden overscroll-x-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex gap-1.5 px-4 py-3 h-full" style={{ minWidth: `${columnas.length * 222 + 32}px` }}>
             {columnas.map(col => {
               const tareasCol = tareasPersona.filter(t => Number(t.columna_id) === Number(col.id));
@@ -1914,7 +1920,7 @@ function AuditoriaView() {
       )}
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         {loading && registros.length === 0 ? (
           <div className="flex items-center justify-center py-16">
             <div className="w-8 h-8 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin" />
@@ -1925,7 +1931,7 @@ function AuditoriaView() {
             <p className="text-sm font-medium">Sin registros</p>
           </div>
         ) : (
-          <table className="w-full text-xs">
+          <table className="w-full min-w-[640px] text-xs">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Fecha</th>
@@ -2316,11 +2322,11 @@ export default function CentroOperativo() {
   const vencidas = columnas.filter(c => !c.es_final).reduce((sum, c) => sum + tareasPorColumna(c.id).filter(estaVencida).length, 0);
 
   return (
-    <div className="flex flex-col bg-gray-50 h-screen lg:h-[calc(100vh-56px)]">
+    <div className="flex flex-col bg-gray-50 h-screen lg:h-[calc(100vh-56px)] overflow-hidden">
       <Notificacion notif={notif} />
 
       {/* Encabezado — integrado al tablero, sin barra separada */}
-      <div className="flex-shrink-0 px-4 lg:px-6 pt-16 lg:pt-5 pb-4 flex items-start justify-between gap-4">
+      <div className="flex-shrink-0 px-4 lg:px-6 pt-16 lg:pt-5 pb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         {/* Título + stats inline */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
@@ -2349,7 +2355,7 @@ export default function CentroOperativo() {
         </div>
 
         {/* Acciones — reducidas a 3 elementos */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-shrink-0">
           {admin && (
             <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
               <button onClick={() => { setVista('kanban'); setPersonaVista(''); }}
@@ -2580,7 +2586,7 @@ export default function CentroOperativo() {
 
       {/* Tablero */}
       {cargando ? (
-        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden overscroll-x-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex gap-3 px-4 py-4 h-full">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="flex-shrink-0 w-[262px] flex flex-col gap-2">
@@ -2632,7 +2638,7 @@ export default function CentroOperativo() {
           </button>}
         </div>
       ) : (
-        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden overscroll-x-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex gap-1.5 px-4 py-4 h-full"
             style={{ minWidth: `${columnas.length * 272 + (admin ? 60 : 20) + 32}px` }}>
             {columnas.map((col, colIdx) => {
@@ -2644,7 +2650,7 @@ export default function CentroOperativo() {
                   <div className="flex-shrink-0 w-[262px] flex flex-col">
                   {/* Header columna — arrastrable para reordenar columnas */}
                   <div
-                    draggable={admin}
+                    draggable={admin && SOPORTA_DRAG}
                     onDragStart={(e) => {
                       e.dataTransfer.setData('dragType', 'columna');
                       e.dataTransfer.setData('columnaId', String(col.id));

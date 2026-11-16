@@ -158,7 +158,7 @@ const externalItems = [
   },
   {
     text: 'Webmail',
-    path: 'https://www.crecemos.com.pe:2096/webmaillogout.cgi',
+    path: 'https://lucas.admeli.com:2096/webmaillogout.cgi',
     isExternal: true,
     isWebmail: true,
     fullLogo: '/assets/img/webmail-logo.webp',

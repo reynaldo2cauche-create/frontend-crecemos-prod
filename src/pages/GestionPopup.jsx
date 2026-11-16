@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Image,
   Upload,
@@ -301,14 +302,14 @@ const GestionPopup = () => {
 
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 sm:mb-4 min-w-0">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Gestión de Popups</h1>
-                <p className="text-gray-600">Programa y gestiona tus popups promocionales</p>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">Gestión de Popups</h1>
+                <p className="text-sm sm:text-base text-gray-600">Programa y gestiona tus popups promocionales</p>
               </div>
             </div>
             <button
@@ -316,7 +317,7 @@ const GestionPopup = () => {
                 resetFormulario();
                 setDialogoCrear(true);
               }}
-              className="px-6 py-3 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 shadow-sm"
+              className="px-6 py-3 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto flex-shrink-0"
             >
               <Plus className="w-5 h-5" />
               Crear Popup
@@ -531,12 +532,12 @@ const GestionPopup = () => {
         </div>
       </div>
 
-      {/* Diálogo Crear/Editar */}
-      {(dialogoCrear || dialogoEditar) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-6 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+      {/* Diálogo Crear/Editar — portal a body para que fixed sea relativo al viewport */}
+      {(dialogoCrear || dialogoEditar) && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full min-w-0 max-w-[calc(100vw-1.5rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-4 sm:p-6 rounded-t-2xl flex items-center justify-between gap-2 sticky top-0 z-10">
+              <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-white min-w-0">
                 {dialogoCrear ? <Plus className="w-6 h-6" /> : <Edit className="w-6 h-6" />}
                 {dialogoCrear ? 'Crear Nuevo Popup' : 'Editar Popup'}
               </h3>
@@ -552,7 +553,7 @@ const GestionPopup = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
               {/* Título */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -651,7 +652,7 @@ const GestionPopup = () => {
                   onChange={handleFileChange}
                 />
                 <label htmlFor="upload-popup-image">
-                  <div className="cursor-pointer border-2 border-dashed border-[#7B1FA2] rounded-xl p-8 hover:bg-purple-50 transition-colors text-center">
+                  <div className="cursor-pointer border-2 border-dashed border-[#7B1FA2] rounded-xl p-5 sm:p-8 hover:bg-purple-50 transition-colors text-center">
                     {formulario.imagenPreview ? (
                       <div>
                         <img
@@ -679,21 +680,21 @@ const GestionPopup = () => {
               </div>
             </div>
 
-            <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-2xl flex items-center justify-end gap-3">
+            <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50 rounded-b-2xl grid grid-cols-2 sm:flex sm:items-center sm:justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => {
                   dialogoCrear ? setDialogoCrear(false) : setDialogoEditar(false);
                   resetFormulario();
                   setPopupEditando(null);
                 }}
-                className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+                className="min-w-0 px-3 sm:px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-colors text-sm sm:text-base"
               >
                 Cancelar
               </button>
               <button
                 onClick={dialogoCrear ? handleCrearPopup : handleActualizarPopup}
                 disabled={guardando || !formulario.titulo || !formulario.fechaInicio || !formulario.fechaFin || (dialogoCrear && !formulario.imagen)}
-                className="px-5 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="min-w-0 px-3 sm:px-5 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 text-sm sm:text-base"
               >
                 {guardando ? (
                   <>
@@ -709,11 +710,12 @@ const GestionPopup = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Diálogo de vista previa */}
-      {vistaPrevia && (
+      {vistaPrevia && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white p-4 rounded-t-2xl flex items-center justify-between">
@@ -738,7 +740,8 @@ const GestionPopup = () => {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

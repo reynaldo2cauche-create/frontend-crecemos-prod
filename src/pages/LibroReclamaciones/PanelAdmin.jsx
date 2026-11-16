@@ -247,13 +247,13 @@ const PanelAdmin = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 pt-6 pb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2">
         {/* Header estilo PromocionesPage */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <FileText className="w-8 h-8 text-[#7B1FA2]" />
-              <h1 className="text-3xl font-bold text-gray-900">Libro de Reclamaciones</h1>
+              <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-[#7B1FA2] flex-shrink-0" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Libro de Reclamaciones</h1>
             </div>
             <p className="text-sm text-gray-500">
               Gestiona reclamos y quejas de consumidores
@@ -323,48 +323,48 @@ const PanelAdmin = () => {
         {/* Estadísticas - Estilo SesionesPage */}
         {!loading && (
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-50 text-purple-600">
+            <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-50 text-purple-600">
                 <FileText className="w-6 h-6" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none">{stats.total}</div>
+              <div className="min-w-0">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-none">{stats.total}</div>
                 <div className="text-xs text-gray-500 mt-1 font-medium">Total Reclamos</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
+            <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
                 <Clock className="w-6 h-6" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none">{stats.registrados}</div>
+              <div className="min-w-0">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-none">{stats.registrados}</div>
                 <div className="text-xs text-gray-500 mt-1 font-medium">Registrados</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-yellow-50 text-yellow-600">
+            <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-yellow-50 text-yellow-600">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none">{stats.enProceso}</div>
+              <div className="min-w-0">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-none">{stats.enProceso}</div>
                 <div className="text-xs text-gray-500 mt-1 font-medium">En Proceso</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-green-50 text-green-600">
+            <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-green-50 text-green-600">
                 <CheckCircle className="w-6 h-6" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none">{stats.respondidos}</div>
+              <div className="min-w-0">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-none">{stats.respondidos}</div>
                 <div className="text-xs text-gray-500 mt-1 font-medium">Respondidos</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-gray-600">
+            <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-gray-600">
                 <XCircle className="w-6 h-6" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none">{stats.cerrados}</div>
+              <div className="min-w-0">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-none">{stats.cerrados}</div>
                 <div className="text-xs text-gray-500 mt-1 font-medium">Cerrados</div>
               </div>
             </div>
@@ -443,22 +443,22 @@ const PanelAdmin = () => {
 
             {/* Paginación mejorada */}
             {total > filtros.limit && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4 flex justify-between items-center">
-                <p className="text-sm font-medium text-gray-600">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <p className="text-sm font-medium text-gray-600 text-center sm:text-left">
                   Mostrando <span className="text-purple-600 font-bold">{((filtros.page - 1) * filtros.limit) + 1} - {Math.min(filtros.page * filtros.limit, total)}</span> de <span className="text-purple-600 font-bold">{total}</span> reclamos
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <button
                     disabled={filtros.page === 1}
                     onClick={() => setFiltros(prev => ({ ...prev, page: prev.page - 1 }))}
-                    className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="flex-1 sm:flex-none px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
                     Anterior
                   </button>
                   <button
                     disabled={filtros.page * filtros.limit >= total}
                     onClick={() => setFiltros(prev => ({ ...prev, page: prev.page + 1 }))}
-                    className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="flex-1 sm:flex-none px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
                     Siguiente
                   </button>
@@ -474,18 +474,18 @@ const PanelAdmin = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header del modal */}
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0]">
-              <div className="flex items-center gap-3">
-                <FileText className="w-6 h-6 text-white" />
-                <div>
-                  <h2 className="text-xl font-bold text-white">Detalle del Reclamo</h2>
-                  <p className="text-sm text-purple-100">{modalReclamo.codigo_reclamo}</p>
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex justify-between items-center gap-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0]">
+              <div className="flex items-center gap-3 min-w-0">
+                <FileText className="w-6 h-6 text-white flex-shrink-0" />
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-white">Detalle del Reclamo</h2>
+                  <p className="text-sm text-purple-100 truncate">{modalReclamo.codigo_reclamo}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={async () => await generarPDFReclamo(modalReclamo)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#7B1FA2] rounded-xl hover:bg-purple-50 transition-all shadow-sm hover:shadow-md font-semibold"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-white text-[#7B1FA2] rounded-xl hover:bg-purple-50 transition-all shadow-sm hover:shadow-md font-semibold"
                   title="Descargar PDF"
                 >
                   <Printer className="w-4 h-4" />
@@ -501,7 +501,7 @@ const PanelAdmin = () => {
             </div>
 
             {/* Contenido del modal con scroll */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Columna izquierda - Información principal (2/3) */}
                 <div className="lg:col-span-2 space-y-5">
@@ -519,22 +519,22 @@ const PanelAdmin = () => {
                       <User className="w-5 h-5 text-[#7B1FA2]" />
                       <h3 className="font-bold text-gray-900">Información del Consumidor</h3>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="min-w-0">
                         <p className="text-xs text-gray-500 mb-1">Nombre completo</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 break-words">
                           {modalReclamo.nombres} {modalReclamo.apellidos}
                         </p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs text-gray-500 mb-1">Documento</p>
                         <p className="text-sm font-medium text-gray-900">
                           {modalReclamo.tipo_documento} - {modalReclamo.numero_documento}
                         </p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs text-gray-500 mb-1">Email</p>
-                        <p className="text-sm font-medium text-gray-900">{modalReclamo.email}</p>
+                        <p className="text-sm font-medium text-gray-900 break-words">{modalReclamo.email}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Teléfono</p>
@@ -595,18 +595,18 @@ const PanelAdmin = () => {
                           return (
                           <div
                             key={doc.id || index}
-                            className="flex items-center justify-between bg-white p-3 rounded-lg hover:shadow-sm transition-shadow"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-3 rounded-lg hover:shadow-sm transition-shadow"
                           >
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-5 h-5 text-gray-500" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{doc.nombre_original}</p>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <FileText className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-gray-900 break-words">{doc.nombre_original}</p>
                                 <p className="text-xs text-gray-500">
                                   {doc.mime} - {(doc.tamaño / 1024).toFixed(2)} KB
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3 flex-shrink-0 self-end sm:self-auto">
                               <button
                                 onClick={() => handleVisualizarArchivo(doc)}
                                 className="flex items-center gap-1 text-[#7B1FA2] hover:text-[#6A1B9A] text-sm font-medium transition-colors"
@@ -657,7 +657,7 @@ const PanelAdmin = () => {
                   {/* Cambiar estado */}
                   <div className="bg-white border border-gray-200 rounded-xl p-5">
                     <h3 className="font-bold text-gray-900 mb-3">Cambiar Estado</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                       {[
                         { id: 1, label: 'Registrado', color: 'bg-blue-500 hover:bg-blue-600' },
                         { id: 2, label: 'En proceso', color: 'bg-yellow-500 hover:bg-yellow-600' },
@@ -668,7 +668,7 @@ const PanelAdmin = () => {
                           key={id}
                           onClick={() => handleCambiarEstado(id)}
                           disabled={cambiandoEstado || modalReclamo.estado?.id === id}
-                          className={`px-4 py-2.5 ${color} text-white rounded-xl text-sm font-semibold
+                          className={`px-2 sm:px-4 py-2.5 ${color} text-white rounded-xl text-xs sm:text-sm font-semibold
                             disabled:opacity-40 disabled:cursor-not-allowed
                             transition-all shadow-sm hover:shadow-md`}
                         >
@@ -772,11 +772,11 @@ const PanelAdmin = () => {
       {/* Modal Respuesta */}
       {modalRespuesta && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-6 h-6 text-[#7B1FA2]" />
-                <h2 className="text-xl font-bold text-gray-900">Responder Reclamo</h2>
+                <MessageSquare className="w-6 h-6 text-[#7B1FA2] flex-shrink-0" />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Responder Reclamo</h2>
               </div>
               <button
                 onClick={() => setModalRespuesta(false)}
@@ -810,16 +810,16 @@ const PanelAdmin = () => {
       {archivoVisualizando && urlArchivoVisualizando && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-[70]">
           <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">{archivoVisualizando.nombre_original}</h2>
-                <p className="text-sm text-gray-500">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center gap-2 bg-white">
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">{archivoVisualizando.nombre_original}</h2>
+                <p className="text-sm text-gray-500 truncate">
                   {archivoVisualizando.mime} - {(archivoVisualizando.tamaño / 1024).toFixed(2)} KB
                 </p>
               </div>
               <button
                 onClick={handleCerrarVisualizador}
-                className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
               >
                 <X className="w-6 h-6" />
               </button>

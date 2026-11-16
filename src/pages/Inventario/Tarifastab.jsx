@@ -263,7 +263,7 @@ const ComboBox = ({ options, value, onChange, placeholder = 'Buscar...', renderO
   }, []);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative min-w-0" ref={ref}>
       <div
         className={`flex items-center w-full px-3 py-1.5 text-sm border rounded-lg cursor-pointer transition-all ${
           disabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed' : 'bg-white border-gray-200 hover:border-[#7B1FA2]/50 focus-within:ring-2 focus-within:ring-[#7B1FA2]/30 focus-within:border-[#7B1FA2]'
@@ -273,14 +273,14 @@ const ComboBox = ({ options, value, onChange, placeholder = 'Buscar...', renderO
         {open ? (
           <input
             autoFocus
-            className="flex-1 outline-none text-sm bg-transparent"
+            className="flex-1 min-w-0 outline-none text-sm bg-transparent"
             placeholder={placeholder}
             value={query}
             onChange={e => { setQuery(e.target.value); }}
             onClick={e => e.stopPropagation()}
           />
         ) : (
-          <span className={`flex-1 truncate ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
+          <span className={`flex-1 min-w-0 truncate ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
             {selected ? (renderSelected ? renderSelected(selected) : renderOption(selected, true)) : placeholder}
           </span>
         )}
@@ -421,8 +421,8 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gradient-to-r from-[#7B1FA2]/5 to-transparent rounded-t-2xl">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b border-gray-200 bg-gradient-to-r from-[#7B1FA2]/5 to-transparent rounded-t-2xl">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center">
               <TagIcon className="w-4 h-4 text-[#7B1FA2]" />
             </div>
@@ -441,7 +441,7 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[75vh] rounded-b-2xl overflow-hidden">
-          <div className="px-6 py-3 space-y-3 overflow-y-auto">
+          <div className="px-4 sm:px-6 py-3 space-y-3 overflow-y-auto">
 
             {error && (
               <div className="flex items-center gap-3 p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
@@ -457,7 +457,7 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
                 Información del Combo
               </h3>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>Nombre del Combo *</label>
                   <input
@@ -481,7 +481,7 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>Precio Total *</label>
                   <div className="relative">
@@ -518,7 +518,7 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
 
             {/* Ítems del combo */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold text-gray-700 flex items-center gap-2">
                   <div className="w-1 h-3.5 bg-[#7B1FA2] rounded-full" />
                   Ítems del Combo *
@@ -548,7 +548,7 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
                     return (
                       <div key={idx} className="p-3 bg-white rounded-xl border-2 border-gray-200 hover:border-[#7B1FA2]/30 transition-colors">
                         <div className="flex items-start gap-2">
-                          <div className="flex-1 space-y-2">
+                          <div className="flex-1 min-w-0 space-y-2">
 
                             {/* Selector tipo */}
                             <div className="flex items-center gap-2">
@@ -580,8 +580,8 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
                             </div>
 
                             {/* Select + cantidad */}
-                            <div className="grid grid-cols-[1fr_auto] gap-2">
-                              <div>
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                              <div className="min-w-0">
                                 <label className="block text-xs font-medium text-gray-500 mb-1">
                                   {tipoItem === 'servicio' ? 'Servicio' : tipoItem === 'documento' ? 'Documento' : 'Selecciona un tipo primero'}
                                 </label>
@@ -662,20 +662,20 @@ const ModalPaqueteCombo = ({ combo, tarifas, documentos, onClose, onSaved }) => 
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-            <p className="text-xs text-gray-400">* Campos obligatorios</p>
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+            <p className="text-xs text-gray-400 hidden sm:block">* Campos obligatorios</p>
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 sm:flex-none px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -889,14 +889,14 @@ const TarifasTab = () => {
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar por servicio o motivo..."
-              className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] w-64 transition-all"
+              className="!pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2] w-full transition-all"
             />
           </div>
 
@@ -1056,14 +1056,14 @@ const TarifasTab = () => {
       {vistaActiva === 'combos' && (
         <>
           {/* Header con botón crear */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Paquetes Combo</h3>
               <p className="text-sm text-gray-500">Agrupa múltiples servicios/documentos con precio fijo</p>
             </div>
             <button
               onClick={() => setModalCombo('crear')}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors shadow-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors shadow-sm w-full sm:w-auto flex-shrink-0"
             >
               <PlusIcon className="w-4 h-4" />
               Crear Combo
@@ -1104,7 +1104,8 @@ const TarifasTab = () => {
                 </button>
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Combo</th>
@@ -1195,6 +1196,7 @@ const TarifasTab = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 

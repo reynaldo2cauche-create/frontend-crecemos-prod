@@ -151,21 +151,21 @@ const ReporteEvolucion = ({
                     {/* Header del reporte */}
                     <button
                       onClick={() => toggleExpandedReporte(reporte.id)}
-                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-all"
+                      className="w-full px-4 py-3 flex items-center justify-between gap-2 hover:bg-gray-50 transition-all"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4 text-blue-600" />
                         </div>
-                        <div className="text-left">
-                          <div className="flex items-center gap-3 mb-1">
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
                             <h3 className="text-base font-bold text-gray-900">Reporte N° {reportesExistentes.length - index}</h3>
                             <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                               {reporte.servicio?.nombre || reporte.servicio}
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5 text-xs text-gray-500">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
                               <span className="flex items-center gap-1.5">
                                 <Clock className="w-3 h-3 text-gray-400" />
                                 <span className="text-gray-400">Registrado:</span>
@@ -185,9 +185,9 @@ const ReporteEvolucion = ({
                         </div>
                       </div>
                       {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                        <ChevronUp className="w-5 h-5 text-gray-400 shrink-0" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                        <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />
                       )}
                     </button>
 

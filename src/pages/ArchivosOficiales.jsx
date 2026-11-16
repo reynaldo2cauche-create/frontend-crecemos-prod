@@ -727,8 +727,8 @@ const GestionArchivosOficiales = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-x-hidden">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -807,10 +807,10 @@ const GestionArchivosOficiales = () => {
         {/* Tabs */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <div className="border-b border-gray-200 bg-gray-50">
-            <div className="flex">
+            <div className="flex overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setTabValue(0)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-all relative ${
+                className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-sm font-semibold transition-all relative flex-shrink-0 whitespace-nowrap ${
                   tabValue === 0
                     ? 'text-[#7B1FA2] bg-white'
                     : 'text-gray-600 hover:text-[#7B1FA2] hover:bg-gray-100'
@@ -824,7 +824,7 @@ const GestionArchivosOficiales = () => {
               </button>
               <button
                 onClick={() => setTabValue(1)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-all relative ${
+                className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-sm font-semibold transition-all relative flex-shrink-0 whitespace-nowrap ${
                   tabValue === 1
                     ? 'text-[#7B1FA2] bg-white'
                     : 'text-gray-600 hover:text-[#7B1FA2] hover:bg-gray-100'
@@ -888,7 +888,7 @@ const GestionArchivosOficiales = () => {
                           placeholder="Buscar por código, nombre..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                          className="w-full !pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
                         />
                       </div>
 
@@ -1276,10 +1276,10 @@ const GestionArchivosOficiales = () => {
 
           {/* TAB 1: FORMULARIO */}
           {tabValue === 1 && (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="space-y-6">
                 {/* Paso 1: Generar Código */}
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 sm:p-6">
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
                       <Sparkles className="w-6 h-6 text-white" />
@@ -1313,7 +1313,7 @@ const GestionArchivosOficiales = () => {
                       <div className="bg-white border-2 border-green-500 rounded-xl p-5 mb-4">
                         <p className="text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">✓ Código Generado</p>
                         <div className="flex items-center gap-3">
-                          <p className="text-2xl font-mono font-bold text-green-600 flex-1">{codigoGeneradoPreview}</p>
+                          <p className="text-xl sm:text-2xl font-mono font-bold text-green-600 flex-1 min-w-0 break-all">{codigoGeneradoPreview}</p>
                           <button
                             onClick={() => copiarTexto(codigoGeneradoPreview, 'preview')}
                             title="Copiar código"
@@ -1383,30 +1383,30 @@ const GestionArchivosOficiales = () => {
                 </div>
 
                 {/* Paso 2: Tipo de destinatario */}
-                <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 sm:p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Paso 2: Seleccionar Destinatario</h3>
                   
                   <div className="flex gap-3 mb-6">
                     <button
                       onClick={() => handleTipoDestinatarioChange('paciente')}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
+                      className={`flex-1 min-w-0 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
                         tipoDestinatario === 'paciente'
                           ? 'bg-blue-50 border-2 border-blue-500 text-blue-700'
                           : 'bg-gray-50 border-2 border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
-                      <User className="w-5 h-5" />
+                      <User className="w-5 h-5 flex-shrink-0" />
                       Paciente
                     </button>
                     <button
                       onClick={() => handleTipoDestinatarioChange('trabajador')}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
+                      className={`flex-1 min-w-0 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
                         tipoDestinatario === 'trabajador'
                           ? 'bg-amber-50 border-2 border-amber-500 text-amber-700'
                           : 'bg-gray-50 border-2 border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
-                      <Briefcase className="w-5 h-5" />
+                      <Briefcase className="w-5 h-5 flex-shrink-0" />
                       Trabajador
                     </button>
                   </div>
@@ -1420,7 +1420,7 @@ const GestionArchivosOficiales = () => {
                     {tipoDestinatario === 'paciente' ? (
                       <>
                         <div className="relative autocomplete-container">
-                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
                           <input
                             type="text"
                             value={pacienteSeleccionado ? `${pacienteSeleccionado.nombres} ${pacienteSeleccionado.apellido_paterno} ${pacienteSeleccionado.apellido_materno}` : searchPaciente}
@@ -1437,7 +1437,7 @@ const GestionArchivosOficiales = () => {
                               }
                             }}
                             placeholder="Buscar paciente por nombre o documento..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                            className="w-full !pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
                           />
                           {pacienteSeleccionado && (
                             <button
@@ -1486,7 +1486,7 @@ const GestionArchivosOficiales = () => {
                     ) : (
                       <>
                         <div className="relative autocomplete-container">
-                          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
                         <input
                           type="text"
                           value={trabajadorSeleccionado ? `${trabajadorSeleccionado.nombres} ${trabajadorSeleccionado.apellidos}` : searchTrabajador}
@@ -1503,7 +1503,7 @@ const GestionArchivosOficiales = () => {
                             }
                           }}
                           placeholder="Buscar trabajador por nombre o DNI..."
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                          className="w-full !pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
                         />
                           {trabajadorSeleccionado && (
                             <button
@@ -1579,7 +1579,7 @@ const GestionArchivosOficiales = () => {
                             }
                           }}
                           placeholder="Buscar terapeuta por nombre o DNI..."
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+                          className="w-full !pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
                         />
                         {terapeutaSeleccionado && (
                           <button
@@ -1631,7 +1631,7 @@ const GestionArchivosOficiales = () => {
                 </div>
 
                 {/* Paso 3: Detalles del documento */}
-                <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 sm:p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Paso 3: Detalles del Documento</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1731,13 +1731,13 @@ const GestionArchivosOficiales = () => {
                 </div>
 
                 {/* Paso 4: Subir archivo */}
-                <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 sm:p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Paso 4: Subir Archivo</h3>
                   
                   {!archivo ? (
                     <div
                       onClick={() => document.getElementById('file-upload').click()}
-                      className="border-3 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:border-[#7B1FA2] hover:bg-purple-50 transition-all cursor-pointer group"
+                      className="border-3 border-dashed border-gray-300 rounded-2xl p-8 sm:p-12 text-center hover:border-[#7B1FA2] hover:bg-purple-50 transition-all cursor-pointer group"
                     >
                       <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-all">
                         <CloudUpload className="w-8 h-8 text-[#7B1FA2]" />
@@ -1800,20 +1800,20 @@ const GestionArchivosOficiales = () => {
       {modalVer && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] p-6 flex items-center justify-between sticky top-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-white font-bold">
+            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] p-4 sm:p-6 flex items-center justify-between gap-3 sticky top-0">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0">
                   {getInitials(
                     modalVer.paciente?.nombres || modalVer.trabajador?.nombres,
                     modalVer.paciente?.apellido_paterno || modalVer.trabajador?.apellidos
                   )}
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">{obtenerNombreDestinatario(modalVer)}</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-white truncate">{obtenerNombreDestinatario(modalVer)}</h2>
                   <p className="text-white/80 text-sm">Detalles del Documento</p>
                 </div>
               </div>
-              <button onClick={() => setModalVer(null)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-all">
+              <button onClick={() => setModalVer(null)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-all flex-shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1822,9 +1822,9 @@ const GestionArchivosOficiales = () => {
               {/* Código de validación */}
               <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-xl p-5">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-xs text-white/70 font-bold uppercase mb-2 tracking-wide">Código de Validación</p>
-                    <p className="text-3xl font-mono font-bold text-white">{modalVer.codigoValidacion}</p>
+                    <p className="text-2xl sm:text-3xl font-mono font-bold text-white break-all">{modalVer.codigoValidacion}</p>
                   </div>
                   <button
                     onClick={() => copiarTexto(modalVer.codigoValidacion, 'modalVer')}
@@ -1885,7 +1885,7 @@ const GestionArchivosOficiales = () => {
               </div>
 
               {/* Información */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase mb-1">Destinatario</p>
                   <div className="flex items-center gap-2">
@@ -2099,7 +2099,7 @@ const GestionArchivosOficiales = () => {
               </div>
             </div>
 
-            <div className="border-t border-gray-200 p-4 flex gap-3 bg-gray-50">
+            <div className="border-t border-gray-200 p-4 flex flex-col sm:flex-row gap-2 sm:gap-3 bg-gray-50">
               {/* ✅ Botón Eliminar - Solo Admin */}
               {isAdministrador(currentUser) && (
                 <button
@@ -2107,7 +2107,7 @@ const GestionArchivosOficiales = () => {
                     setModalVer(null);
                     setModalEliminar(modalVer);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-xl font-medium text-sm hover:bg-red-100 transition-all"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-xl font-medium text-sm hover:bg-red-100 transition-all w-full sm:w-auto"
                   title="Eliminar documento"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -2143,7 +2143,7 @@ const GestionArchivosOficiales = () => {
                     setLoadingModalAccion(null);
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 rounded-xl font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-4 py-2 text-gray-700 rounded-xl font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
               >
                 {loadingModalAccion === 'descargar' ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -2168,7 +2168,7 @@ const GestionArchivosOficiales = () => {
                     setLoadingModalAccion(null);
                   }
                 }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:from-[#6A1B9A] hover:to-[#7B1FA2] hover:shadow-xl hover:scale-[1.02] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:from-[#6A1B9A] hover:to-[#7B1FA2] hover:shadow-xl hover:scale-[1.02] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loadingModalAccion === 'abrir' ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

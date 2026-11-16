@@ -323,14 +323,14 @@ const GestorCampanas = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-3 mb-1.5">
-                <MegaphoneIcon className="w-8 h-8 text-[#7B1FA2]" />
-                <h1 className="text-3xl font-bold text-gray-900">Gestión de Campañas</h1>
+                <MegaphoneIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#7B1FA2] flex-shrink-0" />
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Gestión de Campañas</h1>
               </div>
               <p className="text-sm text-gray-500">
                 Administra las campañas que se muestran en la web pública
@@ -338,7 +338,7 @@ const GestorCampanas = () => {
             </div>
             <button
               onClick={() => abrirModal()}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors w-full sm:w-auto"
             >
               <PlusIcon className="w-5 h-5" />
               Nueva Campaña
@@ -459,7 +459,9 @@ const GestorCampanas = () => {
               <p className="text-gray-500">No se encontraron campañas con los filtros aplicados</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Vista de tabla - escritorio */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
@@ -527,16 +529,66 @@ const GestorCampanas = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Vista de tarjetas - móvil */}
+            <div className="md:hidden divide-y divide-gray-200">
+              {campanasFiltered.map((campana) => (
+                <div key={campana.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 break-words">{campana.titulo}</div>
+                      {campana.descripcion_corta && (
+                        <div className="text-sm text-gray-500 mt-1 break-words">
+                          {campana.descripcion_corta.substring(0, 100)}
+                          {campana.descripcion_corta.length > 100 && '...'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0">{getEstadoBadge(campana.estado_id)}</div>
+                  </div>
+
+                  <div className="flex items-start gap-1.5 text-sm text-gray-600 mt-3">
+                    <CalendarIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span className="break-words">
+                      {formatearFecha(campana.fecha_inicio)} - {formatearFecha(campana.fecha_fin)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-gray-500">
+                      {campana.secciones?.length || 0} {(campana.secciones?.length || 0) === 1 ? 'sección' : 'secciones'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => abrirModal(campana)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => setModalEliminar(campana)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </div>
       </div>
 
       {/* Modal Crear/Editar */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
                 {editando ? 'Editar Campaña' : 'Nueva Campaña'}
               </h2>
               <button
@@ -548,7 +600,7 @@ const GestorCampanas = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
               {/* Información Básica */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase">
@@ -582,7 +634,7 @@ const GestorCampanas = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Fecha y Hora de Inicio *
@@ -707,7 +759,7 @@ const GestorCampanas = () => {
               </div>
             </form>
 
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
               <button
                 type="button"
                 onClick={cerrarModal}

@@ -428,7 +428,7 @@ const Inconsistencias = () => {
   const totalPages = Math.ceil(inconsistenciasFiltradas.length / rowsPerPage);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Snackbar de notificaciones */}
       {showSnackbar && (
         <div className={`fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
@@ -447,12 +447,12 @@ const Inconsistencias = () => {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-            <ExclamationTriangleIcon className="w-7 h-7 text-red-600" />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ExclamationTriangleIcon className="w-6 h-6 sm:w-7 sm:h-7 text-red-600" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Inconsistencias de Asistencia</h1>
-            <p className="text-gray-600">Revise las discrepancias entre recepción y terapeuta </p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Inconsistencias de Asistencia</h1>
+            <p className="text-sm sm:text-base text-gray-600">Revise las discrepancias entre recepción y terapeuta </p>
           </div>
         </div>
       </div>
@@ -785,14 +785,14 @@ const Inconsistencias = () => {
 
         {/* Paginación */}
         {!cargando && inconsistenciasFiltradas.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div className="text-xs sm:text-sm text-gray-600 text-center lg:text-left">
                 Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, inconsistenciasFiltradas.length)} de {inconsistenciasFiltradas.length} inconsistencias
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage(0)} disabled={page === 0} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Primero</button>
-                <button onClick={() => setPage(page - 1)} disabled={page === 0} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Anterior</button>
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <button onClick={() => setPage(0)} disabled={page === 0} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Primero</button>
+                <button onClick={() => setPage(page - 1)} disabled={page === 0} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Anterior</button>
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
                     let pageNum;
@@ -808,13 +808,13 @@ const Inconsistencias = () => {
                     );
                   })}
                 </div>
-                <button onClick={() => setPage(page + 1)} disabled={page >= totalPages - 1} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Siguiente</button>
-                <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Último</button>
+                <button onClick={() => setPage(page + 1)} disabled={page >= totalPages - 1} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Siguiente</button>
+                <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Último</button>
               </div>
               <select
                 value={rowsPerPage}
                 onChange={(e) => { setRowsPerPage(parseInt(e.target.value)); setPage(0); }}
-                className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
+                className="w-full lg:w-auto px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
               >
                 <option value={10}>10 por página</option>
                 <option value={25}>25 por página</option>

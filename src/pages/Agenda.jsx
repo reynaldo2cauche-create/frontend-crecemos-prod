@@ -943,17 +943,17 @@ const guardarCita = async (datosFormulario = null) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 flex-wrap">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <div className="flex-1">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda</h1>
-              <p className="text-gray-600">Gestiona citas y bloqueos de horarios</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">Agenda</h1>
+              <p className="text-sm sm:text-base text-gray-600">Gestiona citas y bloqueos de horarios</p>
             </div>
             {/* ✅ Indicador de modo optimizado para tablets */}
             {performanceConfig.device.shouldOptimize && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
                 <Sparkles className="w-4 h-4 text-green-600" />
                 <span className="text-xs font-semibold text-green-700">
                   Modo optimizado {performanceConfig.device.isTablet ? 'Tablet' : 'Móvil'}
@@ -966,26 +966,26 @@ const guardarCita = async (datosFormulario = null) => {
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setTabActivo('calendario')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
                 tabActivo === 'calendario'
                   ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
               }`}
             >
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-5 h-5 flex-shrink-0" />
               <span>Calendario de Citas</span>
             </button>
 
            {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
             <button
               onClick={() => setTabActivo('bloqueos')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
                 tabActivo === 'bloqueos'
                   ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
               }`}
             >
-              <Ban className="w-5 h-5" />
+              <Ban className="w-5 h-5 flex-shrink-0" />
               <span>Horarios Bloqueados</span>
             </button>
           )}
@@ -1028,7 +1028,7 @@ const guardarCita = async (datosFormulario = null) => {
         {tabActivo === 'calendario' && (
           <>
             {/* Filtros */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5 text-[#7B1FA2]" />

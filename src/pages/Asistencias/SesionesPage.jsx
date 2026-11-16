@@ -31,13 +31,13 @@ const fmt = (d) => {
    SUBCOMPONENTS
 ────────────────────────────────────────────────────────── */
 const StatCard = ({ icon: Icon, value, label, color }) => (
-  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-      <Icon className="w-6 h-6" />
+  <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
+    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
+      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
     </div>
-    <div>
-      <div className="text-2xl font-bold text-gray-900 leading-none">{value}</div>
-      <div className="text-xs text-gray-500 mt-1 font-medium">{label}</div>
+    <div className="min-w-0">
+      <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-none">{value}</div>
+      <div className="text-xs text-gray-500 mt-1 font-medium break-words">{label}</div>
     </div>
   </div>
 );
@@ -45,7 +45,7 @@ const StatCard = ({ icon: Icon, value, label, color }) => (
 const TabButton = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+    className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex-shrink-0 whitespace-nowrap ${
       active
         ? 'bg-[#7B1FA2] text-white shadow-sm'
         : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
@@ -99,7 +99,7 @@ const VistaGeneral = ({ datos, fechaDesde, fechaHasta }) => {
   return (
     <div>
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard icon={CalendarIcon} value={datos.resumen.total_sesiones} label="Total Sesiones" color="bg-purple-50 text-purple-600" />
         <StatCard icon={UserIcon} value={datos.resumen.total_terapeutas} label="Terapeutas activos" color="bg-blue-50 text-blue-600" />
         <StatCard icon={UserGroupIcon} value={datos.resumen.total_pacientes} label="Pacientes atendidos" color="bg-green-50 text-green-600" />
@@ -108,15 +108,15 @@ const VistaGeneral = ({ datos, fechaDesde, fechaHasta }) => {
 
       {/* Tabla */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-1 px-1">
             <TabButton active={tab === 'terapeuta'} onClick={() => setTab('terapeuta')}>Por Terapeuta</TabButton>
             <TabButton active={tab === 'paciente'} onClick={() => setTab('paciente')}>Por Paciente</TabButton>
             <TabButton active={tab === 'servicio'} onClick={() => setTab('servicio')}>Por Servicio</TabButton>
           </div>
           <button
             onClick={exportar}
-            className="flex items-center gap-2 px-4 py-2 bg-[#A3C644] hover:bg-[#92B33D] text-white rounded-xl text-sm font-semibold transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#A3C644] hover:bg-[#92B33D] text-white rounded-xl text-sm font-semibold transition-all flex-shrink-0 w-full sm:w-auto"
           >
             <ArrowDownTrayIcon className="w-4 h-4" />
             Excel
@@ -124,7 +124,7 @@ const VistaGeneral = ({ datos, fechaDesde, fechaHasta }) => {
         </div>
 
         {tab === 'terapeuta' && (
-          <table className="min-w-full">
+          <div className="overflow-x-auto"><table className="min-w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
@@ -169,11 +169,11 @@ const VistaGeneral = ({ datos, fechaDesde, fechaHasta }) => {
                 <td />
               </tr>
             </tfoot>
-          </table>
+          </table></div>
         )}
 
         {tab === 'paciente' && (
-          <table className="min-w-full">
+          <div className="overflow-x-auto"><table className="min-w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
@@ -196,11 +196,11 @@ const VistaGeneral = ({ datos, fechaDesde, fechaHasta }) => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
 
         {tab === 'servicio' && (
-          <table className="min-w-full">
+          <div className="overflow-x-auto"><table className="min-w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
@@ -234,7 +234,7 @@ const VistaGeneral = ({ datos, fechaDesde, fechaHasta }) => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>
@@ -260,7 +260,7 @@ const VistaTerapeuta = ({ datos, terapeutaNombre, fechaDesde, fechaHasta }) => {
   return (
     <div>
       {/* KPIs del terapeuta */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard icon={CalendarIcon} value={datos.resumen.total_sesiones} label="Sesiones del terapeuta" color="bg-purple-50 text-purple-600" />
         <StatCard icon={UserGroupIcon} value={datos.resumen.total_pacientes} label="Pacientes atendidos" color="bg-green-50 text-green-600" />
         <StatCard icon={ArrowTrendingUpIcon} value={datos.resumen.promedio_por_dia} label="Sesiones / día" color="bg-orange-50 text-orange-600" />
@@ -268,7 +268,7 @@ const VistaTerapeuta = ({ datos, terapeutaNombre, fechaDesde, fechaHasta }) => {
 
       {/* Tabla de pacientes del terapeuta */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100">
           <div>
             <h3 className="text-sm font-bold text-gray-900">Pacientes de {terapeutaNombre}</h3>
             <p className="text-xs text-gray-400 mt-0.5">{fechaDesde} → {fechaHasta}</p>
@@ -281,7 +281,7 @@ const VistaTerapeuta = ({ datos, terapeutaNombre, fechaDesde, fechaHasta }) => {
             Excel
           </button>
         </div>
-        <table className="min-w-full">
+        <div className="overflow-x-auto"><table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
@@ -310,7 +310,7 @@ const VistaTerapeuta = ({ datos, terapeutaNombre, fechaDesde, fechaHasta }) => {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   );
@@ -348,8 +348,8 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-6 overflow-hidden">
 
         {/* Cabecera: avatar + nombre + periodo */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-4 min-w-0">
             {/* Avatar con iniciales */}
             <div className="w-12 h-12 rounded-xl bg-[#7B1FA2] flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-sm tracking-wide">{iniciales}</span>
@@ -381,8 +381,8 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
         </div>
 
         {/* KPIs en fila con separadores */}
-        <div className="grid grid-cols-3 divide-x divide-gray-100">
-          <div className="flex items-center gap-3 px-6 py-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-4 sm:py-5">
             <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
               <CalendarIcon className="w-5 h-5 text-[#7B1FA2]" />
             </div>
@@ -391,7 +391,7 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
               <div className="text-xs text-gray-500 mt-1">Sesiones totales</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-6 py-5">
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-4 sm:py-5">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <UserGroupIcon className="w-5 h-5 text-blue-600" />
             </div>
@@ -400,7 +400,7 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
               <div className="text-xs text-gray-500 mt-1">Terapeutas distintos</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-6 py-5">
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-4 sm:py-5">
             <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
               <ArrowTrendingUpIcon className="w-5 h-5 text-orange-500" />
             </div>
@@ -426,7 +426,7 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
 
       {/* Desglose por terapeuta */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100">
           <h3 className="text-sm font-bold text-gray-900">Sesiones por terapeuta</h3>
           <button
             onClick={exportar}
@@ -436,7 +436,7 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
             Excel
           </button>
         </div>
-        <table className="min-w-full">
+        <div className="overflow-x-auto"><table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Terapeuta</th>
@@ -475,7 +475,7 @@ const VistaPaciente = ({ datos, pacienteNombre, fechaDesde, fechaHasta }) => {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   );
@@ -656,12 +656,12 @@ const SesionesPage = () => {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard de Sesiones</h1>
-          <p className="text-gray-500 mt-1">Estadísticas y métricas de citas agendadas</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard de Sesiones</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1">Estadísticas y métricas de citas agendadas</p>
         </div>
 
         {/* Panel de filtros */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-8">
 
           {/* PASO 1: Elegir qué quiero ver */}
           <div className="mb-5">
@@ -675,7 +675,7 @@ const SesionesPage = () => {
                 <button
                   key={key}
                   onClick={() => cambiarModo(key)}
-                  className={`flex items-start gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold border-2 transition-all text-left ${
+                  className={`w-full sm:w-auto flex items-start gap-3 px-4 sm:px-5 py-3.5 rounded-xl text-sm font-semibold border-2 transition-all text-left ${
                     modo === key
                       ? 'border-[#7B1FA2] bg-[#7B1FA2]/5 text-[#7B1FA2]'
                       : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'

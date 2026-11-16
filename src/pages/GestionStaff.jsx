@@ -503,7 +503,7 @@ const handleActualizar = async () => {
   }
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-white p-4 sm:p-6">
       {/* Notification */}
       {notification.show && (
         <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
@@ -518,25 +518,25 @@ const handleActualizar = async () => {
 
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1.5">Gestión Completa de Staff</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1.5">Gestión Completa de Staff</h1>
             <p className="text-sm text-gray-500">Administra toda la información de los terapeutas para la web pública</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3">
             <button
               onClick={cargarDatos}
-              className="flex items-center gap-2 px-4 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all text-sm font-medium"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all text-sm font-medium min-w-0"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 flex-shrink-0" />
               Actualizar
             </button>
             <button
               onClick={handleAbrirNuevo}
-              className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+              className="flex items-center justify-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm min-w-0"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 flex-shrink-0" />
               Nuevo Staff
             </button>
           </div>
@@ -628,7 +628,7 @@ const handleActualizar = async () => {
       {/* Tabla */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[760px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -767,11 +767,11 @@ const handleActualizar = async () => {
 
         {/* Paginación */}
         {staffFiltrado.length > itemsPerPage && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-sm text-gray-700">
               Página <span className="font-medium">{currentPage}</span> de <span className="font-medium">{totalPages}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
               <button
                 onClick={() => paginate(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -823,7 +823,7 @@ const handleActualizar = async () => {
       {(modalNuevo || modalEditar) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col">
-            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-2 flex-shrink-0">
               <h2 className="text-xl font-bold text-gray-900">
                 {modalNuevo ? 'Nuevo Staff' : 'Editar Staff'}
               </h2>
@@ -838,7 +838,7 @@ const handleActualizar = async () => {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
               {/* Formulario Completo */}
               <div className="space-y-6">
                 {/* Información Básica */}
@@ -1020,20 +1020,20 @@ const handleActualizar = async () => {
               </div>
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end border-t border-gray-200 flex-shrink-0">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 grid grid-cols-2 sm:flex gap-2 sm:gap-3 sm:justify-end border-t border-gray-200 flex-shrink-0">
               <button
                 onClick={() => {
                   modalNuevo ? setModalNuevo(false) : setModalEditar(false);
                   resetForm();
                 }}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-all text-sm font-medium"
+                className="min-w-0 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-all text-sm font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={modalNuevo ? handleCrear : handleActualizar}
                 disabled={uploadingFoto}
-                className="flex items-center gap-2 px-4 py-2 bg-[#7B1FA2] text-white rounded-lg hover:bg-[#6A1B9A] transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-w-0 flex items-center justify-center gap-2 px-4 py-2 bg-[#7B1FA2] text-white rounded-lg hover:bg-[#6A1B9A] transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploadingFoto ? (
                   <>
@@ -1056,7 +1056,7 @@ const handleActualizar = async () => {
       {modalDetalle && staffSeleccionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-2">
               <h2 className="text-xl font-bold text-gray-900">Detalles Completos del Staff</h2>
               <button
                 onClick={() => {
@@ -1075,7 +1075,7 @@ const handleActualizar = async () => {
                 <p className="mt-4 text-gray-600">Cargando detalles...</p>
               </div>
             ) : (
-              <div className="p-6 space-y-8">
+              <div className="p-4 sm:p-6 space-y-8">
                 {/* Información Principal */}
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="md:w-1/3">

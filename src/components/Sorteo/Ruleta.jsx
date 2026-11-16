@@ -137,11 +137,14 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-6">
+    <div className="flex flex-col items-center gap-6 py-6 w-full">
       {/* Contenedor de la ruleta */}
-      <div className="relative">
+      <div
+        className="relative"
+        style={{ width: 'min(88vw, 600px)', height: 'min(88vw, 600px)' }}
+      >
         {/* Indicador SUPERIOR - Flecha MORADA apuntando HACIA ABAJO */}
-        <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="absolute -top-14 sm:-top-20 left-1/2 transform -translate-x-1/2 z-30">
           <motion.div
             animate={isSpinning ? {
               scale: [1, 1.2, 1],
@@ -154,13 +157,13 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
           >
             {/* Flecha grande apuntando hacia abajo - COLOR MORADO */}
             <div className="flex flex-col items-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-2xl border-6 border-white relative">
-                <Trophy className="w-10 h-10 text-white" />
+              <div className="w-14 h-14 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-2xl border-6 border-white relative">
+                <Trophy className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
                 {/* Brillo animado */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent to-white opacity-40 rounded-full"></div>
               </div>
               {/* Flecha apuntando hacia abajo - MORADA */}
-              <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[30px] border-t-purple-600 filter drop-shadow-lg"></div>
+              <div className="w-0 h-0 border-l-[14px] border-r-[14px] border-t-[22px] sm:border-l-[20px] sm:border-r-[20px] sm:border-t-[30px] border-l-transparent border-r-transparent border-t-purple-600 filter drop-shadow-lg"></div>
             </div>
           </motion.div>
         </div>
@@ -172,11 +175,11 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
 
         {/* Logo ESTÁTICO en el centro - FUERA del motion.div para que NO gire */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          <div className="w-24 h-24 bg-white rounded-full border-4 border-yellow-400 shadow-2xl flex items-center justify-center overflow-hidden">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-full border-4 border-yellow-400 shadow-2xl flex items-center justify-center overflow-hidden">
             <img
               src="/videologo.png"
               alt="Logo"
-              className="w-20 h-20 object-contain"
+              className="w-12 h-12 sm:w-20 sm:h-20 object-contain"
             />
           </div>
         </div>
@@ -188,10 +191,10 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
             duration: isSpinning ? 5 : 0,
             ease: isSpinning ? [0.43, 0.13, 0.23, 0.96] : 'linear',
           }}
-          style={{ width: 600, height: 600 }}
+          style={{ width: '100%', height: '100%' }}
           className="relative z-10"
         >
-          <svg width="600" height="600" viewBox="0 0 600 600">
+          <svg width="100%" height="100%" viewBox="0 0 600 600">
             {/* Definir gradientes */}
             <defs>
               {colors.map((color, index) => (
@@ -326,10 +329,10 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
         </motion.div>
 
         {/* Luces decorativas en las esquinas */}
-        <div className="absolute -top-6 -left-6 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg border-4 border-white animate-pulse"></div>
-        <div className="absolute -top-6 -right-6 w-12 h-12 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full shadow-lg border-4 border-white animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-        <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-gradient-to-br from-green-400 to-teal-500 rounded-full shadow-lg border-4 border-white animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute -bottom-6 -right-6 w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full shadow-lg border-4 border-white animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute -top-3 -left-3 sm:-top-6 sm:-left-6 w-7 h-7 sm:w-12 sm:h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg border-4 border-white animate-pulse"></div>
+        <div className="absolute -top-3 -right-3 sm:-top-6 sm:-right-6 w-7 h-7 sm:w-12 sm:h-12 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full shadow-lg border-4 border-white animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+        <div className="absolute -bottom-3 -left-3 sm:-bottom-6 sm:-left-6 w-7 h-7 sm:w-12 sm:h-12 bg-gradient-to-br from-green-400 to-teal-500 rounded-full shadow-lg border-4 border-white animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute -bottom-3 -right-3 sm:-bottom-6 sm:-right-6 w-7 h-7 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full shadow-lg border-4 border-white animate-pulse" style={{ animationDelay: '1.5s' }}></div>
       </div>
 
       {/* GANADOR ACTUAL - Se muestra debajo de la ruleta */}
@@ -346,7 +349,7 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
               {ganadoresRevelados}°
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-xl font-black text-gray-900 mb-1 truncate">
+              <h4 className="text-lg sm:text-xl font-black text-gray-900 mb-1 break-words">
                 {getNombreCompleto(ganadores[ganadoresRevelados - 1])}
               </h4>
               <p className="text-sm font-semibold text-gray-600">
@@ -374,7 +377,7 @@ const Ruleta = ({ pacientes, cantidadGanadores, isSpinning, ganadores, ganadores
                   {index + 1}°
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
+                  <p className="text-sm font-semibold text-gray-900 break-words">
                     {getNombreCompleto(ganador)}
                   </p>
                   <p className="text-xs text-gray-500">

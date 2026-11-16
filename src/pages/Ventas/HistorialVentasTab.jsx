@@ -289,11 +289,11 @@ const HistorialVentasTab = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1.5">
-            <ClockIcon className="w-8 h-8 text-[#7B1FA2]" />
-            <h1 className="text-3xl font-bold text-gray-900">Historial de Ventas</h1>
+            <ClockIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#7B1FA2] flex-shrink-0" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Historial de Ventas</h1>
           </div>
           <p className="text-sm text-gray-500">Consulta todas las ventas de servicios y productos</p>
         </div>
@@ -307,10 +307,10 @@ const HistorialVentasTab = () => {
               { label: 'Productos',      value: totalProductos, icon: <CubeIcon className="w-5 h-5 text-amber-600" />, bg: 'bg-amber-50' },
             ].map((s, i) => (
               <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center`}>{s.icon}</div>
-                  <div>
-                    <div className="text-xl font-bold text-gray-900">{s.value}</div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>{s.icon}</div>
+                  <div className="min-w-0">
+                    <div className="text-lg sm:text-xl font-bold text-gray-900 leading-tight tabular-nums break-words">{s.value}</div>
                     <div className="text-xs text-gray-500 font-medium">{s.label}</div>
                     {s.sub && <div className="text-[11px] text-amber-600 font-semibold mt-0.5">{s.sub}</div>}
                   </div>
@@ -320,8 +320,8 @@ const HistorialVentasTab = () => {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
             <div className="relative sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">Paciente</label>
               <div className="relative">
@@ -333,7 +333,7 @@ const HistorialVentasTab = () => {
                   onFocus={() => setShowDropdownPaciente(true)}
                   onBlur={() => setTimeout(() => setShowDropdownPaciente(false), 150)}
                   placeholder="Buscar paciente..."
-                  className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
+                  className="w-full !pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]"
                 />
                 {(pacienteSeleccionado || queryPaciente) && (
                   <button onClick={() => { setPacienteSeleccionado(null); setQueryPaciente(''); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -398,9 +398,9 @@ const HistorialVentasTab = () => {
               <input type="date" value={filtros.fechaHasta} onChange={e => { setFiltros(f => ({ ...f, fechaHasta: e.target.value })); setPage(0); }}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30 focus:border-[#7B1FA2]" />
             </div>
-            <div className="flex items-end sm:col-span-6">
+            <div className="flex items-end sm:col-span-2 lg:col-span-7">
               <button onClick={cargarVentas}
-                className="px-6 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] transition-colors">
+                className="w-full sm:w-auto px-6 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-lg hover:bg-[#6A1B9A] transition-colors">
                 Filtrar
               </button>
             </div>

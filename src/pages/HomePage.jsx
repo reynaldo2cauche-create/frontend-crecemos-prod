@@ -85,6 +85,14 @@ const ytThumb = (url) => {
   return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : 'videologo.png';
 };
 
+// Normaliza una URL ingresada por el usuario (le agrega https:// si no tiene protocolo)
+const normalizarUrl = (url) => {
+  if (!url) return '';
+  const limpio = url.trim();
+  if (/^https?:\/\//i.test(limpio)) return limpio;
+  return `https://${limpio}`;
+};
+
 export default function HomePage() {
   const [currentImage, setCurrentImage] = useState(0);
   const [activeTab, setActiveTab] = useState('infantil');
@@ -434,27 +442,45 @@ export default function HomePage() {
               }}
             />
             <div className="swiper-wrapper align-items-center" style={{ marginBottom: '40px' }}>
-              {convenios.map((convenio) => (
-                <div key={convenio.id} className="swiper-slide text-center" style={{ padding: '16px 8px' }}>
-                  <div className="cx-logo-card">
-                    <img
-                      src={convenio.logo_url
-                        ? (convenio.logo_url.startsWith('/')
-                          ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
-                          : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
-                        : '/assets/img/index/default-logo.webp'}
-                      alt={convenio.empresa}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/assets/img/index/default-logo.webp';
-                      }}
-                    />
+              {convenios.map((convenio) => {
+                const contenido = (
+                  <>
+                    <div className="cx-logo-card">
+                      <img
+                        src={convenio.logo_url
+                          ? (convenio.logo_url.startsWith('/')
+                            ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                            : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                          : '/assets/img/index/default-logo.webp'}
+                        alt={convenio.empresa}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/assets/img/index/default-logo.webp';
+                        }}
+                      />
+                    </div>
+                    <h6 style={{ fontSize: '0.9rem', lineHeight: 1.3, margin: '12px 0 0' }}>
+                      {convenio.empresa}
+                    </h6>
+                  </>
+                );
+                return (
+                  <div key={convenio.id} className="swiper-slide text-center" style={{ padding: '16px 8px' }}>
+                    {convenio.sitio_web ? (
+                      <a
+                        href={normalizarUrl(convenio.sitio_web)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'block' }}
+                      >
+                        {contenido}
+                      </a>
+                    ) : (
+                      contenido
+                    )}
                   </div>
-                  <h6 style={{ fontSize: '0.9rem', lineHeight: 1.3, margin: '12px 0 0' }}>
-                    {convenio.empresa}
-                  </h6>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="swiper-pagination" />
           </div>

@@ -276,7 +276,7 @@ const PostulacionesDashboard = () => {
 
         {/* Filtros */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Filter className="w-5 h-5 text-[#7B1FA2]" />
@@ -392,7 +392,7 @@ const PostulacionesDashboard = () => {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
@@ -468,16 +468,80 @@ const PostulacionesDashboard = () => {
                 </table>
               </div>
 
+              {/* Vista de tarjetas - móvil */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {paginatedPostulaciones.map((postulacion) => {
+                  const estadoColors = coloresEstado[postulacion.estado_postulacion] || coloresEstado['Nuevo'];
+                  return (
+                    <div key={postulacion.id_postulacion} className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                          {getInitials(postulacion.nombre, postulacion.apellido)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-900 break-words">{postulacion.nombre} {postulacion.apellido}</p>
+                          <p className="text-xs text-gray-600 break-words">{postulacion.email}</p>
+                        </div>
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border flex-shrink-0 ${estadoColors.bg} ${estadoColors.border}`}>
+                          <div className={`w-2 h-2 rounded-full ${estadoColors.dot}`}></div>
+                          <span className={`text-xs font-semibold ${estadoColors.text}`}>{postulacion.estado_postulacion}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-xs text-gray-500">Cargo</span>
+                          <p className="text-gray-800 break-words">{postulacion.cargo_postulado}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-500">Distrito</span>
+                          <p className="text-gray-800 break-words">{postulacion.distrito}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-500">Fecha</span>
+                          <p className="text-gray-800">{new Date(postulacion.fecha_postulacion).toLocaleDateString('es-ES')}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => handleVerPerfil(postulacion)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[#7B1FA2] bg-purple-50 hover:bg-purple-100 rounded-lg text-sm font-medium transition-all"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Perfil
+                        </button>
+                        <button
+                          onClick={() => handleVerCV(postulacion)}
+                          disabled={loadingCV}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                        >
+                          <Eye className="w-4 h-4" />
+                          CV
+                        </button>
+                        <button
+                          onClick={() => setModalEliminar(postulacion)}
+                          className="flex items-center justify-center p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Paginación */}
               {postulaciones.length > 0 && (
-                <div className="border-t border-gray-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50">
-                  <div className="text-sm text-gray-600">
+                <div className="border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50">
+                  <div className="text-sm text-gray-600 text-center sm:text-left">
                     Mostrando <span className="font-semibold">{page * rowsPerPage + 1}</span> a{' '}
                     <span className="font-semibold">{Math.min((page + 1) * rowsPerPage, postulaciones.length)}</span> de{' '}
                     <span className="font-semibold">{postulaciones.length}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center flex-wrap justify-center gap-2">
                     <button
                       onClick={() => setPage(Math.max(0, page - 1))}
                       disabled={page === 0}
@@ -530,24 +594,24 @@ const PostulacionesDashboard = () => {
       {modalPerfil && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] p-6 flex items-center justify-between sticky top-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-[#7B1FA2] font-bold">
+            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] p-4 sm:p-6 flex items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-[#7B1FA2] font-bold flex-shrink-0">
                   {getInitials(modalPerfil.nombre, modalPerfil.apellido)}
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">{modalPerfil.nombre} {modalPerfil.apellido}</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-white break-words">{modalPerfil.nombre} {modalPerfil.apellido}</h2>
                   <p className="text-white/80 text-sm">Perfil del Candidato</p>
                 </div>
               </div>
-              <button onClick={() => setModalPerfil(null)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-all">
+              <button onClick={() => setModalPerfil(null)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-all flex-shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-6">
               {/* Info Personal */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase">Nombre Completo</label>
                   <p className="text-gray-900 font-semibold mt-1">{modalPerfil.nombre} {modalPerfil.apellido}</p>
@@ -560,9 +624,9 @@ const PostulacionesDashboard = () => {
                   <label className="text-xs font-semibold text-gray-500 uppercase">Distrito</label>
                   <p className="text-gray-900 font-semibold mt-1">{modalPerfil.distrito}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-semibold text-gray-500 uppercase">Email</label>
-                  <p className="text-gray-900 font-semibold mt-1">{modalPerfil.email}</p>
+                  <p className="text-gray-900 font-semibold mt-1 break-words">{modalPerfil.email}</p>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase">Teléfono</label>
@@ -620,7 +684,7 @@ const PostulacionesDashboard = () => {
               </div>
             </div>
 
-            <div className="border-t border-gray-200 p-6 flex justify-end gap-3">
+            <div className="border-t border-gray-200 p-4 sm:p-6 flex justify-end gap-3">
               <button
                 onClick={() => setModalPerfil(null)}
                 className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all"
@@ -637,19 +701,19 @@ const PostulacionesDashboard = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Header - Minimalista */}
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] p-4 flex items-center justify-between sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] p-4 flex items-center justify-between gap-2 sticky top-0 z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">CV - {modalCV.nombre} {modalCV.apellido}</h2>
-                  <p className="text-white/80 text-xs">{modalCV.cargo_postulado}</p>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-white truncate">CV - {modalCV.nombre} {modalCV.apellido}</h2>
+                  <p className="text-white/80 text-xs truncate">{modalCV.cargo_postulado}</p>
                 </div>
               </div>
-              <button 
-                onClick={cerrarModalCV} 
-                className="text-white hover:bg-white/20 p-2 rounded-lg transition-all"
+              <button
+                onClick={cerrarModalCV}
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-all flex-shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -699,13 +763,13 @@ const PostulacionesDashboard = () => {
             </div>
 
             {/* Footer - Minimalista */}
-            <div className="bg-white border-t border-gray-200 p-3 flex items-center justify-between">
-              <div className="text-xs text-gray-600">
-                <span className="font-medium">{modalCV.email}</span>
+            <div className="bg-white border-t border-gray-200 p-3 flex items-center justify-between gap-2">
+              <div className="text-xs text-gray-600 min-w-0">
+                <span className="font-medium truncate block">{modalCV.email}</span>
               </div>
               <button
                 onClick={cerrarModalCV}
-                className="px-4 py-1.5 text-gray-700 text-sm hover:bg-gray-100 rounded-lg transition-all"
+                className="px-4 py-1.5 text-gray-700 text-sm hover:bg-gray-100 rounded-lg transition-all flex-shrink-0"
               >
                 Cerrar
               </button>

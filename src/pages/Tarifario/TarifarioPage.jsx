@@ -282,10 +282,10 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
         }`}
       >
         <div className="h-full flex flex-col">
-          <div className="flex-shrink-0 border-b border-gray-200 p-6">
+          <div className="flex-shrink-0 border-b border-gray-200 p-4 sm:p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900">{servicio.nombre}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{servicio.nombre}</h2>
                 <p className="text-sm text-gray-500 mt-1">
                   {servicio.area?.nombre ?? 'Área no especificada'}
                 </p>
@@ -301,7 +301,7 @@ const DetallePanel = ({ servicio, tarifas, motivosMap, combos = [], onClose }) =
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             {(rowsEval.length > 0 || combosDelServicio.length > 0) && (
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
@@ -392,10 +392,10 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
         }`}
       >
         <div className="h-full flex flex-col">
-          <div className="flex-shrink-0 border-b border-gray-200 p-6">
+          <div className="flex-shrink-0 border-b border-gray-200 p-4 sm:p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900">{doc.nombre}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{doc.nombre}</h2>
                 {doc.tipoArchivo?.nombre && doc.tipoArchivo.nombre !== doc.nombre && (
                   <p className="text-sm text-gray-500 mt-1">{doc.tipoArchivo.nombre}</p>
                 )}
@@ -411,7 +411,7 @@ const DetallePanelDocumento = ({ doc, onClose }) => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Precio</p>
               <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
@@ -615,8 +615,8 @@ const AldeasConvenioSection = () => {
       {/* Banner principal */}
       <div className="rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-red-50 overflow-hidden">
         {/* Header del convenio */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-red-100">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-4 border-b border-red-100">
+          <div className="flex items-center gap-3 min-w-0">
             {/* Logo/ícono representativo */}
             <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
               <svg
@@ -633,8 +633,8 @@ const AldeasConvenioSection = () => {
                 />
               </svg>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-gray-900">Convenio Aldeas Infantiles SOS Perú</h2>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
                   Convenio especial
@@ -648,7 +648,7 @@ const AldeasConvenioSection = () => {
 
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors flex-shrink-0 self-start sm:self-auto"
           >
             {expanded ? 'Ocultar' : 'Ver descuentos'}
             <svg
@@ -668,7 +668,7 @@ const AldeasConvenioSection = () => {
             expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className="px-5 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="px-4 sm:px-5 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
             {ALDEAS_DESCUENTOS.map((grupo) => {
               const c = colorMap[grupo.color];
               return (
@@ -873,8 +873,8 @@ const SorAnaConvenioSection = () => {
   return (
     <div className="mb-8">
       <div className="rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 via-white to-purple-50 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-purple-100">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-4 border-b border-purple-100">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -885,8 +885,8 @@ const SorAnaConvenioSection = () => {
                 />
               </svg>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-gray-900">I.E.P. Colegio Sor Ana de los Ángeles</h2>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">
                   Convenio especial
@@ -900,7 +900,7 @@ const SorAnaConvenioSection = () => {
 
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-600 hover:bg-purple-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-600 hover:bg-purple-100 transition-colors flex-shrink-0 self-start sm:self-auto"
           >
             {expanded ? 'Ocultar' : 'Ver descuentos'}
             <svg
@@ -919,7 +919,7 @@ const SorAnaConvenioSection = () => {
             expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className="px-5 py-5 grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          <div className="px-4 sm:px-5 py-5 grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             {[SOR_ANA_DESCUENTOS.slice(0, 1), SOR_ANA_DESCUENTOS.slice(1)].map((columna, ci) => (
               <div key={ci} className="space-y-4">
                 {columna.map((grupo) => {
@@ -1152,7 +1152,7 @@ const TarifarioPage = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-[#7B1FA2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1172,7 +1172,7 @@ const TarifarioPage = () => {
       </div>
 
       {/* Contenido */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* ── Convenio Aldeas Infantiles SOS ── */}
         <AldeasConvenioSection />
 

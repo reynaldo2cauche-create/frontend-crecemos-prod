@@ -679,9 +679,9 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-2">
-            <PrinterIcon className="w-5 h-5 text-[#7B1FA2]" />
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-1 min-w-0">
+            <PrinterIcon className="w-5 h-5 text-[#7B1FA2] flex-shrink-0" />
             <h2 className="font-bold text-gray-900">Vista Previa de Impresión</h2>
             {venta.codigo_comprobante && (
               <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
@@ -700,15 +700,15 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Formato:</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
+          <span className="w-full sm:w-auto text-xs font-semibold text-gray-500 uppercase tracking-wide">Formato:</span>
           {FORMATOS_IMPRESION.map(({ id, label, desc, Icon }) => (
             <button key={id} onClick={() => setFormato(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+              className={`flex-1 sm:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
                 formato === id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'
               }`}>
-              <Icon className="w-4 h-4" />{label}
-              <span className={`text-xs font-normal ${formato === id ? 'text-purple-500' : 'text-gray-400'}`}>{desc}</span>
+              <Icon className="w-4 h-4 flex-shrink-0" />{label}
+              <span className={`hidden sm:inline text-xs font-normal ${formato === id ? 'text-purple-500' : 'text-gray-400'}`}>{desc}</span>
             </button>
           ))}
         </div>
@@ -739,8 +739,8 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
-          <p className="text-xs text-gray-400">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+          <p className="hidden sm:block text-xs text-gray-400">
             {formato === 'ticket' ? 'Descarga o imprime el ticket térmico de 72mm' : 'Descarga o imprime en formato A4 (210 × 297 mm)'}
             {promociones.length > 0 && (
               <span className="ml-2 text-green-600 font-medium">
@@ -748,19 +748,19 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
               </span>
             )}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <button onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+              className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
               Cerrar
             </button>
             <button onClick={handleDescargar} disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#7B1FA2] bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 disabled:opacity-50">
-              <ArrowDownTrayIcon className="w-4 h-4" />
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-[#7B1FA2] bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 disabled:opacity-50">
+              <ArrowDownTrayIcon className="w-4 h-4 flex-shrink-0" />
               {downloading ? 'Generando...' : 'Descargar PDF'}
             </button>
             <button onClick={handleImprimir} disabled={downloading}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50">
-              <PrinterIcon className="w-5 h-5" />
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50">
+              <PrinterIcon className="w-5 h-5 flex-shrink-0" />
               {downloading ? 'Generando...' : 'Imprimir'}
             </button>
           </div>

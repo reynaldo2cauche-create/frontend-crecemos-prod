@@ -835,7 +835,7 @@ const ModalPromocion = ({ promo, catalogo, tiposCatalogo, onClose, onSaved }) =>
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/20 focus:border-[#7B1FA2] resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Fecha inicio *</label>
                 <input
@@ -857,7 +857,7 @@ const ModalPromocion = ({ promo, catalogo, tiposCatalogo, onClose, onSaved }) =>
                 />
               </div>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -912,7 +912,7 @@ const ModalPromocion = ({ promo, catalogo, tiposCatalogo, onClose, onSaved }) =>
                 </div>
 
                 {/* Condición */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">Condición</label>
                     <select
@@ -947,7 +947,7 @@ const ModalPromocion = ({ promo, catalogo, tiposCatalogo, onClose, onSaved }) =>
                 </div>
 
                 {/* Beneficio */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">Beneficio</label>
                     <select
@@ -1090,16 +1090,16 @@ const ModalPromocion = ({ promo, catalogo, tiposCatalogo, onClose, onSaved }) =>
           </div>
 
           {/* Footer - Navegación por pasos */}
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+              className="px-4 sm:px-5 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Cancelar
             </button>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {pasoActual > 1 && (
                 <button
                   type="button"
@@ -1286,13 +1286,13 @@ const GestionPromocionesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <SparklesIcon className="w-8 h-8 text-[#7B1FA2]" />
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Promociones</h1>
+              <SparklesIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#7B1FA2] flex-shrink-0" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Gestión de Promociones</h1>
             </div>
             <p className="text-sm text-gray-500">
               Crea y administra promociones para productos y servicios
@@ -1305,7 +1305,7 @@ const GestionPromocionesPage = () => {
               setExito('');
               setModalAbierto(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] transition-colors w-full sm:w-auto flex-shrink-0"
           >
             <PlusIcon className="w-5 h-5" />
             Nueva promoción
@@ -1339,7 +1339,7 @@ const GestionPromocionesPage = () => {
                 className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all
                   ${promo.flg_activo ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}
               >
-                <div className="p-5 flex items-start gap-4">
+                <div className="p-5 flex flex-wrap items-start gap-4">
                   {/* Ícono */}
                   <div
                     className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0
@@ -1382,7 +1382,7 @@ const GestionPromocionesPage = () => {
                     {promo.descripcion && (
                       <p className="text-sm text-gray-500 mb-2 truncate">{promo.descripcion}</p>
                     )}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-gray-500">
                       <span>
                         📅 {new Date(promo.fecha_inicio).toLocaleDateString('es-PE')}
                         {promo.fecha_fin
@@ -1400,7 +1400,7 @@ const GestionPromocionesPage = () => {
                   </div>
 
                   {/* Acciones */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
                     <button
                       onClick={() => handleToggle(promo)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all
