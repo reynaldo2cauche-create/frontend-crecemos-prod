@@ -4,6 +4,7 @@ import {
   Pencil, Target, AlertCircle, Calendar, User as UserIcon, Timer, DollarSign,
   CalendarClock, Users, ChevronDown, ChevronLeft, ChevronRight, Search,
   Ear, MessageCircle, Brain, Eye, Smile, Hand, BookOpen, Activity, Music, Utensils,
+  Layers, BarChart3
 } from 'lucide-react';
 import {
   getServiciosPlan, getAreasServicio, getPlan, actualizarPlan,
@@ -13,7 +14,7 @@ import {
 } from '../../services/planTerapeuticoService';
 import { isAdministrador } from '../../constants/roles';
 
-const SESIONES_POR_BLOQUE = 4; // los bloques de 4 sesiones se usan solo para agrupar la línea de tiempo
+const SESIONES_POR_BLOQUE = 4;
 
 const ESTADO_SESION = {
   REALIZADA:   { Icon: CheckCircle2, color: 'text-emerald-500', sub: null, label: 'Realizada' },
@@ -22,7 +23,6 @@ const ESTADO_SESION = {
   FALTA_PAGAR: { Icon: DollarSign,   color: 'text-red-400',     sub: 'falta pagar', label: 'Falta pagar y agendar' },
 };
 
-// Paleta para diferenciar áreas (se asigna por orden del objetivo general).
 const AREA_COLORS = [
   { icon: 'text-violet-600',  bg: 'bg-violet-100',  soft: 'bg-violet-50/50',  accent: 'border-violet-400',  bar: 'bg-violet-500',  dot: 'bg-violet-500' },
   { icon: 'text-sky-600',     bg: 'bg-sky-100',     soft: 'bg-sky-50/50',     accent: 'border-sky-400',     bar: 'bg-sky-500',     dot: 'bg-sky-500' },
@@ -48,13 +48,11 @@ const progresoColor = (pct) => {
   if (pct >= 40) return { bar: 'bg-amber-500', text: 'text-amber-600', stroke: '#f59e0b', label: 'En proceso' };
   return { bar: 'bg-red-500', text: 'text-red-600', stroke: '#ef4444', label: 'En riesgo' };
 };
-// Estado del objetivo específico (badge tipo "Logrado / En proceso / No logrado").
 const estadoEsp = (pct) => {
   if (pct >= 80) return { label: 'Logrado', text: 'text-emerald-700', bg: 'bg-emerald-50' };
   if (pct >= 40) return { label: 'En proceso', text: 'text-amber-700', bg: 'bg-amber-50' };
   return { label: 'No logrado', text: 'text-red-700', bg: 'bg-red-50' };
 };
-// Ícono según el área de trabajo (por palabra clave en el nombre).
 const ICONOS_AREA = [
   { kw: ['comprens', 'recept', 'escucha', 'auditiv'], Icon: Ear },
   { kw: ['expres', 'morfosint', 'articul', 'fonolog', 'habla', 'lenguaje', 'verbal'], Icon: MessageCircle },
@@ -73,7 +71,6 @@ const areaIcon = (nombre = '') => {
   const found = ICONOS_AREA.find((m) => m.kw.some((k) => n.includes(k)));
   return found ? found.Icon : Target;
 };
-// Fecha de hoy en formato 'YYYY-MM-DD' (hora local), para comparar con las fechas de las sesiones.
 const hoyISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -84,6 +81,23 @@ const fmtFecha = (f, year) => {
   return isNaN(d) ? null : d.toLocaleDateString('es-PE', year ? { day: '2-digit', month: '2-digit', year: 'numeric' } : { day: '2-digit', month: '2-digit' });
 };
 
+// ── Toast ──
+const Toast = ({ tipo, texto, onClose }) => (
+  <div className="fixed top-6 right-6 z-[90000] flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-xl shadow-purple-900/10 border border-gray-100">
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+      tipo === 'success' ? 'bg-[#A3C644]/15' : 'bg-red-50'
+    }`}>
+      {tipo === 'success'
+        ? <Check className="w-4 h-4 text-[#8FB82D]" />
+        : <AlertCircle className="w-4 h-4 text-red-500" />}
+    </div>
+    <span className="text-xs font-semibold text-gray-700">{texto}</span>
+    <button onClick={onClose} className="ml-1 text-gray-400 hover:text-gray-600">
+      <X className="w-4 h-4" />
+    </button>
+  </div>
+);
+
 const PlanTerapeuticoView = ({ pacienteId, user }) => {
   const [servicios, setServicios] = useState([]);
   const [servicioId, setServicioId] = useState(null);
@@ -92,9 +106,9 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
   const [loading, setLoading] = useState(true);
   const [sesionActiva, setSesionActiva] = useState(1);
   const [msg, setMsg] = useState({ tipo: '', texto: '' });
-  const [modalGeneral, setModalGeneral] = useState(null);     // {mode, data}
-  const [modalEspecifico, setModalEspecifico] = useState(null); // {mode, generalId, data}
-  const [confirmDelete, setConfirmDelete] = useState(null);     // {tipo, id, label}
+  const [modalGeneral, setModalGeneral] = useState(null);
+  const [modalEspecifico, setModalEspecifico] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const toast = (tipo, texto) => { setMsg({ tipo, texto }); setTimeout(() => setMsg({ tipo: '', texto: '' }), 3500); };
 
@@ -129,7 +143,6 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
         const [data, ar] = await Promise.all([getPlan(pacienteId, servicioId), getAreasServicio(servicioId)]);
         setPlan(data);
         setAreas(ar || []);
-        // Sesión activa por defecto: la de HOY; si no hay, la primera pendiente; si no, la última.
         const hoy = hoyISO();
         const sesiones = data?.sesiones || [];
         const deHoy = sesiones.find((s) => s.fecha && String(s.fecha).slice(0, 10) === hoy);
@@ -148,18 +161,12 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
   const resultados = plan?.catalogos?.resultados || [];
   const maxGen = plan?.limites?.max_generales ?? 3;
   const maxEsp = plan?.limites?.max_especificos ?? 3;
-  // En Terapia de Lenguaje solo jefa/admin gestionan objetivos, actividades y materiales.
   const puedeGestionar = plan?.permisos?.gestionar_objetivos ?? true;
-  // Solo el administrador puede re-editar un registro ya colocado; las terapeutas (jefa o
-  // subordinada) registran una vez por sesión y luego queda bloqueado.
   const esAdmin = isAdministrador(user);
   const servicioSel = servicios.find((s) => s.servicio_id === servicioId) || null;
   const sesionSel = useMemo(() => sesiones.find((s) => s.numero_sesion === sesionActiva) || null, [sesiones, sesionActiva]);
-
-  // Áreas aún no usadas (para el selector al crear general)
   const areasUsadas = new Set(generales.map((g) => g.area_id));
 
-  // ── Handlers de objetivos ──
   const handleGuardarGeneral = async (form) => {
     const esNuevo = modalGeneral.mode === 'add';
     try {
@@ -191,9 +198,6 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
     } catch (e) { toast('error', e.response?.data?.message || (esGeneral ? 'No se pudo eliminar el objetivo general' : 'No se pudo eliminar el objetivo específico')); }
   };
 
-  // ── Handlers de registro por sesión ──
-  // Cada campo (resultado, observaciones, actividad, materiales) se define POR SESIÓN.
-  // Se reenvían todos los valores actuales y se sobreescribe solo el que cambió.
   const guardarCampoRegistro = async (esp, cambios, msgError) => {
     const reg = esp.registros?.[sesionActiva] || {};
     try {
@@ -214,7 +218,6 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
   const handleActividad = (esp, actividad) => guardarCampoRegistro(esp, { actividad }, 'No se pudo guardar la actividad');
   const handleMateriales = (esp, materiales) => guardarCampoRegistro(esp, { materiales }, 'No se pudieron guardar los materiales');
 
-  // ── Guardar (asignar/quitar) objetivos de una sesión, en lote ──
   const handleGuardarObjetivosSesion = async (numeroSesion, addIds, removeIds) => {
     try {
       await Promise.all([
@@ -226,10 +229,6 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
     } catch (e) { toast('error', e.response?.data?.message || 'No se pudieron actualizar los objetivos'); }
   };
 
-  // ── Crear un objetivo nuevo y asignarlo directo a la sesión activa ──
-  // Como cada objetivo mayormente se usa una vez, se crea + asigna + (opcional) registra
-  // actividad/materiales en un solo paso desde la sesión. Si el área aún no existe como
-  // objetivo general, se crea primero.
   const handleCrearObjetivoEnSesion = async ({ generalId, areaId, descripcion, actividad, materiales }) => {
     try {
       let gid = generalId;
@@ -282,52 +281,80 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
     }
   };
 
-  // ── Render ──
-  if (loading && !plan) return <div className="h-40 bg-gray-50 rounded-2xl animate-pulse" />;
+  if (loading && !plan) {
+    return (
+      <div className="glass-panel rounded-3xl p-5">
+        <div className="flex items-center justify-center py-12">
+          <div className="relative w-12 h-12">
+            <div className="absolute inset-0 border-2 border-purple-100 rounded-full" />
+            <div className="absolute inset-0 border-2 border-transparent border-t-[#7B1FA2] rounded-full animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!servicios.length) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-        <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-600 font-medium">Sin servicios de terapia</p>
-        <p className="text-sm text-gray-400 mt-1">Este paciente no tiene sesiones de terapia asignadas a ti.</p>
+      <div className="glass-panel rounded-3xl p-5">
+        <div className="text-center py-12 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+          <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-3">
+            <ClipboardList className="w-8 h-8 text-[#7B1FA2]/40" />
+          </div>
+          <p className="text-sm font-semibold text-gray-500">Sin servicios de terapia</p>
+          <p className="text-xs text-gray-400 mt-1">Este paciente no tiene sesiones de terapia asignadas.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {msg.texto && (
-        <div className="fixed top-6 right-6 z-[60] px-5 py-3 rounded-xl shadow-lg border bg-white flex items-center gap-2.5"
-          style={{ borderColor: msg.tipo === 'success' ? '#D1FAE5' : '#FEE2E2' }}>
-          {msg.tipo === 'success'
-            ? <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-            : <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
-          <span className="text-sm font-medium text-gray-700">{msg.texto}</span>
-          <button onClick={() => setMsg({ tipo: '', texto: '' })} className="ml-2">
-            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-          </button>
-        </div>
-      )}
+    <div className="space-y-4">
+      {msg.texto && <Toast tipo={msg.tipo} texto={msg.texto} onClose={() => setMsg({ tipo: '', texto: '' })} />}
 
-      {/* Servicios del paciente */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Target className="w-4 h-4 text-[#7B1FA2]" />
-        {servicios.map((sv) => {
-          const activo = sv.servicio_id === servicioId;
-          return (
-            <button key={sv.servicio_id} onClick={() => setServicioId(sv.servicio_id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${
-                activo ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300'
-              }`}>
-              {sv.servicio_nombre}<span className="ml-1 text-[10px] text-gray-400">· {sv.total_sesiones} ses.</span>
-            </button>
-          );
-        })}
-        {servicioSel?.terapeuta_nombre && <span className="text-[11px] text-gray-500 ml-auto">Terapeuta: {servicioSel.terapeuta_nombre}</span>}
+      {/* Selector de servicio */}
+      <div className="glass-panel rounded-3xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+            <Target className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Plan Terapéutico</h2>
+            <p className="text-[13px] text-gray-400">
+              Objetivos y registro por sesión
+              {servicioSel?.terapeuta_nombre && ` · Terapeuta: ${servicioSel.terapeuta_nombre}`}
+            </p>
+          </div>
+        </div>
+
+        <div className="h-px bg-gradient-to-r from-gray-200 to-transparent mb-4" />
+
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {servicios.map((sv) => {
+            const activo = sv.servicio_id === servicioId;
+            return (
+              <button
+                key={sv.servicio_id}
+                onClick={() => setServicioId(sv.servicio_id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                  activo
+                    ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-lg shadow-purple-500/20'
+                    : 'bg-[#F5F0FA] text-gray-600 hover:bg-purple-100/70'
+                }`}
+              >
+                {sv.servicio_nombre}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  activo ? 'bg-white/25 text-white' : 'bg-white text-[#7B1FA2]'
+                }`}>
+                  {sv.total_sesiones}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* SECCIÓN 1 · Plan de tratamiento (arriba, ancho completo) */}
+      {/* Plan de tratamiento */}
       <SeccionPlan
         plan={plan} generales={generales} maxGen={maxGen} maxEsp={maxEsp}
         puedeGestionar={puedeGestionar} esAdmin={esAdmin}
@@ -339,14 +366,14 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
         onDeleteEspecifico={(e) => setConfirmDelete({ tipo: 'especifico', id: e.id, label: e.descripcion })}
       />
 
-      {/* separador entre secciones */}
+      {/* Separador */}
       <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Registro por sesión</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
       </div>
 
-      {/* SECCIÓN 2 · Sesiones (abajo, ancho completo) */}
+      {/* Sesiones */}
       <SeccionSesiones
         generales={generales} sesiones={sesiones} resultados={resultados}
         areas={areas} areasUsadas={areasUsadas} maxGen={maxGen} maxEsp={maxEsp}
@@ -377,22 +404,18 @@ const PlanTerapeuticoView = ({ pacienteId, user }) => {
   );
 };
 
-
 // ════════════════════════════════════════════════════════════════════
-// SECCIÓN · Registro por sesión (abajo de la página, ancho completo)
+// SECCIÓN · Sesiones
 // ════════════════════════════════════════════════════════════════════
 const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, maxGen, maxEsp, sesionActiva, setSesionActiva, sesionSel, puedeGestionar, esAdmin, onResultado, onObs, onActividad, onMateriales, onGuardarObjetivos, onCrearObjetivo, onEditEspecifico }) => {
-  // Todos los específicos del plan (con su área).
   const filasTodas = useMemo(
     () => generales.flatMap((g) => (g.especificos || []).map((e) => ({ ...e, area_nombre: g.area_nombre }))),
     [generales],
   );
-  // Objetivos asignados a la sesión activa (cada sesión elige sus propios objetivos).
   const filas = useMemo(
     () => filasTodas.filter((e) => (e.sesiones_asignadas || []).includes(sesionActiva)),
     [filasTodas, sesionActiva],
   );
-  // Agrupar las filas por área (objetivo general) para unir la celda de "Área de trabajo".
   const grupos = useMemo(() => {
     const out = [];
     filas.forEach((e) => {
@@ -405,10 +428,9 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
   }, [filas]);
   const colorGen = useMemo(() => coloresPorGeneral(generales), [generales]);
   const [agregarOpen, setAgregarOpen] = useState(false);
-  const [confirmQuitar, setConfirmQuitar] = useState(null); // objetivo específico a quitar del bloque
+  const [confirmQuitar, setConfirmQuitar] = useState(null);
   const editable = !!sesionSel?.puede_registrar;
 
-  // Agrupar las sesiones en bloques de 4. Orden de visualización: reciente primero.
   const bloquesOrden = useMemo(() => {
     const out = [];
     for (let i = 0; i < sesiones.length; i += SESIONES_POR_BLOQUE) {
@@ -424,13 +446,12 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
   const [bloqueAbierto, setBloqueAbierto] = useState(0);
   const pag = Math.min(pagina, totalPaginas - 1);
 
-  // Al cambiar de sesión: abrir su bloque y saltar a la página que lo contiene.
   useEffect(() => {
     const idx = sesiones.findIndex((s) => s.numero_sesion === sesionActiva);
     if (idx < 0) return;
     const bi = Math.floor(idx / SESIONES_POR_BLOQUE);
     setBloqueAbierto(bi);
-    const posReciente = (totalBloques - 1) - bi; // posición en orden reciente-primero
+    const posReciente = (totalBloques - 1) - bi;
     setPagina(Math.floor(posReciente / BLOQUES_POR_PAGINA));
   }, [sesionActiva, sesiones, totalBloques]);
 
@@ -438,7 +459,15 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
 
   return (
     <div className="space-y-3">
-        {/* Sesiones en acordeones de 4, paginados — reciente primero */}
+      <div className="glass-panel rounded-3xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0 ring-1 ring-black/[0.03]">
+            <CalendarClock className="w-5 h-5 text-[#7B1FA2]" />
+          </div>
+          <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide whitespace-nowrap">Sesiones</h3>
+          <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
+        </div>
+
         <div className="space-y-2">
           {bloquesPagina.map(({ bloque, bi }) => {
             const abierto = bloqueAbierto === bi;
@@ -447,24 +476,28 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
             const hastaF = fmtFecha(bloque[bloque.length - 1]?.fecha);
             const rango = desdeF && hastaF ? `${desdeF}–${hastaF}` : (desdeF || hastaF || 'sin fecha');
             return (
-              <div key={bi} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+              <div key={bi} className={`rounded-2xl bg-[#F5F0FA] overflow-hidden transition-all ${abierto ? 'shadow-md ring-1 ring-purple-200/60' : 'hover:shadow-sm'}`}>
                 <button onClick={() => setBloqueAbierto(abierto ? -1 : bi)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50/70 hover:bg-gray-100 transition-all">
+                  className={`w-full flex items-center gap-2 px-4 py-3 transition-colors ${abierto ? 'bg-purple-50/40' : 'hover:bg-purple-50/20'}`}>
                   <CalendarClock className="w-4 h-4 text-[#7B1FA2] flex-shrink-0" />
                   <span className="text-sm font-bold text-gray-800 whitespace-nowrap">Bloque {bi + 1}</span>
-                  <span className="text-[11px] text-gray-400 truncate">{rango}</span>
-                  <span className="ml-auto text-[10px] font-semibold text-gray-400 whitespace-nowrap">{realizadas}/{bloque.length}</span>
+                  <span className="text-[11px] text-gray-500 truncate">{rango}</span>
+                  <span className="ml-auto text-[10px] font-semibold text-gray-500 whitespace-nowrap">{realizadas}/{bloque.length}</span>
                   <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${abierto ? 'rotate-180' : ''}`} />
                 </button>
                 {abierto && (
-                  <div className="p-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-purple-100/40 bg-white/50">
                     {bloque.map((s) => {
                       const est = ESTADO_SESION[s.estado] || ESTADO_SESION.POR_AGENDAR;
                       const Icon = est.Icon;
                       const activa = s.numero_sesion === sesionActiva;
                       return (
                         <button key={s.numero_sesion} onClick={() => setSesionActiva(s.numero_sesion)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-left ${activa ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all text-left ${
+                            activa
+                              ? 'border-[#7B1FA2] bg-purple-50 shadow-sm'
+                              : 'border-gray-200 bg-white hover:border-purple-200'
+                          }`}>
                           <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${est.color}`} />
                           <span className="min-w-0">
                             <span className="block text-[13px] font-bold text-gray-800 leading-tight">Sesión {s.numero_sesion}</span>
@@ -480,57 +513,64 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
           })}
           {sesiones.length === 0 && <p className="text-sm text-gray-400 py-2">No hay sesiones agendadas todavía.</p>}
 
-          {/* Paginación de bloques */}
           {totalPaginas > 1 && (
             <div className="flex items-center justify-between pt-1">
               <button onClick={() => setPagina((p) => Math.max(0, p - 1))} disabled={pag === 0}
-                className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:bg-purple-50 hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed">
                 <ChevronLeft className="w-3.5 h-3.5" /> Recientes
               </button>
               <span className="text-[11px] text-gray-400">Página {pag + 1} de {totalPaginas}</span>
               <button onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))} disabled={pag >= totalPaginas - 1}
-                className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:bg-purple-50 hover:border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed">
                 Antiguos <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
         </div>
 
-        {/* Meta de la sesión */}
         {sesionSel && (
-          <div className="flex items-center gap-4 flex-wrap px-3 py-2 bg-gray-50/70 rounded-xl text-[11px]">
-            <span className="flex items-center gap-1.5 text-gray-600"><Calendar className="w-3.5 h-3.5 text-gray-400" /> {fmtFecha(sesionSel.fecha, true) || (ESTADO_SESION[sesionSel.estado]?.sub || '—')}{sesionSel.hora_inicio ? ` · ${String(sesionSel.hora_inicio).slice(0, 5)}` : ''}</span>
+          <div className="flex items-center gap-4 flex-wrap mt-3 px-3 py-2.5 bg-[#F5F0FA] rounded-2xl text-[11px]">
+            <span className="flex items-center gap-1.5 text-gray-600">
+              <Calendar className="w-3.5 h-3.5 text-[#7B1FA2]" />
+              {fmtFecha(sesionSel.fecha, true) || (ESTADO_SESION[sesionSel.estado]?.sub || '—')}{sesionSel.hora_inicio ? ` · ${String(sesionSel.hora_inicio).slice(0, 5)}` : ''}
+            </span>
             {sesionSel.terapeuta_nombre && <span className="flex items-center gap-1.5 text-gray-600"><UserIcon className="w-3.5 h-3.5 text-gray-400" /> {sesionSel.terapeuta_nombre}</span>}
             {sesionSel.duracion_minutos != null && <span className="flex items-center gap-1.5 text-gray-600"><Timer className="w-3.5 h-3.5 text-gray-400" /> {sesionSel.duracion_minutos} min</span>}
             <span className="ml-auto flex items-center gap-1.5"><span className="text-gray-400">Estado:</span>
-              <span className={`px-2 py-0.5 rounded-full font-semibold ${sesionSel.estado === 'REALIZADA' ? 'bg-emerald-50 text-emerald-600' : sesionSel.estado === 'AGENDADA' ? 'bg-amber-50 text-amber-600' : sesionSel.estado === 'FALTA_PAGAR' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`px-2.5 py-1 rounded-full font-semibold ${
+                sesionSel.estado === 'REALIZADA' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+                sesionSel.estado === 'AGENDADA' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                sesionSel.estado === 'FALTA_PAGAR' ? 'bg-red-50 text-red-600 border border-red-200' :
+                'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}>
                 {sesionSel.estado_nombre || ESTADO_SESION[sesionSel.estado]?.label}
               </span>
             </span>
           </div>
         )}
+      </div>
 
-        {/* Tabla de registro */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-visible">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
-            <div>
-              <h4 className="text-sm font-bold text-gray-800">Registro de la sesión</h4>
-              <p className="text-[11px] text-gray-400">Objetivos de la Sesión {sesionActiva}</p>
-            </div>
-            {puedeGestionar && (
-              <button onClick={() => setAgregarOpen(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-2 rounded-lg">
-                <Plus className="w-3.5 h-3.5" /> Agregar objetivo
-              </button>
-            )}
+      {/* Tabla de registro */}
+      <div className="glass-panel rounded-3xl overflow-visible">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div>
+            <h4 className="text-sm font-bold text-gray-800">Registro de la sesión</h4>
+            <p className="text-[11px] text-gray-400">Objetivos de la Sesión {sesionActiva}</p>
           </div>
-          {filas.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">
-              {`Esta sesión aún no tiene objetivos. Usa "Agregar objetivo" para crear uno nuevo o reutilizar uno existente en la Sesión ${sesionActiva}.`}
-            </p>
-          ) : (
-            <>
-            {/* Vista móvil: tarjetas apiladas */}
+          {puedeGestionar && (
+            <button onClick={() => setAgregarOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] hover:from-[#6A1B9A] hover:to-[#8E24AA] px-4 py-2 rounded-full shadow-lg shadow-purple-500/20">
+              <Plus className="w-3.5 h-3.5" /> Agregar objetivo
+            </button>
+          )}
+        </div>
+        {filas.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-10 px-4">
+            {`Esta sesión aún no tiene objetivos. Usa "Agregar objetivo" para crear uno nuevo o reutilizar uno existente.`}
+          </p>
+        ) : (
+          <>
+            {/* Vista móvil */}
             <div className="md:hidden divide-y divide-gray-100">
               {grupos.map((grupo) => {
                 const AreaIcon = areaIcon(grupo.area_nombre);
@@ -542,9 +582,11 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
                   const materialesBloqueados = !esAdmin && !!(reg.materiales && String(reg.materiales).trim());
                   const obsBloqueada         = !esAdmin && !!(reg.observaciones && String(reg.observaciones).trim());
                   return (
-                    <div key={e.id} className={`p-3 space-y-3 border-l-4 ${col.accent}`}>
+                    <div key={e.id} className={`p-4 space-y-3 border-l-4 ${col.accent}`}>
                       <div className="flex items-start gap-2">
-                        <div className={`w-7 h-7 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-3.5 h-3.5 ${col.icon}`} /></div>
+                        <div className={`w-8 h-8 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}>
+                          <AreaIcon className={`w-4 h-4 ${col.icon}`} />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className={`text-[10px] font-semibold uppercase tracking-wide ${col.icon}`}>{grupo.area_nombre}</p>
                           <p className="text-xs text-gray-700 break-words leading-snug">{e.descripcion}</p>
@@ -567,7 +609,8 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
                             const cc = COLOR_RES[r.color] || COLOR_RES.amber;
                             return (
                               <button key={r.codigo} disabled={!editable || resultadoBloqueado} onClick={() => onResultado(e, r.codigo)} title={r.nombre}
-                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md border whitespace-nowrap transition-all ${sel ? cc.solid : `bg-white ${cc.soft}`} ${(!editable || resultadoBloqueado) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap transition-all ${sel ? `${cc.solid} shadow-sm` : `bg-white ${cc.soft}`} ${(!editable || resultadoBloqueado) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
                                 {r.nombre}
                               </button>
                             );
@@ -598,101 +641,103 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
               })}
             </div>
 
-            {/* Vista escritorio: tabla */}
+            {/* Vista escritorio */}
             <div className="hidden md:block overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm table-fixed">
-              <colgroup>
-                <col style={{ width: '12%' }} /><col style={{ width: '19%' }} /><col style={{ width: '14%' }} />
-                <col style={{ width: '12%' }} /><col style={{ width: '25%' }} /><col style={{ width: '18%' }} />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-gray-100 text-left bg-gray-50/50">
-                  <Th>Área de trabajo</Th><Th>Objetivo específico</Th><Th>Actividad / Ejemplo</Th>
-                  <Th>Materiales</Th><Th className="text-center">Resultado</Th><Th>Observaciones</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {grupos.map((grupo) => {
-                  const AreaIcon = areaIcon(grupo.area_nombre);
-                  const col = colorGen[grupo.key] || AREA_COLORS[0];
-                  return grupo.items.map((e, i) => {
-                    const reg = e.registros?.[sesionActiva] || {};
-                    const ultimo = i === grupo.items.length - 1;
-                    // Una vez colocado un valor, solo el administrador puede re-editarlo.
-                    const resultadoBloqueado  = !esAdmin && !!reg.resultado_codigo;
-                    const actividadBloqueada  = !esAdmin && !!(reg.actividad && String(reg.actividad).trim());
-                    const materialesBloqueados = !esAdmin && !!(reg.materiales && String(reg.materiales).trim());
-                    const obsBloqueada        = !esAdmin && !!(reg.observaciones && String(reg.observaciones).trim());
-                    return (
-                      <tr key={e.id} className={`align-top ${ultimo ? 'border-b border-gray-100' : ''}`}>
-                        {i === 0 && (
-                          <td rowSpan={grupo.items.length} className={`px-2 py-2.5 ${col.soft} border-l-4 ${col.accent} border-r border-gray-100 align-middle`}>
-                            <div className="flex flex-col items-center text-center gap-1">
-                              <div className={`w-7 h-7 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-3.5 h-3.5 ${col.icon}`} /></div>
-                              <p className={`font-semibold leading-tight break-words text-[11px] ${col.icon}`}>{grupo.area_nombre}</p>
+              <table className="w-full min-w-[720px] text-sm table-fixed">
+                <colgroup>
+                  <col style={{ width: '12%' }} /><col style={{ width: '19%' }} /><col style={{ width: '14%' }} />
+                  <col style={{ width: '12%' }} /><col style={{ width: '25%' }} /><col style={{ width: '18%' }} />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-gray-100 text-left bg-purple-50/40">
+                    <Th>Área de trabajo</Th><Th>Objetivo específico</Th><Th>Actividad / Ejemplo</Th>
+                    <Th>Materiales</Th><Th className="text-center">Resultado</Th><Th>Observaciones</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grupos.map((grupo) => {
+                    const AreaIcon = areaIcon(grupo.area_nombre);
+                    const col = colorGen[grupo.key] || AREA_COLORS[0];
+                    return grupo.items.map((e, i) => {
+                      const reg = e.registros?.[sesionActiva] || {};
+                      const ultimo = i === grupo.items.length - 1;
+                      const resultadoBloqueado  = !esAdmin && !!reg.resultado_codigo;
+                      const actividadBloqueada  = !esAdmin && !!(reg.actividad && String(reg.actividad).trim());
+                      const materialesBloqueados = !esAdmin && !!(reg.materiales && String(reg.materiales).trim());
+                      const obsBloqueada        = !esAdmin && !!(reg.observaciones && String(reg.observaciones).trim());
+                      return (
+                        <tr key={e.id} className={`align-top hover:bg-gray-50/40 transition-colors ${ultimo ? 'border-b border-gray-100' : ''}`}>
+                          {i === 0 && (
+                            <td rowSpan={grupo.items.length} className={`px-2 py-2.5 ${col.soft} border-l-4 ${col.accent} border-r border-gray-100 align-middle`}>
+                              <div className="flex flex-col items-center text-center gap-1">
+                                <div className={`w-7 h-7 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}>
+                                  <AreaIcon className={`w-3.5 h-3.5 ${col.icon}`} />
+                                </div>
+                                <p className={`font-semibold leading-tight break-words text-[11px] ${col.icon}`}>{grupo.area_nombre}</p>
+                              </div>
+                            </td>
+                          )}
+                          <td className="px-2 py-2.5 text-[11px] text-gray-700 break-words">
+                            <div className="group/obj flex items-start justify-between gap-1">
+                              <span>{e.descripcion}</span>
+                              <span className="flex items-center gap-0.5 opacity-0 group-hover/obj:opacity-100 transition-opacity flex-shrink-0">
+                                {esAdmin && (
+                                  <button onClick={() => onEditEspecifico(e)} title="Editar objetivo específico"
+                                    className="p-0.5 text-gray-300 hover:text-[#7B1FA2]">
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                )}
+                                {puedeGestionar && (
+                                  <button onClick={() => setConfirmQuitar(e)} title="Quitar objetivo de esta sesión"
+                                    className="p-0.5 text-gray-300 hover:text-red-500">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </span>
                             </div>
                           </td>
-                        )}
-                        <td className="px-2 py-2.5 text-[11px] text-gray-700 break-words">
-                          <div className="group/obj flex items-start justify-between gap-1">
-                            <span>{e.descripcion}</span>
-                            <span className="flex items-center gap-0.5 opacity-0 group-hover/obj:opacity-100 transition-opacity flex-shrink-0">
-                              {esAdmin && (
-                                <button onClick={() => onEditEspecifico(e)} title="Editar objetivo específico"
-                                  className="p-0.5 text-gray-300 hover:text-[#7B1FA2]">
-                                  <Pencil className="w-3 h-3" />
-                                </button>
-                              )}
-                              {puedeGestionar && (
-                                <button onClick={() => setConfirmQuitar(e)} title="Quitar objetivo de esta sesión"
-                                  className="p-0.5 text-gray-300 hover:text-red-500">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              )}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar} locked={actividadBloqueada}
-                            placeholder={puedeGestionar ? 'Actividad / ejemplo…' : '—'} onSave={(t) => onActividad(e, t)} />
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar} locked={materialesBloqueados}
-                            placeholder={puedeGestionar ? 'Materiales…' : '—'} onSave={(t) => onMateriales(e, t)} />
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <div className="flex items-center justify-center gap-1">
-                            {resultados.map((r) => {
-                              const sel = reg.resultado_codigo === r.codigo;
-                              const cc = COLOR_RES[r.color] || COLOR_RES.amber;
-                              return (
-                                <button key={r.codigo} disabled={!editable || resultadoBloqueado} onClick={() => onResultado(e, r.codigo)} title={r.nombre}
-                                  className={`text-[10px] font-semibold px-2 py-1 rounded-md border whitespace-nowrap transition-all ${sel ? cc.solid : `bg-white ${cc.soft}`} ${(!editable || resultadoBloqueado) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                  {r.nombre}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <ObsCell value={reg.observaciones || ''} disabled={!editable || obsBloqueada}
-                            placeholder="Observaciones…" onSave={(t) => onObs(e, t)} />
-                        </td>
-                      </tr>
-                    );
-                  });
-                })}
-              </tbody>
-            </table>
+                          <td className="px-2 py-2.5">
+                            <ObsCell value={reg.actividad || ''} disabled={!editable || !puedeGestionar} locked={actividadBloqueada}
+                              placeholder={puedeGestionar ? 'Actividad / ejemplo…' : '—'} onSave={(t) => onActividad(e, t)} />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <ObsCell value={reg.materiales || ''} disabled={!editable || !puedeGestionar} locked={materialesBloqueados}
+                              placeholder={puedeGestionar ? 'Materiales…' : '—'} onSave={(t) => onMateriales(e, t)} />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
+                              {resultados.map((r) => {
+                                const sel = reg.resultado_codigo === r.codigo;
+                                const cc = COLOR_RES[r.color] || COLOR_RES.amber;
+                                return (
+                                  <button key={r.codigo} disabled={!editable || resultadoBloqueado} onClick={() => onResultado(e, r.codigo)} title={r.nombre}
+                                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border whitespace-nowrap transition-all ${sel ? `${cc.solid} shadow-sm` : `bg-white ${cc.soft}`} ${(!editable || resultadoBloqueado) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                                    {r.nombre}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <ObsCell value={reg.observaciones || ''} disabled={!editable || obsBloqueada}
+                              placeholder="Observaciones…" onSave={(t) => onObs(e, t)} />
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })}
+                </tbody>
+              </table>
             </div>
-            </>
-          )}
-          {!editable && filas.length > 0 && (
-            <p className="text-[11px] text-gray-400 px-4 py-2 border-t border-gray-50">
-              {sesionSel?.estado === 'FALTA_PAGAR' ? 'Esta sesión falta pagar y agendar.' : sesionSel?.estado === 'POR_AGENDAR' ? 'Sesión comprada; falta agendar la cita para registrar.' : 'Sesión no disponible para registrar.'}
-            </p>
-          )}
-        </div>
+          </>
+        )}
+        {!editable && filas.length > 0 && (
+          <p className="text-[11px] text-gray-400 px-5 py-3 border-t border-gray-50">
+            {sesionSel?.estado === 'FALTA_PAGAR' ? 'Esta sesión falta pagar y agendar.' : sesionSel?.estado === 'POR_AGENDAR' ? 'Sesión comprada; falta agendar la cita para registrar.' : 'Sesión no disponible para registrar.'}
+          </p>
+        )}
+      </div>
 
       {agregarOpen && (
         <AgregarObjetivoModal sesion={sesionActiva} generales={generales} areas={areas}
@@ -713,12 +758,10 @@ const SeccionSesiones = ({ generales, sesiones, resultados, areas, areasUsadas, 
 };
 
 // ════════════════════════════════════════════════════════════════════
-// MODAL · Agregar objetivo a una sesión (crear nuevo o reutilizar existente)
+// MODAL · Agregar objetivo
 // ════════════════════════════════════════════════════════════════════
 const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, maxEsp, onClose, onCrear, onAsignarExistentes }) => {
-  const [modo, setModo] = useState('nuevo'); // 'nuevo' | 'existente'
-
-  // ── NUEVO: crear objetivo (en área existente o creando una nueva) y asignarlo a la sesión ──
+  const [modo, setModo] = useState('nuevo');
   const areasNuevas = (areas || []).filter((a) => !areasUsadas?.has(a.id));
   const puedeCrearArea = generales.length < maxGen;
   const [areaSel, setAreaSel] = useState('');
@@ -741,7 +784,6 @@ const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, m
     onClose();
   };
 
-  // ── EXISTENTE: reutilizar un objetivo ya creado (no asignado aún a esta sesión) ──
   const [q, setQ] = useState('');
   const [checked, setChecked] = useState(() => new Set());
   const ql = q.trim().toLowerCase();
@@ -762,7 +804,11 @@ const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, m
       <div className="px-5 pt-3 flex gap-1">
         {[['nuevo', 'Nuevo objetivo'], ['existente', 'Reutilizar existente']].map(([k, label]) => (
           <button key={k} onClick={() => setModo(k)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${modo === k ? 'bg-[#7B1FA2] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              modo === k
+                ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-lg shadow-purple-500/20'
+                : 'text-gray-600 hover:bg-purple-50'
+            }`}>
             {label}
           </button>
         ))}
@@ -770,7 +816,7 @@ const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, m
 
       {modo === 'nuevo' ? (
         <>
-          <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto">
+          <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
             <Field label="Área de trabajo" required>
               <select value={areaSel} onChange={(e) => setAreaSel(e.target.value)} className="inp">
                 <option value="">Selecciona un área…</option>
@@ -809,7 +855,7 @@ const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, m
             <div className="relative">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar objetivo…"
-                className="w-full pl-9 pr-3 py-2 border-2 border-gray-200 rounded-lg text-sm outline-none focus:border-[#7B1FA2]" />
+                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow" />
             </div>
           </div>
           <div className="px-5 py-3 max-h-[50vh] overflow-y-auto space-y-4">
@@ -825,13 +871,17 @@ const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, m
                   <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#7B1FA2] uppercase tracking-wide mb-1.5">
                     <AreaIcon className="w-3.5 h-3.5" /> {g.area_nombre}
                   </p>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {vis.map((e) => {
                       const on = checked.has(e.id);
                       return (
                         <button key={e.id} onClick={() => toggle(e.id)}
-                          className={`w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-left border transition-all ${on ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                          <span className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${on ? 'bg-[#7B1FA2] border-[#7B1FA2]' : 'border-gray-300 bg-white'}`}>
+                          className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left border-2 transition-all ${
+                            on ? 'border-[#7B1FA2] bg-purple-50' : 'border-gray-200 hover:bg-purple-50/40 hover:border-purple-200'
+                          }`}>
+                          <span className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                            on ? 'bg-[#7B1FA2] border-[#7B1FA2]' : 'border-gray-300 bg-white'
+                          }`}>
                             {on && <Check className="w-3 h-3 text-white" />}
                           </span>
                           <span className="min-w-0 flex-1"><span className="block text-xs text-gray-700 leading-snug">{e.descripcion}</span></span>
@@ -846,16 +896,16 @@ const AgregarObjetivoModal = ({ sesion, generales, areas, areasUsadas, maxGen, m
           <Footer onClose={onClose} onSave={guardarExistentes} disabled={checked.size === 0} saveLabel={`Agregar (${checked.size})`} />
         </>
       )}
-      <style>{`.inp{width:100%;padding:.55rem .75rem;border:2px solid #e5e7eb;border-radius:.6rem;font-size:.85rem;outline:none}.inp:focus{border-color:#7B1FA2}`}</style>
+      <style>{`.inp{width:100%;padding:.6rem .8rem;border:1px solid #e5e7eb;border-radius:.7rem;font-size:.85rem;outline:none;transition:box-shadow .2s,border-color .2s}.inp:focus{border-color:#7B1FA2;box-shadow:0 0 0 4px rgba(123,31,162,.15)}select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .7rem center;background-size:1rem;padding-right:2.3rem}`}</style>
     </Overlay>
   );
 };
 
 // ════════════════════════════════════════════════════════════════════
-// SECCIÓN · Plan de tratamiento y progreso (arriba de la página, ancho completo)
+// SECCIÓN · Plan de tratamiento
 // ════════════════════════════════════════════════════════════════════
 const SeccionPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin, onAddGeneral, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
-  const [abierto, setAbierto] = useState(false); // colapsado por defecto → las sesiones quedan arriba
+  const [abierto, setAbierto] = useState(false);
   const progresoPlan = plan?.plan?.progreso ?? 0;
   const cp = progresoColor(progresoPlan);
   const totalSes = plan?.servicio?.total_sesiones ?? 0;
@@ -865,44 +915,52 @@ const SeccionPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin,
   const faltanReunion = reunionCada - (totalSes % reunionCada || reunionCada) + (totalSes % reunionCada === 0 ? reunionCada : 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4">
-      {/* Barra compacta (siempre visible) — no empuja las sesiones */}
+    <div className="glass-panel rounded-3xl p-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <button onClick={() => setAbierto((v) => !v)} className="flex items-center gap-2 min-w-0 text-left">
-          <ClipboardList className="w-5 h-5 text-[#7B1FA2] flex-shrink-0" />
-          <h2 className="text-base font-bold text-gray-800">Plan de tratamiento</h2>
-          {generales.length > 0 && <span className={`text-sm font-bold ${cp.text}`}>· {progresoPlan}%</span>}
+        <button onClick={() => setAbierto((v) => !v)} className="flex items-center gap-3 min-w-0 text-left">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0 ring-1 ring-black/[0.03]">
+            <ClipboardList className="w-5 h-5 text-[#7B1FA2]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide whitespace-nowrap">
+              Plan de tratamiento {generales.length > 0 && <span className={`ml-2 ${cp.text}`}>· {progresoPlan}%</span>}
+            </h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">Áreas de trabajo y objetivos</p>
+          </div>
           <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
         </button>
         <div className="flex items-center gap-2">
           {puedeGestionar && (
             <button onClick={onAddGeneral} disabled={generales.length >= maxGen}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-3 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] hover:from-[#6A1B9A] hover:to-[#8E24AA] px-4 py-2 rounded-full shadow-lg shadow-purple-500/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
               <Plus className="w-3.5 h-3.5" /> Área
             </button>
           )}
           <button onClick={() => setAbierto((v) => !v)}
-            className="text-xs font-semibold text-[#7B1FA2] bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg">
-            {abierto ? 'Ocultar objetivos' : 'Ver / editar objetivos'}
+            className="text-xs font-semibold text-[#7B1FA2] bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-full transition-colors">
+            {abierto ? 'Ocultar' : 'Ver / editar'}
           </button>
         </div>
       </div>
 
-      {/* Tira compacta de progreso por área (siempre visible; se acomoda sola si hay muchas) */}
       {generales.length > 0 ? (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2 mt-4">
           {generales.map((g, i) => {
             const c = progresoColor(g.progreso);
             const col = AREA_COLORS[i % AREA_COLORS.length];
             const AreaIcon = areaIcon(g.area_nombre);
             return (
               <button key={g.id} onClick={() => setAbierto(true)} title={`${g.area_nombre} · ${g.progreso}%`}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-gray-100 bg-gray-50/60 hover:bg-gray-50 transition-all min-w-[150px] max-w-[220px]">
-                <span className={`w-7 h-7 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-4 h-4 ${col.icon}`} /></span>
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 bg-[#F5F0FA] hover:shadow-md hover:-translate-y-0.5 transition-all min-w-[160px] max-w-[230px]">
+                <span className={`w-8 h-8 rounded-lg ${col.bg} flex items-center justify-center flex-shrink-0`}>
+                  <AreaIcon className={`w-4 h-4 ${col.icon}`} />
+                </span>
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block text-[11px] font-semibold text-gray-700 truncate">{g.area_nombre}</span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden"><span className={`block h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></span>
+                  <span className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <span className={`block h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} />
+                    </span>
                     <span className={`text-[10px] font-bold ${c.text}`}>{g.progreso}%</span>
                   </span>
                 </span>
@@ -911,17 +969,16 @@ const SeccionPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin,
           })}
         </div>
       ) : (
-        <p className="text-[11px] text-gray-400 mt-2">Aún no hay áreas. Usa “+ Área” para crear la primera (hasta {maxGen}).</p>
+        <p className="text-[11px] text-gray-400 mt-3">Aún no hay áreas. Usa “+ Área” para crear la primera (hasta {maxGen}).</p>
       )}
 
-      {/* Detalle completo (solo al desplegar) */}
       {abierto && (
         <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           <div className="lg:col-span-3 space-y-3">
-            <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wide">Áreas de trabajo y objetivos</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Áreas de trabajo y objetivos</h3>
             {generales.length === 0 && (
               <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                <Target className="w-9 h-9 text-gray-300 mx-auto mb-2" />
+                <Target className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">Aún no hay áreas. Agrega hasta {maxGen} áreas de trabajo.</p>
               </div>
             )}
@@ -933,28 +990,46 @@ const SeccionPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin,
           </div>
 
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-gray-100 p-4">
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Avance general</h4>
-              <p className="text-[10px] text-gray-400 mb-2">Promedio de todos los objetivos generales</p>
-              <div className="flex justify-center my-2"><Donut pct={progresoPlan} /></div>
+            <div className="relative overflow-hidden rounded-2xl border border-purple-100/60 p-4 shadow-[0_8px_24px_rgba(123,31,162,0.06)]" style={{ backgroundImage: 'radial-gradient(90% 120% at 50% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(160deg, #ffffff 0%, #fbf8ff 100%)' }}>
+              <div className="pointer-events-none absolute -top-10 -right-8 w-28 h-28 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+              <div className="relative flex items-center gap-2 mb-1">
+                <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm shadow-purple-500/20 flex-shrink-0">
+                  <BarChart3 className="w-4 h-4 text-white" />
+                </span>
+                <h4 className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">Avance general</h4>
+              </div>
+              <p className="relative text-[10px] text-gray-400 mb-2 pl-9 -mt-0.5">Promedio de todos los objetivos generales</p>
+              <div className="relative flex justify-center my-2"><Donut pct={progresoPlan} /></div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
               <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Próximas fechas importantes</h4>
               <div className="flex items-center gap-2 py-1.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><Calendar className="w-4 h-4 text-blue-500" /></div>
-                <div className="flex-1"><p className="text-[11px] font-semibold text-gray-700">Revisión clínica</p><p className="text-[10px] text-gray-400">cada {revisionCada} sesiones</p></div>
-                <span className="text-xs font-bold text-gray-700">{faltanRevision} <span className="text-[10px] font-normal text-gray-400">faltan</span></span>
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-semibold text-gray-700">Revisión clínica</p>
+                  <p className="text-[10px] text-gray-400">cada {revisionCada} sesiones</p>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 text-[11px] font-bold text-gray-700 flex-shrink-0">{faltanRevision}<span className="text-[10px] font-normal text-gray-400">faltan</span></span>
               </div>
               <div className="flex items-center gap-2 py-1.5 border-t border-gray-50">
-                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0"><Users className="w-4 h-4 text-[#7B1FA2]" /></div>
-                <div className="flex-1"><p className="text-[11px] font-semibold text-gray-700">Reunión con padres</p><p className="text-[10px] text-gray-400">cada {reunionCada} sesiones</p></div>
-                <span className="text-xs font-bold text-gray-700">{faltanReunion} <span className="text-[10px] font-normal text-gray-400">faltan</span></span>
+                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                  <Users className="w-4 h-4 text-[#7B1FA2]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-semibold text-gray-700">Reunión con padres</p>
+                  <p className="text-[10px] text-gray-400">cada {reunionCada} sesiones</p>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 text-[11px] font-bold text-gray-700 flex-shrink-0">{faltanReunion}<span className="text-[10px] font-normal text-gray-400">faltan</span></span>
               </div>
             </div>
 
-            <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-3">
-              <p className="text-[10px] text-blue-700">Solo se trabajan {plan?.limites?.max_generales ?? 3} objetivos generales y cada uno con máximo {plan?.limites?.max_especificos ?? 3} objetivos específicos.</p>
+            <div className="bg-purple-50/60 border border-purple-100 rounded-2xl p-3.5">
+              <p className="text-[10px] text-[#7B1FA2]/80 leading-relaxed">
+                Solo se trabajan {plan?.limites?.max_generales ?? 3} objetivos generales y cada uno con máximo {plan?.limites?.max_especificos ?? 3} objetivos específicos.
+              </p>
             </div>
           </div>
         </div>
@@ -963,7 +1038,9 @@ const SeccionPlan = ({ plan, generales, maxGen, maxEsp, puedeGestionar, esAdmin,
   );
 };
 
-// Tarjeta de un objetivo general: panel izquierdo (área + progreso) + tabla de específicos.
+// ════════════════════════════════════════════════════════════════════
+// Sub-componentes
+// ════════════════════════════════════════════════════════════════════
 const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral, onDeleteGeneral, onAddEspecifico, onEditEspecifico, onDeleteEspecifico }) => {
   const puedeGestionarEspecifico = puedeGestionar || esAdmin;
   const [abierto, setAbierto] = useState(true);
@@ -971,13 +1048,15 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral,
   const col = color || AREA_COLORS[0];
   const especificos = g.especificos || [];
   const AreaIcon = areaIcon(g.area_nombre);
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-[0_1px_3px_rgba(16,24,40,0.04)] hover:shadow-[0_10px_30px_rgba(16,24,40,0.07)] transition-shadow">
       <div className="flex flex-col lg:flex-row">
-        {/* Panel izquierdo: área + descripción + progreso general */}
         <div className={`lg:w-64 flex-shrink-0 ${col.soft} border-l-4 ${col.accent} p-4 lg:border-r lg:border-r-gray-100`}>
           <div className="flex items-start gap-2.5">
-            <div className={`w-9 h-9 rounded-xl ${col.bg} flex items-center justify-center flex-shrink-0`}><AreaIcon className={`w-4 h-4 ${col.icon}`} /></div>
+            <div className={`w-9 h-9 rounded-xl ${col.bg} flex items-center justify-center flex-shrink-0`}>
+              <AreaIcon className={`w-4 h-4 ${col.icon}`} />
+            </div>
             <div className="min-w-0">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Área</p>
               <h4 className={`text-sm font-bold uppercase tracking-wide leading-tight ${col.icon}`}>{g.area_nombre}</h4>
@@ -990,20 +1069,44 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral,
               : <p className="text-xs text-gray-400 italic">Sin texto.</p>}
           </div>
           <div className="mt-4">
-            <p className="text-[11px] text-gray-500">Progreso general</p>
-            <p className={`text-2xl font-bold ${c.text}`}>{g.progreso}%</p>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1"><div className={`h-full ${c.bar} rounded-full`} style={{ width: `${g.progreso}%` }} /></div>
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Progreso general</p>
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${c.text} bg-white/70 border border-current/10`}>{c.label}</span>
+            </div>
+            <p className={`text-2xl font-extrabold ${c.text} leading-none mt-1`}>{g.progreso}%</p>
+            <div className="h-2 bg-gray-200/80 rounded-full overflow-hidden mt-2">
+              <div className={`h-full ${c.bar} rounded-full transition-all duration-500`} style={{ width: `${g.progreso}%` }} />
+            </div>
           </div>
         </div>
 
-        {/* Panel derecho: meta + tabla de específicos */}
         <div className="flex-1 min-w-0 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-gray-600">
-              {g.plazo_sesiones != null && <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Plazo estimado</span>{g.plazo_sesiones} sesiones</span></span>}
-              {g.fecha_inicio && <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Inicio</span>{fmtFecha(g.fecha_inicio, true)}</span></span>}
-              {g.frecuencia_nombre && <span className="flex items-center gap-1.5"><CalendarClock className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Frecuencia</span>{g.frecuencia_nombre}</span></span>}
-              {g.fecha_logro_est && <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-gray-400" /> <span><span className="block text-[9px] text-gray-400 uppercase">Logro estimado</span>{fmtFecha(g.fecha_logro_est, true)}</span></span>}
+              {g.plazo_sesiones != null && (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span><span className="block text-[9px] text-gray-400 uppercase">Plazo estimado</span>{g.plazo_sesiones} sesiones</span>
+                </span>
+              )}
+              {g.fecha_inicio && (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                  <span><span className="block text-[9px] text-gray-400 uppercase">Inicio</span>{fmtFecha(g.fecha_inicio, true)}</span>
+                </span>
+              )}
+              {g.frecuencia_nombre && (
+                <span className="flex items-center gap-1.5">
+                  <CalendarClock className="w-3.5 h-3.5 text-gray-400" />
+                  <span><span className="block text-[9px] text-gray-400 uppercase">Frecuencia</span>{g.frecuencia_nombre}</span>
+                </span>
+              )}
+              {g.fecha_logro_est && (
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-gray-400" />
+                  <span><span className="block text-[9px] text-gray-400 uppercase">Logro estimado</span>{fmtFecha(g.fecha_logro_est, true)}</span>
+                </span>
+              )}
             </div>
             {puedeGestionar && (
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -1047,12 +1150,18 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral,
                       const est = estadoEsp(e.progreso);
                       return (
                         <tr key={e.id} className="border-b border-gray-50 group align-middle">
-                          <td className="py-2 pr-2"><span className="w-5 h-5 rounded-md bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center">{i + 1}</span></td>
+                          <td className="py-2 pr-2">
+                            <span className="w-5 h-5 rounded-md bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                          </td>
                           <td className="py-2 pr-2 text-xs text-gray-700 leading-snug">{e.descripcion}</td>
-                          <td className="py-2 px-2 text-center"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${est.text} ${est.bg}`}>{est.label}</span></td>
+                          <td className="py-2 px-2 text-center">
+                            <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${est.text} ${est.bg}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{est.label}</span>
+                          </td>
                           <td className="py-2 pl-2">
                             <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden"><div className={`h-full ${ec.bar} rounded-full`} style={{ width: `${e.progreso}%` }} /></div>
+                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div className={`h-full ${ec.bar} rounded-full`} style={{ width: `${e.progreso}%` }} />
+                              </div>
                               <span className="text-[11px] font-bold text-gray-700 w-9 text-right">{e.progreso}%</span>
                             </div>
                           </td>
@@ -1078,9 +1187,7 @@ const GeneralCard = ({ g, maxEsp, color, puedeGestionar, esAdmin, onEditGeneral,
   );
 };
 
-// ════════════════════════════════════════════════════════════════════
-// Subcomponentes
-// ════════════════════════════════════════════════════════════════════
+// ── Donut ──
 const Donut = ({ pct }) => {
   const r = 48, c = 2 * Math.PI * r;
   const off = c - (Math.min(100, Math.max(0, pct)) / 100) * c;
@@ -1096,8 +1203,6 @@ const Donut = ({ pct }) => {
   );
 };
 
-// `disabled` = no editable de plano (sesión no registrable o sin permiso).
-// `locked`   = bloqueo suave (ya tiene valor); con permiso se puede reabrir con el lapicito.
 const ObsCell = ({ value, disabled, locked = false, placeholder, onSave }) => {
   const [v, setV] = useState(value || '');
   const [unlocked, setUnlocked] = useState(false);
@@ -1113,7 +1218,7 @@ const ObsCell = ({ value, disabled, locked = false, placeholder, onSave }) => {
       <div className="relative">
         <textarea ref={ref} value={v} disabled={soloLectura} placeholder={placeholder} rows={1}
           onChange={(e) => setV(e.target.value)} onBlur={guardar}
-          className="w-full text-[11px] px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden leading-snug break-words" />
+          className="w-full text-[11px] px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden leading-snug break-words transition-shadow" />
         {locked && !unlocked && !disabled && (
           <button type="button" title="Editar" onClick={() => setUnlocked(true)}
             className="absolute top-1 right-1 p-0.5 text-gray-400 hover:text-[#7B1FA2] bg-white/80 rounded">
@@ -1123,7 +1228,7 @@ const ObsCell = ({ value, disabled, locked = false, placeholder, onSave }) => {
       </div>
       {dirty && !soloLectura && (
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={guardar}
-          className="flex items-center gap-1 text-[10px] font-semibold text-white bg-[#7B1FA2] hover:bg-[#6A1B9A] px-2 py-1 rounded-md">
+          className="flex items-center gap-1 text-[10px] font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] hover:from-[#6A1B9A] hover:to-[#8E24AA] px-2.5 py-1 rounded-full shadow-sm">
           <Check className="w-3 h-3" /> Guardar
         </button>
       )}
@@ -1135,6 +1240,7 @@ const Th = ({ children, className = '' }) => (
   <th className={`px-2 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wide ${className}`}>{children}</th>
 );
 
+// ── Modales ──
 const GeneralModal = ({ mode, data, areas, areasUsadas, frecuencias, onClose, onSave }) => {
   const [form, setForm] = useState({
     area_id: data.area_id || '', frecuencia_id: data.frecuencia_id || '',
@@ -1143,7 +1249,6 @@ const GeneralModal = ({ mode, data, areas, areasUsadas, frecuencias, onClose, on
     fecha_logro_est: data.fecha_logro_est ? String(data.fecha_logro_est).slice(0, 10) : '',
   });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  // En edición se permite el área actual; en alta, solo áreas no usadas.
   const areasDisponibles = areas.filter((a) => a.id === data.area_id || !areasUsadas.has(a.id));
   const payload = () => ({
     area_id: Number(form.area_id),
@@ -1153,17 +1258,20 @@ const GeneralModal = ({ mode, data, areas, areasUsadas, frecuencias, onClose, on
     fecha_inicio: form.fecha_inicio || null,
     fecha_logro_est: form.fecha_logro_est || null,
   });
+
   return (
     <Overlay onClose={onClose} wide>
       <Header title={mode === 'add' ? 'Nuevo objetivo general' : 'Editar objetivo general'} onClose={onClose} />
-      <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+      <div className="p-4 space-y-3.5 max-h-[70vh] overflow-y-auto">
         <Field label="Área de trabajo" required>
           <select value={form.area_id} onChange={(e) => set('area_id', e.target.value)} className="inp">
             <option value="">Selecciona un área…</option>
             {areasDisponibles.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
           </select>
         </Field>
-        <Field label="Objetivo general"><textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} rows={2} className="inp resize-none" placeholder="Ej. Incrementar la comprensión de instrucciones…" /></Field>
+        <Field label="Objetivo general">
+          <textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} rows={2} className="inp resize-none" placeholder="Ej. Incrementar la comprensión de instrucciones…" />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Plazo (sesiones)"><input type="number" min="1" value={form.plazo_sesiones} onChange={(e) => set('plazo_sesiones', e.target.value)} className="inp" placeholder="24" /></Field>
           <Field label="Frecuencia">
@@ -1177,7 +1285,7 @@ const GeneralModal = ({ mode, data, areas, areasUsadas, frecuencias, onClose, on
         </div>
       </div>
       <Footer onClose={onClose} onSave={() => form.area_id && onSave(payload())} disabled={!form.area_id} />
-      <style>{`.inp{width:100%;padding:.55rem .75rem;border:2px solid #e5e7eb;border-radius:.6rem;font-size:.85rem;outline:none}.inp:focus{border-color:#7B1FA2}`}</style>
+      <style>{`.inp{width:100%;padding:.65rem .85rem;border:1px solid #e5e7eb;border-radius:.75rem;font-size:.85rem;outline:none;transition:box-shadow .2s,border-color .2s}.inp:focus{border-color:#7B1FA2;box-shadow:0 0 0 4px rgba(123,31,162,.15)}select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .7rem center;background-size:1rem;padding-right:2.3rem}`}</style>
     </Overlay>
   );
 };
@@ -1188,12 +1296,14 @@ const EspecificoModal = ({ mode, data, onClose, onSave }) => {
   return (
     <Overlay onClose={onClose}>
       <Header title={mode === 'add' ? 'Nuevo objetivo específico' : 'Editar objetivo específico'} onClose={onClose} />
-      <div className="p-5 space-y-3">
-        <Field label="Objetivo específico" required><textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} rows={2} className="inp resize-none" placeholder="Ej. Sigue instrucciones de 1 paso" /></Field>
+      <div className="p-4 space-y-3">
+        <Field label="Objetivo específico" required>
+          <textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} rows={3} className="inp resize-none" placeholder="Ej. Sigue instrucciones de 1 paso" />
+        </Field>
         <p className="text-[11px] text-gray-400">La actividad y los materiales se definen por sesión, dentro de cada sesión.</p>
       </div>
       <Footer onClose={onClose} onSave={() => form.descripcion.trim() && onSave(form)} disabled={!form.descripcion.trim()} />
-      <style>{`.inp{width:100%;padding:.55rem .75rem;border:2px solid #e5e7eb;border-radius:.6rem;font-size:.85rem;outline:none}.inp:focus{border-color:#7B1FA2}`}</style>
+      <style>{`.inp{width:100%;padding:.65rem .85rem;border:1px solid #e5e7eb;border-radius:.75rem;font-size:.85rem;outline:none;transition:box-shadow .2s,border-color .2s}.inp:focus{border-color:#7B1FA2;box-shadow:0 0 0 4px rgba(123,31,162,.15)}select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .7rem center;background-size:1rem;padding-right:2.3rem}`}</style>
     </Overlay>
   );
 };
@@ -1201,34 +1311,73 @@ const EspecificoModal = ({ mode, data, onClose, onSave }) => {
 const Overlay = ({ children, onClose, wide }) => (
   <div className="fixed inset-0 z-[80000] flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-    <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} overflow-hidden`}>{children}</div>
+    <div className={`relative bg-white rounded-[2rem] shadow-2xl shadow-purple-900/30 w-full ${wide ? 'max-w-2xl' : 'max-w-md'} overflow-hidden ring-1 ring-white/20`}>
+      {children}
+    </div>
   </div>
 );
+
 const Header = ({ title, onClose }) => (
-  <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-5 py-4 flex items-center justify-between">
-    <h2 className="text-base font-bold text-white">{title}</h2>
-    <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/20"><X className="w-4 h-4 text-white" /></button>
+  <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+    <div className="flex items-center gap-2.5">
+      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm shadow-purple-500/20">
+        <ClipboardList className="w-[18px] h-[18px] text-white" />
+      </div>
+      <h2 className="text-base font-extrabold text-[#2D0A4E] leading-tight">{title}</h2>
+    </div>
+    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-purple-50 hover:text-[#7B1FA2] rounded-full transition-colors">
+      <X className="w-4 h-4 text-gray-400" />
+    </button>
   </div>
 );
+
 const Footer = ({ onClose, onSave, disabled, saveLabel = 'Guardar' }) => (
-  <div className="bg-gray-50 px-5 py-3.5 flex items-center justify-end gap-2 border-t border-gray-100">
-    <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50">Cancelar</button>
-    <button onClick={onSave} disabled={disabled} className="px-4 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"><Check className="w-4 h-4" /> {saveLabel}</button>
+  <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 bg-white">
+    <button onClick={onClose}
+      className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all">
+      <X className="w-4 h-4" />
+      Cancelar
+    </button>
+    <button onClick={onSave} disabled={disabled}
+      className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-5 py-2 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">
+      <Check className="w-4 h-4" />
+      {saveLabel}
+    </button>
   </div>
 );
+
 const Field = ({ label, required, children }) => (
   <div>
-    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{label} {required && <span className="text-red-500">*</span>}</label>
+    <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
     {children}
   </div>
 );
+
 const ConfirmModal = ({ titulo, mensaje, onCancel, onConfirm }) => (
   <Overlay onClose={onCancel}>
-    <div className="bg-gradient-to-r from-red-500 to-red-600 px-5 py-4 flex items-center gap-3"><AlertCircle className="w-5 h-5 text-white" /><h2 className="text-base font-bold text-white">{titulo}</h2></div>
-    <div className="p-5"><p className="text-sm text-gray-700">{mensaje}</p></div>
-    <div className="bg-gray-50 px-5 py-3.5 flex items-center justify-end gap-2 border-t border-gray-100">
-      <button onClick={onCancel} className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50">Cancelar</button>
-      <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 flex items-center gap-1.5"><Trash2 className="w-4 h-4" /> Eliminar</button>
+    <div className="p-6 text-center">
+      <div className="mx-auto w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+        <AlertCircle className="w-7 h-7 text-red-600" />
+      </div>
+      <h3 className="text-lg font-extrabold text-[#2D0A4E] mb-1">{titulo}</h3>
+      <p className="text-sm text-gray-500 mb-2 leading-relaxed">Esta acción no se puede deshacer</p>
+      <div className="p-4 bg-[#F5F0FA] rounded-2xl text-left mt-4">
+        <p className="text-sm text-gray-700 leading-relaxed">{mensaje}</p>
+      </div>
+    </div>
+    <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
+      <button onClick={onCancel}
+        className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all">
+        <X className="w-4 h-4" />
+        Cancelar
+      </button>
+      <button onClick={onConfirm}
+        className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-red-700 transition-all shadow-lg shadow-red-500/30">
+        <Trash2 className="w-4 h-4" />
+        Eliminar
+      </button>
     </div>
   </Overlay>
 );

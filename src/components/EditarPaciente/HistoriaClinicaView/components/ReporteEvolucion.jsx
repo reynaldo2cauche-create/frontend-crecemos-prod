@@ -110,32 +110,33 @@ const ReporteEvolucion = ({
       {vistaResumida ? (
         <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-amber-600" />
+          <div className="relative overflow-hidden rounded-2xl border border-purple-100/60 mb-6 px-6 py-5" style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.08) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}>
+            <div className="pointer-events-none absolute -top-10 right-10 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-md shadow-purple-500/30">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Reportes de Evolución</h2>
+                  <p className="text-[13px] text-gray-500">Historial de evaluaciones del paciente</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Reportes de Evolución</h2>
-                <p className="text-sm text-gray-500">Historial de evaluaciones del paciente</p>
-              </div>
+              {puedeEditarHistoriaClinica ? (
+                <button
+                  onClick={handleNuevoReporte}
+                  className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30 flex-shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Nuevo Reporte</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full flex-shrink-0">
+                  <ShieldAlert className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs text-amber-700 font-semibold">Solo lectura</span>
+                </div>
+              )}
             </div>
-            {puedeEditarHistoriaClinica ? (
-              <button
-                onClick={handleNuevoReporte}
-                className="flex items-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Nuevo Reporte
-              </button>
-            ) : (
-              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-                <ShieldAlert className="w-4 h-4 text-amber-600" />
-                <span className="text-xs text-amber-700 font-medium">
-                  Solo lectura
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Lista de Reportes */}
@@ -146,21 +147,25 @@ const ReporteEvolucion = ({
                 return (
                   <div
                     key={reporte.id}
-                    className="bg-white rounded-xl border border-gray-100 overflow-hidden transition-all hover:shadow-md"
+                    className={`bg-white rounded-2xl border overflow-hidden transition-all ${
+                      isExpanded
+                        ? 'border-purple-200/70 shadow-[0_8px_24px_rgba(123,31,162,0.08)]'
+                        : 'border-gray-100 shadow-[0_1px_3px_rgba(16,24,40,0.04)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.06)]'
+                    }`}
                   >
                     {/* Header del reporte */}
                     <button
                       onClick={() => toggleExpandedReporte(reporte.id)}
-                      className="w-full px-4 py-3 flex items-center justify-between gap-2 hover:bg-gray-50 transition-all"
+                      className={`w-full px-4 py-3.5 flex items-center justify-between gap-2 transition-colors ${isExpanded ? 'bg-purple-50/40' : 'hover:bg-gray-50/60'}`}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 text-blue-600" />
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isExpanded ? 'bg-[#7B1FA2]/10 text-[#7B1FA2]' : 'bg-gray-100 text-gray-500'}`}>
+                          <FileText className="w-4 h-4" />
                         </div>
                         <div className="text-left min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
-                            <h3 className="text-base font-bold text-gray-900">Reporte N° {reportesExistentes.length - index}</h3>
-                            <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                            <h3 className="text-sm font-bold text-gray-900">Reporte N° {reportesExistentes.length - index}</h3>
+                            <span className="px-2.5 py-0.5 bg-purple-50 text-[#7B1FA2] text-[11px] font-semibold rounded-full">
                               {reporte.servicio?.nombre || reporte.servicio}
                             </span>
                           </div>
@@ -193,7 +198,7 @@ const ReporteEvolucion = ({
 
                     {/* Contenido expandible */}
                     {isExpanded && (
-                      <div className="border-t border-gray-100 p-6 bg-gray-50">
+                      <div className="border-t border-gray-100 p-6 bg-white">
                         <div className="space-y-6">
                           {/* Grid de información */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -216,18 +221,18 @@ const ReporteEvolucion = ({
               })}
             </div>
           ) : (
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-8 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-amber-600" />
+            <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-7 h-7 text-[#7B1FA2]" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay reportes de evolución</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <h3 className="text-base font-bold text-gray-800 mb-1">No hay reportes de evolución</h3>
+              <p className="text-sm text-gray-400 mb-5">
                 Aún no se han creado reportes de evolución para este paciente
               </p>
               {puedeEditarHistoriaClinica && (
                 <button
                   onClick={handleNuevoReporte}
-                  className="inline-flex items-center gap-2 bg-[#7B1FA2] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#6A1B9A] transition-all"
+                  className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30"
                 >
                   <Plus className="w-4 h-4" />
                   Crear Primer Reporte
@@ -239,25 +244,28 @@ const ReporteEvolucion = ({
       ) : (
         /* Vista de Formulario - Crear/Editar */
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center">
-                <Plus className="w-5 h-5 text-[#7B1FA2]" />
+          <div className="relative overflow-hidden rounded-2xl border border-purple-100/60 mb-6 px-6 py-5" style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.08) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}>
+            <div className="pointer-events-none absolute -top-10 right-10 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-md shadow-purple-500/30">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Nuevo Reporte de Evolución</h2>
+                  <p className="text-[13px] text-gray-500">Completa la información del reporte de avance del paciente</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Nuevo Reporte de Evolución</h2>
-                <p className="text-sm text-gray-500">Complete la información del reporte</p>
-              </div>
+              {reportesExistentes && reportesExistentes.length > 0 && (
+                <button
+                  onClick={toggleVistaResumida}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-gray-600 border border-gray-200 bg-white/70 hover:bg-white transition-all flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Cancelar</span>
+                </button>
+              )}
             </div>
-            {reportesExistentes && reportesExistentes.length > 0 && (
-              <button
-                onClick={toggleVistaResumida}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-              >
-                <X className="w-4 h-4" />
-                Cancelar
-              </button>
-            )}
           </div>
 
           <div className="space-y-6">
@@ -265,18 +273,21 @@ const ReporteEvolucion = ({
             <Section title="I. DATOS GENERALES">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField label="Servicio" required>
-                  <select
-                    value={reporteEvolucion.servicio}
-                    onChange={(e) => handleInputChange('servicio', e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
-                  >
-                    <option value="">Seleccionar servicio</option>
-                    {serviciosPaciente.map((servicio) => (
-                      <option key={servicio.id} value={servicio.servicio.id}>
-                        {servicio.servicio.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={reporteEvolucion.servicio}
+                      onChange={(e) => handleInputChange('servicio', e.target.value)}
+                      className="w-full pl-4 pr-10 py-3 text-sm border border-gray-200 rounded-xl appearance-none cursor-pointer focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
+                    >
+                      <option value="">Seleccionar servicio</option>
+                      {serviciosPaciente.map((servicio) => (
+                        <option key={servicio.id} value={servicio.servicio.id}>
+                          {servicio.servicio.nombre}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </FormField>
 
                 <FormField label="Edad (Actual al realizar el reporte)">
@@ -285,7 +296,7 @@ const ReporteEvolucion = ({
                       type="number"
                       value={calcularEdad(paciente?.fecha_nacimiento)}
                       disabled
-                      className="flex-1 px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium"
+                      className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium"
                     />
                     <span className="text-sm text-gray-600 font-medium">años</span>
                   </div>
@@ -296,23 +307,26 @@ const ReporteEvolucion = ({
                     type="date"
                     value={reporteEvolucion.fechaEvaluacion}
                     onChange={(e) => handleInputChange('fechaEvaluacion', e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                    className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                   />
                 </FormField>
 
                 <FormField label="Frecuencia de Atención" required>
-                  <select
-                    value={reporteEvolucion.frecuenciaAtencion}
-                    onChange={(e) => handleInputChange('frecuenciaAtencion', e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
-                  >
-                    <option value="">Seleccionar frecuencia</option>
-                    {frecuenciasAtencion.map((freq) => (
-                      <option key={freq.value} value={freq.value}>
-                        {freq.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={reporteEvolucion.frecuenciaAtencion}
+                      onChange={(e) => handleInputChange('frecuenciaAtencion', e.target.value)}
+                      className="w-full pl-4 pr-10 py-3 text-sm border border-gray-200 rounded-xl appearance-none cursor-pointer focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
+                    >
+                      <option value="">Seleccionar frecuencia</option>
+                      {frecuenciasAtencion.map((freq) => (
+                        <option key={freq.value} value={freq.value}>
+                          {freq.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </FormField>
 
                 <FormField label="Especialista">
@@ -320,7 +334,7 @@ const ReporteEvolucion = ({
                     type="text"
                     value={user?.nombres + ' ' + user?.apellidos}
                     disabled
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium"
+                    className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium"
                   />
                 </FormField>
 
@@ -332,7 +346,7 @@ const ReporteEvolucion = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Fecha Inicio */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
                       <p className="text-xs font-semibold text-gray-600 mb-3 flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5" />
                         Desde
@@ -343,7 +357,7 @@ const ReporteEvolucion = ({
                           <select
                             value={mesInicio}
                             onChange={(e) => setMesInicio(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                            className="cx-select w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                           >
                             <option value="">Mes</option>
                             {meses.map((mes) => (
@@ -358,7 +372,7 @@ const ReporteEvolucion = ({
                           <select
                             value={anioInicio}
                             onChange={(e) => setAnioInicio(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                            className="cx-select w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                           >
                             {aniosDisponibles.map((anio) => (
                               <option key={anio} value={anio}>
@@ -371,7 +385,7 @@ const ReporteEvolucion = ({
                     </div>
 
                     {/* Fecha Fin */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
                       <p className="text-xs font-semibold text-gray-600 mb-3 flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5" />
                         Hasta
@@ -382,7 +396,7 @@ const ReporteEvolucion = ({
                           <select
                             value={mesFin}
                             onChange={(e) => setMesFin(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                            className="cx-select w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                           >
                             <option value="">Mes</option>
                             {meses.map((mes) => (
@@ -397,7 +411,7 @@ const ReporteEvolucion = ({
                           <select
                             value={anioFin}
                             onChange={(e) => setAnioFin(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                            className="cx-select w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                           >
                             {aniosDisponibles.map((anio) => (
                               <option key={anio} value={anio}>
@@ -431,7 +445,7 @@ const ReporteEvolucion = ({
                   onChange={(e) => handleInputChange('metodologia', e.target.value)}
                   placeholder="Escriba aquí la metodología..."
                   rows={6}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
             </Section>
@@ -444,7 +458,7 @@ const ReporteEvolucion = ({
                   onChange={(e) => handleInputChange('objetivos', e.target.value)}
                   placeholder="Escriba aquí los objetivos..."
                   rows={6}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
             </Section>
@@ -457,7 +471,7 @@ const ReporteEvolucion = ({
                   onChange={(e) => handleInputChange('logros', e.target.value)}
                   placeholder="Escriba aquí los logros..."
                   rows={6}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
             </Section>
@@ -470,7 +484,7 @@ const ReporteEvolucion = ({
                   onChange={(e) => handleInputChange('dificultades', e.target.value)}
                   placeholder="Escriba aquí las dificultades..."
                   rows={6}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
             </Section>
@@ -483,7 +497,7 @@ const ReporteEvolucion = ({
                   onChange={(e) => handleInputChange('objetivosSiguientePeriodo', e.target.value)}
                   placeholder="Escriba aquí los objetivos..."
                   rows={6}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
             </Section>
@@ -502,7 +516,7 @@ const ReporteEvolucion = ({
                 <button
                   onClick={handleSaveReporte}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-[#A3C644]/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <>
@@ -527,34 +541,42 @@ const ReporteEvolucion = ({
 
 // Componentes auxiliares
 const Section = ({ title, children }) => (
-  <div className="bg-white border border-gray-100 rounded-xl p-6">
-    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-6">{title}</h3>
+  <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+      <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+        <FileText className="w-[18px] h-[18px] text-white" />
+      </span>
+      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">{title}</h3>
+    </div>
     {children}
   </div>
 );
 
 const FormField = ({ label, required, children }) => (
   <div>
-    <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+    <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
       {label}
-      {required && <span className="text-red-500 ml-1">*</span>}
+      {required && <span className="text-red-400 ml-1">*</span>}
     </label>
     {children}
   </div>
 );
 
 const InfoItem = ({ label, value }) => (
-  <div className="p-4 bg-white rounded-lg border border-gray-100">
-    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{label}</p>
-    <p className="text-sm text-gray-900 font-medium">{value || 'No especificado'}</p>
+  <div>
+    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+    <p className="text-sm text-gray-800 font-semibold">{value || 'No especificado'}</p>
   </div>
 );
 
 const TextSection = ({ title, content }) => (
   <div>
-    <h4 className="text-sm font-bold text-[#7B1FA2] mb-3">{title}</h4>
-    <div className="p-4 bg-white rounded-lg border border-gray-100">
-      <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+    <div className="flex items-center gap-2 mb-2.5">
+      <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#7B1FA2] to-[#9C27B0] flex-shrink-0" />
+      <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide">{title}</h4>
+    </div>
+    <div className="px-4 py-3 bg-gray-50/70 rounded-xl border border-gray-100">
+      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
         {content || 'No especificado'}
       </p>
     </div>

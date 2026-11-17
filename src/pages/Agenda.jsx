@@ -1038,8 +1038,8 @@ const guardarCita = async (datosFormulario = null) => {
 
           {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
             <div className="max-w-md">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Terapeuta *
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Terapeuta <span className="text-red-400">*</span>
               </label>
               <select
                 value={terapeutaFiltro}
@@ -1056,7 +1056,7 @@ const guardarCita = async (datosFormulario = null) => {
                   setFechaActual(hoyCL);
                   setFechaCalendario(hoyCL);
                 }}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
+                className="cx-select w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
                 {terapeutasDisponibles.map((terapeuta) => (

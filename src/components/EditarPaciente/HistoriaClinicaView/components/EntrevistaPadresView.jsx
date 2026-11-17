@@ -466,35 +466,36 @@ const EntrevistaPadresView = ({ paciente, user }) => {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <Users className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Entrevista a Padres</h2>
-            <p className="text-sm text-gray-500">Formulario de entrevista inicial</p>
-          </div>
-        </div>
-
-        {entrevistaExistente && !editando && (
-          puedeEditarHistoriaClinica ? (
-            <button
-              onClick={handleEditar}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-all shadow-sm"
-            >
-              <Edit className="w-4 h-4" />
-              Editar Entrevista
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-              <ShieldAlert className="w-4 h-4 text-amber-600" />
-              <span className="text-xs text-amber-700 font-medium">
-                Solo lectura
-              </span>
+      <div className="relative overflow-hidden rounded-2xl border border-purple-100/60 mb-6 px-6 py-5" style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.08) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}>
+        <div className="pointer-events-none absolute -top-10 right-10 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-md shadow-purple-500/30">
+              <Users className="w-5 h-5 text-white" />
             </div>
-          )
-        )}
+            <div className="min-w-0">
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Entrevista a Padres</h2>
+              <p className="text-[13px] text-gray-500">Formulario de entrevista inicial</p>
+            </div>
+          </div>
+
+          {entrevistaExistente && !editando && (
+            puedeEditarHistoriaClinica ? (
+              <button
+                onClick={handleEditar}
+                className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30 flex-shrink-0"
+              >
+                <Edit className="w-4 h-4" />
+                <span className="hidden sm:inline">Editar Entrevista</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full flex-shrink-0">
+                <ShieldAlert className="w-4 h-4 text-amber-600" />
+                <span className="text-xs text-amber-700 font-semibold">Solo lectura</span>
+              </div>
+            )
+          )}
+        </div>
       </div>
 
       {/* Vista Resumida o Formulario */}
@@ -560,7 +561,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
         <div className="p-6">
           {/* I. DATOS GENERALES */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">I. DATOS GENERALES</h4>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">I. DATOS GENERALES</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
               <DataRow label="Grado Escolar Actual" value={entrevista.gradoEscolar?.nombre ? ` ${entrevista.gradoEscolar.nombre}` : 'No especificado'} />
               <DataRow label="Otras Atenciones" value={entrevista.atenciones?.nombre || 'No especificado'} />
@@ -570,7 +571,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
 
           {/* II. HISTORIA FAMILIAR */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">II. HISTORIA FAMILIAR</h4>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">II. HISTORIA FAMILIAR</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
               <DataRow label="Relación entre los padres" value={entrevista.relacionPadres?.nombre || 'No especificado'} />
               <DataRow label="Cantidad de hermanos" value={entrevista.cantidadHermanos || entrevista.cantidad_hermanos} />
@@ -620,7 +621,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
 
           {/* III. HISTORIA DEL DESARROLLO */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">III. HISTORIA DEL DESARROLLO</h4>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">III. HISTORIA DEL DESARROLLO</h4>
             <div className="grid grid-cols-1 gap-x-6">
               <DataRow label="Antecedentes prenatales, perinatales y postnatales" value={entrevista.antecedentesPrenatales || entrevista.antecedentes_prenatales} />
               <DataRow label="Desarrollo motor" value={entrevista.desarrolloMotor || entrevista.desarrollo_motor} />
@@ -635,7 +636,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
 
           {/* IV. ASPECTOS DE SOCIALIZACIÓN Y AFECTIVO */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">IV. ASPECTOS DE SOCIALIZACIÓN Y AFECTIVO</h4>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">IV. ASPECTOS DE SOCIALIZACIÓN Y AFECTIVO</h4>
             <div className="grid grid-cols-1 gap-x-6">
               <DataRow label="Relación con pares" value={entrevista.relacionPares || entrevista.relacion_pares} />
               <DataRow label="Expresión emocional" value={entrevista.expresionEmocional || entrevista.expresion_emocional} />
@@ -645,7 +646,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
 
           {/* V. INTERESES Y PASATIEMPOS */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">V. INTERESES Y PASATIEMPOS</h4>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">V. INTERESES Y PASATIEMPOS</h4>
             <div className="grid grid-cols-1 gap-x-6">
               <DataRow label="Juegos preferidos" value={entrevista.juegosPreferidos || entrevista.juegos_preferidos} />
               <DataRow label="Actividades favoritas" value={entrevista.actividadesFavoritas || entrevista.actividades_favoritas} />
@@ -654,7 +655,7 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
 
           {/* VI. RECOMENDACIONES */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-[#A3C644] uppercase mb-4 pb-2 border-b-2 border-[#A3C644]">VI. RECOMENDACIONES</h4>
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">VI. RECOMENDACIONES</h4>
             <div className="grid grid-cols-1 gap-x-6">
               <DataRow label="Recomendaciones y observaciones finales" value={entrevista.recomendaciones} />
             </div>
@@ -667,17 +668,22 @@ const VistaResumenEntrevista = ({ entrevista, expandida, onToggle }) => {
 
 // Componentes auxiliares para el formulario (fuera del componente principal para evitar re-renders)
 const Section = ({ title, children }) => (
-  <div className="bg-white border border-gray-100 rounded-xl p-6 mb-6">
-    <h3 className="text-sm font-semibold text-[#7B1FA2] uppercase tracking-wide mb-6 pb-2 border-b-2 border-[#7B1FA2]">{title}</h3>
+  <div className="bg-white border border-gray-100 rounded-2xl p-6 mb-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+      <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+        <Users className="w-[18px] h-[18px] text-white" />
+      </span>
+      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">{title}</h3>
+    </div>
     {children}
   </div>
 );
 
 const FormField = ({ label, required, error, children, className = '' }) => (
   <div className={className}>
-    <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+    <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
       {label}
-      {required && <span className="text-red-500 ml-1">*</span>}
+      {required && <span className="text-red-400 ml-1">*</span>}
     </label>
     {children}
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -720,7 +726,7 @@ const FormularioEntrevista = ({
             <select
               value={entrevistaPadres.escolaridad}
               onChange={(e) => handleInputChange('escolaridad', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="cx-select w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
             >
               <option value="">Seleccionar grado</option>
               {gradosEscolares.map((grado) => (
@@ -736,7 +742,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.motivoConsulta}
               onChange={(e) => handleInputChange('motivoConsulta', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa el motivo de consulta..."
             />
           </FormField>
@@ -745,7 +751,7 @@ const FormularioEntrevista = ({
             <select
               value={entrevistaPadres.derivacionInterna}
               onChange={(e) => handleInputChange('derivacionInterna', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="cx-select w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
             >
               <option value="">Seleccionar</option>
               {atenciones.map((atencion) => (
@@ -766,7 +772,7 @@ const FormularioEntrevista = ({
             <select
               value={entrevistaPadres.relacionEntrePadres}
               onChange={(e) => handleInputChange('relacionEntrePadres', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="cx-select w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
             >
               <option value="">Seleccionar</option>
               {relacionPadres.map((relacion) => (
@@ -782,7 +788,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.detalleRelacionPadres}
               onChange={(e) => handleInputChange('detalleRelacionPadres', e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa la relación..."
             />
           </FormField>
@@ -794,25 +800,33 @@ const FormularioEntrevista = ({
               min="0"
               value={entrevistaPadres.cantidadHermanos}
               onChange={(e) => handleCantidadHermanosChange(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
             />
           </FormField>
 
           {/* Datos de hermanos */}
           {hermanos.length > 0 && (
             <div className="md:col-span-2">
-              <h4 className="text-sm font-semibold text-gray-700 mb-4">Datos de los Hermanos</h4>
+              <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700 uppercase tracking-wide mb-4">
+                <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#7B1FA2] to-[#9C27B0]" />
+                Datos de los Hermanos
+              </h4>
               <div className="space-y-4">
                 {hermanos.map((hermano, index) => (
-                  <div key={hermano.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-xs font-semibold text-gray-600 mb-3">Hermano {index + 1}</p>
+                  <div key={hermano.id} className="p-4 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-purple-500/20">
+                        {index + 1}
+                      </span>
+                      <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Hermano</p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField label="NOMBRE COMPLETO" required error={errors[`hermano_${hermano.id}_nombre`]}>
                         <input
                           type="text"
                           value={hermano.nombre}
                           onChange={(e) => handleHermanoChange(hermano.id, 'nombre', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium"
+                          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                           placeholder="Nombre del hermano"
                         />
                       </FormField>
@@ -821,14 +835,14 @@ const FormularioEntrevista = ({
                           type="number"
                           value={hermano.edad}
                           onChange={(e) => handleHermanoChange(hermano.id, 'edad', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium"
+                          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                         />
                       </FormField>
                       <FormField label="SEXO" required error={errors[`hermano_${hermano.id}_sexo`]}>
                         <select
                           value={hermano.sexo}
                           onChange={(e) => handleHermanoChange(hermano.id, 'sexo', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium"
+                          className="cx-select w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                         >
                           <option value="">Seleccionar</option>
                           {generos.map((genero) => (
@@ -848,10 +862,13 @@ const FormularioEntrevista = ({
           {/* Miembros de la familia */}
           <div className="md:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-semibold text-gray-700">Miembros de la Familia</h4>
+              <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700 uppercase tracking-wide">
+                <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#7B1FA2] to-[#9C27B0]" />
+                Miembros de la Familia
+              </h4>
               <button
                 onClick={handleAgregarFamiliar}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-all"
+                className="inline-flex items-center gap-2 bg-[#7B1FA2]/10 text-[#7B1FA2] px-4 py-2 rounded-full text-sm font-semibold hover:bg-[#7B1FA2]/15 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 Agregar Familiar
@@ -866,7 +883,7 @@ const FormularioEntrevista = ({
                   <select
                     value={tipoFamiliar}
                     onChange={(e) => handleTipoFamiliarChange(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+                    className="cx-select w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                   >
                     <option value="">Seleccionar tipo</option>
                     <option value="Madre">Madre</option>
@@ -892,12 +909,17 @@ const FormularioEntrevista = ({
             {familiares.length > 0 && (
               <div className="space-y-4">
                 {familiares.map((familiar, index) => (
-                  <div key={familiar.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-semibold text-gray-600">{familiar.tipo} {index + 1}</p>
+                  <div key={familiar.id} className="p-4 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-purple-500/20">
+                          {index + 1}
+                        </span>
+                        <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">{familiar.tipo}</p>
+                      </div>
                       <button
                         onClick={() => handleEliminarFamiliar(familiar.id)}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -908,7 +930,7 @@ const FormularioEntrevista = ({
                           type="text"
                           value={familiar.nombre}
                           onChange={(e) => handleFamiliarChange(familiar.id, 'nombre', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium"
+                          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                         />
                       </FormField>
                       <FormField label="EDAD" required error={errors[`familiar_${familiar.id}_edad`]}>
@@ -916,14 +938,14 @@ const FormularioEntrevista = ({
                           type="number"
                           value={familiar.edad}
                           onChange={(e) => handleFamiliarChange(familiar.id, 'edad', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium"
+                          className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                         />
                       </FormField>
                       <FormField label="OCUPACIÓN" required error={errors[`familiar_${familiar.id}_ocupacion`]}>
                         <select
                           value={familiar.ocupacion}
                           onChange={(e) => handleFamiliarChange(familiar.id, 'ocupacion', e.target.value)}
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium"
+                          className="cx-select w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
                         >
                           <option value="">Seleccionar</option>
                           {ocupaciones.map((ocupacion) => (
@@ -946,7 +968,7 @@ const FormularioEntrevista = ({
               type="text"
               value={entrevistaPadres.tiempoJuego}
               onChange={(e) => handleInputChange('tiempoJuego', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
               placeholder="Ej: 2 horas"
             />
           </FormField>
@@ -956,7 +978,7 @@ const FormularioEntrevista = ({
               type="text"
               value={entrevistaPadres.tiempoDispositivos}
               onChange={(e) => handleInputChange('tiempoDispositivos', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
               placeholder="Ej: 1 hora"
             />
           </FormField>
@@ -966,7 +988,7 @@ const FormularioEntrevista = ({
             <select
               value={entrevistaPadres.antecedentesFamiliares}
               onChange={(e) => handleInputChange('antecedentesFamiliares', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="cx-select w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 font-medium"
             >
               <option value="">Seleccionar</option>
               <option value="Si">Sí</option>
@@ -981,7 +1003,7 @@ const FormularioEntrevista = ({
                   value={entrevistaPadres.antecedentesMedicos}
                   onChange={(e) => handleInputChange('antecedentesMedicos', e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
 
@@ -990,7 +1012,7 @@ const FormularioEntrevista = ({
                   value={entrevistaPadres.antecedentesPsiquiatricos}
                   onChange={(e) => handleInputChange('antecedentesPsiquiatricos', e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
 
@@ -999,7 +1021,7 @@ const FormularioEntrevista = ({
                   value={entrevistaPadres.antecedentesToxicologicos}
                   onChange={(e) => handleInputChange('antecedentesToxicologicos', e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
                 />
               </FormField>
             </>
@@ -1015,7 +1037,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.antecedentesPrenatales}
               onChange={(e) => handleInputChange('antecedentesPrenatales', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa los antecedentes prenatales..."
             />
           </FormField>
@@ -1025,7 +1047,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.desarrolloMotor}
               onChange={(e) => handleInputChange('desarrolloMotor', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa el desarrollo motor..."
             />
           </FormField>
@@ -1035,7 +1057,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.desarrolloLenguaje}
               onChange={(e) => handleInputChange('desarrolloLenguaje', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa el desarrollo del lenguaje..."
             />
           </FormField>
@@ -1045,7 +1067,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.alimentacion}
               onChange={(e) => handleInputChange('alimentacion', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa la alimentación..."
             />
           </FormField>
@@ -1055,7 +1077,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.sueno}
               onChange={(e) => handleInputChange('sueno', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa el patrón de sueño..."
             />
           </FormField>
@@ -1065,7 +1087,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.controlEsfinteres}
               onChange={(e) => handleInputChange('controlEsfinteres', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa el control de esfínteres..."
             />
           </FormField>
@@ -1075,7 +1097,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.antecedentesMedicosNino}
               onChange={(e) => handleInputChange('antecedentesMedicosNino', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa los antecedentes médicos..."
             />
           </FormField>
@@ -1085,7 +1107,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.antecedentesEscolares}
               onChange={(e) => handleInputChange('antecedentesEscolares', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa los antecedentes escolares..."
             />
           </FormField>
@@ -1100,7 +1122,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.relacionPares}
               onChange={(e) => handleInputChange('relacionPares', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa la relación con pares..."
             />
           </FormField>
@@ -1110,7 +1132,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.expresionEmocional}
               onChange={(e) => handleInputChange('expresionEmocional', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa la expresión emocional..."
             />
           </FormField>
@@ -1120,7 +1142,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.relacionAutoridad}
               onChange={(e) => handleInputChange('relacionAutoridad', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa la relación con figuras de autoridad..."
             />
           </FormField>
@@ -1135,7 +1157,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.juegosPreferidos}
               onChange={(e) => handleInputChange('juegosPreferidos', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa los juegos preferidos..."
             />
           </FormField>
@@ -1145,7 +1167,7 @@ const FormularioEntrevista = ({
               value={entrevistaPadres.actividadesFavoritas}
               onChange={(e) => handleInputChange('actividadesFavoritas', e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
               placeholder="Describa las actividades favoritas..."
             />
           </FormField>
@@ -1159,7 +1181,7 @@ const FormularioEntrevista = ({
             value={entrevistaPadres.recomendaciones}
             onChange={(e) => handleInputChange('recomendaciones', e.target.value)}
             rows={6}
-            className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
+            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none bg-white text-gray-900 font-medium hover:border-gray-300"
             placeholder="Escriba las recomendaciones..."
           />
         </FormField>
@@ -1171,7 +1193,7 @@ const FormularioEntrevista = ({
           <button
             onClick={onGuardar}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-[#A3C644]/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
           >
             {saving ? (
               <>

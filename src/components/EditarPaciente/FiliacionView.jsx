@@ -58,8 +58,8 @@ const FormField = ({ label, value, displayValue, name, type = 'text', editable, 
   }`;
 
   return (
-    <div className="rounded-2xl border border-purple-100/70 bg-[#F8F5FC] px-5 py-3.5">
-      <label className="block text-base text-gray-500 mb-1">{label}</label>
+    <div className="py-1">
+      <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
 
       {editable ? (
         <>
@@ -100,7 +100,7 @@ const FormField = ({ label, value, displayValue, name, type = 'text', editable, 
           )}
         </>
       ) : (
-        <p className="text-xl font-medium text-gray-900 break-words min-h-[1.75rem]">
+        <p className="text-sm font-semibold text-gray-800 break-words min-h-[1.25rem]">
           {displayValue || value || '-'}
         </p>
       )}
@@ -109,12 +109,13 @@ const FormField = ({ label, value, displayValue, name, type = 'text', editable, 
 };
 
 const Section = ({ icon: Icon, title, iconColor = 'text-[#7B1FA2]', bgColor = 'bg-purple-50', children }) => (
-  <section className="glass-panel rounded-3xl p-6">
-    <div className="flex items-center gap-4 mb-4">
-      <div className={`w-12 h-12 rounded-2xl ${bgColor} flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-6 h-6 ${iconColor}`} />
+  <section className="glass-panel rounded-3xl p-5">
+    <div className="flex items-center gap-3 mb-4">
+      <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center flex-shrink-0 ring-1 ring-black/[0.03]`}>
+        <Icon className={`w-5 h-5 ${iconColor}`} />
       </div>
-      <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide whitespace-nowrap">{title}</h3>
+      <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
     </div>
     {children}
   </section>
@@ -239,13 +240,13 @@ const FiliacionView = ({
       <div className="space-y-4">
         <div className="glass-panel rounded-3xl">
         {/* Header */}
-        <div className="p-6 pb-4">
+        <div className="p-5 pb-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-6 h-6 text-[#7B1FA2]" />
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+                <FileText className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-[22px] font-extrabold text-[#2D0A4E]">
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">
                 Información del Paciente
               </h2>
             </div>
@@ -270,10 +271,10 @@ const FiliacionView = ({
             )}
           </div>
 
-          <p className="text-lg text-gray-600 mt-3">Datos personales y médicos</p>
+          <p className="text-[13px] text-gray-400 mt-2">Datos personales y médicos</p>
 
           {paciente.updated_at && (
-            <div className="flex items-center gap-1.5 text-sm text-gray-400 mt-1">
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
               <Calendar className="w-3.5 h-3.5" />
               <span>Última actualización: {formatPeruDateTime(paciente.updated_at)}</span>
             </div>
@@ -284,14 +285,14 @@ const FiliacionView = ({
           {/* Resumen rápido en chips */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {resumen.map((c, i) => (
-              <div key={i} className="rounded-2xl bg-[#F5F0FA] p-3.5 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                <div className="w-11 h-11 rounded-xl bg-purple-100/70 flex items-center justify-center flex-shrink-0">
-                  <c.Icon className="w-5 h-5 text-[#7B1FA2]" />
+              <div key={i} className="rounded-xl bg-[#F5F0FA] p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                <div className="w-10 h-10 rounded-lg bg-purple-100/70 flex items-center justify-center flex-shrink-0">
+                  <c.Icon className="w-[18px] h-[18px] text-[#7B1FA2]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-base font-semibold text-gray-800">{c.label}</p>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{c.label}</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-base text-gray-500 break-words leading-snug">{c.value}</p>
+                    <p className="text-[13px] font-semibold text-gray-700 break-words leading-snug">{c.value}</p>
                     {c.toggle && (
                       <button
                         type="button"
@@ -494,7 +495,7 @@ const FiliacionView = ({
               <button
                 type="button"
                 onClick={() => setOpenAsignarServicio(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm mb-4"
+                className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-[#A3C644]/30 mb-4"
               >
                 <Plus className="w-4 h-4" />
                 Asignar Nuevo Servicio
@@ -502,17 +503,17 @@ const FiliacionView = ({
             )}
 
             {paciente.servicios && paciente.servicios.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="divide-y divide-gray-100">
                 {paciente.servicios.map(servicio => (
                   <div
                     key={servicio.id}
-                    className="border border-purple-100/70 rounded-2xl p-5 hover:shadow-sm transition-all bg-[#F8F5FC]"
+                    className="py-4 first:pt-1 last:pb-1"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-2 h-2 rounded-full bg-[#7B1FA2]"></div>
-                          <span className="font-semibold text-gray-900">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2.5 mb-2.5">
+                          <span className="w-2 h-2 rounded-full bg-[#A3C644] flex-shrink-0" />
+                          <span className="text-sm font-bold text-gray-800">
                             {servicio.servicio?.nombre || 'Sin nombre'}
                           </span>
                         </div>
@@ -558,32 +559,28 @@ const FiliacionView = ({
                       </div>
 
                       {puedeGestionarServicios && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 flex-shrink-0">
                           <button
                             type="button"
                             onClick={() => {
-                              console.log('🔵 Botón editar clickeado');
-                              console.log('🔵 Servicio:', servicio);
-                              console.log('🔵 Terapeuta ID:', servicio.asignaciones?.[0]?.terapeuta?.id);
                               setServicioAEditar(servicio);
-                              const terapeutaId = servicio.asignaciones && 
-                                                 servicio.asignaciones.length > 0 && 
+                              const terapeutaId = servicio.asignaciones &&
+                                                 servicio.asignaciones.length > 0 &&
                                                  servicio.asignaciones[0].terapeuta
                                 ? String(servicio.asignaciones[0].terapeuta.id)
                                 : '';
-                              console.log('🔵 ID del terapeuta a setear:', terapeutaId);
                               setNuevoTerapeuta(terapeutaId);
                               setOpenEditarTerapeuta(true);
                             }}
-                            className="p-2 text-[#7B1FA2] hover:bg-purple-100 rounded-lg transition-all"
+                            className="p-2 text-gray-400 hover:text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          
+
                           <button
                             type="button"
                             onClick={() => setModalEliminarServicio({ open: true, servicio })}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -594,9 +591,9 @@ const FiliacionView = ({
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl">
-                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">No hay servicios asignados</p>
+              <div className="text-center py-8 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2.5" />
+                <p className="text-sm text-gray-400">No hay servicios asignados</p>
               </div>
             )}
           </Section>

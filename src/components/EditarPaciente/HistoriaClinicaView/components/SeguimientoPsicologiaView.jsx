@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Plus, Copy, Check, Link2, Clock, CheckCircle2, Eye, Trash2, X, Loader2, AlertCircle, Brain,
+  Plus, Check, Link2, Clock, CheckCircle2, Eye, Trash2, X, AlertCircle, Brain, Calendar, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import {
   generarFicha,
@@ -38,12 +38,22 @@ const periodoActual = () => {
   return `${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`;
 };
 
+// Dato con etiqueta pequeña (mismo patrón que el detalle de Indicación Terapéutica)
+const Dato = ({ label, children }) => (
+  <div className="min-w-0">
+    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+    <p className="text-sm font-semibold text-gray-800 truncate">{children}</p>
+  </div>
+);
+
 const SeguimientoPsicologiaView = ({ paciente, user }) => {
   const puedeGestionar = canManagePatientStatus(user); // Admin / Admisión
   const [fichas, setFichas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState(null); // { msg, tipo }
   const [copiadoId, setCopiadoId] = useState(null);
+  const [expandidas, setExpandidas] = useState({});
+  const toggleExpandida = (id) => setExpandidas((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const [modalGenerar, setModalGenerar] = useState(false);
   const [form, setForm] = useState({ periodo_observacion: periodoActual() });
@@ -117,176 +127,283 @@ const SeguimientoPsicologiaView = ({ paciente, user }) => {
     }
   };
 
+  // ── Spinner de carga ───────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="relative w-12 h-12 mx-auto mb-3">
+            <div className="absolute inset-0 border-2 border-gray-100 rounded-full" />
+            <div className="absolute inset-0 border-2 border-transparent border-t-[#7B1FA2] rounded-full animate-spin" />
+          </div>
+          <p className="text-gray-400 text-xs font-medium">Cargando fichas...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+
+      {/* ── Snackbar ─────────────────────────────────────── */}
       {snack && (
-        <div className="fixed top-6 right-6 z-[90000] px-4 py-3 rounded-xl shadow-lg border bg-white flex items-center gap-2.5">
+        <div className={`fixed top-6 right-6 z-[90000] px-5 py-3 rounded-xl shadow-lg border flex items-center gap-2.5 bg-white ${
+          snack.tipo === 'success' ? 'border-gray-100' : 'border-red-100'
+        }`}>
           <div className={`w-1.5 h-1.5 rounded-full ${snack.tipo === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`} />
-          <span className="text-sm text-gray-700">{snack.msg}</span>
+          <span className="text-xs font-medium text-gray-700">{snack.msg}</span>
+          <button onClick={() => setSnack(null)} className="ml-2">
+            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
         </div>
       )}
 
-      {/* Cabecera + acción */}
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">
-          Cuestionario para maestros (Conners) que llena la docente del colegio a través de un enlace único.
-        </p>
-        {puedeGestionar && (
-          <button
-            onClick={() => setModalGenerar(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white text-sm font-medium transition-all flex-shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            Generar solicitud
-          </button>
-        )}
-      </div>
+      {/* ── Botón generar solicitud ─────────────────────── */}
+      {puedeGestionar && (
+        <button
+          onClick={() => setModalGenerar(true)}
+          className="w-full px-4 py-3 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-full flex items-center justify-center gap-2 font-semibold text-sm shadow-lg shadow-purple-500/30"
+        >
+          <Plus className="w-5 h-5" />
+          Generar solicitud de seguimiento
+        </button>
+      )}
 
-      {/* Lista */}
-      {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm py-6 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
-        </div>
-      ) : fichas.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-100 rounded-xl p-8 text-center">
-          <Brain className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-gray-500 text-sm">Aún no hay solicitudes de seguimiento psicológico.</p>
+      <p className="text-xs text-gray-400 px-1">
+        Cuestionario para maestros (Conners) que llena la docente del colegio a través de un enlace único.
+      </p>
+
+      {/* ── Listado de fichas ───────────────────────────── */}
+      {fichas.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+          <Brain className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Aún no hay solicitudes de seguimiento psicológico</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {fichas.map((f) => {
             const completada = f.estado === 'COMPLETADA';
+            const abierta = !!expandidas[f.id];
             return (
               <div
                 key={f.id}
-                className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between"
+                className={`bg-white rounded-2xl overflow-hidden border transition-all ${
+                  abierta
+                    ? 'border-purple-200/70 shadow-[0_8px_24px_rgba(123,31,162,0.08)]'
+                    : 'border-gray-100 shadow-[0_1px_3px_rgba(16,24,40,0.04)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.06)]'
+                }`}
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                      completada ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                {/* Fila de cabecera */}
+                <div className={`w-full p-4 flex items-center justify-between transition-colors ${abierta ? 'bg-purple-50/40' : 'hover:bg-gray-50/60'}`}>
+                  <button onClick={() => toggleExpandida(f.id)} className="flex items-center gap-3.5 flex-1 text-left min-w-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                      completada
+                        ? 'bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] shadow-purple-500/20'
+                        : 'bg-gradient-to-br from-amber-400 to-amber-500 shadow-amber-500/20'
                     }`}>
-                      {completada ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                      {completada ? 'Completada' : 'Pendiente'}
-                    </span>
-                    {f.periodo_observacion && (
-                      <span className="text-xs text-gray-400">· {f.periodo_observacion}</span>
+                      <Brain className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-gray-900 truncate">
+                        {f.periodo_observacion || 'Sin periodo'} — Seguimiento psicológico
+                      </h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          completada ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {completada ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          {completada ? 'Completada' : 'Pendiente'}
+                        </span>
+                        {completada && f.docente_nombre && (
+                          <span className="text-xs text-gray-400 truncate">{f.docente_nombre}</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {!completada && (
+                      <button
+                        onClick={() => copiarLink(f)}
+                        className="p-2 hover:bg-purple-50 rounded-lg transition-colors group"
+                        title="Copiar enlace"
+                      >
+                        {copiadoId === f.id
+                          ? <Check className="w-5 h-5 text-green-600" />
+                          : <Link2 className="w-5 h-5 text-gray-400 group-hover:text-purple-600" />}
+                      </button>
                     )}
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Entrega: {formatFecha(f.fecha_entrega || f.fecha_crea)}
                     {completada && (
-                      <>
-                        {' · '}Docente: <span className="text-gray-700">{f.docente_nombre || '—'}</span>
-                        {' · '}Devolución: {formatFecha(f.fecha_devolucion || f.fecha_completado)}
-                      </>
+                      <button
+                        onClick={() => setVerFicha(f)}
+                        className="p-2 hover:bg-purple-50 rounded-lg transition-colors group"
+                        title="Ver respuestas"
+                      >
+                        <Eye className="w-5 h-5 text-gray-400 group-hover:text-purple-600" />
+                      </button>
                     )}
-                  </p>
+                    {puedeGestionar && !completada && (
+                      <button
+                        onClick={() => setModalAnular(f)}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                        title="Anular solicitud"
+                      >
+                        <Trash2 className="w-5 h-5 text-gray-400 group-hover:text-red-600" />
+                      </button>
+                    )}
+                    <button onClick={() => toggleExpandida(f.id)} className="p-2">
+                      {abierta
+                        ? <ChevronUp className="w-5 h-5 text-gray-400" />
+                        : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {!completada && (
-                    <button
-                      onClick={() => copiarLink(f)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-[#7B1FA2] text-xs font-medium hover:bg-purple-100 transition-all"
-                    >
-                      {copiadoId === f.id ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
-                      {copiadoId === f.id ? 'Copiado' : 'Copiar enlace'}
-                    </button>
-                  )}
-                  {completada && (
-                    <button
-                      onClick={() => setVerFicha(f)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-all"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Ver respuestas
-                    </button>
-                  )}
-                  {puedeGestionar && !completada && (
-                    <button
-                      onClick={() => setModalAnular(f)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                      title="Anular solicitud"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+                {/* Detalle expandido */}
+                {abierta && (
+                  <div className="border-t border-gray-100 p-6 bg-white space-y-5">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
+                      <Dato label="Periodo">{f.periodo_observacion || '—'}</Dato>
+                      <Dato label="Entrega">{formatFecha(f.fecha_entrega || f.fecha_crea)}</Dato>
+                      <Dato label="Docente">{completada ? (f.docente_nombre || '—') : 'Sin responder'}</Dato>
+                      <Dato label="Devolución">
+                        {completada ? formatFecha(f.fecha_devolucion || f.fecha_completado) : '—'}
+                      </Dato>
+                    </div>
+
+                    {completada ? (
+                      <button
+                        onClick={() => setVerFicha(f)}
+                        className="cx-glow px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full shadow-lg shadow-purple-500/30 inline-flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" /> Ver respuestas
+                      </button>
+                    ) : (
+                      <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                        <p className="text-sm text-gray-600 leading-snug">
+                          Esperando respuesta de la docente. Comparte el enlace para que complete la ficha.
+                        </p>
+                        <button
+                          onClick={() => copiarLink(f)}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#7B1FA2]/10 text-[#7B1FA2] text-sm font-semibold hover:bg-[#7B1FA2]/15 transition-all flex-shrink-0"
+                        >
+                          {copiadoId === f.id ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                          {copiadoId === f.id ? 'Copiado' : 'Copiar enlace'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Modal generar */}
+      {/* ── Modal generar ───────────────────────────────── */}
       {modalGenerar && createPortal((
         <div className="fixed inset-0 z-[70000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModalGenerar(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-4 flex items-center justify-between">
-              <h2 className="text-base font-bold !text-white">Generar solicitud de ficha</h2>
-              <button onClick={() => setModalGenerar(false)} className="text-white/80 hover:text-white">
+            <div
+              className="flex items-center justify-between px-5 py-3 border-b border-purple-100/60"
+              style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm shadow-purple-500/20 flex-shrink-0">
+                  <Brain className="w-[18px] h-[18px] text-white" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#2D0A4E] leading-tight">Generar solicitud</h3>
+                  <p className="text-[11px] text-gray-500 leading-tight">Cuestionario de Conners</p>
+                </div>
+              </div>
+              <button onClick={() => setModalGenerar(false)}
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/70 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
+
             <div className="p-6 space-y-4">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 leading-relaxed">
                 Selecciona el periodo de observación. Al generar, obtendrás un enlace único para
                 enviarle a la docente (ella llenará las fechas de entrega y devolución).
               </p>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Periodo de observación</label>
-                <select
-                  value={form.periodo_observacion}
-                  onChange={(e) => setForm((p) => ({ ...p, periodo_observacion: e.target.value }))}
-                  className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1FA2]/30"
-                >
-                  {opcionesPeriodo().map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                  Periodo de observación <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <select
+                    value={form.periodo_observacion}
+                    onChange={(e) => setForm((p) => ({ ...p, periodo_observacion: e.target.value }))}
+                    className="cx-select w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow"
+                  >
+                    {opcionesPeriodo().map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="px-6 pb-6 flex gap-3">
+
+            <div className="px-6 pb-6 flex justify-end gap-3">
               <button
                 onClick={() => setModalGenerar(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50"
+                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleGenerar}
                 disabled={generando}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white text-sm font-medium disabled:opacity-60"
+                className="cx-glow px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 flex items-center gap-2"
               >
-                {generando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Generar
+                {generando
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Generando...</>
+                  : <><Plus className="w-4 h-4" />Generar</>
+                }
               </button>
             </div>
           </div>
         </div>
       ), document.body)}
 
-      {/* Modal ver respuestas (lectura) */}
+      {/* ── Modal ver respuestas (lectura) ──────────────── */}
       {verFicha && createPortal((
         <div className="fixed inset-0 z-[70000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setVerFicha(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-4 flex items-center justify-between flex-shrink-0">
-              <div>
-                <h2 className="text-base font-bold !text-white">Ficha de Seguimiento · Psicología</h2>
-                <p className="text-white/70 text-xs">
-                  {verFicha.estudiante} · Docente: {verFicha.docente_nombre || '—'}
-                  {verFicha.nivel_grado ? ` · ${verFicha.nivel_grado}` : ''}
-                  {verFicha.institucion_educativa ? ` · ${verFicha.institucion_educativa}` : ''}
-                </p>
+            <div
+              className="flex items-center justify-between px-5 py-3 border-b border-purple-100/60 flex-shrink-0"
+              style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm shadow-purple-500/20 flex-shrink-0">
+                  <Brain className="w-[18px] h-[18px] text-white" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-extrabold text-[#2D0A4E] leading-tight">Ficha de Seguimiento · Psicología</h3>
+                  <p className="text-[11px] text-gray-500 leading-tight truncate">
+                    {verFicha.estudiante} · Docente: {verFicha.docente_nombre || '—'}
+                    {verFicha.nivel_grado ? ` · ${verFicha.nivel_grado}` : ''}
+                    {verFicha.institucion_educativa ? ` · ${verFicha.institucion_educativa}` : ''}
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setVerFicha(null)} className="text-white/80 hover:text-white">
+              <button onClick={() => setVerFicha(null)}
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/70 transition-colors flex-shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto">
+            <div className="p-6 overflow-y-auto space-y-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 bg-gray-50/70 border border-gray-100 rounded-xl p-4">
+                <Dato label="Estudiante">{verFicha.estudiante || '—'}</Dato>
+                <Dato label="Docente">{verFicha.docente_nombre || '—'}</Dato>
+                <Dato label="Nivel / Grado">{verFicha.nivel_grado || '—'}</Dato>
+                <Dato label="Devolución">{formatFecha(verFicha.fecha_devolucion || verFicha.fecha_completado)}</Dato>
+              </div>
               <FichaPsicologiaFormBody
                 valores={{ ...valoresVacios(), ...verFicha }}
                 setValores={() => {}}
@@ -297,33 +414,35 @@ const SeguimientoPsicologiaView = ({ paciente, user }) => {
         </div>
       ), document.body)}
 
-      {/* Modal anular */}
+      {/* ── Modal anular ────────────────────────────────── */}
       {modalAnular && createPortal((
         <div className="fixed inset-0 z-[70000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModalAnular(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="p-6 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-red-50 mx-auto flex items-center justify-center mb-4">
-                <AlertCircle className="w-6 h-6 text-red-500" />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
-              <h2 className="text-base font-bold text-gray-900 mb-1">Anular solicitud</h2>
-              <p className="text-sm text-gray-500 mb-5">
-                El enlace dejará de funcionar. Esta acción no se puede deshacer.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setModalAnular(null)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAnular}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium"
-                >
-                  Anular
-                </button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Anular solicitud</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  El enlace dejará de funcionar. Esta acción no se puede deshacer.
+                </p>
               </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setModalAnular(null)}
+                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAnular}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+              >
+                Anular
+              </button>
             </div>
           </div>
         </div>

@@ -79,20 +79,27 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#7B1FA2] to-purple-600 px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        {/* Header — estética lavanda */}
+        <div
+          className="relative px-6 py-5 overflow-hidden border-b border-purple-100/60"
+          style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}
+        >
+          <div className="pointer-events-none absolute -top-10 right-10 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+          <div className="relative flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-md shadow-purple-500/30 flex-shrink-0">
               <UserPlus className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-white">Asignar Nuevo Servicio</h2>
+            <div>
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Asignar Nuevo Servicio</h2>
+              <p className="text-[13px] text-gray-500">Selecciona servicio y terapeuta</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+            className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/70 transition-colors"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -100,19 +107,19 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
         <div className="p-6 space-y-5">
           {/* Servicio Select */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-[#7B1FA2]" />
+            <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-[#7B1FA2]" />
               Servicio
-              <span className="text-red-500">*</span>
+              <span className="text-red-400">*</span>
             </label>
             <select
               value={nuevoServicio.servicio}
               onChange={e => setNuevoServicio({ ...nuevoServicio, servicio: e.target.value })}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] transition-colors bg-white"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all bg-white"
             >
               <option value="">Seleccione un servicio</option>
               {serviciosPorArea.map(([areaNombre, lista]) => (
-                <optgroup key={areaNombre} label={`📋 ${areaNombre}`}>
+                <optgroup key={areaNombre} label={areaNombre}>
                   {lista.map(s => (
                     <option key={s.id} value={s.id}>{s.nombre}</option>
                   ))}
@@ -123,10 +130,10 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
 
           {/* Terapeuta Select */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <User className="w-4 h-4 text-[#7B1FA2]" />
+            <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-[#7B1FA2]" />
               Terapeuta
-              <span className="text-red-500">*</span>
+              <span className="text-red-400">*</span>
               {loadingTerapeutas && (
                 <Loader2 className="w-3 h-3 animate-spin text-[#7B1FA2]" />
               )}
@@ -135,7 +142,7 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
               value={nuevoServicio.terapeuta}
               onChange={e => setNuevoServicio({ ...nuevoServicio, terapeuta: e.target.value })}
               disabled={loadingTerapeutas || !nuevoServicio.servicio}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] transition-colors bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
             >
               <option value="">
                 {!nuevoServicio.servicio
@@ -153,8 +160,8 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
               ))}
             </select>
             {nuevoServicio.servicio && terapeutasFiltrados.length > 0 && (
-              <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+              <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                 {terapeutasFiltrados.length} terapeuta{terapeutasFiltrados.length !== 1 ? 's' : ''} disponible{terapeutasFiltrados.length !== 1 ? 's' : ''} para este servicio
               </p>
             )}
@@ -162,17 +169,17 @@ const AsignarServicioModal = ({ open, onClose, servicios, terapeutas, nuevoServi
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+        <div className="px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+            className="px-5 py-2.5 text-sm font-semibold text-gray-600 rounded-full border border-gray-200 hover:bg-gray-50 transition-all"
           >
             Cancelar
           </button>
           <button
             onClick={handleAsignar}
             disabled={saving || !nuevoServicio.servicio || !nuevoServicio.terapeuta}
-            className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-purple-600 rounded-xl hover:from-[#6A1B9A] hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-500/30"
+            className="cx-glow px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
           >
             {saving ? (
               <>

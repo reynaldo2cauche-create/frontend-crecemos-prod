@@ -466,40 +466,37 @@ const HistoriaClinicaView = ({ paciente, user }) => {
         const Icon = seccion.icon;
         const isActive = seccionActiva === seccion.id;
 
-        const colorClasses = {
-          amber: { bg: 'bg-amber-50', icon: 'text-amber-600', border: 'border-amber-100', hover: 'hover:border-amber-200' },
-          blue: { bg: 'bg-blue-50', icon: 'text-blue-600', border: 'border-blue-100', hover: 'hover:border-blue-200' },
-          purple: { bg: 'bg-purple-50', icon: 'text-purple-600', border: 'border-purple-100', hover: 'hover:border-purple-200' }
-        };
-
-        const colors = colorClasses[seccion.color];
-
         return (
-          <div key={seccion.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all">
+          <div
+            key={seccion.id}
+            className={`group rounded-xl bg-white border transition-colors ${
+              isActive
+                ? 'border-gray-200 shadow-sm'
+                : 'border-gray-200/70 hover:border-gray-300'
+            }`}
+          >
             {/* Header Card */}
             <button
               onClick={() => toggleSeccion(seccion.id)}
-              className={`w-full p-6 flex items-center justify-between transition-all ${
-                isActive ? 'bg-gray-50' : 'hover:bg-gray-50/50'
-              }`}
+              className="w-full px-5 py-4 flex items-center justify-between gap-3"
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl ${colors.bg} flex items-center justify-center`}>
-                  <Icon className={`w-6 h-6 ${colors.icon}`} />
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                  isActive ? 'bg-[#7B1FA2]/10 text-[#7B1FA2]' : 'bg-gray-100 text-gray-500 group-hover:text-gray-700'
+                }`}>
+                  <Icon className="w-5 h-5" />
                 </div>
-                <div className="text-left">
-                  <h3 className="text-base font-bold text-gray-900">{seccion.title}</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">{seccion.description}</p>
+                <div className="text-left min-w-0">
+                  <h3 className={`text-sm font-semibold truncate ${isActive ? 'text-[#7B1FA2]' : 'text-gray-900'}`}>{seccion.title}</h3>
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{seccion.description}</p>
                 </div>
               </div>
-              <div className={`transition-transform ${isActive ? 'rotate-180' : ''}`}>
-                <ChevronDown className="w-5 h-5 text-gray-400" />
-              </div>
+              <ChevronDown className={`w-5 h-5 flex-shrink-0 text-gray-400 transition-transform duration-200 ${isActive ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Contenido expandible */}
             {isActive && (
-              <div className="border-t border-gray-100 p-6 bg-white">
+              <div className="border-t border-gray-100 p-6">
                 {renderTabContent(seccion.id)}
               </div>
             )}

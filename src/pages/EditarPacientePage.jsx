@@ -105,10 +105,10 @@ const getAbreviatura = (servicio) => {
     .slice(0, 3) || '?';
 };
 
-// Clases de cada pestaña (activa / inactiva)
-const TAB_BASE = 'flex items-center justify-center gap-2 px-3 sm:px-4 py-3.5 text-sm transition-all flex-shrink-0 whitespace-nowrap border-b-2';
-const TAB_ACTIVA = 'text-[#7B1FA2] border-[#7B1FA2] font-bold';
-const TAB_INACTIVA = 'text-gray-500 border-transparent font-medium hover:text-gray-800';
+// Clases de cada pestaña (activa / inactiva) — control segmentado tipo píldora
+const TAB_BASE = 'flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 text-sm rounded-full transition-all duration-200 flex-shrink-0 whitespace-nowrap';
+const TAB_ACTIVA = 'text-white font-semibold bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] shadow-md shadow-purple-500/25';
+const TAB_INACTIVA = 'text-gray-500 font-medium hover:text-[#7B1FA2] hover:bg-purple-50/70';
 
 const EditarPacientePage = () => {
   const { id } = useParams();
@@ -905,10 +905,10 @@ const EditarPacientePage = () => {
         </div>
 
         {/* ============== TABS + CONVENIOS (un solo bloque) ============== */}
-        <div className="glass-panel rounded-3xl px-4 sm:px-6 mb-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="glass-panel rounded-3xl px-4 sm:px-6 py-3 mb-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {/* Tabs */}
           <nav className="overflow-x-auto max-w-full">
-            <div className="flex items-stretch gap-1 sm:gap-3">
+            <div className="inline-flex items-center gap-1 bg-gray-100/80 p-1.5 rounded-full">
               <button
                 onClick={() => setTabSeleccionado('filiacion')}
                 className={`${TAB_BASE} ${tabSeleccionado === 'filiacion' ? TAB_ACTIVA : TAB_INACTIVA}`}
@@ -1342,30 +1342,34 @@ const EditarPacientePage = () => {
             onClick={() => setModalConvenio(false)}
           />
 
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="relative px-6 py-5 overflow-hidden border-b border-purple-100/60 flex items-center justify-between" style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}>
+              <div className="pointer-events-none absolute -top-10 right-10 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+              <div className="relative flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-md shadow-purple-500/30 flex-shrink-0">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-xl font-bold text-white">Asignar Convenio</h2>
+                <div>
+                  <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Asignar Convenio</h2>
+                  <p className="text-[13px] text-gray-500">Vincula un convenio al paciente</p>
+                </div>
               </div>
               <button
                 onClick={() => setModalConvenio(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+                className="relative w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/70 transition-colors"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  Convenio <span className="text-red-500">*</span>
+                <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                  Convenio <span className="text-red-400">*</span>
                 </label>
 
                 {loadingConvenios ? (
-                  <div className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm text-gray-500 flex items-center gap-2">
+                  <div className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-500 flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
                     Cargando...
                   </div>
@@ -1373,7 +1377,7 @@ const EditarPacientePage = () => {
                   <select
                     value={convenioSeleccionado}
                     onChange={(e) => setConvenioSeleccionado(e.target.value)}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                    className="cx-select w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow"
                   >
                     <option value="">Seleccionar convenio...</option>
                     {conveniosDisponibles.map(convenio => (
@@ -1385,13 +1389,13 @@ const EditarPacientePage = () => {
                 )}
 
                 {!loadingConvenios && conveniosDisponibles.length === 0 && (
-                  <p className="text-xs text-red-600 mt-2">
+                  <p className="text-xs text-red-500 mt-2">
                     No hay convenios activos disponibles
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
                   Observaciones
                 </label>
                 <textarea
@@ -1399,26 +1403,26 @@ const EditarPacientePage = () => {
                   onChange={(e) => setObservacionesConvenio(e.target.value)}
                   placeholder="Detalles adicionales del convenio (cobertura, restricciones, etc.)"
                   rows={3}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow resize-none"
                 />
               </div>
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+            <div className="px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
               <button
                 onClick={() => {
                   setModalConvenio(false);
                   setConvenioSeleccionado('');
                   setObservacionesConvenio('');
                 }}
-                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+                className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-full hover:bg-gray-50 transition-all"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAsignarConvenio}
                 disabled={!convenioSeleccionado}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#7B1FA2]/30"
+                className="cx-glow px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
               >
                 Asignar Convenio
               </button>
@@ -1435,49 +1439,50 @@ const EditarPacientePage = () => {
             onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
           />
 
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md shadow-orange-500/30 flex-shrink-0">
                   <AlertCircle className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-xl font-bold text-white">Eliminar Asignación</h2>
+                <div>
+                  <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Eliminar Asignación</h2>
+                  <p className="text-[13px] text-gray-500">Quitar convenio del paciente</p>
+                </div>
               </div>
               <button
                 onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6">
-              <p className="text-gray-700 mb-2">
-                ¿Estás seguro de que deseas quitar el convenio:
+              <p className="text-sm text-gray-600 mb-1.5">
+                ¿Estás seguro de que deseas quitar el convenio
               </p>
-              <p className="text-lg font-semibold text-gray-900 mb-4">
-                "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.empresa}"
+              <p className="text-base font-bold text-gray-900 mb-4">
+                "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.empresa}" de este paciente?
               </p>
-              <p className="text-gray-700 mb-4">
-                de este paciente?
-              </p>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <p className="text-sm text-orange-800">
-                  <strong>Nota:</strong> El paciente dejará de tener acceso a los beneficios de este convenio. Esta acción puede revertirse volviendo a asignar el convenio.
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3.5 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[13px] text-orange-700 leading-relaxed">
+                  El paciente dejará de tener acceso a los beneficios de este convenio. Puedes revertirlo volviendo a asignarlo.
                 </p>
               </div>
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+            <div className="px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
               <button
                 onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
-                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+                className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-full hover:bg-gray-50 transition-all"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleEliminarConvenio}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30"
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-full hover:shadow-lg hover:shadow-orange-500/30 transition-all flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Quitar Convenio

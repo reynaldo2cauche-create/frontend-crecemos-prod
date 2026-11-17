@@ -428,7 +428,7 @@ const CheckboxField = ({ id, checked, onChange, label }) => (
 
 const Section = ({ title, children }) => (
   <div className="bg-white border border-gray-100 rounded-xl p-6 mb-6">
-    <h3 className="text-base font-semibold text-[#7B1FA2] uppercase tracking-wide mb-4 pb-2 border-b-2 border-[#7B1FA2]">
+    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">
       {title}
     </h3>
     {children}
@@ -473,7 +473,7 @@ const FormularioEvaluacionCompleto = ({
               type="date"
               value={evaluacion.fecha_evaluacion}
               onChange={(e) => onInputChange('fecha_evaluacion', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -482,7 +482,7 @@ const FormularioEvaluacionCompleto = ({
               value={evaluacion.motivo_consulta}
               onChange={(e) => onInputChange('motivo_consulta', e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             />
           </FormField>
         </div>
@@ -495,7 +495,7 @@ const FormularioEvaluacionCompleto = ({
             <select
               value={evaluacion.tipo_parto}
               onChange={(e) => onInputChange('tipo_parto', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             >
               <option value="">Seleccionar</option>
               <option value="Natural">Parto Natural</option>
@@ -523,7 +523,7 @@ const FormularioEvaluacionCompleto = ({
               value={evaluacion.observaciones_datos_generales}
               onChange={(e) => onInputChange('observaciones_datos_generales', e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             />
           </FormField>
         </div>
@@ -537,7 +537,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.nivel_alerta}
               onChange={(e) => onInputChange('nivel_alerta', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -546,7 +546,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.nivel_atencion}
               onChange={(e) => onInputChange('nivel_atencion', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -555,7 +555,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.nivel_actividad}
               onChange={(e) => onInputChange('nivel_actividad', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
         </div>
@@ -597,7 +597,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observaciones_visuales}
                 onChange={(e) => onInputChange('observaciones_visuales', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -623,7 +623,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observaciones_auditivas}
                 onChange={(e) => onInputChange('observaciones_auditivas', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -655,7 +655,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observaciones_tactiles}
                 onChange={(e) => onInputChange('observaciones_tactiles', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -673,7 +673,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observaciones_gustativos}
                 onChange={(e) => onInputChange('observaciones_gustativos', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -705,7 +705,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observaciones_propioceptivo}
                 onChange={(e) => onInputChange('observaciones_propioceptivo', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -737,7 +737,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observaciones_vestibular}
                 onChange={(e) => onInputChange('observaciones_vestibular', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -752,7 +752,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.fuerza_muscular}
               onChange={(e) => onInputChange('fuerza_muscular', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -760,7 +760,7 @@ const FormularioEvaluacionCompleto = ({
             <select
               value={evaluacion.rango_articular}
               onChange={(e) => onInputChange('rango_articular', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             >
               <option value="">Seleccionar</option>
               <option value="Normal">Normal</option>
@@ -773,7 +773,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.coordinacion_bimanual}
               onChange={(e) => onInputChange('coordinacion_bimanual', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -788,7 +788,7 @@ const FormularioEvaluacionCompleto = ({
               <select
                 value={evaluacion.dominacion_manual}
                 onChange={(e) => onInputChange('dominacion_manual', e.target.value)}
-                className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+                className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
               >
                 <option value="">Seleccionar</option>
                 <option value="Derecha">Derecha</option>
@@ -804,7 +804,7 @@ const FormularioEvaluacionCompleto = ({
               value={evaluacion.observaciones_motor}
               onChange={(e) => onInputChange('observaciones_motor', e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             />
           </FormField>
         </div>
@@ -817,7 +817,7 @@ const FormularioEvaluacionCompleto = ({
             value={evaluacion.intereses}
             onChange={(e) => onInputChange('intereses', e.target.value)}
             rows={3}
-            className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
           />
         </FormField>
       </Section>
@@ -830,7 +830,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.atencion_concentracion}
               onChange={(e) => onInputChange('atencion_concentracion', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -839,7 +839,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.seguimiento_ordenes}
               onChange={(e) => onInputChange('seguimiento_ordenes', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -848,7 +848,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.otros_cognitivo}
               onChange={(e) => onInputChange('otros_cognitivo', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
         </div>
@@ -891,7 +891,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observacion_alimentacion}
                 onChange={(e) => onInputChange('observacion_alimentacion', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -947,7 +947,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observacion_vestido}
                 onChange={(e) => onInputChange('observacion_vestido', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -1001,7 +1001,7 @@ const FormularioEvaluacionCompleto = ({
                 value={evaluacion.observacion_higiene}
                 onChange={(e) => onInputChange('observacion_higiene', e.target.value)}
                 rows={2}
-                className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
               />
             </FormField>
           </SubSection>
@@ -1072,7 +1072,7 @@ const FormularioEvaluacionCompleto = ({
               value={evaluacion.observacion_escolar}
               onChange={(e) => onInputChange('observacion_escolar', e.target.value)}
               rows={2}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             />
           </FormField>
         </div>
@@ -1086,7 +1086,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.juguetes_preferidos}
               onChange={(e) => onInputChange('juguetes_preferidos', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -1119,7 +1119,7 @@ const FormularioEvaluacionCompleto = ({
               type="text"
               value={evaluacion.lugar_preferido_jugar}
               onChange={(e) => onInputChange('lugar_preferido_jugar', e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all"
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all"
             />
           </FormField>
 
@@ -1128,7 +1128,7 @@ const FormularioEvaluacionCompleto = ({
               value={evaluacion.observacion_juego}
               onChange={(e) => onInputChange('observacion_juego', e.target.value)}
               rows={2}
-              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+              className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             />
           </FormField>
         </div>
@@ -1141,7 +1141,7 @@ const FormularioEvaluacionCompleto = ({
             value={evaluacion.lenguaje}
             onChange={(e) => onInputChange('lenguaje', e.target.value)}
             rows={3}
-            className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             placeholder="Describir lenguaje expresivo y comprensivo"
           />
         </FormField>
@@ -1154,7 +1154,7 @@ const FormularioEvaluacionCompleto = ({
             value={evaluacion.conclusiones}
             onChange={(e) => onInputChange('conclusiones', e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             placeholder="Escriba las conclusiones de la evaluación..."
           />
         </FormField>
@@ -1167,7 +1167,7 @@ const FormularioEvaluacionCompleto = ({
             value={evaluacion.sugerencias}
             onChange={(e) => onInputChange('sugerencias', e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             placeholder="Escriba las sugerencias..."
           />
         </FormField>
@@ -1180,7 +1180,7 @@ const FormularioEvaluacionCompleto = ({
             value={evaluacion.objetivos_iniciales}
             onChange={(e) => onInputChange('objetivos_iniciales', e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+            className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all resize-none"
             placeholder="Escriba los objetivos iniciales..."
           />
         </FormField>
@@ -1233,7 +1233,7 @@ const VistaResumen = ({ evaluacion }) => {
 
   const SeccionResumen = ({ titulo, children }) => (
     <div className="mb-6">
-      <h4 className="text-sm font-semibold text-[#7B1FA2] uppercase mb-4 pb-2 border-b-2 border-[#7B1FA2]">
+      <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-100">
         {titulo}
       </h4>
       {children}

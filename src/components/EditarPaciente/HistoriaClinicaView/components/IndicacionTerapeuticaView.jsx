@@ -576,7 +576,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
             onChange={(e) => setNuevoOtro(prev => ({ ...prev, [key]: e.target.value }))}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarOtro(category, field); } }}
             placeholder={placeholder}
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]" />
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow" />
           <button type="button" onClick={() => agregarOtro(category, field)}
             className="px-3 py-2 bg-[#7B1FA2] text-white rounded-lg hover:bg-[#6A1B9A] transition-all flex items-center gap-1.5 text-sm flex-shrink-0">
             <Plus className="w-4 h-4" /> Agregar
@@ -971,7 +971,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
       {puedeEditar && !mostrarFormulario && (
         <button
           onClick={() => setMostrarFormulario(true)}
-          className="w-full px-4 py-3 bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] text-white rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-[#7B1FA2]/20"
+          className="w-full px-4 py-3 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-full flex items-center justify-center gap-2 font-semibold text-sm shadow-lg shadow-purple-500/30"
         >
           <Plus className="w-5 h-5" />
           Nueva Indicación Terapéutica
@@ -980,39 +980,42 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
 
       {/* ── Formulario ──────────────────────────────────── */}
       {mostrarFormulario && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
 
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900">
-              Nueva Indicación Terapéutica
-            </h3>
-            <button onClick={() => setMostrarFormulario(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <X className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+                <ClipboardList className="w-[18px] h-[18px] text-white" />
+              </span>
+              <h3 className="text-base font-extrabold text-[#2D0A4E]">Nueva Indicación Terapéutica</h3>
+            </div>
+            <button onClick={() => setMostrarFormulario(false)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Datos generales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                Fecha de Indicación <span className="text-red-500">*</span>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Fecha de Indicación <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input type="date" value={formData.fecha}
                   onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all" />
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                Especialidad <span className="text-red-500">*</span>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Especialidad <span className="text-red-400">*</span>
               </label>
               <select value={formData.especialidad_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, especialidad_id: e.target.value }))}
                 disabled={user?.rol?.id === ROLES.TERAPEUTA}
-                className={`w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all ${
+                className={`cx-select w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow ${
                   user?.rol?.id === ROLES.TERAPEUTA ? 'bg-gray-100 cursor-not-allowed' : ''
                 }`}>
                 <option value="">Seleccionar...</option>
@@ -1020,13 +1023,13 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                Servicio <span className="text-red-500">*</span>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Servicio <span className="text-red-400">*</span>
               </label>
               <select value={formData.servicio_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, servicio_id: e.target.value }))}
                 disabled={user?.rol?.id === ROLES.TERAPEUTA}
-                className={`w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all ${
+                className={`cx-select w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow ${
                   user?.rol?.id === ROLES.TERAPEUTA ? 'bg-gray-100 cursor-not-allowed' : ''
                 }`}>
                 <option value="">Seleccionar...</option>
@@ -1042,15 +1045,18 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
           {/* ── Citas ─────────────────────────────────────── */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-bold text-gray-900">Citas</h4>
+              <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700 uppercase tracking-wide">
+                <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#7B1FA2] to-[#9C27B0]" />
+                Citas
+              </h4>
               <button onClick={handleAgregarCita}
-                className="px-3 py-1.5 bg-[#7B1FA2] text-white rounded-lg hover:bg-[#6A1B9A] transition-all flex items-center gap-1.5 text-sm">
+                className="px-4 py-2 bg-[#7B1FA2]/10 text-[#7B1FA2] rounded-full hover:bg-[#7B1FA2]/15 transition-all flex items-center gap-1.5 text-sm font-semibold">
                 <Plus className="w-4 h-4" /> Agregar Cita
               </button>
             </div>
             <div className="space-y-4">
               {formData.citas.map((cita, index) => (
-                <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div key={index} className="bg-gray-50/70 border border-gray-100 rounded-xl p-4">
                   <div className="flex justify-end mb-3">
                     <button onClick={() => handleEliminarCita(index)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 className="w-4 h-4 text-red-500" />
@@ -1058,48 +1064,48 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-2">Tipo</label>
+                      <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Tipo</label>
                       <select value={cita.tipoId} onChange={(e) => handleCitaChange(index, 'tipoId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]">
+                        className="cx-select w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow">
                         <option value="">Seleccionar...</option>
                         {tiposCita.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-2">Modalidad</label>
+                      <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Modalidad</label>
                       <select value={cita.modalidadId} onChange={(e) => handleCitaChange(index, 'modalidadId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]">
+                        className="cx-select w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow">
                         <option value="">Seleccionar...</option>
                         {modalidades.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-2">Cantidad de Citas</label>
+                      <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Cantidad de Citas</label>
                       <input type="number" value={cita.cantidadCitas}
                         onChange={(e) => handleCitaChange(index, 'cantidadCitas', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow"
                         min="1" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-2">Frecuencia</label>
+                      <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Frecuencia</label>
                       <select value={cita.frecuenciaId} onChange={(e) => handleCitaChange(index, 'frecuenciaId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2]">
+                        className="cx-select w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow">
                         <option value="">Seleccionar...</option>
                         {frecuencias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
                       </select>
                     </div>
-                    <div className="md:col-span-2 flex gap-4">
-                      <label className="flex items-center gap-2">
+                    <div className="md:col-span-2 flex flex-wrap gap-3">
+                      <label className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer transition-colors ${cita.informeFisico ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-purple-200'}`}>
                         <input type="checkbox" checked={cita.informeFisico}
                           onChange={(e) => handleCitaChange(index, 'informeFisico', e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-[#7B1FA2] focus:ring-[#7B1FA2]" />
-                        <span className="text-sm text-gray-700">Informe Físico</span>
+                          className="w-4 h-4 rounded border-gray-300 accent-[#7B1FA2]" />
+                        <span className="text-sm font-semibold">Informe Físico</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer transition-colors ${cita.informeVerbal ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-purple-200'}`}>
                         <input type="checkbox" checked={cita.informeVerbal}
                           onChange={(e) => handleCitaChange(index, 'informeVerbal', e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-[#7B1FA2] focus:ring-[#7B1FA2]" />
-                        <span className="text-sm text-gray-700">Informe Verbal</span>
+                          className="w-4 h-4 rounded border-gray-300 accent-[#7B1FA2]" />
+                        <span className="text-sm font-semibold">Informe Verbal</span>
                       </label>
                     </div>
                   </div>
@@ -1116,7 +1122,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
           {/* ── Referencias (depende del servicio) ──────── */}
           {formData.servicio_id && (
             <div>
-              <h4 className="text-sm font-bold text-gray-900 mb-4">Referencias</h4>
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4">Referencias</h4>
               {configServicio ? (
                 <div className="space-y-4">
                   <div>
@@ -1150,7 +1156,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
           {/* ── Recomendaciones (depende del servicio) ─── */}
           {formData.servicio_id && (
             <div>
-              <h4 className="text-sm font-bold text-gray-900 mb-4">Recomendaciones</h4>
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4">Recomendaciones</h4>
               <div className="space-y-4">
                 {/* Preimpresas */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -1186,7 +1192,7 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
           {/* ── Materiales (depende del servicio) ────────── */}
           {formData.servicio_id && (
             <div>
-              <h4 className="text-sm font-bold text-gray-900 mb-4">Materiales</h4>
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-4">Materiales</h4>
               {configServicio ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {configServicio.materiales.map((m) => {
@@ -1214,11 +1220,11 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
           {/* ── Botones ──────────────────────────────────── */}
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={() => setMostrarFormulario(false)}
-              className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all">
+              className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all">
               Cancelar
             </button>
             <button onClick={handleGuardar} disabled={guardando}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#7B1FA2]/30 flex items-center gap-2">
+              className="cx-glow px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 flex items-center gap-2">
               {guardando
                 ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Guardando...</>
                 : <><Save className="w-4 h-4" />Guardar Indicación</>
@@ -1254,18 +1260,22 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
           }
 
           return (
-            <div key={indicacion.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div key={indicacion.id} className={`bg-white rounded-2xl overflow-hidden border transition-all ${
+              expandedIndicaciones[indicacion.id]
+                ? 'border-purple-200/70 shadow-[0_8px_24px_rgba(123,31,162,0.08)]'
+                : 'border-gray-100 shadow-[0_1px_3px_rgba(16,24,40,0.04)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.06)]'
+            }`}>
               {/* Fila de cabecera */}
-              <div className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                <button onClick={() => toggleExpandedIndicacion(indicacion.id)} className="flex items-center gap-4 flex-1 text-left">
-                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-5 h-5 text-purple-600" />
+              <div className={`w-full p-4 flex items-center justify-between transition-colors ${expandedIndicaciones[indicacion.id] ? 'bg-purple-50/40' : 'hover:bg-gray-50/60'}`}>
+                <button onClick={() => toggleExpandedIndicacion(indicacion.id)} className="flex items-center gap-3.5 flex-1 text-left min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+                    <FileText className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900">
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-gray-900 truncate">
                       {formatearFecha(indicacion.fecha)} — {indicacion.servicio?.nombre}
                     </h4>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       {indicacion.trabajador?.nombres} {indicacion.trabajador?.apellidos}
                     </p>
                   </div>
@@ -1301,22 +1311,34 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
 
               {/* Detalle expandido */}
               {expandedIndicaciones[indicacion.id] && (
-                <div className="border-t border-gray-200 p-6 bg-gray-50 space-y-5">
+                <div className="border-t border-gray-100 p-6 bg-white space-y-5">
                   {/* Datos generales */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><span className="font-semibold text-gray-700">Fecha:</span><p className="text-gray-600">{formatearFecha(indicacion.fecha)}</p></div>
-                    <div><span className="font-semibold text-gray-700">Hora:</span><p className="text-gray-600">{indicacion.hora}</p></div>
-                    <div><span className="font-semibold text-gray-700">Especialidad:</span><p className="text-gray-600">{indicacion.especialidad?.nombre}</p></div>
-                    <div><span className="font-semibold text-gray-700">Servicio:</span><p className="text-gray-600">{indicacion.servicio?.nombre}</p></div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Fecha</p>
+                      <p className="text-sm font-semibold text-gray-800">{formatearFecha(indicacion.fecha)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Hora</p>
+                      <p className="text-sm font-semibold text-gray-800">{indicacion.hora}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Especialidad</p>
+                      <p className="text-sm font-semibold text-gray-800">{indicacion.especialidad?.nombre}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Servicio</p>
+                      <p className="text-sm font-semibold text-gray-800">{indicacion.servicio?.nombre}</p>
+                    </div>
                   </div>
 
                   {/* Citas */}
                   {indicacion.citas?.length > 0 && (
                     <div>
-                      <h5 className="text-sm font-bold text-gray-900 mb-2">Citas</h5>
+                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Citas</h5>
                       <div className="space-y-2">
                         {indicacion.citas.map((cita) => (
-                          <div key={cita.id} className="bg-white border border-gray-200 rounded-lg p-3 text-sm">
+                          <div key={cita.id} className="bg-gray-50/70 border border-gray-100 rounded-xl p-3.5 text-sm">
                             <div className="grid grid-cols-2 gap-2">
                               <div><span className="font-semibold text-gray-700">Tipo:</span> {cita.tipo?.nombre}</div>
                               <div><span className="font-semibold text-gray-700">Modalidad:</span> {cita.modalidad?.nombre}</div>
@@ -1338,17 +1360,17 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   {/* Referencias */}
                   {ref && cfgVista && (
                     <div>
-                      <h5 className="text-sm font-bold text-gray-900 mb-2">Referencias</h5>
-                      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 text-sm">
+                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Referencias</h5>
+                      <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4 space-y-3 text-sm">
                         {/* Internas */}
                         {cfgVista.referencias.internas.some(({ key }) => ref[key]) && (
                           <div>
-                            <p className="font-semibold text-gray-700 mb-1">Internas:</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-1 pl-3">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Internas</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                               {cfgVista.referencias.internas
                                 .filter(({ key }) => ref[key])
                                 .map(({ key, label }) => (
-                                  <p key={key} className="text-gray-600">• {label}</p>
+                                  <span key={key} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{label}</span>
                                 ))}
                             </div>
                           </div>
@@ -1356,15 +1378,15 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                         {/* Externas */}
                         {(cfgVista.referencias.externas.some(({ key }) => ref[key]) || ref.refExterOtros) && (
                           <div>
-                            <p className="font-semibold text-gray-700 mb-1">Externas:</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-1 pl-3">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Externas</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                               {cfgVista.referencias.externas
                                 .filter(({ key }) => ref[key])
                                 .map(({ key, label }) => (
-                                  <p key={key} className="text-gray-600">• {label}</p>
+                                  <span key={key} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{label}</span>
                                 ))}
                               {ref.refExterOtros && ref.refExterOtros.split('\n').filter(Boolean).map((item, idx) => (
-                                <p key={idx} className="text-gray-600">• {item}</p>
+                                <span key={idx} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{item}</span>
                               ))}
                             </div>
                           </div>
@@ -1376,20 +1398,20 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   {/* Recomendaciones */}
                   {rec && (
                     <div>
-                      <h5 className="text-sm font-bold text-gray-900 mb-2">Recomendaciones</h5>
-                      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-1 text-sm">
+                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Recomendaciones</h5>
+                      <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                         {/* Fijas */}
                         {RECOMENDACIONES_FIJAS.filter(({ key }) => rec[key]).map(({ key, label }) => (
-                          <p key={key} className="text-gray-600">• {label}</p>
+                          <span key={key} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{label}</span>
                         ))}
                         {/* Específicas del servicio */}
                         {cfgVista && cfgVista.recomendaciones
                           .filter(({ key }) => rec[key])
                           .map(({ key, label }) => (
-                            <p key={key} className="text-gray-600">• {label}</p>
+                            <span key={key} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{label}</span>
                           ))}
                         {rec.otros && rec.otros.split('\n').filter(Boolean).map((item, idx) => (
-                          <p key={idx} className="text-gray-600">• {item}</p>
+                          <span key={idx} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{item}</span>
                         ))}
                       </div>
                     </div>
@@ -1398,18 +1420,19 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
                   {/* Materiales */}
                   {mat && cfgVista && (cfgVista.materiales.some(m => mat[matKey(m)]) || mat.otros) && (
                     <div>
-                      <h5 className="text-sm font-bold text-gray-900 mb-2">Materiales</h5>
-                      <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Materiales</h5>
+                      <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                           {cfgVista.materiales
                             .filter(m => mat[matKey(m)])
                             .map(m => (
-                              <p key={matKey(m)} className={`text-gray-600 ${matKey(m) === 'guantesBajalenguaHisoposCrema' ? 'col-span-2' : ''}`}>
-                                • {matLabel(m)}
-                              </p>
+                              <span key={matKey(m)} className="inline-flex items-center gap-2 text-sm text-gray-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />
+                                {matLabel(m)}
+                              </span>
                             ))}
                           {mat.otros && mat.otros.split('\n').filter(Boolean).map((item, idx) => (
-                            <p key={idx} className="text-gray-600 col-span-2 md:col-span-3">• {item}</p>
+                            <span key={idx} className="inline-flex items-center gap-2 text-sm text-gray-700"><span className="w-1.5 h-1.5 rounded-full bg-[#7B1FA2] flex-shrink-0" />{item}</span>
                           ))}
                         </div>
                       </div>
@@ -1429,21 +1452,27 @@ const IndicacionTerapeuticaView = ({ paciente, user }) => {
             display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ background:'white', borderRadius:'16px', display:'flex', flexDirection:'column',
             width:'95vw', maxWidth:'1100px', height:'95vh', overflow:'hidden' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
-              padding:'12px 20px', borderBottom:'1px solid #e5e7eb', flexShrink:0 }}>
-              <span style={{ fontWeight:600, fontSize:'14px', color:'#1f2937' }}>
-                Vista previa — Indicación Terapéutica
-              </span>
-              <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+            <div
+              className="flex items-center justify-between px-5 py-3 border-b border-purple-100/60 flex-shrink-0"
+              style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm shadow-purple-500/20 flex-shrink-0">
+                  <FileText className="w-[18px] h-[18px] text-white" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#2D0A4E] leading-tight">Vista previa</h3>
+                  <p className="text-[11px] text-gray-500 leading-tight">Indicación Terapéutica</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <a href={previewUrl} download="IndicacionTerapeutica.pdf"
-                  style={{ display:'flex', alignItems:'center', gap:'6px', padding:'6px 14px',
-                    background:'#7B1FA2', color:'white', fontSize:'12px', fontWeight:600,
-                    borderRadius:'8px', textDecoration:'none' }}>
-                  <Download size={14} /> Descargar
+                  className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg shadow-purple-500/30 no-underline">
+                  <Download size={16} /> Descargar
                 </a>
                 <button onClick={cerrarPreview}
-                  style={{ padding:'6px', borderRadius:'8px', border:'none', background:'transparent', cursor:'pointer', display:'flex' }}>
-                  <X size={20} color="#6b7280" />
+                  className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/70 transition-colors">
+                  <X size={20} />
                 </button>
               </div>
             </div>

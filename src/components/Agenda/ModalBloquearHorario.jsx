@@ -210,18 +210,21 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
         <div style={{ pointerEvents: 'auto' }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
           {/* Header */}
-          <div className="sticky top-0 bg-gradient-to-r from-red-600 to-red-700 px-6 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+          <div className="sticky top-0 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl border-b border-gray-100 bg-white">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-                <Ban className="w-4 h-4 text-white" />
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-md shadow-red-500/25 flex-shrink-0">
+                <Ban className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-lg font-bold text-white">Bloquear Horario</h2>
+              <div>
+                <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Bloquear Horario</h2>
+                <p className="text-[13px] text-gray-500">Registra un bloqueo de agenda</p>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
             >
-              <X className="w-4 h-4 text-white" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -246,7 +249,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
               <select
                 value={formData.trabajadorId}
                 onChange={(e) => handleChange('trabajadorId', e.target.value)}
-                className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
                   errors.trabajadorId ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                 }`}
               >
@@ -306,7 +309,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                     value={formData.fechaPuntualTemp}
                     onChange={(e) => handleChange('fechaPuntualTemp', e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarFechaPuntual(); } }}
-                    className={`flex-1 px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                    className={`flex-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
                       errors.fechasPuntuales ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                     }`}
                   />
@@ -349,7 +352,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                     type="date"
                     value={formData.fechaInicio}
                     onChange={(e) => handleChange('fechaInicio', e.target.value)}
-                    className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                    className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
                       errors.fechaInicio ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                     }`}
                   />
@@ -365,7 +368,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                     type="date"
                     value={formData.fechaFin}
                     onChange={(e) => handleChange('fechaFin', e.target.value)}
-                    className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                    className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
                       errors.fechaFin ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                     }`}
                   />
@@ -440,7 +443,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                       type="time"
                       value={formData.horaInicio}
                       onChange={(e) => handleChange('horaInicio', e.target.value)}
-                      className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                      className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
                         errors.horaInicio ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                       }`}
                     />
@@ -455,7 +458,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                       type="time"
                       value={formData.horaFin}
                       onChange={(e) => handleChange('horaFin', e.target.value)}
-                      className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors ${
+                      className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
                         errors.horaFin ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                       }`}
                     />
@@ -476,7 +479,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                 onChange={(e) => handleChange('motivo', e.target.value)}
                 placeholder="Explique la razón del bloqueo (ej: Curso de especialización, permiso médico, etc.)"
                 rows={3}
-                className={`w-full px-4 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors resize-none ${
+                className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow resize-none ${
                   errors.motivo ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
                 }`}
               />
@@ -485,18 +488,18 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 rounded-b-2xl">
+          <div className="sticky bottom-0 bg-white px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 rounded-b-2xl">
             <button
               onClick={onClose}
               disabled={loading}
-              className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-full hover:bg-gray-50 transition-all disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 rounded-xl hover:from-red-700 hover:to-red-800 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-red-500/30"
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {loading ? (
                 <>

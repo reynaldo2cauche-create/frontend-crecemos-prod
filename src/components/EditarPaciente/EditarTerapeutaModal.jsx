@@ -70,291 +70,132 @@ const EditarTerapeutaModal = ({ open, onClose, servicio, nuevoTerapeuta, setNuev
   }
 
   return (
-    <>
-      {/* OVERLAY */}
-      <div 
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 99999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden"
       >
-        {/* MODAL */}
-        <div 
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: 'relative',
-            backgroundColor: 'white',
-            borderRadius: '1rem',
-            width: '90%',
-            maxWidth: '32rem',
-            maxHeight: '90vh',
-            overflow: 'hidden',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            zIndex: 100000
-          }}
+        {/* Header — estética lavanda */}
+        <div
+          className="relative px-6 py-5 overflow-hidden border-b border-purple-100/60"
+          style={{ backgroundImage: 'radial-gradient(70% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}
         >
-          {/* Header */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '1.5rem',
-            borderBottom: '1px solid #e5e7eb',
-            backgroundColor: '#7B1FA2'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{
-                padding: '0.5rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '0.75rem'
-              }}>
-                <UserCheck style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
-              </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', margin: 0 }}>
-                Editar Terapeuta
-              </h2>
+          <div className="pointer-events-none absolute -top-10 right-10 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+          <div className="relative flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-md shadow-purple-500/30 flex-shrink-0">
+              <UserCheck className="w-5 h-5 text-white" />
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                padding: '0.5rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                borderRadius: '0.75rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <X style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div style={{ 
-            padding: '1.5rem', 
-            maxHeight: 'calc(90vh - 140px)',
-            overflowY: 'auto'
-          }}>
-            {/* Servicio (readonly) */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: '#374151',
-                marginBottom: '0.5rem'
-              }}>
-                <Briefcase style={{ width: '1rem', height: '1rem' }} />
-                Servicio
-              </label>
-              <div style={{
-                padding: '0.625rem 1rem',
-                backgroundColor: '#f9fafb',
-                border: '2px solid #e5e7eb',
-                borderRadius: '0.75rem',
-                fontSize: '0.875rem',
-                color: '#374151',
-                fontWeight: 500
-              }}>
-                {servicio?.servicio?.nombre || 'Sin nombre'}
-              </div>
-              <p style={{
-                fontSize: '0.75rem',
-                color: '#6b7280',
-                marginTop: '0.375rem',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.375rem',
-                margin: '0.375rem 0 0 0'
-              }}>
-                <AlertCircle style={{ width: '0.875rem', height: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
-                El servicio no se puede cambiar, solo el terapeuta asignado
-              </p>
-            </div>
-
-            {/* Terapeuta actual (si existe) */}
-            {terapeutaActual && (
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  <User style={{ width: '1rem', height: '1rem' }} />
-                  Terapeuta Actual
-                </label>
-                <div style={{
-                  padding: '0.75rem 1rem',
-                  backgroundColor: '#f3e8ff',
-                  border: '2px solid #d8b4fe',
-                  borderRadius: '0.75rem'
-                }}>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    color: '#111827',
-                    margin: 0
-                  }}>
-                    {terapeutaActual.nombres} {terapeutaActual.apellidos}
-                  </p>
-                  {terapeutaActual.especialidad && (
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: '#4b5563',
-                      marginTop: '0.25rem',
-                      margin: '0.25rem 0 0 0'
-                    }}>
-                      {terapeutaActual.especialidad.nombre}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Terapeuta Select */}
             <div>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: '#374151',
-                marginBottom: '0.5rem'
-              }}>
-                <User style={{ width: '1rem', height: '1rem' }} />
-                Terapeuta *
-                {loadingTerapeutas && (
-                  <Loader2 style={{ width: '1rem', height: '1rem', color: '#7B1FA2' }} className="animate-spin" />
-                )}
-              </label>
-              <select
-                value={nuevoTerapeuta || ""}
-                onChange={(e) => setNuevoTerapeuta(e.target.value)}
-                disabled={loadingTerapeutas}
-                style={{
-                  width: '100%',
-                  padding: '0.625rem 1rem',
-                  fontSize: '0.875rem',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '0.75rem',
-                  outline: 'none',
-                  backgroundColor: loadingTerapeutas ? '#f9fafb' : 'white',
-                  cursor: loadingTerapeutas ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <option value="">
-                  {loadingTerapeutas 
-                    ? 'Cargando terapeutas...' 
-                    : terapeutasFiltrados.length === 0 
-                      ? 'No hay terapeutas para este servicio'
-                      : 'Selecciona un terapeuta'
-                  }
-                </option>
-                {/* Mostrar todos los terapeutas sin filtros adicionales */}
-                {terapeutasFiltrados.map(t => (
-                  <option key={t.id} value={String(t.id)}>
-                    {t.nombres} {t.apellidos}{t.especialidad ? ` — ${t.especialidad.nombre}` : ''}
-                    {terapeutaActual && t.id === terapeutaActual.id ? ' (Actual)' : ''}
-                  </option>
-                ))}
-              </select>
-              {terapeutasFiltrados.length > 0 && !loadingTerapeutas && (
-                <p style={{
-                  fontSize: '0.75rem',
-                  color: '#6b7280',
-                  marginTop: '0.375rem',
-                  margin: '0.375rem 0 0 0'
-                }}>
-                  {terapeutasFiltrados.length} terapeuta
-                  {terapeutasFiltrados.length !== 1 ? 's' : ''} disponible
-                  {terapeutasFiltrados.length !== 1 ? 's' : ''} para este servicio
-                </p>
-              )}
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Editar Terapeuta</h2>
+              <p className="text-[13px] text-gray-500">Cambia el terapeuta asignado al servicio</p>
             </div>
           </div>
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/70 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* Footer */}
-          <div style={{
-            display: 'flex',
-            gap: '0.75rem',
-            padding: '1.5rem',
-            borderTop: '1px solid #e5e7eb',
-            backgroundColor: '#f9fafb'
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              style={{
-                flex: 1,
-                padding: '0.625rem 1rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: '#374151',
-                backgroundColor: 'white',
-                border: '2px solid #e5e7eb',
-                borderRadius: '0.75rem',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.5 : 1
-              }}
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] space-y-5">
+          {/* Servicio (readonly) */}
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Servicio</label>
+            <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">
+              {servicio?.servicio?.nombre || 'Sin nombre'}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5 flex items-start gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              El servicio no se puede cambiar, solo el terapeuta asignado
+            </p>
+          </div>
+
+          {/* Terapeuta actual (si existe) */}
+          {terapeutaActual && (
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Terapeuta Actual</label>
+              <div className="px-4 py-3 bg-purple-50 border border-purple-100 rounded-xl">
+                <p className="text-sm font-bold text-gray-900">
+                  {terapeutaActual.nombres} {terapeutaActual.apellidos}
+                </p>
+                {terapeutaActual.especialidad && (
+                  <p className="text-xs text-gray-500 mt-0.5">{terapeutaActual.especialidad.nombre}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Terapeuta Select */}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              Nuevo Terapeuta <span className="text-red-400">*</span>
+              {loadingTerapeutas && <Loader2 className="w-3 h-3 animate-spin text-[#7B1FA2]" />}
+            </label>
+            <select
+              value={nuevoTerapeuta || ""}
+              onChange={(e) => setNuevoTerapeuta(e.target.value)}
+              disabled={loadingTerapeutas}
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
             >
-              Cancelar
-            </button>
-            <button
-              onClick={handleGuardar}
-              disabled={!nuevoTerapeuta || saving}
-              style={{
-                flex: 1,
-                padding: '0.625rem 1rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: 'white',
-                backgroundColor: '#7B1FA2',
-                border: 'none',
-                borderRadius: '0.75rem',
-                cursor: (!nuevoTerapeuta || saving) ? 'not-allowed' : 'pointer',
-                opacity: (!nuevoTerapeuta || saving) ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              {saving ? (
-                <>
-                  <Loader2 style={{ width: '1rem', height: '1rem' }} className="animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <UserCheck style={{ width: '1rem', height: '1rem' }} />
-                  {terapeutaActual && nuevoTerapeuta === String(terapeutaActual.id) ? 'Mantener' : 'Asignar'}
-                </>
-              )}
-            </button>
+              <option value="">
+                {loadingTerapeutas
+                  ? 'Cargando terapeutas...'
+                  : terapeutasFiltrados.length === 0
+                    ? 'No hay terapeutas para este servicio'
+                    : 'Selecciona un terapeuta'}
+              </option>
+              {terapeutasFiltrados.map(t => (
+                <option key={t.id} value={String(t.id)}>
+                  {t.nombres} {t.apellidos}{t.especialidad ? ` — ${t.especialidad.nombre}` : ''}
+                  {terapeutaActual && t.id === terapeutaActual.id ? ' (Actual)' : ''}
+                </option>
+              ))}
+            </select>
+            {terapeutasFiltrados.length > 0 && !loadingTerapeutas && (
+              <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                {terapeutasFiltrados.length} terapeuta{terapeutasFiltrados.length !== 1 ? 's' : ''} disponible{terapeutasFiltrados.length !== 1 ? 's' : ''} para este servicio
+              </p>
+            )}
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 flex items-center gap-3 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 rounded-full border border-gray-200 hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleGuardar}
+            disabled={!nuevoTerapeuta || saving}
+            className="flex-1 cx-glow px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <UserCheck className="w-4 h-4" />
+                {terapeutaActual && nuevoTerapeuta === String(terapeutaActual.id) ? 'Mantener' : 'Asignar'}
+              </>
+            )}
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 

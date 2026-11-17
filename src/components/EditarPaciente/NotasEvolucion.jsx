@@ -46,7 +46,7 @@ const COLOR_CLASSES = {
 
 // Estilo compartido de los selects de filtro
 const SELECT_FILTRO =
-  'text-base font-medium text-gray-800 px-3 py-2.5 border border-gray-100 rounded-xl shadow-sm bg-white focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10';
+  'cx-select text-[13px] font-medium text-gray-700 px-3 py-2.5 border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow';
 
 // Menú renderizado via portal para escapar del z-index del modal
 const MenuTiposPortal = ({ anchorRef, onSelect, onClose, tiposUsados }) => {
@@ -272,21 +272,21 @@ const NotasEvolucion = ({
       {/* ── Panel lateral de notas ── */}
       <div ref={containerRef} className="glass-panel rounded-3xl overflow-hidden flex flex-col">
         <div className="p-5 sm:p-6 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-4 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-6 h-6 text-[#7B1FA2]" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-md shadow-purple-500/30">
+              <FileText className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-[22px] font-extrabold text-[#2D0A4E] truncate">Notas de Evolución</h2>
-              <p className="text-base text-gray-500 truncate">Seguimiento del paciente</p>
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] truncate leading-tight">Notas de Evolución</h2>
+              <p className="text-[13px] text-gray-500 truncate">Seguimiento del paciente</p>
             </div>
           </div>
 
           {/* Filtros */}
           <div className="mb-4 p-3 bg-white/70 rounded-2xl border border-gray-100">
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <span className="text-base font-semibold text-gray-700">Filtros</span>
+            <div className="flex items-center gap-2 mb-2.5 px-1">
+              <Filter className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Filtros</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <select value={filtroEspecialidad} onChange={e => setFiltroEspecialidad(e.target.value)} className={SELECT_FILTRO}>
@@ -309,8 +309,8 @@ const NotasEvolucion = ({
           </div>
 
           <button onClick={() => setOpenNotaModal(true)}
-            className="w-full flex items-center justify-center gap-2 bg-[#7B1FA2] text-white px-4 py-3 rounded-2xl text-lg font-semibold hover:bg-[#6A1B9A] transition-all shadow-lg shadow-purple-500/30">
-            <Plus className="w-5 h-5" />
+            className="w-full flex items-center justify-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-4 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30">
+            <Plus className="w-4 h-4" />
             Nueva Nota
           </button>
         </div>
@@ -337,41 +337,43 @@ const NotasEvolucion = ({
                 const [nombre] = n.autor.split(' — ');
                 const iniciales = nombre.split(' ').map(p => p[0]).join('');
                 return (
-                  <div key={n.id} className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all bg-white">
-                    <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 border-b border-gray-100">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
+                  <div key={n.id} className="border border-gray-100 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(16,24,40,0.04)] hover:shadow-[0_8px_24px_rgba(123,31,162,0.08)] transition-shadow bg-white">
+                    <div className="p-4 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center text-white text-sm font-bold shadow-sm shadow-purple-500/20 flex-shrink-0">
                           {iniciales}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-bold text-gray-900 truncate">{nombre}</p>
-                          {n.servicio && (
-                            <span className="inline-block mt-1.5 px-2.5 py-1 bg-[#A3C644]/10 text-[#A3C644] text-sm font-medium rounded border border-[#A3C644]/20">
-                              {n.servicio}
+                          <p className="text-sm font-bold text-gray-900 truncate">{nombre}</p>
+                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
+                            {n.servicio && (
+                              <span className="inline-flex items-center px-2 py-0.5 bg-[#A3C644]/10 text-[#A3C644] text-[11px] font-semibold rounded-full">
+                                {n.servicio}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {n.fecha}
                             </span>
-                          )}
-                          <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>{n.fecha}</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="p-4 sm:p-5 space-y-3">
+                    <div className="p-4 space-y-2.5">
                       {TIPOS_NOTA.map(tipo => {
                         const contenido = n[tipo.campo];
                         if (!contenido) return null;
                         const c = COLOR_CLASSES[tipo.color];
                         return (
-                          <div key={tipo.id} className={`${c.section} border rounded-xl p-4`}>
-                            <div className="flex items-center gap-2 mb-2.5">
-                              <div className={`w-8 h-8 rounded-lg ${c.bg} flex items-center justify-center flex-shrink-0`}>
+                          <div key={tipo.id} className={`${c.section} border rounded-xl p-3.5`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`w-7 h-7 rounded-lg ${c.bg} flex items-center justify-center flex-shrink-0`}>
                                 <span className={c.icon}>{tipo.icon}</span>
                               </div>
-                              <span className={`text-sm font-bold ${c.title} uppercase tracking-wide`}>{tipo.label}</span>
+                              <span className={`text-[11px] font-bold ${c.title} uppercase tracking-wide`}>{tipo.label}</span>
                             </div>
-                            <div className="text-base text-gray-800 leading-relaxed pl-10">
+                            <div className="text-sm text-gray-700 leading-relaxed pl-9">
                               {formatTextWithLineBreaks(contenido)}
                             </div>
                           </div>
@@ -406,24 +408,25 @@ const NotasEvolucion = ({
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" style={{ zIndex: 9998 }} onClick={() => setOpenNotaModal(false)} />
           <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
             <div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col border border-gray-100"
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col border border-gray-100"
               style={{ height: 'calc(100vh - 100px)', maxHeight: '900px' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
-                <div className="flex items-start justify-between">
+              <div className="relative p-5 sm:p-6 border-b border-purple-100/60 overflow-hidden flex-shrink-0" style={{ backgroundImage: 'radial-gradient(60% 140% at 100% 0%, rgba(123,31,162,.07) 0%, rgba(123,31,162,0) 60%), linear-gradient(120deg, #ffffff 0%, #fdfbff 60%, #faf6fe 100%)' }}>
+                <div className="pointer-events-none absolute -top-10 right-20 w-32 h-32 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
+                <div className="relative flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-[#7B1FA2]" />
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-md shadow-purple-500/30 flex-shrink-0">
+                      <FileText className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900">Nueva Nota de Evolución</h2>
-                      <p className="text-xs text-gray-500">Registra el progreso del paciente</p>
+                      <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Nueva Nota de Evolución</h2>
+                      <p className="text-[13px] text-gray-500">Registra el progreso del paciente</p>
                     </div>
                   </div>
                   <button onClick={() => setOpenNotaModal(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all">
+                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-white/70 rounded-lg transition-all">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -465,7 +468,7 @@ const NotasEvolucion = ({
                   <button
                     ref={btnAgregarRef}
                     onClick={() => setMostrarMenuTipos(v => !v)}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 my-1 mx-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all border-2 border-dashed border-[#7B1FA2]/30 hover:border-[#7B1FA2] font-medium text-xs whitespace-nowrap"
+                    className="flex items-center justify-center gap-1.5 px-4 py-2 my-1.5 mx-2 text-[#7B1FA2] hover:bg-purple-50 rounded-full transition-all border border-dashed border-[#7B1FA2]/40 hover:border-[#7B1FA2] font-semibold text-xs whitespace-nowrap"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     {tabs.length === 0 ? 'Agregar Nota' : 'Agregar'}
@@ -487,16 +490,19 @@ const NotasEvolucion = ({
               <div className="flex-1 overflow-hidden flex flex-col p-5 sm:p-6">
                 {tabs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
-                    <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mb-4">
-                      <Plus className="w-8 h-8 text-[#7B1FA2]" />
+                    <div className="relative mb-5">
+                      <div className="absolute inset-0 rounded-3xl bg-[#7B1FA2]/20 blur-xl" />
+                      <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-lg shadow-purple-500/30">
+                        <FileText className="w-9 h-9 text-white" />
+                      </div>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">Crea tu primera nota</h3>
-                    <p className="text-sm text-gray-500 mb-4 max-w-sm">
-                      Haz clic en "Agregar Nota" para seleccionar el tipo de registro que deseas crear
+                    <h3 className="text-xl font-extrabold text-[#2D0A4E] mb-1.5">Crea tu primera nota</h3>
+                    <p className="text-sm text-gray-400 mb-5 max-w-sm">
+                      Selecciona el tipo de registro que deseas crear para empezar el seguimiento del paciente
                     </p>
                     <button
                       onClick={() => setMostrarMenuTipos(true)}
-                      className="flex items-center gap-2 bg-[#7B1FA2] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+                      className="inline-flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30"
                     >
                       <Plus className="w-4 h-4" />
                       Agregar Nota
@@ -516,7 +522,7 @@ const NotasEvolucion = ({
                       <textarea
                         value={tabs[tabActiva]?.contenido || ''}
                         onChange={e => actualizarContenidoTab(tabActiva, e.target.value)}
-                        className="flex-1 w-full px-5 py-4 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 transition-all bg-white text-gray-900 resize-none"
+                        className="flex-1 w-full px-5 py-4 text-base border border-gray-200 rounded-xl focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow bg-white text-gray-900 resize-none"
                         placeholder={`Escribe aquí ${tipo?.label?.toLowerCase()}...`}
                         autoFocus
                       />
@@ -526,11 +532,11 @@ const NotasEvolucion = ({
               </div>
 
               {/* Footer */}
-              <div className="bg-gray-50/50 px-5 sm:px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 flex-shrink-0">
+              <div className="px-5 sm:px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 flex-shrink-0">
                 <button
                   onClick={() => setOpenNotaModal(false)}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-white border border-gray-200 rounded-xl transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 border border-gray-200 rounded-full transition-all disabled:opacity-50"
                 >
                   <X className="w-4 h-4" />
                   Cancelar
@@ -538,7 +544,7 @@ const NotasEvolucion = ({
                 <button
                   onClick={handleGuardarNota}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm disabled:opacity-50"
+                  className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-[#A3C644]/30 disabled:opacity-50 disabled:shadow-none"
                 >
                   {saving ? (
                     <>

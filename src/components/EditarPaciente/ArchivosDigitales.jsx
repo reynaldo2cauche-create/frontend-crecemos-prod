@@ -1,46 +1,107 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, X, Trash2, Download, Eye, FileText, Cloud, AlertCircle, Lock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Upload, X, Trash2, Download, Eye, FileText, Cloud, AlertCircle, Lock,
+  Image as ImageIcon, FileSpreadsheet, User, Calendar, HardDrive, CheckCircle, XCircle,
+  ZoomIn, ZoomOut
+} from 'lucide-react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { getTiposArchivo, subirArchivo, getArchivosPorPaciente, eliminarArchivo, descargarArchivo } from '../../services/archivosDigitalesService';
-import { API_BASE_URL, SERVER_BASE_URL } from '../../services/api';
+import { API_BASE_URL } from '../../services/api';
 import { Document, Page, pdfjs } from 'react-pdf';
 
-// Configurar el worker de PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+
+// ---------- Helpers de tipo de archivo ----------
+const esImagen = (m) => m?.startsWith('image/');
+const esPDF = (m) => m === 'application/pdf';
+const esWord = (m) =>
+  m === 'application/msword' ||
+  m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const esExcel = (m) =>
+  m === 'application/vnd.ms-excel' ||
+  m === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const esPowerPoint = (m) =>
+  m === 'application/vnd.ms-powerpoint' ||
+  m === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const esTexto = (m) => m?.startsWith('text/');
+
+const puedeVistaPrevia = (a) =>
+  esImagen(a.tipoMime) || esPDF(a.tipoMime) || esWord(a.tipoMime) ||
+  esExcel(a.tipoMime) || esPowerPoint(a.tipoMime) || esTexto(a.tipoMime);
+
+const getFileStyle = (mime) => {
+  if (esPDF(mime)) return { Icon: FileText, color: 'text-rose-600', bg: 'bg-rose-50' };
+  if (esImagen(mime)) return { Icon: ImageIcon, color: 'text-blue-600', bg: 'bg-blue-50' };
+  if (esExcel(mime)) return { Icon: FileSpreadsheet, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+  if (esWord(mime)) return { Icon: FileText, color: 'text-sky-600', bg: 'bg-sky-50' };
+  if (esPowerPoint(mime)) return { Icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50' };
+  return { Icon: FileText, color: 'text-[#7B1FA2]', bg: 'bg-purple-50' };
+};
+
+const Spinner = ({ className = 'w-12 h-12' }) => (
+  <div className={`relative ${className}`}>
+    <div className="absolute inset-0 border-2 border-purple-100 rounded-full"></div>
+    <div className="absolute inset-0 border-2 border-transparent border-t-[#7B1FA2] rounded-full animate-spin"></div>
+  </div>
+);
+
+const inputBase =
+  'w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none transition-all bg-white text-gray-900';
+
+const labelBase = 'block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+
+// Section reutilizable
+const Section = ({ icon: Icon, title, iconColor = 'text-[#7B1FA2]', bgColor = 'bg-purple-50', action, children }) => (
+  <section className="glass-panel rounded-3xl p-5">
+    <div className="flex items-center gap-3 mb-4">
+      <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center flex-shrink-0 ring-1 ring-black/[0.03]`}>
+        <Icon className={`w-5 h-5 ${iconColor}`} />
+      </div>
+      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide whitespace-nowrap">{title}</h3>
+      <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
+      {action}
+    </div>
+    {children}
+  </section>
+);
+
+const SummaryChip = ({ Icon, label, value, color = 'text-[#7B1FA2]', bg = 'bg-purple-100/70' }) => (
+  <div className="rounded-xl bg-[#F5F0FA] p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
+    <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center flex-shrink-0`}>
+      <Icon className={`w-[18px] h-[18px] ${color}`} />
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className="text-[13px] font-semibold text-gray-700 break-words leading-snug">{value}</p>
+    </div>
+  </div>
+);
 
 const ArchivosDigitales = ({ paciente }) => {
   const currentUser = useCurrentUser();
   const [openModal, setOpenModal] = useState(false);
   const [tiposArchivo, setTiposArchivo] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({
-    tipoArchivoId: '',
-    descripcion: '',
-    archivo: null
-  });
+  const [form, setForm] = useState({ tipoArchivoId: '', descripcion: '', archivo: null });
   const [errors, setErrors] = useState({});
   const [archivos, setArchivos] = useState([]);
   const [loadingArchivos, setLoadingArchivos] = useState(false);
   const [openVistaPrevia, setOpenVistaPrevia] = useState(false);
   const [archivoVistaPrevia, setArchivoVistaPrevia] = useState(null);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [openConfirmacion, setOpenConfirmacion] = useState(false);
   const [archivoAEliminar, setArchivoAEliminar] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
+  const containerRef = useRef(null);
 
-  // Función para verificar si el usuario es administrador
   const esAdministrador = () => {
     const rolUsuario = currentUser?.rol?.nombre?.toLowerCase() || currentUser?.rol?.toLowerCase() || '';
     return ['admin', 'administrador'].includes(rolUsuario);
   };
 
-  // Obtener tipos de archivo del backend
   useEffect(() => {
     const obtenerTiposArchivo = async () => {
       try {
@@ -58,15 +119,12 @@ const ArchivosDigitales = ({ paciente }) => {
         setLoading(false);
       }
     };
-
     obtenerTiposArchivo();
   }, []);
 
-  // Cargar archivos del paciente
   useEffect(() => {
     const cargarArchivos = async () => {
       if (!paciente?.id) return;
-
       try {
         setLoadingArchivos(true);
         const data = await getArchivosPorPaciente(paciente.id);
@@ -78,36 +136,44 @@ const ArchivosDigitales = ({ paciente }) => {
         setLoadingArchivos(false);
       }
     };
-
     cargarArchivos();
   }, [paciente?.id]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setScale((prev) => Math.max(0.5, Math.min(3, prev + delta)));
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [openVistaPrevia, archivoVistaPrevia]);
+
   const validarFormulario = () => {
     const nuevosErrores = {};
-
     if (!form.tipoArchivoId || form.tipoArchivoId === '') {
       nuevosErrores.tipoArchivoId = 'Debe seleccionar un tipo de archivo';
     }
-
     if (!form.descripcion || form.descripcion.trim() === '') {
       nuevosErrores.descripcion = 'La descripción es obligatoria';
     }
-
     if (!form.archivo) {
       nuevosErrores.archivo = 'Debe seleccionar un archivo';
     }
-
     setErrors(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
 
   const handleCerrarModal = () => {
     setOpenModal(false);
-    setForm({
-      tipoArchivoId: '',
-      descripcion: '',
-      archivo: null
-    });
+    setForm({ tipoArchivoId: '', descripcion: '', archivo: null });
     setErrors({});
     setGuardando(false);
   };
@@ -117,9 +183,15 @@ const ArchivosDigitales = ({ paciente }) => {
     setOpenConfirmacion(true);
   };
 
+  const mostrarNotificacion = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+    setTimeout(() => {
+      setSnackbar((prev) => ({ ...prev, open: false }));
+    }, 4000);
+  };
+
   const confirmarEliminacion = async () => {
     if (!archivoAEliminar) return;
-
     try {
       await eliminarArchivo(archivoAEliminar.id);
       const archivosActualizados = await getArchivosPorPaciente(paciente.id);
@@ -140,7 +212,7 @@ const ArchivosDigitales = ({ paciente }) => {
   };
 
   const formatearTamano = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+    if (!bytes || bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -158,10 +230,6 @@ const ArchivosDigitales = ({ paciente }) => {
   };
 
   const handleVistaPrevia = (archivo) => {
-    console.log('Vista previa de archivo:', archivo);
-    console.log('ID del archivo:', archivo.id);
-    console.log('Ruta del archivo:', archivo.rutaArchivo);
-    console.log('Tipo MIME:', archivo.tipoMime);
     setArchivoVistaPrevia(archivo);
     setOpenVistaPrevia(true);
   };
@@ -177,80 +245,9 @@ const ArchivosDigitales = ({ paciente }) => {
     setNumPages(numPages);
   };
 
-  const containerRef = React.useRef(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setScale(prev => Math.max(0.5, Math.min(3, prev + delta)));
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  const esImagen = (tipoMime) => {
-    return tipoMime?.startsWith('image/');
-  };
-
-  const esPDF = (tipoMime) => {
-    return tipoMime === 'application/pdf';
-  };
-
-  const esWord = (tipoMime) => {
-    return tipoMime === 'application/msword' ||
-           tipoMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  };
-
-  const esExcel = (tipoMime) => {
-    return tipoMime === 'application/vnd.ms-excel' ||
-           tipoMime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  };
-
-  const esPowerPoint = (tipoMime) => {
-    return tipoMime === 'application/vnd.ms-powerpoint' ||
-           tipoMime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-  };
-
-  const esTexto = (tipoMime) => {
-    return tipoMime?.startsWith('text/');
-  };
-
-  const puedeVistaPrevia = (archivo) => {
-    return esImagen(archivo.tipoMime) ||
-           esPDF(archivo.tipoMime) ||
-           esWord(archivo.tipoMime) ||
-           esExcel(archivo.tipoMime) ||
-           esPowerPoint(archivo.tipoMime) ||
-           esTexto(archivo.tipoMime);
-  };
-
-  const mostrarNotificacion = (message, severity = 'success') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
-    setTimeout(() => {
-      setSnackbar(prev => ({ ...prev, open: false }));
-    }, 4000);
-  };
-
-  // FUNCIÓN MODIFICADA: Solo admin puede descargar
   const handleDescargarArchivo = async (archivo) => {
     try {
-      if (!esAdministrador()) {
-        
-        return;
-      }
-
+      if (!esAdministrador()) return;
       const blob = await descargarArchivo(archivo.id);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -268,12 +265,8 @@ const ArchivosDigitales = ({ paciente }) => {
   };
 
   const handleGuardar = async () => {
-    if (!validarFormulario()) {
-      return;
-    }
-
+    if (!validarFormulario()) return;
     setGuardando(true);
-
     try {
       const formData = new FormData();
       formData.append('archivo', form.archivo);
@@ -281,9 +274,8 @@ const ArchivosDigitales = ({ paciente }) => {
       const nombreOriginal = form.archivo.name;
       const tipoMime = form.archivo.type;
       const tamano = form.archivo.size;
-      const requiereVerificacion = (currentUser?.rol?.id === 1 || currentUser?.rol?.id === 2)
-        ? 'OFICIAL'
-        : 'TERAPIA';
+      const requiereVerificacion =
+        currentUser?.rol?.id === 1 || currentUser?.rol?.id === 2 ? 'OFICIAL' : 'TERAPIA';
 
       formData.append('terapeutaId', currentUser?.id);
       formData.append('tipoArchivoId', form.tipoArchivoId);
@@ -301,7 +293,6 @@ const ArchivosDigitales = ({ paciente }) => {
 
       mostrarNotificacion('Archivo subido exitosamente', 'success');
       handleCerrarModal();
-
     } catch (error) {
       console.error('Error al subir archivo:', error);
       mostrarNotificacion('Error al subir el archivo', 'error');
@@ -310,231 +301,285 @@ const ArchivosDigitales = ({ paciente }) => {
     }
   };
 
-  // Prevenir clic derecho en imágenes para usuarios no admin
   const handleContextMenu = (e) => {
-    if (!esAdministrador()) {
-      e.preventDefault();
-      
-    }
+    if (!esAdministrador()) e.preventDefault();
   };
 
-  // Prevenir arrastrar imágenes para usuarios no admin
   const handleDragStart = (e) => {
-    if (!esAdministrador()) {
-      e.preventDefault();
-    }
+    if (!esAdministrador()) e.preventDefault();
   };
+
+  const previewUrl = (archivo) => `${API_BASE_URL}/archivos-digitales/${archivo.id}/preview`;
+
+  const totalArchivos = archivos.length;
+  const conVistaPrevia = archivos.filter(puedeVistaPrevia).length;
+  const soloDescarga = totalArchivos - conVistaPrevia;
 
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-100">
-      {/* Notificación */}
-      {snackbar.open && (
-        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border transform transition-all duration-300 ${
-          snackbar.severity === 'success'
-            ? 'bg-white border-gray-100'
-            : 'bg-white border-red-100'
-        } flex items-center gap-2.5`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${snackbar.severity === 'success' ? 'bg-[#A3C644]' : 'bg-red-500'}`}></div>
-          <span className="text-xs font-medium text-gray-700">{snackbar.message}</span>
-          <button onClick={() => setSnackbar(prev => ({ ...prev, open: false }))} className="ml-2">
-            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+    <div className="space-y-4">
+      {/* Snackbar */}
+      {snackbar.open && createPortal(
+        <div className="fixed top-6 right-6 z-[60] flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-xl shadow-purple-900/10 border border-gray-100">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+              snackbar.severity === 'success' ? 'bg-[#A3C644]/15' : 'bg-red-50'
+            }`}
+          >
+            {snackbar.severity === 'success' ? (
+              <CheckCircle className="w-4 h-4 text-[#8FB82D]" />
+            ) : (
+              <XCircle className="w-4 h-4 text-red-500" />
+            )}
+          </div>
+          <span className="text-xs font-semibold text-gray-700">{snackbar.message}</span>
+          <button
+            onClick={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+            className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
-      )}
+      , document.body)}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-blue-600" />
+      {/* Header principal */}
+      <div className="glass-panel rounded-3xl p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Archivos Digitales</h2>
+              <p className="text-[13px] text-gray-400">Gestiona los documentos del paciente</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Archivos Digitales</h2>
-            <p className="text-sm text-gray-500">Gestiona los documentos del paciente</p>
-          </div>
+          <button
+            onClick={() => setOpenModal(true)}
+            className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30"
+          >
+            <Upload className="w-4 h-4" />
+            Subir Archivo
+          </button>
         </div>
-        <button
-          onClick={() => setOpenModal(true)}
-          className="flex items-center gap-2 bg-[#A3C644] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
-        >
-          <Upload className="w-4 h-4" />
-          Subir Archivo
-        </button>
+
+        <div className="h-px bg-gradient-to-r from-gray-200 to-transparent my-4" />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <SummaryChip Icon={FileText} label="Total archivos" value={totalArchivos} />
+          <SummaryChip Icon={CheckCircle} label="Con vista previa" value={conVistaPrevia} color="text-emerald-600" bg="bg-emerald-100/70" />
+          <SummaryChip Icon={Lock} label="Solo descarga" value={soloDescarga} color="text-amber-600" bg="bg-amber-100/70" />
+        </div>
       </div>
 
-     
-
-      {/* Lista de archivos */}
-      {loadingArchivos ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 border-2 border-gray-100 rounded-full"></div>
-            <div className="absolute inset-0 border-2 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
+      {/* Lista */}
+      <Section
+        icon={FileText}
+        title="Documentos del Paciente"
+        iconColor="text-[#7B1FA2]"
+        bgColor="bg-purple-50"
+        action={
+          !loadingArchivos && archivos.length > 0 ? (
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              {archivos.length} {archivos.length === 1 ? 'archivo' : 'archivos'}
+            </span>
+          ) : null
+        }
+      >
+        {loadingArchivos ? (
+          <div className="flex items-center justify-center py-12">
+            <Spinner />
           </div>
-        </div>
-      ) : archivos.length === 0 ? (
-        <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 flex flex-col items-center justify-center">
-          <Cloud className="w-16 h-16 text-gray-300 mb-3" />
-          <p className="text-gray-500 text-sm font-medium">No se encontró ningún archivo</p>
-          <p className="text-gray-400 text-xs mt-1">Sube el primer archivo del paciente</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {archivos.map((archivo) => (
-            <div key={archivo.id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 truncate">{archivo.nombreOriginal}</h3>
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{archivo.descripcion}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                        {archivo.tipoArchivo?.nombre || 'Sin tipo'}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                        {formatearTamano(archivo.tamano)}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hidden md:inline">
-                        {formatearFecha(archivo.fechaCreacion)}
-                      </span>
-                      {archivo.terapeuta && (
-                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">
-                          Subido por: {archivo.terapeuta.nombres} {archivo.terapeuta.apellidos}
-                        </span>
+        ) : archivos.length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+            <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-3">
+              <Cloud className="w-8 h-8 text-[#7B1FA2]/40" />
+            </div>
+            <p className="text-sm font-semibold text-gray-500">No se encontró ningún archivo</p>
+            <p className="text-xs text-gray-400 mt-1">Sube el primer archivo del paciente</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {archivos.map((archivo) => {
+              const { Icon, color, bg } = getFileStyle(archivo.tipoMime);
+              return (
+                <div
+                  key={archivo.id}
+                  className="rounded-2xl bg-[#F5F0FA] p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center flex-shrink-0 ring-1 ring-black/[0.03]`}>
+                        <Icon className={`w-5 h-5 ${color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-gray-800 truncate">{archivo.nombreOriginal}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{archivo.descripcion}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className="px-2.5 py-1 bg-purple-100/70 text-[#7B1FA2] rounded-full text-[11px] font-semibold">
+                            {archivo.tipoArchivo?.nombre || 'Sin tipo'}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-gray-500 rounded-full text-[11px]">
+                            <HardDrive className="w-3 h-3" />
+                            {formatearTamano(archivo.tamano)}
+                          </span>
+                          <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-white text-gray-500 rounded-full text-[11px]">
+                            <Calendar className="w-3 h-3" />
+                            {formatearFecha(archivo.fechaCreacion)}
+                          </span>
+                          {archivo.terapeuta && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[11px] font-medium">
+                              <User className="w-3 h-3" />
+                              {archivo.terapeuta.nombres} {archivo.terapeuta.apellidos}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {puedeVistaPrevia(archivo) && (
+                        <button
+                          onClick={() => handleVistaPrevia(archivo)}
+                          className="p-2 text-gray-400 hover:text-[#7B1FA2] hover:bg-white rounded-lg transition-colors"
+                          title="Vista previa"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      {esAdministrador() && (
+                        <>
+                          <button
+                            onClick={() => handleDescargarArchivo(archivo)}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg transition-colors"
+                            title="Descargar"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEliminarArchivo(archivo)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar archivo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {/* BOTÓN DE VISTA PREVIA: Todos pueden ver */}
-                  {puedeVistaPrevia(archivo) && (
-                    <button
-                      onClick={() => handleVistaPrevia(archivo)}
-                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
-                      title="Vista previa"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  )}
+              );
+            })}
+          </div>
+        )}
+      </Section>
 
-                  {/* BOTÓN DE DESCARGA: Solo para Administrador */}
-                  {esAdministrador() && (
-                    <button
-                      onClick={() => handleDescargarArchivo(archivo)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                      title="Descargar"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  )}
-
-                   {esAdministrador() && (
-                    <button
-                      onClick={() => handleEliminarArchivo(archivo)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                      title="Eliminar archivo"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  {/* ELIMINACIÓN DESHABILITADA: Los archivos no pueden ser eliminados por ningún usuario */}
+      {/* ===================== MODAL: SUBIR ARCHIVO ===================== */}
+      {openModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl shadow-purple-900/30 w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-white/20">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm shadow-purple-500/20">
+                  <Upload className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#2D0A4E] leading-tight">Subir Nuevo Archivo</h3>
+                  <p className="text-xs text-gray-400">Agrega un documento al expediente del paciente</p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Modal para subir archivo */}
-      {openModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Subir Nuevo Archivo</h3>
-              <button onClick={handleCerrarModal} className="p-1 hover:bg-gray-100 rounded-lg transition-all">
-                <X className="w-5 h-5 text-gray-500" />
+              <button
+                onClick={handleCerrarModal}
+                className="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-purple-50 hover:text-[#7B1FA2] rounded-full transition-colors flex-shrink-0"
+              >
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              {/* Terapeuta */}
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-gradient-to-b from-white to-[#FBF8FD]">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Terapeuta</label>
+                <label className={labelBase}>Terapeuta</label>
                 <input
                   type="text"
-                  value={currentUser?.nombres + ' ' + currentUser?.apellidos || ''}
+                  value={`${currentUser?.nombres || ''} ${currentUser?.apellidos || ''}`.trim()}
                   readOnly
-                  className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  className={`${inputBase} border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed`}
                 />
               </div>
 
-              {/* Tipo de archivo */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                <label className={labelBase}>
                   Tipo de Archivo <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={form.tipoArchivoId}
-                  onChange={(e) => {
-                    setForm({ ...form, tipoArchivoId: e.target.value });
-                    if (errors.tipoArchivoId) {
-                      setErrors({ ...errors, tipoArchivoId: '' });
-                    }
-                  }}
-                  className={`w-full px-4 py-2.5 text-sm border-2 rounded-lg focus:outline-none transition-all ${
-                    errors.tipoArchivoId
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-200 focus:border-[#A3C644]'
-                  }`}
-                >
-                  <option value="">Seleccionar tipo</option>
-                  {tiposArchivo.map((tipo) => (
-                    <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
-                  ))}
-                </select>
-                {errors.tipoArchivoId && <p className="text-xs text-red-500 mt-1">{errors.tipoArchivoId}</p>}
+                <div className="relative">
+                  <select
+                    value={form.tipoArchivoId}
+                    onChange={(e) => {
+                      setForm({ ...form, tipoArchivoId: e.target.value });
+                      if (errors.tipoArchivoId) setErrors({ ...errors, tipoArchivoId: '' });
+                    }}
+                    disabled={loading}
+                    className={`${inputBase} appearance-none cursor-pointer ${
+                      errors.tipoArchivoId
+                        ? 'border-red-300 focus:border-red-500'
+                        : 'border-gray-200 focus:border-[#7B1FA2]'
+                    }`}
+                  >
+                    <option value="">Seleccionar tipo</option>
+                    {tiposArchivo.map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                {errors.tipoArchivoId && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.tipoArchivoId}
+                  </p>
+                )}
               </div>
 
-              {/* Descripción */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                <label className={labelBase}>
                   Descripción <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={form.descripcion}
                   onChange={(e) => {
                     setForm({ ...form, descripcion: e.target.value });
-                    if (errors.descripcion) {
-                      setErrors({ ...errors, descripcion: '' });
-                    }
+                    if (errors.descripcion) setErrors({ ...errors, descripcion: '' });
                   }}
                   rows={3}
-                  className={`w-full px-4 py-3 text-sm border-2 rounded-lg focus:outline-none transition-all resize-none ${
+                  className={`${inputBase} resize-none ${
                     errors.descripcion
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-200 focus:border-[#A3C644]'
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-gray-200 focus:border-[#7B1FA2]'
                   }`}
                   placeholder="Describe el contenido del archivo..."
                 />
-                {errors.descripcion && <p className="text-xs text-red-500 mt-1">{errors.descripcion}</p>}
+                {errors.descripcion && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.descripcion}
+                  </p>
+                )}
               </div>
 
-              {/* Archivo */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                <label className={labelBase}>
                   Archivo <span className="text-red-500">*</span>
                 </label>
 
-                {/* Aviso de formatos recomendados */}
-                <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="mb-3 bg-purple-50/60 border border-purple-100 rounded-2xl p-3.5">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-[#7B1FA2] flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-blue-900 mb-1">Formatos Recomendados con Vista Previa</p>
-                      <div className="text-xs text-blue-700 space-y-1">
+                      <p className="text-xs font-semibold text-[#2D0A4E] mb-1">Formatos recomendados con vista previa</p>
+                      <div className="text-xs text-purple-700 space-y-1">
                         <p><strong>✓ PDF:</strong> Mejor opción para documentos (vista previa completa)</p>
                         <p><strong>✓ Imágenes:</strong> JPG, PNG, GIF, BMP, WEBP (vista previa con zoom)</p>
                         <p><strong>• Word/Excel/PowerPoint:</strong> Solo administradores pueden descargar</p>
@@ -543,44 +588,74 @@ const ArchivosDigitales = ({ paciente }) => {
                   </div>
                 </div>
 
-                <div className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-[#A3C644] transition-all ${
-                  errors.archivo ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-gray-50'
-                }`}>
-                  <input
-                    type="file"
-                    className="hidden"
-                    id="file-upload"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg,.txt,.csv"
-                    onChange={(e) => {
-                      setForm({ ...form, archivo: e.target.files[0] });
-                      if (errors.archivo) {
-                        setErrors({ ...errors, archivo: '' });
-                      }
-                    }}
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 font-medium">
-                      {form.archivo ? form.archivo.name : 'Haz click para seleccionar un archivo'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">Tamaño máximo: 10MB</p>
-                  </label>
-                </div>
-                {errors.archivo && <p className="text-xs text-red-500 mt-1">{errors.archivo}</p>}
+                <input
+                  type="file"
+                  className="hidden"
+                  id="file-upload"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg,.txt,.csv"
+                  onChange={(e) => {
+                    setForm({ ...form, archivo: e.target.files[0] });
+                    if (errors.archivo) setErrors({ ...errors, archivo: '' });
+                  }}
+                />
+                <label
+                  htmlFor="file-upload"
+                  className={`block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                    errors.archivo
+                      ? 'border-red-300 bg-red-50/60'
+                      : form.archivo
+                      ? 'border-[#A3C644] bg-[#A3C644]/5'
+                      : 'border-purple-200 bg-purple-50/40 hover:border-[#7B1FA2] hover:bg-purple-50'
+                  }`}
+                >
+                  {form.archivo ? (
+                    <>
+                      <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mx-auto mb-3 shadow-sm ring-1 ring-[#A3C644]/30">
+                        <CheckCircle className="w-7 h-7 text-[#8FB82D]" />
+                      </div>
+                      <p className="text-sm text-gray-800 font-bold break-words">{form.archivo.name}</p>
+                      <div className="flex items-center justify-center gap-1.5 mt-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-gray-500 rounded-full text-[11px]">
+                          <HardDrive className="w-3 h-3" />
+                          {formatearTamano(form.archivo.size)}
+                        </span>
+                        <span className="px-2.5 py-1 bg-white text-[#7B1FA2] rounded-full text-[11px] font-semibold">
+                          Cambiar archivo
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mx-auto mb-3 shadow-sm ring-1 ring-purple-100">
+                        <Upload className="w-7 h-7 text-[#7B1FA2]" />
+                      </div>
+                      <p className="text-sm text-gray-700 font-bold">Haz clic para seleccionar un archivo</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, imágenes, Office o texto · Máximo 10MB</p>
+                    </>
+                  )}
+                </label>
+                {errors.archivo && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.archivo}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-white flex-shrink-0">
               <button
                 onClick={handleCerrarModal}
                 disabled={guardando}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all disabled:opacity-50"
               >
+                <X className="w-4 h-4" />
                 Cancelar
               </button>
               <button
                 onClick={handleGuardar}
                 disabled={guardando}
-                className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {guardando ? (
                   <>
@@ -597,365 +672,387 @@ const ArchivosDigitales = ({ paciente }) => {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {/* Modal de Vista Previa */}
-      {openVistaPrevia && archivoVistaPrevia && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div className="flex-1 min-w-0 mr-4">
-                <h3 className="text-lg font-bold text-gray-900 truncate">Vista Previa - {archivoVistaPrevia.nombreOriginal}</h3>
-                {!esAdministrador() && (
-                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    Solo visualización - Descarga restringida
-                  </p>
-                )}
+      {/* ===================== MODAL: VISTA PREVIA ===================== */}
+      {openVistaPrevia && archivoVistaPrevia && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl shadow-purple-900/30 w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden ring-1 ring-white/20">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
+                {(() => {
+                  const { Icon, color, bg } = getFileStyle(archivoVistaPrevia.tipoMime);
+                  return (
+                    <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0 ring-1 ring-black/[0.03]`}>
+                      <Icon className={`w-5 h-5 ${color}`} />
+                    </div>
+                  );
+                })()}
+                <div className="min-w-0">
+                  <h3 className="text-base font-extrabold text-[#2D0A4E] truncate">
+                    {archivoVistaPrevia.nombreOriginal}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <span className="px-2.5 py-0.5 bg-purple-100/70 text-[#7B1FA2] rounded-full text-[11px] font-semibold">
+                      {archivoVistaPrevia.tipoArchivo?.nombre || 'Sin tipo'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[11px]">
+                      <HardDrive className="w-3 h-3" />
+                      {formatearTamano(archivoVistaPrevia.tamano)}
+                    </span>
+                    {archivoVistaPrevia.fechaCreacion && (
+                      <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[11px]">
+                        <Calendar className="w-3 h-3" />
+                        {formatearFecha(archivoVistaPrevia.fechaCreacion)}
+                      </span>
+                    )}
+                    {!esAdministrador() && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-[11px] font-medium">
+                        <Lock className="w-3 h-3" />
+                        Solo visualización
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <button onClick={handleCerrarVistaPrevia} className="p-1 hover:bg-gray-100 rounded-lg transition-all flex-shrink-0">
-                <X className="w-5 h-5 text-gray-500" />
+              <button
+                onClick={handleCerrarVistaPrevia}
+                className="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-purple-50 hover:text-[#7B1FA2] rounded-full transition-colors flex-shrink-0"
+              >
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-6 bg-gray-50 relative">
-              {/* IMÁGENES: Protegidas contra clic derecho y arrastre */}
+
+            <div
+              className="flex-1 overflow-auto p-6 relative bg-gradient-to-br from-[#F5F0FA] via-white to-[#F5F0FA]"
+              style={{
+                backgroundImage: 'radial-gradient(rgba(123,31,162,0.08) 1px, transparent 1px)',
+                backgroundSize: '18px 18px'
+              }}
+            >
               {esImagen(archivoVistaPrevia.tipoMime) && (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full relative">
                   <img
-                    src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
+                    src={previewUrl(archivoVistaPrevia)}
                     alt={archivoVistaPrevia.nombreOriginal}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg select-none"
+                    className="max-w-full max-h-full object-contain rounded-3xl border-[10px] border-white shadow-2xl shadow-purple-900/20 ring-1 ring-purple-100 bg-white select-none"
                     onContextMenu={handleContextMenu}
                     onDragStart={handleDragStart}
-                    onError={(e) => {
-                      console.error('Error al cargar imagen:', e);
-console.error('URL intentada:', e.target.src);
-}}
-onLoad={() => {
-console.log('Imagen cargada correctamente');
-}}
-style={{
-userSelect: 'none',
-pointerEvents: esAdministrador() ? 'auto' : 'none'
-}}
-/>
-{/* Overlay invisible para prevenir interacciones en usuarios no admin */}
-{!esAdministrador() && (
-<div
-className="absolute inset-0"
-onContextMenu={handleContextMenu}
-style={{ cursor: 'default' }}
-/>
-)}
-</div>
-)}
-          {/* PDFs: react-pdf para control total */}
-{esPDF(archivoVistaPrevia.tipoMime) && (
-  <>
-    {esAdministrador() ? (
-      // Admin: PDF normal con todas las funcionalidades
-      <iframe
-        src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
-        className="w-full h-full rounded-lg border-0 shadow-lg"
-        title={archivoVistaPrevia.nombreOriginal}
-        style={{ border: 'none' }}
-      />
-    ) : (
-      // No-admin: react-pdf con scroll nativo y bloqueo de clic derecho
-      <div className="relative w-full h-full">
-        <div
-          ref={containerRef}
-          className="w-full h-full overflow-y-auto overflow-x-hidden"
-          style={{
-            backgroundColor: '#525659'
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleContextMenu(e);
-            return false;
-          }}
-        >
-          <div className="flex flex-col items-center py-4">
-            <Document
-              file={{
-                url: `${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`,
-                httpHeaders: {
-                  'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-                }
-              }}
-              onLoadSuccess={onDocumentLoadSuccess}
-              onLoadError={(error) => {
-                console.error('Error cargando PDF:', error);
-              }}
-              loading={
-                <div className="flex items-center justify-center py-12">
-                  <div className="relative w-12 h-12">
-                    <div className="absolute inset-0 border-2 border-gray-100 rounded-full"></div>
-                    <div className="absolute inset-0 border-2 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
-                  </div>
-                </div>
-              }
-              error={
-                <div className="flex items-center justify-center py-12">
-                  <p className="text-red-500 text-sm">Error al cargar el PDF</p>
-                </div>
-              }
-            >
-              {numPages && Array.from(new Array(numPages), (el, index) => (
-                <div
-                  key={`page_${index + 1}`}
-                  className="mb-4"
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleContextMenu(e);
-                  }}
-                >
-                  <Page
-                    pageNumber={index + 1}
-                    scale={scale}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
+                    style={{
+                      userSelect: 'none',
+                      pointerEvents: esAdministrador() ? 'auto' : 'none'
+                    }}
                   />
+                  {!esAdministrador() && (
+                    <div className="absolute inset-0" onContextMenu={handleContextMenu} style={{ cursor: 'default' }} />
+                  )}
                 </div>
-              ))}
-            </Document>
-          </div>
-        </div>
+              )}
 
-        {/* Controles de zoom flotantes */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-md z-[100]">
-          <div className="flex items-center gap-2 px-3 py-2">
-            <Lock className="w-4 h-4 text-amber-600" />
-            <span className="text-xs font-medium text-gray-700">Vista protegida</span>
-            <div className="flex items-center gap-1 ml-2 border-l pl-2">
-              <button
-                onClick={() => setScale(prev => Math.max(0.5, prev - 0.1))}
-                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-                title="Reducir zoom"
-              >
-                -
-              </button>
-              <span className="text-xs font-medium text-gray-700 min-w-[50px] text-center">
-                {Math.round(scale * 100)}%
-              </span>
-              <button
-                onClick={() => setScale(prev => Math.min(3, prev + 0.1))}
-                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-                title="Aumentar zoom"
-              >
-                +
-              </button>
-              <button
-                onClick={() => setScale(1.0)}
-                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors ml-1"
-                title="Restablecer zoom"
-              >
-                100%
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-  </>
-)}
-          {/* ARCHIVOS DE OFFICE: Solo admin puede descargar */}
-          {(esWord(archivoVistaPrevia.tipoMime) || esExcel(archivoVistaPrevia.tipoMime) || esPowerPoint(archivoVistaPrevia.tipoMime)) && (
-            <div className="w-full h-full flex flex-col">
-              <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <FileText className="w-20 h-20 text-blue-500 mb-4" />
-                <p className="text-lg font-semibold text-gray-700 mb-2">
-                  {esWord(archivoVistaPrevia.tipoMime) && 'Documento de Word'}
-                  {esExcel(archivoVistaPrevia.tipoMime) && 'Hoja de Cálculo Excel'}
-                  {esPowerPoint(archivoVistaPrevia.tipoMime) && 'Presentación PowerPoint'}
-                </p>
-                <p className="text-sm text-gray-600 mb-4 max-w-md">
-                  Los archivos de Office requieren aplicaciones especiales para visualizarse correctamente.
-                </p>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 max-w-md mb-4">
-                  <p className="text-xs text-gray-500 mb-2">
-                    <strong>Nombre:</strong> {archivoVistaPrevia.nombreOriginal}
-                  </p>
-                  <p className="text-xs text-gray-500 mb-2">
-                    <strong>Tipo:</strong> {
-                      esWord(archivoVistaPrevia.tipoMime) ? 'Microsoft Word' :
-                      esExcel(archivoVistaPrevia.tipoMime) ? 'Microsoft Excel' :
-                      'Microsoft PowerPoint'
-                    }
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    <strong>Tamaño:</strong> {formatearTamano(archivoVistaPrevia.tamano)}
-                  </p>
-                </div>
+              {esPDF(archivoVistaPrevia.tipoMime) && (
+                <>
+                  {esAdministrador() ? (
+                    <iframe
+                      src={`${previewUrl(archivoVistaPrevia)}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                      className="w-full h-full rounded-2xl border-0 shadow-lg"
+                      title={archivoVistaPrevia.nombreOriginal}
+                      style={{ border: 'none' }}
+                    />
+                  ) : (
+                    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg">
+                      <div
+                        ref={containerRef}
+                        className="w-full h-full overflow-y-auto overflow-x-hidden"
+                        style={{ backgroundColor: '#525659' }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleContextMenu(e);
+                          return false;
+                        }}
+                      >
+                        <div className="flex flex-col items-center py-16">
+                          <Document
+                            file={{
+                              url: previewUrl(archivoVistaPrevia),
+                              httpHeaders: {
+                                Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`
+                              }
+                            }}
+                            onLoadSuccess={onDocumentLoadSuccess}
+                            onLoadError={(error) => console.error('Error cargando PDF:', error)}
+                            loading={<div className="flex items-center justify-center py-12"><Spinner /></div>}
+                            error={
+                              <div className="flex items-center justify-center py-12">
+                                <p className="text-red-300 text-sm">Error al cargar el PDF</p>
+                              </div>
+                            }
+                          >
+                            {numPages &&
+                              Array.from(new Array(numPages), (el, index) => (
+                                <div
+                                  key={`page_${index + 1}`}
+                                  className="mb-4"
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    handleContextMenu(e);
+                                  }}
+                                >
+                                  <Page
+                                    pageNumber={index + 1}
+                                    scale={scale}
+                                    renderTextLayer={false}
+                                    renderAnnotationLayer={false}
+                                  />
+                                </div>
+                              ))}
+                          </Document>
+                        </div>
+                      </div>
 
-                {esAdministrador() ? (
-                  <button
-                    onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
-                    className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
-                  >
-                    <Download className="w-5 h-5" />
-                    Descargar y Abrir con Office
-                  </button>
-                ) : (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md flex items-start gap-3">
-                    <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-semibold text-amber-900 mb-1">Descarga Restringida</p>
-                      <p className="text-xs text-amber-700">
-                        Los archivos de Office solo pueden ser descargados por administradores. Contacta con un administrador si necesitas acceder a este archivo.
-                      </p>
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur border border-gray-200 rounded-full shadow-lg z-[100]">
+                        <div className="flex items-center gap-2 px-4 py-2">
+                          <Lock className="w-4 h-4 text-amber-600" />
+                          <span className="text-xs font-semibold text-gray-700">Vista protegida</span>
+                          <div className="flex items-center gap-1 ml-2 border-l border-gray-200 pl-3">
+                            <button
+                              onClick={() => setScale((prev) => Math.max(0.5, prev - 0.1))}
+                              className="p-1.5 text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 rounded-full transition-colors"
+                              title="Reducir zoom"
+                            >
+                              <ZoomOut className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs font-semibold text-gray-700 min-w-[44px] text-center">
+                              {Math.round(scale * 100)}%
+                            </span>
+                            <button
+                              onClick={() => setScale((prev) => Math.min(3, prev + 0.1))}
+                              className="p-1.5 text-gray-500 hover:text-[#7B1FA2] hover:bg-purple-50 rounded-full transition-colors"
+                              title="Aumentar zoom"
+                            >
+                              <ZoomIn className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setScale(1.0)}
+                              className="px-2.5 py-1 text-[11px] font-semibold text-[#7B1FA2] bg-purple-50 hover:bg-purple-100 rounded-full transition-colors ml-1"
+                              title="Restablecer zoom"
+                            >
+                              100%
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {(esWord(archivoVistaPrevia.tipoMime) ||
+                esExcel(archivoVistaPrevia.tipoMime) ||
+                esPowerPoint(archivoVistaPrevia.tipoMime)) && (
+                <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                  <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center shadow-sm mb-4">
+                    {(() => {
+                      const { Icon, color } = getFileStyle(archivoVistaPrevia.tipoMime);
+                      return <Icon className={`w-10 h-10 ${color}`} />;
+                    })()}
+                  </div>
+                  <p className="text-lg font-extrabold text-[#2D0A4E] mb-1">
+                    {esWord(archivoVistaPrevia.tipoMime) && 'Documento de Word'}
+                    {esExcel(archivoVistaPrevia.tipoMime) && 'Hoja de Cálculo Excel'}
+                    {esPowerPoint(archivoVistaPrevia.tipoMime) && 'Presentación PowerPoint'}
+                  </p>
+                  <p className="text-sm text-gray-500 mb-5 max-w-md">
+                    Los archivos de Office requieren aplicaciones especiales para visualizarse correctamente.
+                  </p>
+
+                  <div className="bg-white rounded-2xl p-4 max-w-md w-full mb-5 text-left space-y-2">
+                    <div>
+                      <p className={labelBase + ' !mb-0.5'}>Nombre</p>
+                      <p className="text-sm font-semibold text-gray-800 break-words">{archivoVistaPrevia.nombreOriginal}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className={labelBase + ' !mb-0.5'}>Tipo</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {esWord(archivoVistaPrevia.tipoMime) ? 'Microsoft Word'
+                            : esExcel(archivoVistaPrevia.tipoMime) ? 'Microsoft Excel'
+                            : 'Microsoft PowerPoint'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className={labelBase + ' !mb-0.5'}>Tamaño</p>
+                        <p className="text-sm font-semibold text-gray-800">{formatearTamano(archivoVistaPrevia.tamano)}</p>
+                      </div>
                     </div>
                   </div>
+
+                  {esAdministrador() ? (
+                    <button
+                      onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
+                      className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30"
+                    >
+                      <Download className="w-5 h-5" />
+                      Descargar y abrir con Office
+                    </button>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 max-w-md flex items-start gap-3">
+                      <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-semibold text-amber-900 mb-1">Descarga restringida</p>
+                        <p className="text-xs text-amber-700">
+                          Los archivos de Office solo pueden ser descargados por administradores. Contacta con un
+                          administrador si necesitas acceder a este archivo.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {esTexto(archivoVistaPrevia.tipoMime) && (
+                <div className="relative w-full h-full">
+                  <iframe
+                    src={previewUrl(archivoVistaPrevia)}
+                    className="w-full h-full rounded-2xl border-0 shadow-lg bg-white p-4"
+                    title={archivoVistaPrevia.nombreOriginal}
+                  />
+                  {!esAdministrador() && (
+                    <div
+                      className="absolute inset-0 pointer-events-auto"
+                      onContextMenu={handleContextMenu}
+                      style={{ background: 'transparent' }}
+                    />
+                  )}
+                </div>
+              )}
+
+              {!puedeVistaPrevia(archivoVistaPrevia) && (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center shadow-sm mb-4">
+                    <FileText className="w-10 h-10 text-gray-300" />
+                  </div>
+                  <p className="text-lg font-extrabold text-[#2D0A4E] mb-1">Vista previa no disponible</p>
+                  <p className="text-sm text-gray-500 mb-4">Este tipo de archivo no se puede previsualizar</p>
+
+                  {esAdministrador() ? (
+                    <p className="text-xs text-gray-400">Puedes descargarlo para verlo en tu dispositivo</p>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 max-w-md flex items-start gap-3">
+                      <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-semibold text-amber-900 mb-1">Acceso restringido</p>
+                        <p className="text-xs text-amber-700">
+                          Este archivo no tiene vista previa disponible y solo los administradores pueden descargarlo.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-100 bg-white flex-shrink-0">
+              <div className="min-w-0 flex-1">
+                {archivoVistaPrevia.descripcion && (
+                  <p className="text-xs text-gray-500 line-clamp-2">{archivoVistaPrevia.descripcion}</p>
+                )}
+                {archivoVistaPrevia.terapeuta && (
+                  <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[11px] font-medium">
+                    <User className="w-3 h-3" />
+                    Subido por {archivoVistaPrevia.terapeuta.nombres} {archivoVistaPrevia.terapeuta.apellidos}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCerrarVistaPrevia}
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all"
+                >
+                  <X className="w-4 h-4" />
+                  Cerrar
+                </button>
+                {esAdministrador() && (
+                  <button
+                    onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
+                    className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30"
+                  >
+                    <Download className="w-4 h-4" />
+                    Descargar
+                  </button>
                 )}
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      , document.body)}
 
-          {/* ARCHIVOS DE TEXTO */}
-          {esTexto(archivoVistaPrevia.tipoMime) && (
-            <div className="relative w-full h-full">
-              <iframe
-                src={`${API_BASE_URL}/archivos-digitales/${archivoVistaPrevia.id}/preview`}
-                className="w-full h-full rounded-lg border-0 shadow-lg bg-white p-4"
-                title={archivoVistaPrevia.nombreOriginal}
-                onError={(e) => {
-                  console.error('Error al cargar archivo de texto:', e);
-                }}
-                onLoad={() => {
-                  console.log('Archivo de texto cargado correctamente');
-                }}
-              />
-              {/* Overlay para usuarios no admin */}
-              {!esAdministrador() && (
-                <div 
-                  className="absolute inset-0 pointer-events-auto"
-                  onContextMenu={handleContextMenu}
-                  style={{ background: 'transparent' }}
-                />
-              )}
-            </div>
-          )}
+      {/* ===================== MODAL: CONFIRMAR ELIMINACIÓN ===================== */}
+      {openConfirmacion && archivoAEliminar && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-purple-900/20 w-full max-w-md overflow-hidden ring-1 ring-white/20">
+            <div className="p-6 text-center">
+              <div className="mx-auto w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                <Trash2 className="w-7 h-7 text-red-600" />
+              </div>
+              <h3 className="text-lg font-extrabold text-[#2D0A4E] mb-1">Confirmar eliminación</h3>
+              <p className="text-sm text-gray-500 mb-5">Esta acción no se puede deshacer</p>
 
-          {/* OTROS ARCHIVOS SIN VISTA PREVIA */}
-          {!puedeVistaPrevia(archivoVistaPrevia) && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <FileText className="w-16 h-16 text-gray-300 mb-4" />
-              <p className="text-lg font-semibold text-gray-700 mb-2">Vista previa no disponible</p>
-              <p className="text-sm text-gray-500 mb-4">Este tipo de archivo no se puede previsualizar</p>
-              
-              {esAdministrador() ? (
-                <p className="text-xs text-gray-400">Puedes descargarlo para verlo en tu dispositivo</p>
-              ) : (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md flex items-start gap-3">
-                  <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold text-amber-900 mb-1">Acceso Restringido</p>
-                    <p className="text-xs text-amber-700">
-                      Este archivo no tiene vista previa disponible y solo los administradores pueden descargarlo.
-                    </p>
+              <div className="p-4 bg-[#F5F0FA] rounded-2xl text-left">
+                <div className="flex items-start gap-3">
+                  {(() => {
+                    const { Icon, color, bg } = getFileStyle(archivoAEliminar.tipoMime);
+                    return (
+                      <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className={`w-5 h-5 ${color}`} />
+                      </div>
+                    );
+                  })()}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800 truncate">{archivoAEliminar.nombreOriginal}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{archivoAEliminar.descripcion}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="px-2.5 py-1 bg-purple-100/70 text-[#7B1FA2] rounded-full text-[11px] font-semibold">
+                        {archivoAEliminar.tipoArchivo?.nombre || 'Sin tipo'}
+                      </span>
+                      <span className="px-2.5 py-1 bg-white text-gray-500 rounded-full text-[11px]">
+                        {formatearTamano(archivoAEliminar.tamano)}
+                      </span>
+                      {archivoAEliminar.terapeuta && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[11px] font-medium">
+                          <User className="w-3 h-3" />
+                          {archivoAEliminar.terapeuta.nombres} {archivoAEliminar.terapeuta.apellidos}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-        
-        {/* Footer con botones */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-100">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            {!esAdministrador() && (
-              <>
-                <Lock className="w-4 h-4 text-amber-600" />
-                <span className="text-amber-600 font-medium">Modo solo visualización</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleCerrarVistaPrevia}
-              className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-            >
-              Cerrar
-            </button>
-            
-            {/* BOTÓN DE DESCARGA: Solo para administradores */}
-            {esAdministrador() && (
-              <button
-                onClick={() => handleDescargarArchivo(archivoVistaPrevia)}
-                className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm"
-              >
-                <Download className="w-4 h-4" />
-                Descargar
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {/* Modal de Confirmación de Eliminación */}
-  {openConfirmacion && archivoAEliminar && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
-              <p className="text-sm text-gray-500 mt-1">Esta acción no se puede deshacer</p>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{archivoAEliminar.nombreOriginal}</p>
-                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{archivoAEliminar.descripcion}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                    {archivoAEliminar.tipoArchivo?.nombre || 'Sin tipo'}
-                  </span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                    {formatearTamano(archivoAEliminar.tamano)}
-                  </span>
-                  {archivoAEliminar.terapeuta && (
-                    <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">
-                      Subido por: {archivoAEliminar.terapeuta.nombres} {archivoAEliminar.terapeuta.apellidos}
-                    </span>
-                  )}
-                </div>
               </div>
+
+              <p className="text-sm text-gray-600 mt-5">¿Estás seguro de que quieres eliminar este archivo?</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
+              <button
+                onClick={cancelarEliminacion}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all"
+              >
+                <X className="w-4 h-4" />
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEliminacion}
+                className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-red-700 transition-all shadow-lg shadow-red-500/30"
+              >
+                <Trash2 className="w-4 h-4" />
+                Eliminar
+              </button>
             </div>
           </div>
-          <p className="text-sm text-gray-700 text-center mt-6">
-            ¿Estás seguro de que quieres eliminar este archivo?
-          </p>
         </div>
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-          <button
-            onClick={cancelarEliminacion}
-            className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={confirmarEliminacion}
-            className="flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition-all shadow-sm"
-          >
-            <Trash2 className="w-4 h-4" />
-            Eliminar Archivo
-          </button>
-        </div>
-      </div>
+      , document.body)}
     </div>
-  )}
-</div>
-);
+  );
 };
+
 export default ArchivosDigitales;

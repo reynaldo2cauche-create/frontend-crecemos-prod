@@ -157,22 +157,22 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
   return (
     <div className="space-y-6">
       {/* Header con Filtros */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+      <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Ban className="w-5 h-5 text-red-600" />
+            <div className="w-11 h-11 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-red-500/25">
+              <Ban className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Horarios Bloqueados</h2>
-              <p className="text-sm text-gray-500">Gestión de bloqueos de horarios</p>
+              <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Horarios Bloqueados</h2>
+              <p className="text-[13px] text-gray-500">Gestión de bloqueos de horarios</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <button
               onClick={cargarBloqueos}
-              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all flex items-center gap-2 flex-shrink-0"
+              className="px-3.5 py-2.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-all flex items-center gap-2 flex-shrink-0"
               title="Recargar bloqueos"
             >
               <RefreshCw className="w-4 h-4" />
@@ -180,7 +180,7 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
 
             <button
               onClick={() => setModalOpen(true)}
-              className="flex-1 sm:flex-none justify-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all flex items-center gap-2 shadow-lg shadow-red-500/30 whitespace-nowrap"
+              className="flex-1 sm:flex-none justify-center px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all flex items-center gap-2 font-semibold text-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4 flex-shrink-0" />
               Nuevo Bloqueo
@@ -252,7 +252,7 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
             <select
               value={filtroTerapeuta}
               onChange={(e) => setFiltroTerapeuta(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              className="cx-select px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/15 transition-shadow cursor-pointer"
             >
               <option value="">Todos los terapeutas</option>
               {terapeutas?.filter(t => t.estado).map(t => (
@@ -266,7 +266,7 @@ const ListaBloqueos = ({ terapeutas, userId, onBloqueoChange }) => {
             <select
               value={filtroTipoBloqueo}
               onChange={(e) => setFiltroTipoBloqueo(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              className="cx-select px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/15 transition-shadow cursor-pointer"
             >
               <option value="">Todos los tipos</option>
               {tiposBloqueo.map(tipo => (
