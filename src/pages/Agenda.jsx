@@ -914,7 +914,7 @@ const guardarCita = async (datosFormulario = null) => {
   }, [estados]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen cx-admin-bg">
       {/* ✅ Loading overlay al abrir cita */}
       {cargandoCita && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center">
@@ -940,16 +940,16 @@ const guardarCita = async (datosFormulario = null) => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pt-24 lg:pt-12">
+      <div className="w-full px-4 sm:px-6 py-4 pt-24 lg:pt-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 sm:gap-4 mb-4 flex-wrap">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <Calendar className="w-6 h-6 text-white" />
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <div className="w-11 h-11 bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+              <Calendar className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">Agenda</h1>
-              <p className="text-sm sm:text-base text-gray-600">Gestiona citas y bloqueos de horarios</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">Agenda Clínica</h1>
+              <p className="text-[13px] text-gray-400 -mt-0.5">Gestión de citas y programación de terapias</p>
             </div>
             {/* ✅ Indicador de modo optimizado para tablets */}
             {performanceConfig.device.shouldOptimize && (

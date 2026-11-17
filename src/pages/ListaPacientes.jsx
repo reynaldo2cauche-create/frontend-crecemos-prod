@@ -6,7 +6,7 @@ import {
   CircularProgress,
   Chip
 } from '@mui/material';
-import { Search, X, Filter, RefreshCw, Users, UserX, UserCheck, UserCog, Stethoscope, MessageSquare, User } from 'lucide-react';
+import { Search, X, Filter, RefreshCw, Users, UserX, UserCheck, UserCog, Stethoscope, MessageSquare, User, UserPlus, MapPin, Layers, Activity, FileText, ChevronDown } from 'lucide-react';
 import { getPacientes, getEstadosPaciente, getEstadisticasPacientes } from '../services/pacienteService';
 import { getDistritos, getServicios } from '../services/catalogoService';
 import TarjetasPacientes from '../components/Pacientes/TablaPacientes';
@@ -16,6 +16,51 @@ import { useNavigate } from 'react-router-dom';
 import { useTerapeutas } from '../hooks/useTerapeutas';
 import { getSubordinados } from '../services/trabajadorService';
 import '../styles/intranet.css';
+
+// Sparkline decorativo (sutil) para las stat cards
+const Sparkline = ({ color = '#7B1FA2' }) => {
+  const id = `sg-${color.replace('#', '')}`;
+  return (
+    <svg className="absolute bottom-0 left-0 w-full h-9 pointer-events-none" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M0,28 C15,24 22,13 36,18 C50,23 58,8 72,12 C86,16 98,27 120,15 L120,40 L0,40 Z" fill={`url(#${id})`} />
+      <path d="M0,28 C15,24 22,13 36,18 C50,23 58,8 72,12 C86,16 98,27 120,15" fill="none" stroke={color} strokeWidth="2" strokeOpacity="0.45" />
+    </svg>
+  );
+};
+
+// Colores por estado (donut + leyenda)
+const ESTADO_COLORS = {
+  'Nuevo': '#16a34a', 'Entrevista': '#2563eb', 'Evaluacion': '#f59e0b',
+  'Terapia': '#7B1FA2', 'Inactivo': '#9ca3af', 'Espera': '#9ca3af',
+};
+
+// Donut chart a partir de datos reales
+const Donut = ({ data }) => {
+  const total = data.reduce((s, d) => s + (d.total || 0), 0) || 1;
+  const R = 15.9155; // circunferencia ≈ 100
+  let offset = 0;
+  return (
+    <svg viewBox="0 0 42 42" className="w-16 h-16 flex-shrink-0 -rotate-90" aria-hidden="true">
+      <circle cx="21" cy="21" r={R} fill="none" stroke="#eceef3" strokeWidth="5" />
+      {data.map((d, i) => {
+        const frac = ((d.total || 0) / total) * 100;
+        const color = ESTADO_COLORS[d.estadoNombre] || '#c4b5fd';
+        const el = (
+          <circle key={i} cx="21" cy="21" r={R} fill="none" stroke={color} strokeWidth="5"
+            strokeDasharray={`${frac} ${100 - frac}`} strokeDashoffset={-offset} strokeLinecap="round" />
+        );
+        offset += frac;
+        return el;
+      })}
+    </svg>
+  );
+};
 
 export const ListaPacientes = () => {
   const user = useCurrentUser();
@@ -409,106 +454,117 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
   return (
     <div className="tailwind-scope">
     <Box
-      component="main"
+      component="div"
+      className="cx-admin-bg"
       sx={{
         flexGrow: 1,
-        p: { xs: 2, md: 4 },
-        backgroundColor: '#f8f9fa',
+        p: { xs: 2, md: 2.5 },
         minHeight: '100vh',
-        pt: { xs: 10, md: 4 }
+        pt: { xs: 10, md: 2.5 }
       }}
     >
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Lista de Pacientes</h1>
-        <p className="text-gray-600">Gestiona y visualiza todos tus pacientes</p>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center shadow-sm flex-shrink-0">
+          <Users className="w-5 h-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-xl font-extrabold text-gray-900 leading-tight">Pacientes</h1>
+          <p className="text-[13px] text-gray-400 -mt-0.5">Gestión integral de pacientes</p>
+        </div>
+        {!isTerapeuta(user) && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => navigate('/registro-paciente')}
+              className="cx-glow flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl text-sm font-semibold"
+            >
+              <UserPlus className="w-4 h-4" /> Nuevo paciente
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Estadísticas Cards - Estilo RRHH - Una sola fila */}
       
       {estadisticas && user?.rol?.id !== ROLES.TERAPEUTA && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           {/* Pacientes Registrados este mes */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-600">Registrados este Mes</span>
-              <div className="w-8 h-8 bg-green-50 rounded-xl flex items-center justify-center">
-                <UserCheck className="w-4 h-4 text-green-600" />
-              </div>
+          <div className="glass-card rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden">
+            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0 relative z-10">
+              <UserCheck className="w-6 h-6 text-green-600" />
             </div>
-            <div className="text-2xl font-bold text-gray-900">{estadisticas?.pacientesActivosMes || 0}</div>
-            <div className="text-xs text-gray-500 mt-0.5 capitalize">
-              {new Date().toLocaleDateString('es-ES', { month: 'long' })} {new Date().getFullYear()}
+            <div className="min-w-0 flex-1 relative z-10">
+              <p className="text-xs font-medium text-gray-400 truncate">Registrados este Mes</p>
+              <p className="text-[26px] font-extrabold text-gray-900 leading-tight">{estadisticas?.pacientesActivosMes || 0}</p>
+              <p className="text-[11px] text-gray-400 -mt-0.5 capitalize truncate">
+                {new Date().toLocaleDateString('es-ES', { month: 'long' })} {new Date().getFullYear()}
+              </p>
             </div>
+            <Sparkline color="#16a34a" />
           </div>
 
           {/* Pacientes Dados de baja este mes */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-600">Dados de Baja</span>
-              <div className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center">
-                <UserX className="w-4 h-4 text-red-600" />
-              </div>
+          <div className="glass-card rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden">
+            <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center flex-shrink-0 relative z-10">
+              <UserX className="w-6 h-6 text-rose-500" />
             </div>
-            <div className="text-2xl font-bold text-gray-900">{estadisticas?.pacientesInactivosMes || 0}</div>
-            <div className="text-xs text-gray-500 mt-0.5 capitalize">
-              {new Date().toLocaleDateString('es-ES', { month: 'long' })} {new Date().getFullYear()}
+            <div className="min-w-0 flex-1 relative z-10">
+              <p className="text-xs font-medium text-gray-400 truncate">Dados de Baja</p>
+              <p className="text-[26px] font-extrabold text-gray-900 leading-tight">{estadisticas?.pacientesInactivosMes || 0}</p>
+              <p className="text-[11px] text-gray-400 -mt-0.5 capitalize truncate">
+                {new Date().toLocaleDateString('es-ES', { month: 'long' })} {new Date().getFullYear()}
+              </p>
             </div>
+            <Sparkline color="#f43f5e" />
           </div>
 
           {/* Total en Tratamiento (suma de servicios activos) */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-600">En Tratamiento</span>
-              <div className="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center">
-                <Users className="w-4 h-4 text-purple-600" />
-              </div>
+          <div className="glass-card rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden">
+            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0 relative z-10">
+              <Users className="w-6 h-6 text-[#7B1FA2]" />
             </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {(estadisticas?.estadisticas || [])
-                .filter(est => ['Nuevo', 'Entrevista', 'Evaluacion', 'Terapia'].includes(est.estadoNombre))
-                .reduce((sum, est) => sum + est.total, 0)}
+            <div className="min-w-0 flex-1 relative z-10">
+              <p className="text-xs font-medium text-gray-400 truncate">En Tratamiento</p>
+              <p className="text-[26px] font-extrabold text-gray-900 leading-tight">
+                {(estadisticas?.estadisticas || [])
+                  .filter(est => ['Nuevo', 'Entrevista', 'Evaluacion', 'Terapia'].includes(est.estadoNombre))
+                  .reduce((sum, est) => sum + est.total, 0)}
+              </p>
+              <p className="text-[11px] text-gray-400 -mt-0.5 truncate">Nuevo, Entrevista, Evaluación y Terapia</p>
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">Nuevo, Entrevista, Evaluación y Terapia</div>
+            <Sparkline color="#7B1FA2" />
           </div>
 
-          {/* Desglose por Estado */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-600">Por Estado</span>
-              <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+          {/* Desglose por Estado — donut + leyenda */}
+          <div className="glass-card rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Stethoscope className="w-4 h-4 text-blue-600" />
               </div>
+              <span className="text-xs font-medium text-gray-400">Por Estado</span>
             </div>
-            <div className="flex flex-wrap items-center gap-1">
-              {(estadisticas?.estadisticas || []).map((est) => {
-                const colorMap = {
-                  'Nuevo':      { bg: 'bg-green-100',  text: 'text-green-700'  },
-                  'Entrevista': { bg: 'bg-blue-100',   text: 'text-blue-700'   },
-                  'Evaluacion': { bg: 'bg-orange-100', text: 'text-orange-700' },
-                  'Terapia':    { bg: 'bg-purple-100', text: 'text-purple-700' },
-                  'Inactivo':   { bg: 'bg-gray-100',   text: 'text-gray-700'   },
-                };
-                const color = colorMap[est.estadoNombre] || { bg: 'bg-gray-100', text: 'text-gray-700' };
-                return (
-                  <div key={est.estadoId}
-                    className={`inline-flex items-center justify-center gap-0.5 ${color.bg} rounded px-1.5 py-0.5`}>
-                    <span className={`text-[10px] font-medium ${color.text} whitespace-nowrap`}>{est.estadoNombre}</span>
-                    <span className={`text-[10px] font-bold ${color.text}`}>{est.total}</span>
+            <div className="flex items-center gap-3">
+              <Donut data={estadisticas?.estadisticas || []} />
+              <div className="flex-1 min-w-0 space-y-1">
+                {(estadisticas?.estadisticas || []).map((est) => (
+                  <div key={est.estadoId} className="flex items-center gap-1.5 text-[11px]">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: ESTADO_COLORS[est.estadoNombre] || '#c4b5fd' }} />
+                    <span className="text-gray-500 flex-1 truncate">{est.estadoNombre}</span>
+                    <span className="font-bold text-gray-800">{est.total}</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Filtros Section - Estilo moderno */}
-      <div className="mb-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <div className="mb-3">
+        <div className="glass-panel rounded-2xl p-4">
           {/* Filtros aplicados */}
           {filtrosActivos && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-[#7B1FA2]/5 to-[#A3C644]/5 rounded-xl border border-[#7B1FA2]/20">
+            <div className="mb-3 p-3 bg-gradient-to-r from-[#7B1FA2]/5 to-[#A3C644]/5 rounded-xl border border-[#7B1FA2]/20">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-[#7B1FA2]" />
@@ -565,62 +621,56 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
             </div>
           )}
 
-          {/* Inputs de búsqueda */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-              {/* Nombre Completo */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Nombre Completo"
-                  value={nombreCompletoInput}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(value)) {
-                      setNombreCompletoInput(value);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      ejecutarBusqueda();
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
-                />
-              </div>
+          {/* Inputs de búsqueda — barra moderna con íconos */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Nombre Completo */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                value={nombreCompletoInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(value)) {
+                    setNombreCompletoInput(value);
+                  }
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ejecutarBusqueda(); } }}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+              />
+            </div>
 
-              {/* Número de Documento */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="N° Documento"
-                  value={numeroDocumentoInput}
-                  maxLength={12}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (/^\d*$/.test(value)) {
-                      setNumeroDocumentoInput(value);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      ejecutarBusqueda();
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
-                />
-              </div>
+            {/* Número de Documento */}
+            <div className="relative min-w-[150px]">
+              <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="N° Documento"
+                value={numeroDocumentoInput}
+                maxLength={12}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^\d*$/.test(value)) {
+                    setNumeroDocumentoInput(value);
+                  }
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ejecutarBusqueda(); } }}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all"
+              />
+            </div>
 
-              {/* Distrito */}
-              {!isTerapeuta(user) && (
+            {/* Distrito */}
+            {!isTerapeuta(user) && (
+              <div className="relative min-w-[160px]">
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <select
                   value={filters.distritoId}
                   onChange={(e) => handleFilterChange('distritoId', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
+                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
                 >
-                  <option value="">Todos los distritos</option>
+                  <option value="">Distrito</option>
                   {distritos
                     .filter(distrito => distrito.id_provincia === 1)
                     .map((distrito) => (
@@ -629,30 +679,38 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
                       </option>
                     ))}
                 </select>
-              )}
+              </div>
+            )}
 
-              {/* Estado por servicio */}
+            {/* Estado por servicio */}
+            <div className="relative min-w-[150px]">
+              <Activity className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <select
                 value={filters.estadoServicioId}
                 onChange={(e) => handleFilterChange('estadoServicioId', e.target.value)}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
+                className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
               >
-                <option value="">Todos los estados</option>
+                <option value="">Estado</option>
                 {estados.map((estado) => (
                   <option key={estado.id} value={estado.id}>
                     {estado.nombre}
                   </option>
                 ))}
               </select>
+            </div>
 
-              {/* Servicio */}
-              {canViewServiceInfo(user) && (
+            {/* Servicio */}
+            {canViewServiceInfo(user) && (
+              <div className="relative min-w-[150px]">
+                <Layers className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <select
                   value={filters.servicioId || ''}
                   onChange={(e) => handleFilterChange('servicioId', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
+                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
                 >
-                  <option value="">Todos los servicios</option>
+                  <option value="">Servicio</option>
                   {Object.entries(
                     servicios.reduce((acc, servicio) => {
                       if (servicio.activo && servicio.area?.activo) {
@@ -672,78 +730,78 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
                     </optgroup>
                   ))}
                 </select>
-              )}
+              </div>
+            )}
 
-              {esJefe && (
+            {esJefe && (
+              <div className="relative min-w-[160px]">
+                <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7B1FA2] pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400 pointer-events-none" />
                 <select
                   value={filtroJefe}
                   onChange={(e) => setFiltroJefe(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-purple-50 border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer font-medium text-purple-800"
+                  className="w-full pl-10 pr-9 py-2.5 bg-purple-50 border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer font-medium text-purple-800"
                 >
-                  <option value="propio">Mis pacientes</option>  {/* ← default ahora */}
+                  <option value="propio">Mis pacientes</option>
                   {subordinadosJefe.map((sub) => (
                     <option key={sub.id} value={String(sub.id)}>
                       {sub.nombres} {sub.apellidos}
                     </option>
                   ))}
-                  
                 </select>
-              )}
+              </div>
+            )}
 
-              {/* Selector de Terapeuta - solo para no terapeutas (admins, recepción, etc.) */}
-              {!isTerapeuta(user) && (
+            {/* Selector de Terapeuta - solo para no terapeutas */}
+            {!isTerapeuta(user) && (
+              <div className="relative min-w-[160px]">
+                <Stethoscope className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <select
                   value={filters.terapeutaId || ''}
                   onChange={(e) => handleFilterChange('terapeutaId', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer"
+                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
                 >
-                  <option value="">Todos los terapeutas</option>
+                  <option value="">Terapeuta</option>
                   {terapeutasDisponibles.map((terapeuta) => (
                     <option key={terapeuta.id} value={terapeuta.id}>
                       {terapeuta.nombres} {terapeuta.apellidos}
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Botones de acción */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={ejecutarBusqueda}
-                disabled={searching || (!numeroDocumentoInput && !nombreCompletoInput && !filters.distritoId && !filters.estadoServicioId && !(canViewServiceInfo(user) && filters.servicioId) && !filters.terapeutaId)}
-                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-medium text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-              >
-                {searching ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Buscando...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4" />
-                    Buscar
-                  </>
-                )}
-              </button>
+            <button
+              onClick={ejecutarBusqueda}
+              disabled={searching || (!numeroDocumentoInput && !nombreCompletoInput && !filters.distritoId && !filters.estadoServicioId && !(canViewServiceInfo(user) && filters.servicioId) && !filters.terapeutaId)}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm shadow-md shadow-purple-500/25 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {searching ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+              Buscar
+            </button>
 
-              <button
-                onClick={clearFilters}
-                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all w-full sm:w-auto"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Limpiar
-              </button>
-            </div>
+            <button
+              onClick={clearFilters}
+              title="Limpiar filtros"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:text-[#7B1FA2] transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Contador de resultados */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-xl font-bold text-gray-900">Resultados</h2>
-          <div className="px-4 py-1.5 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-full text-sm font-semibold">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h2 className="text-base font-extrabold text-gray-900">Resultados</h2>
+          <div className="px-2.5 py-0.5 bg-purple-50 text-[#7B1FA2] rounded-full text-sm font-bold">
             {filteredPacientes.length} {filteredPacientes.length === 1 ? 'paciente' : 'pacientes'}
           </div>
           {/* Badge indicando la vista actual para jefes */}
@@ -782,7 +840,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
       {/* Paginación moderna */}
       {filteredPacientes.length > 0 && (
-        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+        <div className="mt-3 glass-panel rounded-2xl p-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
               Mostrando <span className="font-semibold text-gray-900">{page * rowsPerPage + 1}</span> a{' '}

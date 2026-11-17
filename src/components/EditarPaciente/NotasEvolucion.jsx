@@ -44,6 +44,10 @@ const COLOR_CLASSES = {
   gray:   { tab: 'border-gray-500 text-gray-700 bg-gray-50', bg: 'bg-gray-100', section: 'bg-gray-50 border-gray-200', title: 'text-gray-700', icon: 'text-gray-600' },
 };
 
+// Estilo compartido de los selects de filtro
+const SELECT_FILTRO =
+  'text-base font-medium text-gray-800 px-3 py-2.5 border border-gray-100 rounded-xl shadow-sm bg-white focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10';
+
 // Menú renderizado via portal para escapar del z-index del modal
 const MenuTiposPortal = ({ anchorRef, onSelect, onClose, tiposUsados }) => {
   const [pos, setPos] = useState(null); // null = todavía no calculado
@@ -266,37 +270,34 @@ const NotasEvolucion = ({
   return (
     <>
       {/* ── Panel lateral de notas ── */}
-      <div ref={containerRef} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm flex flex-col">
-        <div className="p-4 sm:p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-[#7B1FA2]/10 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-5 h-5 text-[#7B1FA2]" />
+      <div ref={containerRef} className="glass-panel rounded-3xl overflow-hidden flex flex-col">
+        <div className="p-5 sm:p-6 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-6 h-6 text-[#7B1FA2]" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">Notas de Evolución</h2>
-              <p className="text-xs text-gray-500 truncate">Seguimiento del paciente</p>
+              <h2 className="text-[22px] font-extrabold text-[#2D0A4E] truncate">Notas de Evolución</h2>
+              <p className="text-base text-gray-500 truncate">Seguimiento del paciente</p>
             </div>
           </div>
 
           {/* Filtros */}
-          <div className="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Filter className="w-4 h-4 text-gray-600" />
-              <span className="text-xs font-semibold text-gray-700">Filtros</span>
+          <div className="mb-4 p-3 bg-white/70 rounded-2xl border border-gray-100">
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <span className="text-base font-semibold text-gray-700">Filtros</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <select value={filtroEspecialidad} onChange={e => setFiltroEspecialidad(e.target.value)}
-                className="text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 bg-white">
+              <select value={filtroEspecialidad} onChange={e => setFiltroEspecialidad(e.target.value)} className={SELECT_FILTRO}>
                 <option value="">Todas las especialidades</option>
                 {especialidades.map(esp => <option key={esp} value={esp}>{esp}</option>)}
               </select>
-              <select value={filtroTerapeuta} onChange={e => setFiltroTerapeuta(e.target.value)}
-                className="text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 bg-white">
+              <select value={filtroTerapeuta} onChange={e => setFiltroTerapeuta(e.target.value)} className={SELECT_FILTRO}>
                 <option value="">Todos los terapeutas</option>
                 {terapeutas.map(ter => <option key={ter} value={ter}>{ter}</option>)}
               </select>
-              <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
-                className="text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#7B1FA2] focus:ring-2 focus:ring-[#7B1FA2]/10 bg-white">
+              <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} className={SELECT_FILTRO}>
                 <option value="">Todos los tipos</option>
                 <option value="entrevista">Entrevista</option>
                 <option value="objetivos">Objetivos Terapéuticos</option>
@@ -308,8 +309,8 @@ const NotasEvolucion = ({
           </div>
 
           <button onClick={() => setOpenNotaModal(true)}
-            className="w-full flex items-center justify-center gap-2 bg-[#7B1FA2] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm">
-            <Plus className="w-4 h-4" />
+            className="w-full flex items-center justify-center gap-2 bg-[#7B1FA2] text-white px-4 py-3 rounded-2xl text-lg font-semibold hover:bg-[#6A1B9A] transition-all shadow-lg shadow-purple-500/30">
+            <Plus className="w-5 h-5" />
             Nueva Nota
           </button>
         </div>
@@ -325,7 +326,7 @@ const NotasEvolucion = ({
           `}</style>
 
           {loading ? (
-            <div className="p-4 text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 m-4">
+            <div className="p-4 text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl m-4">
               <div className="w-6 h-6 border-2 border-[#7B1FA2] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-900 mb-1">Cargando notas...</p>
               <p className="text-xs text-gray-500">Obteniendo historial del paciente</p>
@@ -336,10 +337,10 @@ const NotasEvolucion = ({
                 const [nombre] = n.autor.split(' — ');
                 const iniciales = nombre.split(' ').map(p => p[0]).join('');
                 return (
-                  <div key={n.id} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all bg-white">
+                  <div key={n.id} className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all bg-white">
                     <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 border-b border-gray-100">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-base font-bold shadow-sm flex-shrink-0">
                           {iniciales}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -363,7 +364,7 @@ const NotasEvolucion = ({
                         if (!contenido) return null;
                         const c = COLOR_CLASSES[tipo.color];
                         return (
-                          <div key={tipo.id} className={`${c.section} border rounded-lg p-4`}>
+                          <div key={tipo.id} className={`${c.section} border rounded-xl p-4`}>
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className={`w-8 h-8 rounded-lg ${c.bg} flex items-center justify-center flex-shrink-0`}>
                                 <span className={c.icon}>{tipo.icon}</span>
@@ -380,19 +381,19 @@ const NotasEvolucion = ({
                   </div>
                 );
               }) : (
-                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl">
                   <p className="text-sm text-gray-500">No hay notas que coincidan con los filtros</p>
                 </div>
               )}
             </div>
           ) : (
-            <div className="p-4">
-              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
+            <div className="p-4 sm:p-5">
+              <div className="text-center py-14 border-2 border-dashed border-gray-200 rounded-2xl">
+                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-md border border-gray-100">
                   <FileText className="w-6 h-6 text-gray-300" />
                 </div>
-                <p className="text-sm font-semibold text-gray-900 mb-1">Sin notas registradas</p>
-                <p className="text-xs text-gray-500">Agrega la primera nota de evolución del paciente</p>
+                <p className="text-lg font-bold text-gray-900 mb-1">Sin notas registradas</p>
+                <p className="text-sm text-gray-400">Agrega la primera nota de evolución del paciente.</p>
               </div>
             </div>
           )}

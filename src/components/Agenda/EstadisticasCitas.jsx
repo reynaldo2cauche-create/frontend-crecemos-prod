@@ -84,16 +84,16 @@ const EstadisticasCitas = ({
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {/* 1. Total del AÑO (sin reuniones clínicas) */}
       {!esTerapeuta && (
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-purple-600" />
+      <div className="glass-card rounded-2xl p-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-6 h-6 text-[#7B1FA2]" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-[26px] font-extrabold text-gray-900 leading-tight">
               {estadisticas.totalCitasAnio}
             </div>
-            <div className="text-xs text-gray-600 font-medium">
+            <div className="text-[11px] text-gray-400 font-medium">
               Total del Año {estadisticas.anioBase}
             </div>
           </div>
@@ -101,16 +101,16 @@ const EstadisticasCitas = ({
         </div> )}
 
       {/* 2. Total del MES (sin reuniones clínicas) */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-blue-600" />
+      <div className="glass-card rounded-2xl p-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Calendar className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-[26px] font-extrabold text-gray-900 leading-tight">
               {estadisticas.totalCitasMes}
             </div>
-            <div className="text-xs text-gray-600 font-medium">
+            <div className="text-[11px] text-gray-400 font-medium">
               {obtenerNombreMes()}
             </div>
           </div>
@@ -118,16 +118,16 @@ const EstadisticasCitas = ({
       </div>
 
       {/* 3. Total de la SEMANA (lunes a sábado - sin reuniones clínicas) */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-            <Clock className="w-5 h-5 text-green-600" />
+      <div className="glass-card rounded-2xl p-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Clock className="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-[26px] font-extrabold text-gray-900 leading-tight">
               {estadisticas.citasEstaSemana}
             </div>
-            <div className="text-xs text-gray-600 font-medium">
+            <div className="text-[11px] text-gray-400 font-medium">
               Esta Semana (Lun-Sáb)
             </div>
           </div>
@@ -135,16 +135,16 @@ const EstadisticasCitas = ({
       </div>
 
       {/* 4. Reuniones Clínicas del Mes */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
-            <Users className="w-5 h-5 text-amber-600" />
+      <div className="glass-card rounded-2xl p-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Users className="w-6 h-6 text-amber-600" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-[26px] font-extrabold text-gray-900 leading-tight">
               {estadisticas.totalReunionesClinicasMes || 0}
             </div>
-            <div className="text-xs text-gray-600 font-medium">
+            <div className="text-[11px] text-gray-400 font-medium">
               Reuniones Clínicas
             </div>
           </div>

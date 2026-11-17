@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Heart, HardDrive, Activity, Camera, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, XCircle, Copy, Check, ClipboardList } from 'lucide-react';
+import { User, Heart, Activity, Clock, AlertCircle, ChevronDown, X, Trash2, ArrowLeft, Building2, Plus, CheckCircle, Copy, Check, Camera, CalendarDays, CreditCard, FolderOpen } from 'lucide-react';
 import { getPacienteById, getServiciosPorPaciente, updatePacienteById, getEstadosPaciente, cambiarEstadoPaciente, asignarServicioPaciente, desasignarServicioPaciente } from '../services/pacienteService';
 import api from '../services/api';
 import { getDistritos, getTiposDocumento, getGeneros } from '../services/catalogoService';
@@ -28,9 +28,9 @@ import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 
 const EditarPacienteSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen cx-admin-bg">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6">
+        <div className="glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 mb-6">
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="w-20 h-20 rounded-2xl bg-gray-100 animate-pulse"></div>
             <div className="flex-1">
@@ -41,7 +41,7 @@ const EditarPacienteSkeleton = () => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8">
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8">
+            <div className="glass-panel rounded-2xl p-4 sm:p-6 lg:p-8">
               <div className="h-8 w-40 sm:w-56 bg-gray-100 rounded-lg animate-pulse mb-6 sm:mb-8"></div>
               <div className="space-y-4 sm:space-y-6">
                 {[1, 2, 3, 4].map(i => (
@@ -51,7 +51,7 @@ const EditarPacienteSkeleton = () => {
             </div>
           </div>
           <div className="lg:col-span-4">
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+            <div className="glass-panel rounded-2xl p-4 sm:p-6">
               <div className="h-6 w-32 sm:w-40 bg-gray-100 rounded animate-pulse mb-4 sm:mb-6"></div>
               <div className="space-y-3 sm:space-y-4">
                 {[1, 2, 3].map(i => (
@@ -72,6 +72,7 @@ const getEstadoColor = (nombreEstado) => {
     'Entrevista': { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
     'Evaluacion': { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
     'Terapia': { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+    'Sin estado': { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
     'Inactivo': { bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' }
   };
   return colorMap[nombreEstado] || colorMap['Inactivo'];
@@ -103,6 +104,11 @@ const getAbreviatura = (servicio) => {
     .toUpperCase()
     .slice(0, 3) || '?';
 };
+
+// Clases de cada pestaña (activa / inactiva)
+const TAB_BASE = 'flex items-center justify-center gap-2 px-3 sm:px-4 py-3.5 text-sm transition-all flex-shrink-0 whitespace-nowrap border-b-2';
+const TAB_ACTIVA = 'text-[#7B1FA2] border-[#7B1FA2] font-bold';
+const TAB_INACTIVA = 'text-gray-500 border-transparent font-medium hover:text-gray-800';
 
 const EditarPacientePage = () => {
   const { id } = useParams();
@@ -147,41 +153,42 @@ const EditarPacientePage = () => {
   const [mostrarErrorEnModal, setMostrarErrorEnModal] = useState(false);
   const [nombreCopiado, setNombreCopiado] = useState(false);
   // ============== NUEVOS ESTADOS PARA CONVENIOS ==============
-const [conveniosDisponibles, setConveniosDisponibles] = useState([]);
-const [conveniosPaciente, setConveniosPaciente] = useState([]);
-const [modalConvenio, setModalConvenio] = useState(false);
-const [convenioSeleccionado, setConvenioSeleccionado] = useState('');
-const [numeroPoliza, setNumeroPoliza] = useState('');
-const [observacionesConvenio, setObservacionesConvenio] = useState('');
-const [modalEliminarConvenio, setModalEliminarConvenio] = useState({ open: false, convenio: null });
-const [loadingConvenios, setLoadingConvenios] = useState(false);
+  const [conveniosDisponibles, setConveniosDisponibles] = useState([]);
+  const [conveniosPaciente, setConveniosPaciente] = useState([]);
+  const [modalConvenio, setModalConvenio] = useState(false);
+  const [convenioSeleccionado, setConvenioSeleccionado] = useState('');
+  const [numeroPoliza, setNumeroPoliza] = useState('');
+  const [observacionesConvenio, setObservacionesConvenio] = useState('');
+  const [modalEliminarConvenio, setModalEliminarConvenio] = useState({ open: false, convenio: null });
+  const [loadingConvenios, setLoadingConvenios] = useState(false);
 
-useEffect(() => {
-  const cargarConvenios = async () => {
-    if (!id) return;
-    
-    try {
-      setLoadingConvenios(true);
-      const [disponibles, asignados] = await Promise.all([
-        getConvenios(true),
-        getConveniosPorPaciente(id)
-      ]);
+  useEffect(() => {
+    const cargarConvenios = async () => {
+      if (!id) return;
       
-      setConveniosDisponibles(disponibles || []);
-      setConveniosPaciente(asignados || []);
-    } catch (error) {
-      console.error('Error al cargar convenios:', error);
-      setConveniosDisponibles([]);
-      setConveniosPaciente([]);
-    } finally {
-      setLoadingConvenios(false);
-    }
-  };
+      try {
+        setLoadingConvenios(true);
+        const [disponibles, asignados] = await Promise.all([
+          getConvenios(true),
+          getConveniosPorPaciente(id)
+        ]);
+        
+        setConveniosDisponibles(disponibles || []);
+        setConveniosPaciente(asignados || []);
+      } catch (error) {
+        console.error('Error al cargar convenios:', error);
+        setConveniosDisponibles([]);
+        setConveniosPaciente([]);
+      } finally {
+        setLoadingConvenios(false);
+      }
+    };
 
-  if (id) {
-    cargarConvenios();
-  }
-}, [id]);
+    if (id) {
+      cargarConvenios();
+    }
+  }, [id]);
+
   useEffect(() => {
     const cargarPaciente = async () => {
       try {
@@ -394,143 +401,143 @@ useEffect(() => {
     }
   };
 
-const handleAsignarServicio = async () => {
-  try {
-    const servicioSeleccionado = serviciosDisponibles.find(s => s.id === parseInt(nuevoServicio.servicio));
-    if (!servicioSeleccionado) {
-      throw new Error('Servicio no encontrado');
-    }
-
-    const terapeutaSeleccionado = terapeutasDisponibles.find(
-      t => `${t.nombres} ${t.apellidos}` === nuevoServicio.terapeuta
-    );
-    if (!terapeutaSeleccionado) {
-      throw new Error('Terapeuta no encontrado');
-    }
-
-    // Obtener fecha actual en Perú (UTC-5)
-    const getPeruTimeISOString = () => {
-      const now = new Date();
-      // Perú está en UTC-5 (PET) - no cambia por horario de verano
-      const offsetPeru = -5 * 60 * 60 * 1000; // -5 horas en milisegundos
-      const peruTime = new Date(now.getTime() + offsetPeru);
-      return peruTime.toISOString();
-    };
-
-    const serviciosPaciente = paciente.servicios || [];
-    const servicioExistente = serviciosPaciente.find(
-      s => s.servicio?.id === servicioSeleccionado.id
-    );
-
-    // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en CUALQUIER servicio de este paciente
-    const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
-      const tieneAsignacion = s.asignaciones?.some(
-        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
-      );
-      if (tieneAsignacion && s.servicio?.id !== servicioSeleccionado.id) {
-        return true; // Encontró al terapeuta en OTRO servicio
+  const handleAsignarServicio = async () => {
+    try {
+      const servicioSeleccionado = serviciosDisponibles.find(s => s.id === parseInt(nuevoServicio.servicio));
+      if (!servicioSeleccionado) {
+        throw new Error('Servicio no encontrado');
       }
-      return false;
-    });
 
-    if (terapeutaOcupadoEnOtroServicio) {
-      setSnackbar({
-        open: true,
-        message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
-        severity: 'error'
-      });
-      return; // Detener la ejecución
-    }
+      const terapeutaSeleccionado = terapeutasDisponibles.find(
+        t => `${t.nombres} ${t.apellidos}` === nuevoServicio.terapeuta
+      );
+      if (!terapeutaSeleccionado) {
+        throw new Error('Terapeuta no encontrado');
+      }
 
-    if (servicioExistente) {
-      // El servicio ya existe, solo agregar el terapeuta
-      // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
-      const terapeutaYaAsignado = servicioExistente.asignaciones?.some(
-        asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+      // Obtener fecha actual en Perú (UTC-5)
+      const getPeruTimeISOString = () => {
+        const now = new Date();
+        // Perú está en UTC-5 (PET) - no cambia por horario de verano
+        const offsetPeru = -5 * 60 * 60 * 1000; // -5 horas en milisegundos
+        const peruTime = new Date(now.getTime() + offsetPeru);
+        return peruTime.toISOString();
+      };
+
+      const serviciosPaciente = paciente.servicios || [];
+      const servicioExistente = serviciosPaciente.find(
+        s => s.servicio?.id === servicioSeleccionado.id
       );
 
-      if (terapeutaYaAsignado) {
+      // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en CUALQUIER servicio de este paciente
+      const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
+        const tieneAsignacion = s.asignaciones?.some(
+          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+        );
+        if (tieneAsignacion && s.servicio?.id !== servicioSeleccionado.id) {
+          return true; // Encontró al terapeuta en OTRO servicio
+        }
+        return false;
+      });
+
+      if (terapeutaOcupadoEnOtroServicio) {
         setSnackbar({
           open: true,
-          message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado a este mismo servicio.`,
+          message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
           severity: 'error'
         });
         return; // Detener la ejecución
       }
 
-      await api.post('/paciente-servicio/asignacion', {
-        paciente_servicio_id: servicioExistente.id,
-        terapeuta_id: terapeutaSeleccionado.id,
-        fecha_asignacion: getPeruTimeISOString(), // Fecha Perú
-        estado: 'ACTIVO',
-        user_id_crea: user_id
-      });
-    } else {
-      // NUEVO SERVICIO
-      console.log('📤 Enviando al backend:', {
-        paciente_id: parseInt(id),
-        servicio_id: servicioSeleccionado.id,
-        terapeuta_id: terapeutaSeleccionado.id,
-        fecha_inicio: getPeruTimeISOString(),
-        motivo_consulta: paciente.motivo_consulta || '',
-        observaciones: '',
-        activo: true
+      if (servicioExistente) {
+        // El servicio ya existe, solo agregar el terapeuta
+        // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
+        const terapeutaYaAsignado = servicioExistente.asignaciones?.some(
+          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+        );
+
+        if (terapeutaYaAsignado) {
+          setSnackbar({
+            open: true,
+            message: `❌ El terapeuta ${nuevoServicio.terapeuta} ya está asignado a este mismo servicio.`,
+            severity: 'error'
+          });
+          return; // Detener la ejecución
+        }
+
+        await api.post('/paciente-servicio/asignacion', {
+          paciente_servicio_id: servicioExistente.id,
+          terapeuta_id: terapeutaSeleccionado.id,
+          fecha_asignacion: getPeruTimeISOString(), // Fecha Perú
+          estado: 'ACTIVO',
+          user_id_crea: user_id
+        });
+      } else {
+        // NUEVO SERVICIO
+        console.log('📤 Enviando al backend:', {
+          paciente_id: parseInt(id),
+          servicio_id: servicioSeleccionado.id,
+          terapeuta_id: terapeutaSeleccionado.id,
+          fecha_inicio: getPeruTimeISOString(),
+          motivo_consulta: paciente.motivo_consulta || '',
+          observaciones: '',
+          activo: true
+        });
+
+        const resultado = await api.post('/paciente-servicio/asignar', {
+          paciente_id: parseInt(id),
+          servicio_id: servicioSeleccionado.id,
+          terapeuta_id: terapeutaSeleccionado.id,
+          fecha_inicio: getPeruTimeISOString(), // Fecha Perú
+          motivo_consulta: paciente.motivo_consulta || '',
+          observaciones: '',
+          activo: true
+        });
+
+      }
+
+      // Recargar servicios
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const serviciosActualizados = await getServiciosPorPaciente(id);
+      
+      setPaciente(prev => ({
+        ...prev,
+        servicios: serviciosActualizados
+      }));
+
+      const mensaje = servicioExistente
+        ? `Terapeuta agregado al servicio "${servicioSeleccionado.nombre}"`
+        : 'Servicio y terapeuta asignados correctamente';
+
+      setSnackbar({
+        open: true,
+        message: mensaje,
+        severity: 'success'
       });
 
-      const resultado = await api.post('/paciente-servicio/asignar', {
-        paciente_id: parseInt(id),
-        servicio_id: servicioSeleccionado.id,
-        terapeuta_id: terapeutaSeleccionado.id,
-        fecha_inicio: getPeruTimeISOString(), // Fecha Perú
-        motivo_consulta: paciente.motivo_consulta || '',
-        observaciones: '',
-        activo: true
-      });
+      setOpenAsignarServicio(false);
+      setNuevoServicio({ servicio: '', terapeuta: '' });
 
+    } catch (error) {
+      console.error('❌ Error al asignar servicio:', error);
+      console.error('❌ Detalles del error:', error.response?.data);
+      
+      // Mostrar mensaje de error específico del backend
+      const backendMessage = error.response?.data?.message || 
+                            (Array.isArray(error.response?.data?.message) 
+                              ? error.response.data.message.join(', ') 
+                              : error.response?.data?.message);
+      
+      const errorMessage = backendMessage || error.message || 'Error al asignar el servicio';
+      
+      setOpenAsignarServicio(false);
+      setErrorModal({
+        open: true,
+        message: errorMessage,
+        title: 'Error al asignar servicio'
+      });
     }
-
-    // Recargar servicios
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const serviciosActualizados = await getServiciosPorPaciente(id);
-    
-    setPaciente(prev => ({
-      ...prev,
-      servicios: serviciosActualizados
-    }));
-
-    const mensaje = servicioExistente
-      ? `Terapeuta agregado al servicio "${servicioSeleccionado.nombre}"`
-      : 'Servicio y terapeuta asignados correctamente';
-
-    setSnackbar({
-      open: true,
-      message: mensaje,
-      severity: 'success'
-    });
-
-    setOpenAsignarServicio(false);
-    setNuevoServicio({ servicio: '', terapeuta: '' });
-
-  } catch (error) {
-    console.error('❌ Error al asignar servicio:', error);
-    console.error('❌ Detalles del error:', error.response?.data);
-    
-    // Mostrar mensaje de error específico del backend
-    const backendMessage = error.response?.data?.message || 
-                          (Array.isArray(error.response?.data?.message) 
-                            ? error.response.data.message.join(', ') 
-                            : error.response?.data?.message);
-    
-    const errorMessage = backendMessage || error.message || 'Error al asignar el servicio';
-    
-    setOpenAsignarServicio(false);
-    setErrorModal({
-      open: true,
-      message: errorMessage,
-      title: 'Error al asignar servicio'
-    });
-  }
-};
+  };
 
   const handleEliminarServicio = async () => {
     const { servicio, asignacionId, terapeutaNombre } = modalEliminarServicio;
@@ -566,177 +573,177 @@ const handleAsignarServicio = async () => {
     }
   };
 
-const handleEditarTerapeuta = async () => {
-  try {
-    if (!servicioAEditar) {
-      throw new Error('No hay servicio seleccionado');
-    }
+  const handleEditarTerapeuta = async () => {
+    try {
+      if (!servicioAEditar) {
+        throw new Error('No hay servicio seleccionado');
+      }
 
-    const terapeutaSeleccionado = terapeutasDisponibles.find(
-      t => t.id === parseInt(nuevoTerapeuta)
-    );
+      const terapeutaSeleccionado = terapeutasDisponibles.find(
+        t => t.id === parseInt(nuevoTerapeuta)
+      );
 
-    if (!terapeutaSeleccionado) {
-      throw new Error('Terapeuta no encontrado');
-    }
+      if (!terapeutaSeleccionado) {
+        throw new Error('Terapeuta no encontrado');
+      }
 
-    // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en OTRO servicio del paciente
-    const serviciosPaciente = paciente.servicios || [];
-    const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
-      const tieneAsignacion = s.asignaciones?.some(
+      // VALIDACIÓN 1: Verificar si el terapeuta ya está asignado en OTRO servicio del paciente
+      const serviciosPaciente = paciente.servicios || [];
+      const terapeutaOcupadoEnOtroServicio = serviciosPaciente.find(s => {
+        const tieneAsignacion = s.asignaciones?.some(
+          asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
+        );
+        if (tieneAsignacion && s.id !== servicioAEditar.id) {
+          return true; // Encontró al terapeuta en OTRO servicio
+        }
+        return false;
+      });
+
+      if (terapeutaOcupadoEnOtroServicio) {
+        setSnackbar({
+          open: true,
+          message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
+          severity: 'error'
+        });
+        return; // Detener la ejecución
+      }
+
+      // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
+      const terapeutaYaAsignado = servicioAEditar.asignaciones?.some(
         asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
       );
-      if (tieneAsignacion && s.id !== servicioAEditar.id) {
-        return true; // Encontró al terapeuta en OTRO servicio
+
+      if (terapeutaYaAsignado) {
+        setSnackbar({
+          open: true,
+          message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado a este mismo servicio.`,
+          severity: 'error'
+        });
+        return; // Detener la ejecución
       }
-      return false;
-    });
 
-    if (terapeutaOcupadoEnOtroServicio) {
+      const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
+
+      if (tieneAsignacion) {
+        // Actualizar asignación existente
+        const asignacionId = servicioAEditar.asignaciones[0].id;
+        await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
+          terapeuta_id: terapeutaSeleccionado.id,
+          user_id_actua: user_id
+        });
+      } else {
+        // Crear nueva asignación
+        await api.post('/paciente-servicio/asignacion', {
+          paciente_servicio_id: servicioAEditar.id,
+          terapeuta_id: terapeutaSeleccionado.id,
+          fecha_asignacion: new Date().toISOString().split('T')[0],
+          estado: 'ACTIVO',
+          user_id_crea: user_id
+        });
+      }
+
+      // Recargar servicios
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const serviciosActualizados = await getServiciosPorPaciente(id);
+      setPaciente(prev => ({
+        ...prev,
+        servicios: serviciosActualizados
+      }));
+
+      const mensajeExito = tieneAsignacion 
+        ? 'Terapeuta actualizado correctamente' 
+        : 'Terapeuta asignado correctamente';
+        
       setSnackbar({
         open: true,
-        message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado en el servicio de ${terapeutaOcupadoEnOtroServicio.servicio?.nombre}. No puede estar en dos servicios a la vez.`,
-        severity: 'error'
+        message: mensajeExito,
+        severity: 'success'
       });
-      return; // Detener la ejecución
-    }
 
-    // VALIDACIÓN 2: Verificar si el terapeuta ya está asignado en ESTE MISMO servicio
-    const terapeutaYaAsignado = servicioAEditar.asignaciones?.some(
-      asig => asig.terapeuta?.id === terapeutaSeleccionado.id && asig.estado === 'ACTIVO'
-    );
+      setOpenEditarTerapeuta(false);
+      setServicioAEditar(null);
+      setNuevoTerapeuta('');
 
-    if (terapeutaYaAsignado) {
-      setSnackbar({
-        open: true,
-        message: `❌ El terapeuta ${terapeutaSeleccionado.nombres} ${terapeutaSeleccionado.apellidos} ya está asignado a este mismo servicio.`,
-        severity: 'error'
-      });
-      return; // Detener la ejecución
-    }
-
-    const tieneAsignacion = servicioAEditar.asignaciones && servicioAEditar.asignaciones.length > 0;
-
-    if (tieneAsignacion) {
-      // Actualizar asignación existente
-      const asignacionId = servicioAEditar.asignaciones[0].id;
-      await api.patch(`/paciente-servicio/asignacion/${asignacionId}`, {
-        terapeuta_id: terapeutaSeleccionado.id,
-        user_id_actua: user_id
-      });
-    } else {
-      // Crear nueva asignación
-      await api.post('/paciente-servicio/asignacion', {
-        paciente_servicio_id: servicioAEditar.id,
-        terapeuta_id: terapeutaSeleccionado.id,
-        fecha_asignacion: new Date().toISOString().split('T')[0],
-        estado: 'ACTIVO',
-        user_id_crea: user_id
-      });
-    }
-
-    // Recargar servicios
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const serviciosActualizados = await getServiciosPorPaciente(id);
-    setPaciente(prev => ({
-      ...prev,
-      servicios: serviciosActualizados
-    }));
-
-    const mensajeExito = tieneAsignacion 
-      ? 'Terapeuta actualizado correctamente' 
-      : 'Terapeuta asignado correctamente';
+    } catch (error) {
+      console.error('❌ Error al asignar/actualizar terapeuta:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Error al asignar el terapeuta';
       
-    setSnackbar({
-      open: true,
-      message: mensajeExito,
-      severity: 'success'
-    });
+      setOpenEditarTerapeuta(false);
+      setErrorModal({
+        open: true,
+        message: errorMessage,
+        title: 'Error al asignar terapeuta'
+      });
+    }
+  };
 
-    setOpenEditarTerapeuta(false);
-    setServicioAEditar(null);
-    setNuevoTerapeuta('');
-
-  } catch (error) {
-    console.error('❌ Error al asignar/actualizar terapeuta:', error);
-    const errorMessage = error.response?.data?.message || error.message || 'Error al asignar el terapeuta';
-    
-    setOpenEditarTerapeuta(false);
-    setErrorModal({
-      open: true,
-      message: errorMessage,
-      title: 'Error al asignar terapeuta'
-    });
-  }
-};
-
-// ============== HANDLERS DE CONVENIOS ==============
-const handleAsignarConvenio = async () => {
-  if (!convenioSeleccionado) {
-    setSnackbar({ open: true, message: 'Debes seleccionar un convenio', severity: 'error' });
-    return;
-  }
-
-  try {
-    const convenio = conveniosDisponibles.find(c => c.id === parseInt(convenioSeleccionado));
-    
-    // Verificar si ya está asignado
-    if (conveniosPaciente.some(c => c.convenio_id === convenio.id && c.activo)) {
-      setSnackbar({ open: true, message: 'Este convenio ya está asignado al paciente', severity: 'error' });
+  // ============== HANDLERS DE CONVENIOS ==============
+  const handleAsignarConvenio = async () => {
+    if (!convenioSeleccionado) {
+      setSnackbar({ open: true, message: 'Debes seleccionar un convenio', severity: 'error' });
       return;
     }
 
-    await asignarConvenioPaciente({
-      paciente_id: parseInt(id),
-      convenio_id: convenio.id,
-      observaciones: observacionesConvenio || null,
-      activo: true
-    });
+    try {
+      const convenio = conveniosDisponibles.find(c => c.id === parseInt(convenioSeleccionado));
+      
+      // Verificar si ya está asignado
+      if (conveniosPaciente.some(c => c.convenio_id === convenio.id && c.activo)) {
+        setSnackbar({ open: true, message: 'Este convenio ya está asignado al paciente', severity: 'error' });
+        return;
+      }
 
-    // Recargar convenios
-    const asignados = await getConveniosPorPaciente(id);
-    setConveniosPaciente(asignados || []);
+      await asignarConvenioPaciente({
+        paciente_id: parseInt(id),
+        convenio_id: convenio.id,
+        observaciones: observacionesConvenio || null,
+        activo: true
+      });
 
-    setSnackbar({ open: true, message: 'Convenio asignado correctamente', severity: 'success' });
-    setModalConvenio(false);
-    setConvenioSeleccionado('');
-    setObservacionesConvenio('');
-  } catch (error) {
-    console.error('Error al asignar convenio:', error);
-    setSnackbar({ 
-      open: true, 
-      message: error.response?.data?.message || 'Error al asignar el convenio', 
-      severity: 'error' 
-    });
-  }
-};
+      // Recargar convenios
+      const asignados = await getConveniosPorPaciente(id);
+      setConveniosPaciente(asignados || []);
 
-const handleEliminarConvenio = async () => {
-  const { convenio } = modalEliminarConvenio;
+      setSnackbar({ open: true, message: 'Convenio asignado correctamente', severity: 'success' });
+      setModalConvenio(false);
+      setConvenioSeleccionado('');
+      setObservacionesConvenio('');
+    } catch (error) {
+      console.error('Error al asignar convenio:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error.response?.data?.message || 'Error al asignar el convenio', 
+        severity: 'error' 
+      });
+    }
+  };
 
-  try {
-    // Hacer eliminación lógica (desactivar) en lugar de eliminar físicamente
-    await desactivarPacienteConvenio(convenio.id);
+  const handleEliminarConvenio = async () => {
+    const { convenio } = modalEliminarConvenio;
 
-    // Recargar convenios
-    const asignados = await getConveniosPorPaciente(id);
-    setConveniosPaciente(asignados || []);
+    try {
+      // Hacer eliminación lógica (desactivar) en lugar de eliminar físicamente
+      await desactivarPacienteConvenio(convenio.id);
 
-    setSnackbar({ open: true, message: 'Convenio eliminado correctamente', severity: 'success' });
-    setModalEliminarConvenio({ open: false, convenio: null });
-  } catch (error) {
-    console.error('Error al eliminar convenio:', error);
-    setSnackbar({
-      open: true,
-      message: error.response?.data?.message || 'Error al eliminar el convenio',
-      severity: 'error'
-    });
-  }
-};
+      // Recargar convenios
+      const asignados = await getConveniosPorPaciente(id);
+      setConveniosPaciente(asignados || []);
+
+      setSnackbar({ open: true, message: 'Convenio eliminado correctamente', severity: 'success' });
+      setModalEliminarConvenio({ open: false, convenio: null });
+    } catch (error) {
+      console.error('Error al eliminar convenio:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Error al eliminar el convenio',
+        severity: 'error'
+      });
+    }
+  };
 
   if (loading) return <EditarPacienteSkeleton />;
   if (error) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
+    <div className="flex items-center justify-center min-h-screen cx-admin-bg">
       <div className="text-center">
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <p className="text-gray-600">{error}</p>
@@ -744,7 +751,7 @@ const handleEliminarConvenio = async () => {
     </div>
   );
   if (!paciente) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
+    <div className="flex items-center justify-center min-h-screen cx-admin-bg">
       <p className="text-gray-600">No se encontró el paciente.</p>
     </div>
   );
@@ -754,7 +761,7 @@ const handleEliminarConvenio = async () => {
   const estadoColors = getEstadoColor(paciente.estado?.nombre);
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen cx-admin-bg">
       {snackbar.open && (
         <div className={`fixed top-6 right-6 z-[90000] px-5 py-3.5 rounded-xl shadow-2xl border transform transition-all duration-300 ${
           snackbar.severity === 'success'
@@ -784,287 +791,264 @@ const handleEliminarConvenio = async () => {
         </div>
       )}
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 lg:pl-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 sm:py-4">
         <button
           onClick={() => navigate('/intranet/lista-pacientes')}
-          className="flex items-center gap-2 px-4 py-2 mb-4 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all group"
+          className="flex items-center gap-2 px-3 py-1.5 mb-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           <span className="text-sm font-medium">Volver</span>
         </button>
 
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 mb-6 shadow-sm">
-  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-    <div className="flex items-center gap-4 sm:gap-6">
-      <div className="relative group">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A] flex items-center justify-center text-white text-xl font-bold shadow-sm">
-          {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
-        </div>
-        <input
-          accept="image/*"
-          style={{ display: 'none' }}
-          id="foto-paciente"
-          type="file"
-          onChange={handleFotoChange}
-        />
-        <label htmlFor="foto-paciente">
-          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#A3C644] rounded-xl cursor-pointer hover:bg-[#8FB82D] transition-all flex items-center justify-center border-3 border-white shadow-sm opacity-0 group-hover:opacity-100">
-            <Camera className="w-3.5 h-3.5 text-white" />
-          </div>
-        </label>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-1.5">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 break-words line-clamp-2">
-            {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
-          </h1>
-          <button
-            onClick={() => {
-              const nombre = `${paciente.nombres} ${paciente.apellido_paterno} ${paciente.apellido_materno}`.trim();
-              navigator.clipboard.writeText(nombre).then(() => {
-                setNombreCopiado(true);
-                setTimeout(() => setNombreCopiado(false), 2000);
-              });
-            }}
-            className="flex-shrink-0 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
-            title="Copiar nombre"
-          >
-            {nombreCopiado
-              ? <Check className="w-4 h-4 text-green-500" />
-              : <Copy className="w-4 h-4" />
-            }
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-gray-400">Edad:</span>
-            <span>{edadDetallada.texto}</span>
-          </div>
-          
-          <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
-          
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-gray-400">DNI:</span>
-            <span>{paciente.numero_documento}</span>
-          </div>
-          
-          {paciente.created_at && (
-            <>
-              <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
-              
-              <div className="hidden md:flex items-center gap-1.5 text-gray-400">
-                <Clock className="w-3.5 h-3.5" />
-                <span className="font-medium">Registro:</span>
-                <span>
-                  {new Date(paciente.created_at).toLocaleDateString('es-PE', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
-                  })}
-                </span>
+        {/* ============== CABECERA DEL PACIENTE ============== */}
+        <div className="glass-panel rounded-3xl p-4 sm:p-5 mb-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-5 min-w-0">
+              <div className="relative group flex-shrink-0">
+                <div className="w-[84px] h-[84px] rounded-2xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-purple-500/30">
+                  {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
+                </div>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="foto-paciente"
+                  type="file"
+                  onChange={handleFotoChange}
+                />
+                <label htmlFor="foto-paciente">
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#A3C644] rounded-xl cursor-pointer hover:bg-[#8FB82D] transition-all flex items-center justify-center border-3 border-white shadow-sm opacity-0 group-hover:opacity-100">
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  </div>
+                </label>
               </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
 
-    <div className="flex flex-wrap gap-1.5 justify-end max-w-[260px]">
-      {(paciente.servicios || []).filter(ps => ps.activo).map(ps => {
-        const abrev = getAbreviatura(ps.servicio);
-        const estadoNombre = ps.estadoPaciente?.nombre
-          || estadosPaciente.find(e => e.id === ps.estado_paciente_id)?.nombre
-          || (ps.estado === 'INACTIVO' ? 'Inactivo' : ps.estado === 'FINALIZADO' ? 'Inactivo' : null)
-          || 'Sin estado';
-        const colors = getEstadoColor(estadoNombre);
-        return (
-          <button
-            key={ps.id}
-            onClick={canManagePatientStatus(user) ? (e) => setAnchorServicio({ el: e.currentTarget, ps }) : undefined}
-            disabled={!canManagePatientStatus(user)}
-            title={ps.servicio?.nombre}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${colors.bg} ${canManagePatientStatus(user) ? 'cursor-pointer hover:shadow-sm' : 'cursor-default'} transition-all`}
-          >
-            <div className={`w-1.5 h-1.5 rounded-full ${colors.dot} flex-shrink-0`} />
-            <span className={`text-xs font-bold ${colors.text}`}>{abrev} - {estadoNombre}</span>
-            {canManagePatientStatus(user) && <ChevronDown className={`w-3 h-3 ${colors.text} opacity-50 flex-shrink-0`} />}
-          </button>
-        );
-      })}
-    </div>
-  </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-[#3B0F63] uppercase break-words line-clamp-2">
+                    {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
+                  </h1>
+                  <button
+                    onClick={() => {
+                      const nombre = `${paciente.nombres} ${paciente.apellido_paterno} ${paciente.apellido_materno}`.trim();
+                      navigator.clipboard.writeText(nombre).then(() => {
+                        setNombreCopiado(true);
+                        setTimeout(() => setNombreCopiado(false), 2000);
+                      });
+                    }}
+                    className="flex-shrink-0 p-1 rounded-lg text-[#7B1FA2]/50 hover:text-[#7B1FA2] hover:bg-purple-50 transition-all"
+                    title="Copiar nombre"
+                  >
+                    {nombreCopiado
+                      ? <Check className="w-4 h-4 text-green-500" />
+                      : <Copy className="w-4 h-4" />
+                    }
+                  </button>
+                </div>
 
-<div className="mt-4 pt-4 border-t border-gray-100">
-  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-    {/* Lado izquierdo: Título + Tabs */}
-    <div className="flex items-center gap-6 min-w-0 w-full lg:w-auto">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4 text-[#7B1FA2]/60" />
+                    <span>Edad: {edadDetallada.texto}</span>
+                  </div>
 
+                  <span className="text-gray-400">•</span>
 
-      {/* Tabs */}
-      <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:gap-1">
-        <button
-          onClick={() => setTabSeleccionado('filiacion')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
-            tabSeleccionado === 'filiacion'
-              ? 'bg-[#7B1FA2] text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span className="hidden sm:inline">Filiación</span>
-          <span className="sm:hidden">Datos</span>
-        </button>
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-[#7B1FA2]/60" />
+                    <span>DNI: {paciente.numero_documento}</span>
+                  </div>
 
-        <button
-          onClick={() => setTabSeleccionado('historia')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
-            tabSeleccionado === 'historia'
-              ? 'bg-[#7B1FA2] text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <Heart className="w-4 h-4" />
-          <span className="hidden sm:inline">Historia Clínica</span>
-          <span className="sm:hidden">Historia</span>
-        </button>
+                  {paciente.created_at && (
+                    <>
+                      <span className="text-gray-400 hidden md:block">•</span>
 
-        <button
-          onClick={() => setTabSeleccionado('archivos')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
-            tabSeleccionado === 'archivos'
-              ? 'bg-[#7B1FA2] text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <HardDrive className="w-4 h-4" />
-          Archivos
-        </button>
-
-              {/* Después */}
-        {user?.rol?.id !== ROLES.TERAPEUTA && (
-          <button
-            onClick={() => setTabSeleccionado('terapias')}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
-              tabSeleccionado === 'terapias'
-                ? 'bg-[#7B1FA2] text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            Terapias
-          </button>
-        )}
-
-        {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.TERAPEUTA) && (
-          <button
-            onClick={() => setTabSeleccionado('plan')}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap ${
-              tabSeleccionado === 'plan'
-                ? 'bg-[#7B1FA2] text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <ClipboardList className="w-4 h-4" />
-            <span className="hidden sm:inline">Plan y sesiones</span>
-            <span className="sm:hidden">Plan</span>
-          </button>
-        )}
-      </div>
-    </div>
-
-          <div className="flex items-center gap-4">
-            {/* Título de Convenios */}
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-[#7B1FA2]" />
-              <h3 className="text-xs font-bold text-gray-900">Convenios</h3><span>|</span>
+                      <div className="hidden md:flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-[#7B1FA2]/60" />
+                        <span>
+                          Registro: {new Date(paciente.created_at).toLocaleDateString('es-PE', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
+
+            <div className="flex flex-wrap gap-2 sm:justify-end sm:max-w-[320px]">
+              {(paciente.servicios || []).filter(ps => ps.activo).map(ps => {
+                const abrev = getAbreviatura(ps.servicio);
+                const estadoNombre = ps.estadoPaciente?.nombre
+                  || estadosPaciente.find(e => e.id === ps.estado_paciente_id)?.nombre
+                  || (ps.estado === 'INACTIVO' ? 'Inactivo' : ps.estado === 'FINALIZADO' ? 'Inactivo' : null)
+                  || 'Sin estado';
+                const colors = getEstadoColor(estadoNombre);
+                return (
+                  <button
+                    key={ps.id}
+                    onClick={canManagePatientStatus(user) ? (e) => setAnchorServicio({ el: e.currentTarget, ps }) : undefined}
+                    disabled={!canManagePatientStatus(user)}
+                    title={ps.servicio?.nombre}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-gray-100 shadow-sm transition-all ${canManagePatientStatus(user) ? 'cursor-pointer hover:shadow-md' : 'cursor-default'}`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${colors.dot} flex-shrink-0`} />
+                    <span className="text-sm font-semibold text-gray-700">{abrev} - {estadoNombre}</span>
+                    {canManagePatientStatus(user) && <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ============== TABS + CONVENIOS (un solo bloque) ============== */}
+        <div className="glass-panel rounded-3xl px-4 sm:px-6 mb-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Tabs */}
+          <nav className="overflow-x-auto max-w-full">
+            <div className="flex items-stretch gap-1 sm:gap-3">
+              <button
+                onClick={() => setTabSeleccionado('filiacion')}
+                className={`${TAB_BASE} ${tabSeleccionado === 'filiacion' ? TAB_ACTIVA : TAB_INACTIVA}`}
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden sm:inline">Filiación</span>
+                <span className="sm:hidden">Datos</span>
+              </button>
+
+              <button
+                onClick={() => setTabSeleccionado('historia')}
+                className={`${TAB_BASE} ${tabSeleccionado === 'historia' ? TAB_ACTIVA : TAB_INACTIVA}`}
+              >
+                <Heart className="w-5 h-5" />
+                <span className="hidden sm:inline">Historia Clínica</span>
+                <span className="sm:hidden">Historia</span>
+              </button>
+
+              <button
+                onClick={() => setTabSeleccionado('archivos')}
+                className={`${TAB_BASE} ${tabSeleccionado === 'archivos' ? TAB_ACTIVA : TAB_INACTIVA}`}
+              >
+                <FolderOpen className="w-5 h-5" />
+                Archivos
+              </button>
+
+              {user?.rol?.id !== ROLES.TERAPEUTA && (
+                <button
+                  onClick={() => setTabSeleccionado('terapias')}
+                  className={`${TAB_BASE} ${tabSeleccionado === 'terapias' ? TAB_ACTIVA : TAB_INACTIVA}`}
+                >
+                  <Activity className="w-5 h-5" />
+                  Terapias
+                </button>
+              )}
+
+              {(user?.rol?.id === ROLES.ADMINISTRADOR || user?.rol?.id === ROLES.TERAPEUTA) && (
+                <button
+                  onClick={() => setTabSeleccionado('plan')}
+                  className={`${TAB_BASE} ${tabSeleccionado === 'plan' ? TAB_ACTIVA : TAB_INACTIVA}`}
+                >
+                  <CalendarDays className="w-5 h-5" />
+                  <span className="hidden sm:inline">Plan y sesiones</span>
+                  <span className="sm:hidden">Plan</span>
+                </button>
+              )}
+            </div>
+          </nav>
+
+          {/* Convenios */}
+          <div className="flex items-center gap-4 py-2">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[#7B1FA2]" />
+              <h3 className="text-sm font-semibold text-gray-800">Convenios</h3>
+            </div>
+
+            <span className="w-px h-6 bg-gray-200" />
+
             {conveniosPaciente.filter(pc => pc.activo).length === 0 ? (
-              <p className="text-xs text-gray-400 mr-2">Sin convenios</p>
+              <p className="text-sm text-gray-400">Sin convenios</p>
             ) : (
               <div className="flex items-start gap-4">
                 {conveniosPaciente
                   .filter(pc => pc.activo) // Solo mostrar convenios activos
                   .map((pc) => {
-                  const convenio = conveniosDisponibles.find(c => c.id === pc.convenio_id);
-                  if (!convenio) return null;
+                    const convenio = conveniosDisponibles.find(c => c.id === pc.convenio_id);
+                    if (!convenio) return null;
 
-                  return (
-                    <div
-                      key={pc.id}
-                      className="flex flex-col items-center gap-1.5 max-w-[80px]"
-                    >
-                      {/* Círculo con logo */}
+                    return (
                       <div
-                        className="group relative"
-                        onClick={() => setModalDesactivarConvenio({ open: true, convenio: pc })}
+                        key={pc.id}
+                        className="flex flex-col items-center gap-1.5 max-w-[80px]"
                       >
-                        <div className="w-12 h-12 rounded-full border-2 border-[#7B1FA2] overflow-hidden bg-white flex items-center justify-center transition-all cursor-pointer hover:shadow-md hover:scale-105">
-                          {convenio.logo_url ? (
-                            <img
-                              src={convenio.logo_url
-                                ? (convenio.logo_url.startsWith('/')
-                                  ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
-                                  : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
-                                : ''}
-                              alt={convenio.empresa || convenio.nombre}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                const fallback = e.target.parentElement.querySelector('.fallback-logo');
-                                if (fallback) fallback.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div className={`fallback-logo absolute inset-0 ${convenio.logo_url ? 'hidden' : 'flex'} items-center justify-center bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]`}>
-                            <Building2 className="w-5 h-5 text-white" />
+                        {/* Círculo con logo */}
+                        <div className="group relative">
+                          <div className="w-12 h-12 rounded-full border-2 border-[#7B1FA2] overflow-hidden bg-white flex items-center justify-center">
+                            {convenio.logo_url ? (
+                              <img
+                                src={convenio.logo_url
+                                  ? (convenio.logo_url.startsWith('/')
+                                    ? `${API_BASE_URL}/convenios/logo/${convenio.logo_url.split('/').pop()}`
+                                    : `${API_BASE_URL}/convenios/logo/${convenio.logo_url}`)
+                                  : ''}
+                                alt={convenio.empresa || convenio.nombre}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  const fallback = e.target.parentElement.querySelector('.fallback-logo');
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div className={`fallback-logo absolute inset-0 ${convenio.logo_url ? 'hidden' : 'flex'} items-center justify-center bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]`}>
+                              <Building2 className="w-5 h-5 text-white" />
+                            </div>
                           </div>
+
+                          <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-green-500" />
+
+                          {canManageConvenios(user) && (
+                            <div
+                              className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setModalEliminarConvenio({ open: true, convenio: pc });
+                                }}
+                                className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
+                                title="Eliminar asignación"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
-                        <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-green-500" />
-
-                        {canManageConvenios(user) && (
-                          <div
-                            className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2"
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setModalEliminarConvenio({ open: true, convenio: pc });
-                              }}
-                              className="p-1.5 rounded-full transition-all bg-red-500 hover:bg-red-600 text-white"
-                              title="Eliminar asignación"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
+                        {/* Nombre completo en múltiples líneas */}
+                        <p className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-3 break-words w-full">
+                          {convenio.empresa || convenio.nombre}
+                        </p>
                       </div>
-
-                      {/* Nombre completo en múltiples líneas */}
-                      <p className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-3 break-words w-full">
-                        {convenio.empresa || convenio.nombre}
-                      </p>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
 
             {canManageConvenios(user) && (
               <button
                 onClick={() => setModalConvenio(true)}
-                className="w-10 h-10 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-110 shadow-sm flex-shrink-0"
+                className="w-12 h-12 rounded-full bg-[#7B1FA2] hover:bg-[#6A1B9A] text-white flex items-center justify-center transition-all hover:scale-105 shadow-lg shadow-purple-500/30 flex-shrink-0"
                 title="Agregar convenio"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-6 h-6" />
               </button>
             )}
           </div>
-      </div>
-    </div>
-    </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           <div className={tabSeleccionado === 'plan' ? 'lg:col-span-12' : 'lg:col-span-7'}>
             {tabSeleccionado === 'filiacion' && (
               <FiliacionView
@@ -1113,20 +1097,20 @@ const handleEliminarConvenio = async () => {
           </div>
 
           {tabSeleccionado !== 'plan' && (
-          <div className="lg:col-span-5">
-            <NotasEvolucion
-              notas={comentarios}
-              setNotas={setComentarios}
-              openNotaModal={openNotaModal}
-              setOpenNotaModal={setOpenNotaModal}
-              nota={nota}
-              setNota={setNota}
-              paciente_id={paciente?.id}
-              user_id_crea={user_id}
-              user={user}
-              setSnackbar={setSnackbar}
-            />
-          </div>
+            <div className="lg:col-span-5">
+              <NotasEvolucion
+                notas={comentarios}
+                setNotas={setComentarios}
+                openNotaModal={openNotaModal}
+                setOpenNotaModal={setOpenNotaModal}
+                nota={nota}
+                setNota={setNota}
+                paciente_id={paciente?.id}
+                user_id_crea={user_id}
+                user={user}
+                setSnackbar={setSnackbar}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -1348,163 +1332,160 @@ const handleEliminarConvenio = async () => {
             </div>
           </div>
         </div>
-
-        
-
       )}
 
-{/* ============== MODAL ASIGNAR CONVENIO ============== */}
-{modalConvenio && (
-  <div className="fixed inset-0 z-[70000] flex items-center justify-center">
-    <div
-      className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-      onClick={() => setModalConvenio(false)}
-    />
-
-    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-      <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-xl font-bold text-white">Asignar Convenio</h2>
-        </div>
-        <button
-          onClick={() => setModalConvenio(false)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
-        >
-          <X className="w-5 h-5 text-white" />
-        </button>
-      </div>
-
-      <div className="p-6 space-y-4">
-     <div>
-  <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-    Convenio <span className="text-red-500">*</span>
-  </label>
-  
-  {loadingConvenios ? (
-    <div className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm text-gray-500 flex items-center gap-2">
-      <div className="w-4 h-4 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
-      Cargando...
-    </div>
-  ) : (
-    <select
-      value={convenioSeleccionado}
-      onChange={(e) => setConvenioSeleccionado(e.target.value)}
-      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
-    >
-      <option value="">Seleccionar convenio...</option>
-      {conveniosDisponibles.map(convenio => (
-        <option key={convenio.id} value={convenio.id}>
-          {convenio.empresa || convenio.nombre}
-        </option>
-      ))}
-    </select>
-  )}
-  
-  {!loadingConvenios && conveniosDisponibles.length === 0 && (
-    <p className="text-xs text-red-600 mt-2">
-      No hay convenios activos disponibles
-    </p>
-  )}
-</div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-            Observaciones
-          </label>
-          <textarea
-            value={observacionesConvenio}
-            onChange={(e) => setObservacionesConvenio(e.target.value)}
-            placeholder="Detalles adicionales del convenio (cobertura, restricciones, etc.)"
-            rows={3}
-            className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+      {/* ============== MODAL ASIGNAR CONVENIO ============== */}
+      {modalConvenio && (
+        <div className="fixed inset-0 z-[70000] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setModalConvenio(false)}
           />
-        </div>
-      </div>
 
-      <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
-        <button
-          onClick={() => {
-            setModalConvenio(false);
-            setConvenioSeleccionado('');
-            setObservacionesConvenio('');
-          }}
-          className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleAsignarConvenio}
-          disabled={!convenioSeleccionado}
-          className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#7B1FA2]/30"
-        >
-          Asignar Convenio
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">Asignar Convenio</h2>
+              </div>
+              <button
+                onClick={() => setModalConvenio(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
 
-{/* ============== MODAL ELIMINAR CONVENIO ============== */}
-{modalEliminarConvenio.open && (
-  <div className="fixed inset-0 z-[70000] flex items-center justify-center">
-    <div
-      className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-      onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
-    />
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Convenio <span className="text-red-500">*</span>
+                </label>
 
-    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-            <AlertCircle className="w-5 h-5 text-white" />
+                {loadingConvenios ? (
+                  <div className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm text-gray-500 flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-gray-200 border-t-[#7B1FA2] rounded-full animate-spin"></div>
+                    Cargando...
+                  </div>
+                ) : (
+                  <select
+                    value={convenioSeleccionado}
+                    onChange={(e) => setConvenioSeleccionado(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all"
+                  >
+                    <option value="">Seleccionar convenio...</option>
+                    {conveniosDisponibles.map(convenio => (
+                      <option key={convenio.id} value={convenio.id}>
+                        {convenio.empresa || convenio.nombre}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {!loadingConvenios && conveniosDisponibles.length === 0 && (
+                  <p className="text-xs text-red-600 mt-2">
+                    No hay convenios activos disponibles
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Observaciones
+                </label>
+                <textarea
+                  value={observacionesConvenio}
+                  onChange={(e) => setObservacionesConvenio(e.target.value)}
+                  placeholder="Detalles adicionales del convenio (cobertura, restricciones, etc.)"
+                  rows={3}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#7B1FA2] transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setModalConvenio(false);
+                  setConvenioSeleccionado('');
+                  setObservacionesConvenio('');
+                }}
+                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAsignarConvenio}
+                disabled={!convenioSeleccionado}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#6A1B9A] rounded-xl hover:from-[#6A1B9A] hover:to-[#5E1690] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#7B1FA2]/30"
+              >
+                Asignar Convenio
+              </button>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-white">Eliminar Asignación</h2>
         </div>
-        <button
-          onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
-        >
-          <X className="w-5 h-5 text-white" />
-        </button>
-      </div>
+      )}
 
-      <div className="p-6">
-        <p className="text-gray-700 mb-2">
-          ¿Estás seguro de que deseas quitar el convenio:
-        </p>
-        <p className="text-lg font-semibold text-gray-900 mb-4">
-          "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.empresa}"
-        </p>
-        <p className="text-gray-700 mb-4">
-          de este paciente?
-        </p>
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-          <p className="text-sm text-orange-800">
-            <strong>Nota:</strong> El paciente dejará de tener acceso a los beneficios de este convenio. Esta acción puede revertirse volviendo a asignar el convenio.
-          </p>
+      {/* ============== MODAL ELIMINAR CONVENIO ============== */}
+      {modalEliminarConvenio.open && (
+        <div className="fixed inset-0 z-[70000] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
+          />
+
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">Eliminar Asignación</h2>
+              </div>
+              <button
+                onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-700 mb-2">
+                ¿Estás seguro de que deseas quitar el convenio:
+              </p>
+              <p className="text-lg font-semibold text-gray-900 mb-4">
+                "{conveniosDisponibles.find(c => c.id === modalEliminarConvenio.convenio?.convenio_id)?.empresa}"
+              </p>
+              <p className="text-gray-700 mb-4">
+                de este paciente?
+              </p>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="text-sm text-orange-800">
+                  <strong>Nota:</strong> El paciente dejará de tener acceso a los beneficios de este convenio. Esta acción puede revertirse volviendo a asignar el convenio.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+              <button
+                onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
+                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEliminarConvenio}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30"
+              >
+                <Trash2 className="w-4 h-4" />
+                Quitar Convenio
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
-        <button
-          onClick={() => setModalEliminarConvenio({ open: false, convenio: null })}
-          className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleEliminarConvenio}
-          className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30"
-        >
-          <Trash2 className="w-4 h-4" />
-          Quitar Convenio
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
     </div>
   );

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  User, Phone, MapPin, Mail, Calendar, FileText, Heart, Pill, AlertCircle, 
-  Save, X, Edit2, Trash2, Plus, ShieldAlert, Clock, CheckCircle, XCircle 
+  User, Users, Phone, MapPin, Mail, Calendar, FileText, Heart, Pill, AlertCircle,
+  Save, X, Edit2, Trash2, Plus, ShieldAlert, Clock, CheckCircle, XCircle, Eye, EyeOff
 } from 'lucide-react';
 import { ROLES } from '../../constants/roles';
+import { getResponsablesPorPaciente } from '../../services/pacienteService';
 import ResponsablesSection from './ResponsablesSection';
 
 const formatPeruDateTime = (dateString) => {
@@ -50,72 +51,73 @@ const formatPeruDateTime = (dateString) => {
   }
 };
 
-const FormField = ({ icon: Icon, label, value, displayValue, name, type = 'text', editable, onChange, error, iconColor = 'text-[#7B1FA2]', options = null }) => (
-  <div>
-    <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-2.5">
-      <Icon className={`w-4 h-4 ${iconColor}`} />
-      {label}
-    </label>
-    {editable ? (
-      <>
-        {options ? (
-          <div className="relative">
-            <select
+// Campo en forma de tarjeta: etiqueta arriba, valor debajo (sin ícono)
+const FormField = ({ label, value, displayValue, name, type = 'text', editable, onChange, error, options = null }) => {
+  const inputClass = `w-full px-3 py-2 text-sm border rounded-xl focus:outline-none transition-all bg-white text-gray-900 ${
+    error ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#7B1FA2]'
+  }`;
+
+  return (
+    <div className="rounded-2xl border border-purple-100/70 bg-[#F8F5FC] px-5 py-3.5">
+      <label className="block text-base text-gray-500 mb-1">{label}</label>
+
+      {editable ? (
+        <>
+          {options ? (
+            <div className="relative">
+              <select
+                name={name}
+                value={value || ''}
+                onChange={onChange}
+                className={`${inputClass} appearance-none cursor-pointer`}
+              >
+                <option value="">Seleccionar {label.toLowerCase()}</option>
+                {options.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.nombre}</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          ) : (
+            <input
+              type={type}
               name={name}
               value={value || ''}
               onChange={onChange}
-              className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none transition-all bg-white text-gray-900 appearance-none cursor-pointer ${
-                error ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#7B1FA2]'
-              }`}
-            >
-              <option value="">Seleccionar {label.toLowerCase()}</option>
-              {options.map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.nombre}</option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-        ) : (
-          <input
-            type={type}
-            name={name}
-            value={value || ''}
-            onChange={onChange}
-            className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none transition-all bg-white text-gray-900 ${
-              error ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#7B1FA2]'
-            }`}
-            placeholder={`Ingresa ${label.toLowerCase()}`}
-          />
-        )}
-        {error && (
-          <p className="text-red-500 text-xs mt-2 flex items-center gap-1.5">
-            <AlertCircle className="w-3 h-3" />
-            {error}
-          </p>
-        )}
-      </>
-    ) : (
-      <div className="py-3 px-4 text-sm text-gray-900 bg-gray-50 rounded-xl border border-gray-100">
-        {displayValue || value || '-'}
-      </div>
-    )}
-  </div>
-);
+              className={inputClass}
+              placeholder={`Ingresa ${label.toLowerCase()}`}
+            />
+          )}
+          {error && (
+            <p className="text-red-500 text-xs mt-2 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3" />
+              {error}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-xl font-medium text-gray-900 break-words min-h-[1.75rem]">
+          {displayValue || value || '-'}
+        </p>
+      )}
+    </div>
+  );
+};
 
-const Section = ({ icon: Icon, title, iconColor = 'text-[#7B1FA2]', bgColor = 'bg-[#7B1FA2]/5', children }) => (
-  <div className="mb-10">
-    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-      <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center`}>
-        <Icon className={`w-5 h-5 ${iconColor}`} />
+const Section = ({ icon: Icon, title, iconColor = 'text-[#7B1FA2]', bgColor = 'bg-purple-50', children }) => (
+  <section className="glass-panel rounded-3xl p-6">
+    <div className="flex items-center gap-4 mb-4">
+      <div className={`w-12 h-12 rounded-2xl ${bgColor} flex items-center justify-center flex-shrink-0`}>
+        <Icon className={`w-6 h-6 ${iconColor}`} />
       </div>
-      <h3 className="text-base font-bold text-gray-900">{title}</h3>
+      <h3 className="text-xl font-bold text-gray-900">{title}</h3>
     </div>
     {children}
-  </div>
+  </section>
 );
 
 const FiliacionView = ({
@@ -135,6 +137,25 @@ const FiliacionView = ({
 }) => {
   const [localPacienteData, setLocalPacienteData] = useState(paciente);
   const [modoEdicion, setModoEdicion] = useState(false);
+  const [apoderadoLabel, setApoderadoLabel] = useState('—');
+  const [mostrarDni, setMostrarDni] = useState(true);
+
+  // Traer el apoderado real para el chip resumen (se carga aparte)
+  useEffect(() => {
+    if (!paciente?.id) return;
+    getResponsablesPorPaciente(paciente.id)
+      .then((res) => {
+        const list = res?.data || res || [];
+        if (Array.isArray(list) && list.length > 0) {
+          const r = list[0];
+          const nombre = `${r.nombres || ''} ${r.apellido_paterno || ''}`.replace(/\s+/g, ' ').trim();
+          setApoderadoLabel(nombre || 'Sí');
+        } else {
+          setApoderadoLabel('Sin apoderado');
+        }
+      })
+      .catch(() => setApoderadoLabel('—'));
+  }, [paciente?.id]);
   
   // ✅ ESTADOS PARA LOS MODALES (dentro del componente)
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -198,35 +219,41 @@ const FiliacionView = ({
 
   if (!paciente) return null;
 
+  // Resumen rápido (chips). El DNI se puede ocultar con el ojo.
+  const resumen = [
+    { Icon: User, label: 'Datos personales', value: `${paciente.nombres || ''} ${paciente.apellido_paterno || ''}`.trim() || '—' },
+    {
+      Icon: FileText,
+      label: 'DNI',
+      value: mostrarDni ? (paciente.numero_documento || '—') : '••••••••',
+      toggle: true
+    },
+    { Icon: Users, label: 'Apoderado', value: apoderadoLabel },
+    { Icon: Phone, label: 'Teléfono', value: paciente.celular || '—' },
+    { Icon: MapPin, label: 'Dirección', value: paciente.direccion || '—' },
+    { Icon: Mail, label: 'Correo', value: paciente.correo || '—' },
+  ];
+
   return (
     <>
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm" style={{ minHeight: '700px' }}>
+      <div className="space-y-4">
+        <div className="glass-panel rounded-3xl">
         {/* Header */}
-        <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">
+        <div className="p-6 pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-6 h-6 text-[#7B1FA2]" />
+              </div>
+              <h2 className="text-[22px] font-extrabold text-[#2D0A4E]">
                 Información del Paciente
               </h2>
-              <p className="text-sm text-gray-500">
-                Datos personales y médicos
-              </p>
-              
-              {paciente.updated_at && (
-                <div className="space-y-1 mt-2">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <Calendar className="w-3 h-3" />
-                    <span className="font-medium">Última actualización:</span>
-                    <span>{formatPeruDateTime(paciente.updated_at)}</span>
-                  </div>
-                </div>
-              )}
             </div>
             
             {puedeEditarPaciente && !modoEdicion && (
               <button
                 onClick={() => setModoEdicion(true)}
-                className="flex items-center gap-2 bg-[#7B1FA2] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#6A1B9A] transition-all shadow-sm"
+                className="flex items-center gap-2 cx-glow bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg shadow-purple-500/30"
               >
                 <Edit2 className="w-4 h-4" />
                 Editar
@@ -242,52 +269,82 @@ const FiliacionView = ({
               </div>
             )}
           </div>
+
+          <p className="text-lg text-gray-600 mt-3">Datos personales y médicos</p>
+
+          {paciente.updated_at && (
+            <div className="flex items-center gap-1.5 text-sm text-gray-400 mt-1">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Última actualización: {formatPeruDateTime(paciente.updated_at)}</span>
+            </div>
+          )}
         </div>
 
-        {/* Content */}
-        <form onSubmit={handleFormSubmit} className="p-8">
+        <div className="px-6 pb-6">
+          {/* Resumen rápido en chips */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {resumen.map((c, i) => (
+              <div key={i} className="rounded-2xl bg-[#F5F0FA] p-3.5 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                <div className="w-11 h-11 rounded-xl bg-purple-100/70 flex items-center justify-center flex-shrink-0">
+                  <c.Icon className="w-5 h-5 text-[#7B1FA2]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-gray-800">{c.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-base text-gray-500 break-words leading-snug">{c.value}</p>
+                    {c.toggle && (
+                      <button
+                        type="button"
+                        onClick={() => setMostrarDni(v => !v)}
+                        className="text-gray-400 hover:text-[#7B1FA2] transition-colors flex-shrink-0"
+                        title={mostrarDni ? 'Ocultar DNI' : 'Mostrar DNI'}
+                      >
+                        {mostrarDni ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        </div>
+
+        {/* Cada sección en su propia tarjeta */}
+        <form onSubmit={handleFormSubmit} className="space-y-4">
           {/* Datos Personales */}
-          <Section icon={User} title="Datos Personales" iconColor="text-[#7B1FA2]" bgColor="bg-[#7B1FA2]/5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Section icon={User} title="Datos Personales" iconColor="text-[#7B1FA2]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <FormField
-                icon={User}
                 label="Nombres"
                 value={localPacienteData.nombres}
                 name="nombres"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-[#7B1FA2]"
               />
               <FormField
-                icon={User}
                 label="Apellido Paterno"
                 value={localPacienteData.apellido_paterno}
                 name="apellido_paterno"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-[#7B1FA2]"
               />
               <FormField
-                icon={User}
                 label="Apellido Materno"
                 value={localPacienteData.apellido_materno}
                 name="apellido_materno"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-[#7B1FA2]"
               />
               <FormField
-                icon={Calendar}
                 label="Fecha de Nacimiento"
                 value={localPacienteData.fecha_nacimiento ? localPacienteData.fecha_nacimiento.substring(0, 10) : ''}
                 name="fecha_nacimiento"
                 type="date"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-[#7B1FA2]"
               />
               <FormField
-                icon={FileText}
                 label="Tipo de Documento"
                 value={localPacienteData.tipo_documento?.id}
                 displayValue={localPacienteData.tipo_documento?.nombre}
@@ -295,19 +352,15 @@ const FiliacionView = ({
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={(e) => handleSelectChange('tipo_documento', e.target.value)}
                 options={tiposDocumento}
-                iconColor="text-[#7B1FA2]"
               />
               <FormField
-                icon={FileText}
                 label="Número de Documento"
                 value={localPacienteData.numero_documento}
                 name="numero_documento"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-[#7B1FA2]"
               />
               <FormField
-                icon={User}
                 label="Sexo"
                 value={localPacienteData.sexo?.id}
                 displayValue={localPacienteData.sexo?.nombre}
@@ -315,7 +368,6 @@ const FiliacionView = ({
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={(e) => handleSelectChange('sexo', e.target.value)}
                 options={generos}
-                iconColor="text-[#7B1FA2]"
               />
             </div>
           </Section>
@@ -323,35 +375,29 @@ const FiliacionView = ({
           {/* Contacto - Solo visible para Administrador, Admisión y Recursos Humanos */}
           {!esTerapeuta && (
             <Section icon={Phone} title="Información de Contacto" iconColor="text-emerald-600" bgColor="bg-emerald-50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormField
-                  icon={Phone}
                   label="Celular Principal"
                   value={localPacienteData.celular}
                   name="celular"
                   editable={modoEdicion && puedeEditarPaciente}
                   onChange={handleLocalChange}
-                  iconColor="text-emerald-600"
                 />
                 <FormField
-                  icon={Phone}
                   label="Celular Secundario"
                   value={localPacienteData.celular2}
                   name="celular2"
                   editable={modoEdicion && puedeEditarPaciente}
                   onChange={handleLocalChange}
-                  iconColor="text-emerald-600"
                 />
                 <div className="md:col-span-2">
                   <FormField
-                    icon={Mail}
                     label="Correo Electrónico"
                     value={localPacienteData.correo}
                     name="correo"
                     type="email"
                     editable={modoEdicion && puedeEditarPaciente}
                     onChange={handleLocalChange}
-                    iconColor="text-emerald-600"
                   />
                 </div>
               </div>
@@ -361,9 +407,8 @@ const FiliacionView = ({
           {/* Dirección - Solo visible para Administrador, Admisión y Recursos Humanos */}
           {!esTerapeuta && (
             <Section icon={MapPin} title="Dirección" iconColor="text-blue-600" bgColor="bg-blue-50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormField
-                  icon={MapPin}
                   label="Distrito"
                   value={localPacienteData.distrito?.id}
                   displayValue={localPacienteData.distrito?.nombre}
@@ -371,16 +416,13 @@ const FiliacionView = ({
                   editable={modoEdicion && puedeEditarPaciente}
                   onChange={(e) => handleSelectChange('distrito', e.target.value)}
                   options={distritos}
-                  iconColor="text-blue-600"
                 />
                 <FormField
-                  icon={MapPin}
                   label="Dirección Completa"
                   value={localPacienteData.direccion}
                   name="direccion"
                   editable={modoEdicion && puedeEditarPaciente}
                   onChange={handleLocalChange}
-                  iconColor="text-blue-600"
                 />
               </div>
             </Section>
@@ -388,59 +430,49 @@ const FiliacionView = ({
 
           {/* Información Médica */}
           <Section icon={Heart} title="Información Médica" iconColor="text-rose-600" bgColor="bg-rose-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <FormField
-                icon={FileText}
                 label="Motivo de Consulta"
                 value={localPacienteData.motivo_consulta}
                 name="motivo_consulta"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-rose-600"
               />
               <FormField
-                icon={User}
                 label="Referido Por"
                 value={localPacienteData.referido_por}
                 name="referido_por"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-rose-600"
               />
               <FormField
-                icon={Heart}
                 label="Diagnóstico Médico"
                 value={localPacienteData.diagnostico_medico}
                 name="diagnostico_medico"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-rose-600"
               />
               <FormField
-                icon={AlertCircle}
                 label="Alergias"
                 value={localPacienteData.alergias}
                 name="alergias"
                 editable={modoEdicion && puedeEditarPaciente}
                 onChange={handleLocalChange}
-                iconColor="text-rose-600"
               />
               <div className="md:col-span-2">
                 <FormField
-                  icon={Pill}
                   label="Medicamentos Actuales"
                   value={localPacienteData.medicamentos_actuales}
                   name="medicamentos_actuales"
                   editable={modoEdicion && puedeEditarPaciente}
                   onChange={handleLocalChange}
-                  iconColor="text-rose-600"
                 />
               </div>
             </div>
           </Section>
 
           {/* Responsables del Paciente */}
-          <Section icon={User} title="Responsables" iconColor="text-purple-600" bgColor="bg-purple-50">
+          <Section icon={User} title="Responsables" iconColor="text-purple-600">
             <ResponsablesSection
               pacienteId={paciente.id}
               canEdit={user?.rol?.id === ROLES.ADMINISTRADOR}
@@ -462,7 +494,7 @@ const FiliacionView = ({
               <button
                 type="button"
                 onClick={() => setOpenAsignarServicio(true)}
-                className="flex items-center gap-2 bg-[#A3C644] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm mb-5"
+                className="flex items-center gap-2 bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm mb-4"
               >
                 <Plus className="w-4 h-4" />
                 Asignar Nuevo Servicio
@@ -470,11 +502,11 @@ const FiliacionView = ({
             )}
 
             {paciente.servicios && paciente.servicios.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-3">
                 {paciente.servicios.map(servicio => (
                   <div
                     key={servicio.id}
-                    className="border border-gray-200 rounded-xl p-5 hover:shadow-sm transition-all bg-white"
+                    className="border border-purple-100/70 rounded-2xl p-5 hover:shadow-sm transition-all bg-[#F8F5FC]"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -492,7 +524,7 @@ const FiliacionView = ({
                               .map((asignacion, index) => (
                                 <div
                                   key={asignacion.id || index}
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
                                 >
                                   <User className="w-3 h-3" />
                                   <span>
@@ -518,7 +550,7 @@ const FiliacionView = ({
                               ))}
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                             <User className="w-3 h-3" />
                             Sin asignar
                           </div>
@@ -543,7 +575,7 @@ const FiliacionView = ({
                               setNuevoTerapeuta(terapeutaId);
                               setOpenEditarTerapeuta(true);
                             }}
-                            className="p-2 text-[#7B1FA2] hover:bg-purple-50 rounded-lg transition-all"
+                            className="p-2 text-[#7B1FA2] hover:bg-purple-100 rounded-lg transition-all"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -562,7 +594,7 @@ const FiliacionView = ({
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 border border-dashed border-gray-200 rounded-xl">
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl">
                 <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-500">No hay servicios asignados</p>
               </div>
@@ -571,12 +603,12 @@ const FiliacionView = ({
 
           {/* Botones de acción - Solo visible en modo edición para ADMINISTRADOR */}
           {modoEdicion && puedeEditarPaciente && (
-            <div className="flex items-center justify-end gap-3 pt-8 border-t border-gray-100 mt-8">
+            <div className="glass-panel rounded-3xl p-4 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={handleCancelar}
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-xl transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
                 Cancelar
@@ -584,7 +616,7 @@ const FiliacionView = ({
               <button
                 type="submit"
                 disabled={saving}
-                className="flex items-center gap-2 bg-[#A3C644] text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-[#8FB82D] transition-all shadow-sm disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -615,7 +647,7 @@ const FiliacionView = ({
               <p className="text-gray-600 mb-6">{successMessage}</p>
               <button
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full bg-[#A3C644] text-white py-2.5 rounded-xl font-medium hover:bg-[#8FB82D] transition-colors"
+                className="w-full bg-gradient-to-r from-[#A3C644] to-[#8FB82D] text-white py-2.5 rounded-xl font-medium hover:bg-[#8FB82D] transition-colors"
               >
                 Aceptar
               </button>

@@ -33,6 +33,55 @@ main > *:not(.contact):not(.cx-modal-backdrop) > *:not(.modal-detalle-paciente) 
   margin: 0 !important;
 }
 
+/* ============================================================
+   INTRANET — Lenguaje visual moderno (glass + detalles)
+   Paleta Crecemos: morado #7B1FA2 · verde #A3C644
+   ============================================================ */
+
+/* Fondo decorativo lavanda con blobs morados/verdes (estilo mockup) */
+.cx-admin-bg {
+  background-color: #f6f3fc;
+  background-image:
+    radial-gradient(60% 55% at 100% 0%, rgba(123, 31, 162, .13) 0%, rgba(123, 31, 162, 0) 60%),
+    radial-gradient(50% 45% at 0% 100%, rgba(123, 31, 162, .10) 0%, rgba(123, 31, 162, 0) 60%),
+    radial-gradient(45% 40% at 100% 100%, rgba(163, 198, 68, .10) 0%, rgba(163, 198, 68, 0) 55%),
+    radial-gradient(40% 35% at 8% 8%, rgba(156, 39, 176, .07) 0%, rgba(156, 39, 176, 0) 55%);
+  background-attachment: fixed;
+}
+
+/* Tarjeta glass */
+.glass-card {
+  background: rgba(255, 255, 255, .72) !important;
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border: 1px solid rgba(255, 255, 255, .65) !important;
+  box-shadow: 0 16px 40px -26px rgba(50, 20, 80, .30), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s;
+}
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 50px -24px rgba(50, 20, 80, .40), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+/* Variante que no levanta al hover (para barras/paneles grandes) */
+.glass-panel {
+  background: rgba(255, 255, 255, .72) !important;
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border: 1px solid rgba(255, 255, 255, .65) !important;
+  box-shadow: 0 16px 40px -28px rgba(50, 20, 80, .26), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+
+/* Glow morado para botones primarios */
+.cx-glow {
+  box-shadow: 0 14px 30px -12px rgba(123, 31, 162, .55);
+  transition: transform .25s, box-shadow .25s;
+}
+.cx-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -12px rgba(123, 31, 162, .70);
+}
+
 
 
 /* Fonts */
