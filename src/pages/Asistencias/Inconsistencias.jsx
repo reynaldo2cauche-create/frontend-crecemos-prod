@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ShieldCheckIcon,
   ExclamationTriangleIcon,
@@ -15,12 +15,62 @@ import {
   XCircleIcon,
   ClockIcon,
   ArrowDownTrayIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 import { obtenerInconsistenciasAsistencia, modificarAsistenciaAdmin } from '../../services/api';
 import { getTrabajadores } from '../../services/trabajadorService';
 import { buscarPacientes } from '../../services/pacienteService';
 import * as XLSX from 'xlsx-js-style';
+
+// Dropdown custom con opciones estilizadas (los <option> nativos no se pueden diseñar)
+const DropdownInc = ({ icon: Icon, iconClass = 'text-gray-400', value, onChange, options = [], placeholder = 'Seleccionar', className = '', up = false }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+  const selected = options.find((o) => String(o.value) === String(value));
+  const activo = value !== '' && value !== null && value !== undefined;
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex w-full items-center ${Icon ? 'pl-10' : 'pl-4'} rounded-xl border bg-white py-2.5 pr-9 text-left text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-red-400 ${open ? 'border-red-400 ring-2 ring-red-400' : 'border-gray-200'}`}
+      >
+        {Icon && <Icon className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${iconClass}`} />}
+        <span className={`truncate ${activo ? 'font-medium text-gray-800' : 'text-gray-500'}`}>{selected ? selected.label : placeholder}</span>
+        <ChevronDownIcon className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className={`absolute z-[60] max-h-64 w-full overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5 ${up ? 'bottom-full mb-2' : 'mt-2'}`}>
+          {options.map((o) => {
+            const isSel = String(o.value) === String(value);
+            return (
+              <button
+                key={o.value ?? '__all'}
+                type="button"
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${isSel ? 'bg-red-50 font-semibold text-red-600' : 'text-gray-700 hover:bg-gray-50'}`}
+              >
+                <span className="truncate">{o.label}</span>
+                {isSel && <CheckIcon className="h-4 w-4 flex-shrink-0 text-red-600" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Inconsistencias = () => {
   const [inconsistencias, setInconsistencias] = useState([]);
@@ -446,19 +496,19 @@ const Inconsistencias = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <ExclamationTriangleIcon className="w-6 h-6 sm:w-7 sm:h-7 text-red-600" />
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-sm shadow-red-500/20">
+            <ExclamationTriangleIcon className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Inconsistencias de Asistencia</h1>
-            <p className="text-sm sm:text-base text-gray-600">Revise las discrepancias entre recepción y terapeuta </p>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">Inconsistencias de Asistencia</h1>
+            <p className="text-[13px] text-gray-400 -mt-0.5">Revise las discrepancias entre recepción y terapeuta</p>
           </div>
         </div>
       </div>
 
       {/* Filtros Rápidos */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+      <div className="glass-panel rounded-2xl p-4 mb-4">
         <div className="flex flex-wrap gap-2">
           <button onClick={() => aplicarFiltroRapido(1)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">Hoy</button>
           <button onClick={() => aplicarFiltroRapido(7)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">Última semana</button>
@@ -476,33 +526,37 @@ const Inconsistencias = () => {
       </div>
 
       {/* Filtros Básicos */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="relative z-20 glass-panel rounded-2xl p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha Inicio</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Fecha Inicio</label>
             <input
               type="date"
               value={fechaInicio}
               onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha Fin</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Fecha Fin</label>
             <input
               type="date"
               value={fechaFin}
               onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
             />
           </div>
           <div className="flex items-end">
             <button
               onClick={handleBuscar}
               disabled={cargando}
-              className="w-full px-6 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-red-500/25 hover:shadow-lg transition-all disabled:opacity-50"
             >
-              {cargando ? 'Cargando...' : 'Buscar Inconsistencias'}
+              {cargando ? (
+                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Cargando...</>
+              ) : (
+                <><MagnifyingGlassIcon className="w-4 h-4" />Buscar Inconsistencias</>
+              )}
             </button>
           </div>
         </div>
@@ -513,34 +567,34 @@ const Inconsistencias = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               {/* Terapeuta */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <UserIcon className="w-4 h-4 inline mr-1" />Terapeuta
-                </label>
-                <select
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Terapeuta</label>
+                <DropdownInc
+                  icon={UserIcon}
+                  iconClass="text-teal-500"
+                  placeholder="Todos los terapeutas"
                   value={filtros.terapeuta}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, terapeuta: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Todos los terapeutas</option>
-                  {terapeutas.map((t) => (
-                    <option key={t.id} value={t.id}>{t.nombres} {t.apellidos}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFiltros(prev => ({ ...prev, terapeuta: val }))}
+                  options={[
+                    { value: '', label: 'Todos los terapeutas' },
+                    ...terapeutas.map((t) => ({ value: String(t.id), label: `${t.nombres} ${t.apellidos}` })),
+                  ]}
+                />
               </div>
 
               {/* Paciente */}
               <div style={{ position: 'relative', zIndex: mostrarSugerencias ? 100 : 1 }}>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <UsersIcon className="w-4 h-4 inline mr-1" />Paciente
-                </label>
-                <input
-                  type="text"
-                  placeholder="Buscar paciente (min. 2 caracteres)..."
-                  value={busquedaPaciente}
-                  onChange={(e) => handleBuscarPaciente(e.target.value)}
-                  onFocus={() => { if (pacientesSugerencias.length > 0) setMostrarSugerencias(true); }}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Paciente</label>
+                <div className="relative">
+                  <UsersIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-rose-500" />
+                  <input
+                    type="text"
+                    placeholder="Buscar paciente (min. 2 caracteres)..."
+                    value={busquedaPaciente}
+                    onChange={(e) => handleBuscarPaciente(e.target.value)}
+                    onFocus={() => { if (pacientesSugerencias.length > 0) setMostrarSugerencias(true); }}
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all"
+                  />
+                </div>
                 {mostrarSugerencias && pacientesSugerencias.length > 0 && (
                   <>
                     <div
@@ -567,60 +621,67 @@ const Inconsistencias = () => {
 
               {/* Tipo de Inconsistencia */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Inconsistencia</label>
-                <select
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Tipo de Inconsistencia</label>
+                <DropdownInc
+                  icon={TagIcon}
+                  iconClass="text-orange-500"
+                  placeholder="Todos los tipos"
                   value={filtros.tipoInconsistencia}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, tipoInconsistencia: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Todos los tipos</option>
-                  {tiposInconsistencia.map((tipo, i) => (
-                    <option key={i} value={tipo}>{tipo}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFiltros(prev => ({ ...prev, tipoInconsistencia: val }))}
+                  options={[
+                    { value: '', label: 'Todos los tipos' },
+                    ...tiposInconsistencia.map((tipo) => ({ value: tipo, label: tipo })),
+                  ]}
+                />
               </div>
 
               {/* Estado Recepción */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Estado Recepción</label>
-                <select
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Estado Recepción</label>
+                <DropdownInc
+                  icon={CheckCircleIcon}
+                  iconClass="text-emerald-500"
+                  placeholder="Todos los estados"
                   value={filtros.estadoRecepcion}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, estadoRecepcion: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Todos los estados</option>
-                  <option value="0">No marcó</option>
-                  <option value="7">Asistió</option>
-                  <option value="6">Sesión Dictada</option>
-                </select>
+                  onChange={(val) => setFiltros(prev => ({ ...prev, estadoRecepcion: val }))}
+                  options={[
+                    { value: '', label: 'Todos los estados' },
+                    { value: '0', label: 'No marcó' },
+                    { value: '7', label: 'Asistió' },
+                    { value: '6', label: 'Sesión Dictada' },
+                  ]}
+                />
               </div>
 
               {/* Estado Terapeuta */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Estado Terapeuta</label>
-                <select
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Estado Terapeuta</label>
+                <DropdownInc
+                  icon={CheckCircleIcon}
+                  iconClass="text-emerald-500"
+                  placeholder="Todos los estados"
                   value={filtros.estadoTerapeuta}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, estadoTerapeuta: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Todos los estados</option>
-                  <option value="0">No marcó</option>
-                  <option value="7">Asistió</option>
-                  <option value="6">Sesión Dictada</option>
-                </select>
+                  onChange={(val) => setFiltros(prev => ({ ...prev, estadoTerapeuta: val }))}
+                  options={[
+                    { value: '', label: 'Todos los estados' },
+                    { value: '0', label: 'No marcó' },
+                    { value: '7', label: 'Asistió' },
+                    { value: '6', label: 'Sesión Dictada' },
+                  ]}
+                />
               </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={limpiarFiltros}
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
               >
                 <XMarkIcon className="w-4 h-4" />Limpiar Filtros
               </button>
               <button
                 onClick={() => aplicarFiltros()}
-                className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-red-500/25 hover:shadow-lg transition-all"
               >
                 <MagnifyingGlassIcon className="w-4 h-4" />Aplicar
               </button>
@@ -673,17 +734,22 @@ const Inconsistencias = () => {
 
       {/* Estadísticas */}
       {!cargando && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { valor: inconsistenciasFiltradas.length, label: 'Total Filtrado', sub: `${inconsistencias.length} totales`, color: 'text-gray-900' },
-            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Ninguno marcó asistencia').length, label: 'Ninguno marcó', sub: '', color: 'text-red-900' },
-            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Falta registro de admisión' || i.tipo_inconsistencia === 'Falta registro del terapeuta').length, label: 'Faltan registros', sub: '', color: 'text-yellow-900' },
-            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia?.startsWith('Estados no coinciden')).length, label: 'Estados diferentes', sub: '', color: 'text-orange-900' },
+            { valor: inconsistenciasFiltradas.length, label: 'Total Filtrado', sub: `${inconsistencias.length} totales`, Icon: FunnelIcon, iconBg: 'bg-gray-100', iconColor: 'text-gray-500', valColor: 'text-gray-900' },
+            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Ninguno marcó asistencia').length, label: 'Ninguno marcó', sub: '', Icon: XCircleIcon, iconBg: 'bg-red-50', iconColor: 'text-red-500', valColor: 'text-red-700' },
+            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia === 'Falta registro de admisión' || i.tipo_inconsistencia === 'Falta registro del terapeuta').length, label: 'Faltan registros', sub: '', Icon: ClockIcon, iconBg: 'bg-yellow-50', iconColor: 'text-yellow-500', valColor: 'text-yellow-700' },
+            { valor: inconsistenciasFiltradas.filter(i => i.tipo_inconsistencia?.startsWith('Estados no coinciden')).length, label: 'Estados diferentes', sub: '', Icon: ExclamationTriangleIcon, iconBg: 'bg-orange-50', iconColor: 'text-orange-500', valColor: 'text-orange-700' },
           ].map((stat, i) => (
-            <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <div className={`text-2xl font-bold mb-1 ${stat.color}`}>{stat.valor}</div>
-              <div className="text-sm text-gray-600">{stat.label}</div>
-              {stat.sub && <div className="text-xs text-gray-500 mt-1">{stat.sub}</div>}
+            <div key={i} className="glass-card rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden">
+              <div className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center relative z-10 ${stat.iconBg}`}>
+                <stat.Icon className={`h-6 w-6 ${stat.iconColor}`} />
+              </div>
+              <div className="min-w-0 relative z-10">
+                <p className={`text-[26px] font-extrabold leading-tight ${stat.valColor}`}>{stat.valor}</p>
+                <p className="text-xs font-medium text-gray-500 truncate">{stat.label}</p>
+                {stat.sub && <p className="text-[11px] text-gray-400 -mt-0.5">{stat.sub}</p>}
+              </div>
             </div>
           ))}
         </div>
@@ -702,26 +768,27 @@ const Inconsistencias = () => {
       )}
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gradient-to-r from-red-50/70 to-white border-b border-red-100/60">
               <tr>
                 {['Cita ID', 'Paciente', 'Terapeuta', 'Fecha Cita', 'Recepción Marcó', 'Terapeuta Marcó', 'Tipo de Inconsistencia', 'Acciones'].map(h => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">{h}</th>
+                  <th key={h} className="px-6 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-50">
               {cargando ? (
-                <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin" />
-                      <span className="text-gray-600">Cargando inconsistencias...</span>
-                    </div>
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 8 }).map((__, c) => (
+                      <td key={c} className="px-6 py-4">
+                        <div className="h-4 rounded-full bg-gray-100 animate-pulse" style={{ width: c === 0 ? '2.5rem' : c >= 4 ? '6rem' : '8rem', animationDelay: `${(i + c) * 60}ms` }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : datosMostrados.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="px-6 py-12 text-center">
@@ -770,7 +837,7 @@ const Inconsistencias = () => {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => abrirModal(item)}
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-red-500/25 hover:shadow-md transition-all"
                       >
                         <PencilSquareIcon className="w-4 h-4" />
                         Modificar
@@ -790,9 +857,15 @@ const Inconsistencias = () => {
               <div className="text-xs sm:text-sm text-gray-600 text-center lg:text-left">
                 Mostrando {page * rowsPerPage + 1} - {Math.min((page + 1) * rowsPerPage, inconsistenciasFiltradas.length)} de {inconsistenciasFiltradas.length} inconsistencias
               </div>
-              <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                <button onClick={() => setPage(0)} disabled={page === 0} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Primero</button>
-                <button onClick={() => setPage(page - 1)} disabled={page === 0} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Anterior</button>
+              <div className="flex items-center gap-1 rounded-2xl bg-white p-1 ring-1 ring-gray-100">
+                <button onClick={() => setPage(0)} disabled={page === 0} title="Primero"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:hover:bg-transparent">
+                  <ChevronDoubleLeftIcon className="h-4 w-4" />
+                </button>
+                <button onClick={() => setPage(page - 1)} disabled={page === 0} title="Anterior"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:hover:bg-transparent">
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </button>
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
                     let pageNum;
@@ -802,25 +875,33 @@ const Inconsistencias = () => {
                     else                            pageNum = page - 1 + i;
                     return (
                       <button key={pageNum} onClick={() => setPage(pageNum)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${page === pageNum ? 'bg-red-600 text-white' : 'hover:bg-gray-200 text-gray-700'}`}>
+                        className={`flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl px-2 text-sm font-bold transition-all ${page === pageNum ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/25' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
                         {pageNum + 1}
                       </button>
                     );
                   })}
                 </div>
-                <button onClick={() => setPage(page + 1)} disabled={page >= totalPages - 1} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Siguiente</button>
-                <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200">Último</button>
+                <button onClick={() => setPage(page + 1)} disabled={page >= totalPages - 1} title="Siguiente"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:hover:bg-transparent">
+                  <ChevronRightIcon className="h-4 w-4" />
+                </button>
+                <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} title="Último"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:hover:bg-transparent">
+                  <ChevronDoubleRightIcon className="h-4 w-4" />
+                </button>
               </div>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => { setRowsPerPage(parseInt(e.target.value)); setPage(0); }}
-                className="w-full lg:w-auto px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm"
-              >
-                <option value={10}>10 por página</option>
-                <option value={25}>25 por página</option>
-                <option value={50}>50 por página</option>
-                <option value={100}>100 por página</option>
-              </select>
+              <DropdownInc
+                up
+                className="w-full lg:w-36"
+                value={String(rowsPerPage)}
+                onChange={(val) => { setRowsPerPage(parseInt(val)); setPage(0); }}
+                options={[
+                  { value: '10', label: '10 por página' },
+                  { value: '25', label: '25 por página' },
+                  { value: '50', label: '50 por página' },
+                  { value: '100', label: '100 por página' },
+                ]}
+              />
             </div>
           </div>
         )}
@@ -846,11 +927,22 @@ const Inconsistencias = () => {
 
       {/* Modal de Modificación */}
       {modalAbierto && asistenciaSeleccionada && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header del Modal */}
-            <div className="bg-red-600 px-6 py-4 rounded-t-xl">
-              <h2 className="text-xl font-bold text-white">Modificar Asistencia - Cita #{asistenciaSeleccionada.cita_id}</h2>
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-6 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-md shadow-red-500/25">
+                  <PencilSquareIcon className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Modificar Asistencia</h2>
+                  <p className="text-[13px] text-gray-400">Cita #{asistenciaSeleccionada.cita_id}</p>
+                </div>
+              </div>
+              <button onClick={cerrarModal} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
             </div>
 
             {/* Contenido del Modal */}
@@ -944,16 +1036,20 @@ const Inconsistencias = () => {
                 <button
                   onClick={cerrarModal}
                   disabled={guardando}
-                  className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-all disabled:opacity-50"
+                  className="flex-1 px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-full font-semibold hover:bg-gray-50 transition-all disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleGuardarCambios}
                   disabled={guardando}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-full font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl transition-all disabled:opacity-50"
                 >
-                  {guardando ? 'Guardando...' : 'Guardar Cambios'}
+                  {guardando ? (
+                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Guardando...</>
+                  ) : (
+                    <><CheckIcon className="w-5 h-5" />Guardar Cambios</>
+                  )}
                 </button>
               </div>
             </div>
