@@ -948,86 +948,93 @@ const Inconsistencias = () => {
             {/* Contenido del Modal */}
             <div className="p-6">
               {/* Información de la Cita */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1"><span className="font-semibold">Paciente:</span> {asistenciaSeleccionada.paciente_nombre}</p>
-                <p className="text-sm text-gray-600 mb-1"><span className="font-semibold">Terapeuta:</span> {asistenciaSeleccionada.terapeuta_nombre}</p>
-                <p className="text-sm text-gray-600"><span className="font-semibold">Fecha:</span> {formatearFecha(asistenciaSeleccionada.fecha_cita)}</p>
+              <div className="mb-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-2.5">
+                {[
+                  { Icon: UsersIcon, label: 'Paciente', value: asistenciaSeleccionada.paciente_nombre, color: 'text-rose-500' },
+                  { Icon: UserIcon, label: 'Terapeuta', value: asistenciaSeleccionada.terapeuta_nombre, color: 'text-teal-500' },
+                  { Icon: CalendarIcon, label: 'Fecha', value: formatearFecha(asistenciaSeleccionada.fecha_cita), color: 'text-red-500' },
+                ].map((row, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-gray-100">
+                      <row.Icon className={`h-3.5 w-3.5 ${row.color}`} />
+                    </span>
+                    <span className="w-20 flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{row.label}</span>
+                    <span className="min-w-0 flex-1 text-sm font-semibold text-gray-800 break-words">{row.value || '—'}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Estado de Recepción */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Estado de Recepción/Admisión
-                </label>
-                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Estado de Recepción / Admisión</label>
+                <p className="text-xs text-gray-400 mb-2.5">Haz clic en la opción seleccionada para desmarcarla</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setEstadoRecepcion(estadoRecepcion === 7 ? null : 7)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
                       estadoRecepcion === 7
-                        ? 'bg-green-600 text-white ring-2 ring-green-400'
-                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
+                        ? 'border-green-500 bg-green-50 text-green-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-green-700'
                     }`}
                   >
-                    ✓ Asistió
+                    <CheckCircleIcon className="h-5 w-5" /> Asistió
                   </button>
                   <button
                     onClick={() => setEstadoRecepcion(estadoRecepcion === 6 ? null : 6)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
                       estadoRecepcion === 6
-                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
-                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-orange-300 hover:text-orange-700'
                     }`}
                   >
-                    ◆ Sesión Dictada
+                    <XCircleIcon className="h-5 w-5" /> Sesión Dictada
                   </button>
                 </div>
                 {estadoRecepcion === null && (
-                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
-                    Sin marcar — se guardará como pendiente
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+                    <ClockIcon className="h-3.5 w-3.5" /> Sin marcar — se guardará como pendiente
                   </p>
                 )}
               </div>
 
               {/* Estado de Terapeuta */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Estado de Terapeuta
-                </label>
-                <p className="text-xs text-gray-500 mb-3">Haz clic en la opción seleccionada para desmarcarla</p>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Estado de Terapeuta</label>
+                <p className="text-xs text-gray-400 mb-2.5">Haz clic en la opción seleccionada para desmarcarla</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setEstadoTerapeuta(estadoTerapeuta === 7 ? null : 7)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
                       estadoTerapeuta === 7
-                        ? 'bg-green-600 text-white ring-2 ring-green-400'
-                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-800'
+                        ? 'border-green-500 bg-green-50 text-green-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-green-300 hover:text-green-700'
                     }`}
                   >
-                    ✓ Asistió
+                    <CheckCircleIcon className="h-5 w-5" /> Asistió
                   </button>
                   <button
                     onClick={() => setEstadoTerapeuta(estadoTerapeuta === 6 ? null : 6)}
-                    className={`py-3 px-4 rounded-lg font-bold transition-all ring-offset-1 ${
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
                       estadoTerapeuta === 6
-                        ? 'bg-orange-600 text-white ring-2 ring-orange-400'
-                        : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-800'
+                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-orange-300 hover:text-orange-700'
                     }`}
                   >
-                    ◆ Sesión Dictada
+                    <XCircleIcon className="h-5 w-5" /> Sesión Dictada
                   </button>
                 </div>
                 {estadoTerapeuta === null && (
-                  <p className="mt-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
-                    Sin marcar — se guardará como pendiente
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+                    <ClockIcon className="h-3.5 w-3.5" /> Sin marcar — se guardará como pendiente
                   </p>
                 )}
               </div>
 
               {/* Advertencia */}
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  <span className="font-bold">⚠️ Advertencia:</span> Esta acción sobrescribirá los estados marcados por admisión y terapeuta.
+              <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 text-amber-600 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  <span className="font-bold">Advertencia:</span> Esta acción sobrescribirá los estados marcados por admisión y terapeuta.
                 </p>
               </div>
 
