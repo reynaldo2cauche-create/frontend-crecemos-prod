@@ -146,6 +146,11 @@ const ModalAgendarCita = ({
     seguimientoAsistencia?.terapeuta_marco == 1
   );
 
+  // 🔁 Reprogramación: el PACIENTE ya usó su única reprogramación (en todo su historial).
+  // Admisión solo puede reprogramar una vez por paciente; luego solo Administrador. El backend lo valida.
+  const pacienteYaReprogramo = modoEdicion && Boolean(citaEditando?.paciente_ya_reprogramo);
+  const bloqueadoPorReprogramacion = esRecepcionista && pacienteYaReprogramo;
+
   const [guardandoLocal, setGuardandoLocal] = useState(false);
   // ========== RESETEAR ESTADOS AL CERRAR MODAL ==========
   useEffect(() => {
@@ -1714,6 +1719,25 @@ const handleGuardar = useCallback(async () => {
                       </p>
                       <p className="text-xs text-red-800">
                         Ya registraste la asistencia para esta cita. No se puede editar para evitar reutilización de citas antiguas. Solo un administrador puede modificarla.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 🔁 AVISO: EL PACIENTE YA USÓ SU REPROGRAMACIÓN */}
+                {pacienteYaReprogramo && (
+                  <div className={`rounded-xl p-4 flex items-start gap-3 border-2 ${
+                    bloqueadoPorReprogramacion ? 'bg-amber-50 border-amber-300' : 'bg-amber-50/70 border-amber-200'
+                  }`}>
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+                        🔁 Paciente ya reprogramó
+                      </p>
+                      <p className="text-xs text-amber-800">
+                        {bloqueadoPorReprogramacion
+                          ? 'Este paciente ya usó su única reprogramación. Admisión no puede volver a mover una sesión: solo el Administrador, previa coordinación y registrando el motivo.'
+                          : 'Este paciente ya usó su reprogramación. Como Administrador puedes moverla igual; queda registrada bajo tu responsabilidad (motivo obligatorio).'}
                       </p>
                     </div>
                   </div>
@@ -4016,7 +4040,8 @@ const handleGuardar = useCallback(async () => {
                   </button>
                   <button
                     onClick={handleGuardar}
-                    disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
+                    disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia || bloqueadoPorReprogramacion}
+                    title={bloqueadoPorReprogramacion ? 'Esta sesión ya fue reprogramada. Solo el Administrador puede volver a moverla.' : undefined}
                     className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {(guardando || guardandoLocal) ? (
