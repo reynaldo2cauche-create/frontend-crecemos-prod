@@ -13,7 +13,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  Ban
+  Ban,
+  Search,
+  Tag,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 
 // Componentes
@@ -42,6 +46,60 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { usePerformanceConfig } from '../hooks/useDeviceOptimization';
 import { getEstadoColor } from '../utils/agendaUtils';
 import { ROLES } from '../constants/roles';
+
+// Dropdown custom con opciones estilizadas (los <option> nativos no se pueden diseñar)
+const FilterDropdown = ({ icon: Icon, iconClass = 'text-[#7B1FA2]', value, onChange, options = [], placeholder = 'Seleccionar' }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const selected = options.find((o) => String(o.value) === String(value));
+  const tieneValor = value !== '' && value !== null && value !== undefined;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex w-full items-center rounded-xl border bg-gray-50/60 py-2.5 pr-9 text-left text-sm transition-shadow focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#7B1FA2]/15 ${Icon ? 'pl-9' : 'pl-4'} ${open ? 'border-[#7B1FA2] bg-white ring-4 ring-[#7B1FA2]/15' : 'border-gray-200 hover:border-gray-300'}`}
+      >
+        {Icon && <Icon className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${iconClass}`} />}
+        <span className={`truncate ${tieneValor ? 'font-medium text-gray-900' : 'text-gray-400'}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronDown className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-[60] mt-2 max-h-64 w-full overflow-y-auto overflow-hidden rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5">
+          {options.map((o) => {
+            const isSel = String(o.value) === String(value);
+            return (
+              <button
+                key={o.value ?? '__all'}
+                type="button"
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                  isSel ? 'bg-purple-50 font-semibold text-[#7B1FA2]' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="truncate">{o.label}</span>
+                {isSel && <Check className="h-4 w-4 flex-shrink-0 text-[#7B1FA2]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Agenda = () => {
   const currentUser = useCurrentUser();
@@ -104,6 +162,11 @@ const Agenda = () => {
 
   // Estado para tabs
   const [tabActivo, setTabActivo] = useState('calendario'); // 'calendario' | 'bloqueos'
+
+  // 🔎 Filtros adicionales del calendario (lado cliente)
+  const [busquedaPaciente, setBusquedaPaciente] = useState('');
+  const [estadoFiltro, setEstadoFiltro] = useState('');
+  const [motivoFiltro, setMotivoFiltro] = useState('');
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -865,6 +928,34 @@ const guardarCita = async (datosFormulario = null) => {
     return rolId === ROLES.TERAPEUTA && (trabajador.estado === true || trabajador.estado === 1);
   });
 
+  // Nombre del paciente desde la cita (para la búsqueda)
+  const nombrePacienteDeCita = (c) => {
+    if (c?.paciente && typeof c.paciente === 'object') {
+      return `${c.paciente.nombres || ''} ${c.paciente.apellido_paterno || ''} ${c.paciente.apellido_materno || ''}`;
+    }
+    return c?.paciente_nombre || '';
+  };
+  const normalizarTexto = (t = '') =>
+    t.toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  // Citas visibles en el calendario tras aplicar los filtros del cliente
+  const citasFiltradas = useMemo(() => {
+    const q = normalizarTexto(busquedaPaciente.trim());
+    return (citas || []).filter((c) => {
+      if (estadoFiltro && String(c.estado_id) !== String(estadoFiltro)) return false;
+      if (motivoFiltro && String(c.motivo_id) !== String(motivoFiltro)) return false;
+      if (q && !normalizarTexto(nombrePacienteDeCita(c)).includes(q)) return false;
+      return true;
+    });
+  }, [citas, busquedaPaciente, estadoFiltro, motivoFiltro]);
+
+  const hayFiltrosExtra = Boolean(busquedaPaciente || estadoFiltro || motivoFiltro);
+  const limpiarFiltrosExtra = () => {
+    setBusquedaPaciente('');
+    setEstadoFiltro('');
+    setMotivoFiltro('');
+  };
+
   // Obtener terapeuta seleccionado para el modal - memorizado con useMemo
   const terapeutaSeleccionadoMemo = useMemo(() => {
     if (currentUser?.rol?.id === ROLES.TERAPEUTA) {
@@ -962,30 +1053,30 @@ const guardarCita = async (datosFormulario = null) => {
             )}
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 mb-6">
+          {/* Tabs — segmented control */}
+          <div className="mb-6 flex w-full gap-1 rounded-2xl bg-gray-100/80 p-1.5 ring-1 ring-gray-200/60 sm:inline-flex sm:w-auto">
             <button
               onClick={() => setTabActivo('calendario')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 sm:px-5 py-2.5 text-sm font-semibold transition-all sm:flex-none ${
                 tabActivo === 'calendario'
-                  ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-md shadow-purple-500/25'
+                  : 'text-gray-500 hover:bg-white/70 hover:text-gray-800'
               }`}
             >
-              <Calendar className="w-5 h-5 flex-shrink-0" />
+              <Calendar className="h-4 w-4 flex-shrink-0" />
               <span>Calendario de Citas</span>
             </button>
 
            {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
             <button
               onClick={() => setTabActivo('bloqueos')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 sm:px-5 py-2.5 text-sm font-semibold transition-all sm:flex-none ${
                 tabActivo === 'bloqueos'
-                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/25'
+                  : 'text-gray-500 hover:bg-white/70 hover:text-gray-800'
               }`}
             >
-              <Ban className="w-5 h-5 flex-shrink-0" />
+              <Ban className="h-4 w-4 flex-shrink-0" />
               <span>Horarios Bloqueados</span>
             </button>
           )}
@@ -1027,53 +1118,170 @@ const guardarCita = async (datosFormulario = null) => {
         {/* Contenido del tab Calendario */}
         {tabActivo === 'calendario' && (
           <>
-            {/* Filtros */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-[#7B1FA2]" />
-              <h2 className="text-lg font-bold text-gray-900">Filtros</h2>
+            {/* Filtros — solo Admin/Admisión; el terapeuta ve su calendario directo */}
+            {currentUser?.rol?.id !== ROLES.TERAPEUTA && (
+            <div className="relative bg-white rounded-3xl shadow-sm ring-1 ring-gray-100 p-4 sm:p-6 mb-6">
+          <div className="relative flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-white shadow-sm shadow-purple-500/25">
+                <Filter className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-gray-900 leading-tight">Filtros</h2>
+                <p className="text-xs text-gray-400 -mt-0.5">Afina lo que ves en el calendario</p>
+              </div>
+            </div>
+            {hayFiltrosExtra && (
+              <button
+                onClick={limpiarFiltrosExtra}
+                className="flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1.5 text-xs font-semibold text-[#7B1FA2] transition-colors hover:bg-purple-100"
+              >
+                <X className="w-3.5 h-3.5" /> Limpiar
+              </button>
+            )}
+          </div>
+
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                  Terapeuta <span className="text-red-400">*</span>
+                </label>
+                <FilterDropdown
+                  icon={User}
+                  value={terapeutaFiltro}
+                  placeholder="Seleccione un terapeuta"
+                  options={[
+                    { value: '', label: 'Seleccione un terapeuta' },
+                    ...terapeutasDisponibles.map((t) => ({ value: String(t.id), label: `${t.nombres} ${t.apellidos}` })),
+                  ]}
+                  onChange={(val) => {
+                    cambioTerapeutaRef.current = true;
+                    // Limpiar citas inmediatamente para no mostrar datos del terapeuta anterior
+                    setCitas([]);
+                    setTodasLasCitas([]);
+                    setBloqueos([]);
+                    setCargando(true);
+                    setTerapeutaFiltro(val); // dispara el useEffect
+                    const hoy = new Date();
+                    const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+                    setFechaActual(hoyCL);
+                    setFechaCalendario(hoyCL);
+                  }}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Buscar paciente
+              </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={busquedaPaciente}
+                  onChange={(e) => setBusquedaPaciente(e.target.value)}
+                  placeholder="Nombre del paciente…"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/60 py-2.5 pl-9 pr-9 text-sm transition-shadow focus:border-[#7B1FA2] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#7B1FA2]/15"
+                />
+                {busquedaPaciente && (
+                  <button
+                    type="button"
+                    onClick={() => setBusquedaPaciente('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Estado
+              </label>
+              <FilterDropdown
+                icon={CheckCircle2}
+                iconClass="text-emerald-500"
+                value={estadoFiltro}
+                placeholder="Todos los estados"
+                options={[
+                  { value: '', label: 'Todos los estados' },
+                  ...estados.map((e) => ({ value: String(e.id), label: e.nombre })),
+                ]}
+                onChange={setEstadoFiltro}
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                Motivo
+              </label>
+              <FilterDropdown
+                icon={Tag}
+                iconClass="text-blue-500"
+                value={motivoFiltro}
+                placeholder="Todos los motivos"
+                options={[
+                  { value: '', label: 'Todos los motivos' },
+                  ...motivos.map((m) => ({ value: String(m.id), label: m.nombre })),
+                ]}
+                onChange={setMotivoFiltro}
+              />
             </div>
           </div>
 
-          {(currentUser?.rol?.id === ROLES.ADMINISTRADOR || currentUser?.rol?.id === ROLES.ADMISION) && (
-            <div className="max-w-md">
-              <label className="block text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
-                Terapeuta <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={terapeutaFiltro}
-                onChange={(e) => {
-                  cambioTerapeutaRef.current = true;
-                  // Limpiar citas inmediatamente para no mostrar datos del terapeuta anterior
-                  setCitas([]);
-                  setTodasLasCitas([]);
-                  setBloqueos([]);
-                  setCargando(true);
-                  setTerapeutaFiltro(e.target.value); // dispara el useEffect
-                  const hoy = new Date();
-                  const hoyCL = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Lima' }));
-                  setFechaActual(hoyCL);
-                  setFechaCalendario(hoyCL);
-                }}
-                className="cx-select w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#7B1FA2] focus:ring-4 focus:ring-[#7B1FA2]/15 transition-shadow cursor-pointer"
-              >
-                <option value="">Seleccione un terapeuta</option>
-                {terapeutasDisponibles.map((terapeuta) => (
-                  <option key={terapeuta.id} value={terapeuta.id}>
-                    {terapeuta.nombres} {terapeuta.apellidos}
-                  </option>
-                ))}
-              </select>
+          {hayFiltrosExtra && !debeSeleccionarTerapeuta && (
+            <div className="relative mt-4 flex items-center gap-2 text-xs text-gray-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-1 font-semibold text-[#7B1FA2]">
+                <Calendar className="h-3.5 w-3.5" />
+                {citasFiltradas.length} cita{citasFiltradas.length === 1 ? '' : 's'}
+              </span>
+              <span>con los filtros aplicados</span>
             </div>
           )}
         </div>
+            )}
 
         {/* Contenido */}
         {cargando ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="w-10 h-10 border-4 border-[#7B1FA2] border-t-transparent rounded-full animate-spin"></div>
-            <p className="ml-3 text-gray-600">Cargando citas...</p>
+          <div className="overflow-hidden rounded-3xl bg-white shadow-[0_4px_32px_rgba(123,31,162,0.07)] ring-1 ring-gray-100">
+            {/* Barra superior (skeleton) */}
+            <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+              <div className="space-y-2">
+                <div className="h-6 w-44 rounded-lg bg-gray-200 animate-pulse" />
+                <div className="h-3 w-32 rounded-full bg-gray-100 animate-pulse" />
+              </div>
+              <div className="hidden items-center gap-2 sm:flex">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-7 w-24 rounded-full bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+              <div className="h-9 w-28 rounded-full bg-gray-100 animate-pulse" />
+            </div>
+
+            {/* Columnas (skeleton) */}
+            <div className="grid grid-cols-3 gap-3 px-3 pb-3 lg:grid-cols-6">
+              {[0, 1, 2, 3, 4, 5].map((c) => (
+                <div key={c} className="relative overflow-hidden rounded-3xl border border-purple-200 bg-white">
+                  <div className="flex flex-col items-center gap-2 border-b border-purple-100 bg-gradient-to-b from-purple-50 to-white py-3">
+                    <div className="h-2.5 w-12 rounded-full bg-gray-200 animate-pulse" />
+                    <div className="h-6 w-8 rounded-md bg-gray-200 animate-pulse" />
+                  </div>
+                  <div className="space-y-3 p-3">
+                    {[0, 1, 2, 3, 4].map((s) => (
+                      <div
+                        key={s}
+                        className="h-14 rounded-xl bg-gray-100 animate-pulse"
+                        style={{ animationDelay: `${(c + s) * 70}ms` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent cx-shimmer" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : debeSeleccionarTerapeuta ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
@@ -1087,7 +1295,7 @@ const guardarCita = async (datosFormulario = null) => {
           </div>
         ) : (
           <CalendarioSemanal
-            citas={citas}
+            citas={citasFiltradas}
             bloqueos={bloqueos}
             onSlotClick={abrirModalDesdeSlot}
             onCitaClick={handleCitaClick}

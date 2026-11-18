@@ -44,6 +44,20 @@ const BTN_SECONDARY =
 const BTN_WARNING =
   'flex-1 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition hover:shadow-lg';
 
+// Acentos de color para el ModalShell (header + badge del icono)
+const ACCENTS = {
+  danger: {
+    border: 'border-red-100',
+    header: 'bg-gradient-to-r from-white to-red-50/60',
+    badge: 'bg-gradient-to-br from-red-500 to-rose-600 shadow-red-500/25',
+  },
+  festive: {
+    border: 'border-amber-100',
+    header: 'bg-gradient-to-r from-white to-amber-50/70',
+    badge: 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/25',
+  },
+};
+
 /** Badge por motivo de cita. El orden importa: "reevaluación" va antes que "evaluación". */
 const BADGES = [
   { text: 'EP', color: 'bg-green-100 text-green-700', keywords: ['entrevista de padres', 'entrevista padres'] },
@@ -297,7 +311,7 @@ const DiaColumna = ({
         onClick={handleClick}
         style={estaBloqueado ? BLOCKED_STYLE : undefined}
         className={`group relative border-b border-[#7B1FA2]/[0.06] ${fondo} ${
-          esHoy && !estaBloqueado ? 'bg-purple-50/50' : ''
+          esHoy && !estaBloqueado ? 'bg-purple-50' : ''
         }`}
       >
         <div style={{ height: SLOT_HEIGHT }} />
@@ -352,7 +366,9 @@ const DiaColumna = ({
 
 /* ───────────────────────────── Modales ───────────────────────────── */
 
-const ModalShell = ({ icon: Icon, title, onClose, footer, children }) => {
+const ModalShell = ({ icon: Icon, title, subtitle, onClose, footer, accent = 'danger', children }) => {
+  const a = ACCENTS[accent] || ACCENTS.danger;
+
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -361,7 +377,7 @@ const ModalShell = ({ icon: Icon, title, onClose, footer, children }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D0A4E]/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
@@ -371,18 +387,21 @@ const ModalShell = ({ icon: Icon, title, onClose, footer, children }) => {
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(45,10,78,0.25)] ring-1 ring-black/5"
       >
-        <div className="flex items-center justify-between border-b border-red-100 bg-gradient-to-r from-white to-red-50/60 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100 text-red-600">
+        <div className={`flex items-center justify-between border-b ${a.border} ${a.header} px-6 py-4`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm ${a.badge}`}>
               <Icon className="h-5 w-5" />
             </div>
-            <h2 className="text-lg font-extrabold text-gray-900">{title}</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg font-extrabold text-gray-900 leading-tight truncate">{title}</h2>
+              {subtitle && <p className="text-[13px] text-gray-400 truncate">{subtitle}</p>}
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="rounded-xl p-2 text-gray-400 transition hover:bg-white hover:text-gray-700"
+            className="shrink-0 rounded-xl p-2 text-gray-400 transition hover:bg-white hover:text-gray-700"
           >
             <X className="h-5 w-5" />
           </button>
@@ -395,13 +414,19 @@ const ModalShell = ({ icon: Icon, title, onClose, footer, children }) => {
   );
 };
 
-const InfoRow = ({ label, icon: Icon, children }) => (
-  <div>
-    <p className="text-xs font-semibold text-gray-400">{label}</p>
-    <div className="mt-1 flex items-start gap-2 text-sm text-gray-900">
-      {Icon && <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />}
-      <div className="flex-1">{children}</div>
-    </div>
+// Campo label/valor sin cajitas — vibe pacientes/agenda
+const Campo = ({ label, children, className = '' }) => (
+  <div className={className}>
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+    <div className="mt-0.5 text-sm font-semibold leading-snug text-gray-800 break-words">{children}</div>
+  </div>
+);
+
+// Encabezado de sección: título en mayúsculas + divisor degradado (estilo editar-paciente)
+const SeccionTitulo = ({ children }) => (
+  <div className="mb-3 flex items-center gap-3">
+    <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">{children}</h3>
+    <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent" />
   </div>
 );
 
@@ -421,30 +446,37 @@ const BloqueoModal = ({ bloqueo, onClose }) => {
         </button>
       }
     >
-      <InfoRow label="Tipo de bloqueo">
-        <span className="font-semibold">{bloqueo.tipoBloqueo?.nombre || 'No especificado'}</span>
-      </InfoRow>
+      <div>
+        <SeccionTitulo>Detalle del bloqueo</SeccionTitulo>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+          <Campo label="Tipo de bloqueo" className="col-span-2">
+            {bloqueo.tipoBloqueo?.nombre || 'No especificado'}
+          </Campo>
 
-      <InfoRow label="Período" icon={Calendar}>
-        {fechaLocal(bloqueo.fechaInicio, formato)}
-        {esRango && ` – ${fechaLocal(bloqueo.fechaFin, formato)}`}
-      </InfoRow>
+          <Campo label="Período" className={esRango ? 'col-span-2' : ''}>
+            {fechaLocal(bloqueo.fechaInicio, formato)}
+            {esRango && ` – ${fechaLocal(bloqueo.fechaFin, formato)}`}
+          </Campo>
 
-      {(bloqueo.todoElDia || (bloqueo.horaInicio && bloqueo.horaFin)) && (
-        <InfoRow label="Horario" icon={Clock}>
-          {bloqueo.todoElDia ? (
-            <span className="font-semibold text-red-600">Todo el día bloqueado</span>
-          ) : (
-            `${bloqueo.horaInicio.substring(0, 5)} – ${bloqueo.horaFin.substring(0, 5)}`
+          {(bloqueo.todoElDia || (bloqueo.horaInicio && bloqueo.horaFin)) && (
+            <Campo label="Horario">
+              {bloqueo.todoElDia ? (
+                <span className="text-red-600">Todo el día</span>
+              ) : (
+                `${bloqueo.horaInicio.substring(0, 5)} – ${bloqueo.horaFin.substring(0, 5)}`
+              )}
+            </Campo>
           )}
-        </InfoRow>
-      )}
 
-      {esRecurrente && <InfoRow label="Recurrencia">Todos los {DIAS_SEMANA[bloqueo.diaSemana]}</InfoRow>}
+          {esRecurrente && (
+            <Campo label="Recurrencia">Todos los {DIAS_SEMANA[bloqueo.diaSemana]}</Campo>
+          )}
 
-      <InfoRow label="Motivo" icon={AlertCircle}>
-        {bloqueo.motivo || 'No especificado'}
-      </InfoRow>
+          <Campo label="Motivo" className="col-span-2">
+            {bloqueo.motivo || 'No especificado'}
+          </Campo>
+        </div>
+      </div>
     </ModalShell>
   );
 };
@@ -455,8 +487,10 @@ const FeriadoModal = ({ seleccion, puedeForzar, onClose, onForzar }) => {
 
   return (
     <ModalShell
-      icon={Calendar}
+      icon={Sparkles}
       title="Feriado nacional"
+      subtitle="El centro permanece cerrado"
+      accent="festive"
       onClose={onClose}
       footer={
         permiteForzar ? (
@@ -475,26 +509,21 @@ const FeriadoModal = ({ seleccion, puedeForzar, onClose, onForzar }) => {
         )
       }
     >
-      <div className="rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-red-100/60 p-6 text-center">
+      <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100/60 p-6 text-center">
         <div className="mb-2 text-4xl">🎉</div>
-        <h3 className="text-lg font-bold text-red-900">{feriado.nombre}</h3>
-        <p className="mt-1 text-sm capitalize text-red-700">
+        <h3 className="text-xl font-extrabold text-amber-900">{feriado.nombre}</h3>
+        <p className="mt-1 text-sm font-medium capitalize text-amber-700">
           {fechaLocal(feriado.fecha, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
 
-      <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 p-4">
-        <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
-        <div>
-          <p className="text-sm font-semibold text-red-900">
-            {puedeForzar ? 'Día feriado nacional' : 'No se pueden agendar citas en feriados'}
-          </p>
-          <p className="mt-1 text-xs text-red-700">
-            {puedeForzar
-              ? 'Por defecto el centro no atiende en feriados. Si un terapeuta atenderá este día (se le canjeará por otro), puedes crear la cita igual.'
-              : 'Este día está bloqueado automáticamente por ser feriado nacional. El centro permanecerá cerrado.'}
-          </p>
-        </div>
+      <div>
+        <SeccionTitulo>{puedeForzar ? 'Día feriado nacional' : 'Centro cerrado'}</SeccionTitulo>
+        <p className="text-sm font-medium leading-relaxed text-gray-600">
+          {puedeForzar
+            ? 'Por defecto el centro no atiende en feriados. Si un terapeuta atenderá este día (se le canjeará por otro), puedes crear la cita igual.'
+            : 'Este día está bloqueado automáticamente por ser feriado nacional. El centro permanecerá cerrado.'}
+        </p>
       </div>
     </ModalShell>
   );
@@ -673,8 +702,11 @@ const CalendarioSemanal = ({
           <span className="text-sm">Cargando agenda…</span>
         </div>
       ) : (
-        <div className="max-h-[calc(100vh-220px)] overflow-auto bg-[#F3EEF8]">
-          <div className="sticky top-0 z-40 h-3 min-w-[1200px] bg-[#F3EEF8]" aria-hidden />
+        <div
+          className="max-h-[calc(100vh-220px)] overflow-auto"
+          style={{ background: 'linear-gradient(180deg, #ffffff 0%, #fdfbff 45%, #f7f2fc 100%)' }}
+        >
+          <div className="sticky top-0 z-40 h-3 min-w-[1200px] bg-white" aria-hidden />
           <div className="grid min-w-[1200px] grid-cols-6 items-start gap-3 px-3 pb-3">
             {diasSemana.map((dia) => {
               const esHoy = dia.fechaString === hoyString;
@@ -683,19 +715,23 @@ const CalendarioSemanal = ({
               return (
                 <div
                   key={dia.fechaString}
-                  style={{ overflow: 'clip' }}
-                  className={`rounded-3xl bg-white ${
-                    esHoy
-                      ? 'shadow-lg shadow-purple-500/15 ring-2 ring-[#7B1FA2]'
-                      : 'shadow-[0_1px_8px_rgba(123,31,162,0.06)]'
-                  }`}
+                  className="group/col rounded-3xl bg-white"
                 >
-                  <div className="sticky top-3 z-30 bg-[#F3EEF8]">
+                  <div className="sticky top-3 z-30 bg-white">
                     <div
-                      className={`group relative flex flex-col items-center rounded-t-3xl py-3 ${
-                        esHoy ? 'bg-[#FAF5FD]' : 'bg-white'
+                      className={`group relative flex flex-col items-center rounded-t-3xl py-3 transition-colors duration-300 ${
+                        esHoy
+                          ? 'border-x-2 border-t-2 border-[#7B1FA2] bg-gradient-to-b from-purple-200/90 to-purple-50'
+                          : 'border-x border-t border-purple-200 bg-gradient-to-b from-purple-50 to-white group-hover/col:border-purple-300'
                       }`}
                     >
+                      {/* Difuminado bajo el header: el contenido se desvanece al entrar debajo, no se corta en seco */}
+                      <div
+                        aria-hidden
+                        className={`pointer-events-none absolute inset-x-0 top-full h-5 ${
+                          esHoy ? 'bg-gradient-to-b from-purple-50 to-transparent' : 'bg-gradient-to-b from-white to-transparent'
+                        }`}
+                      />
                       <span className={`text-xs font-semibold capitalize ${esHoy ? 'text-[#7B1FA2]' : 'text-[#5B3B73]'}`}>
                         {dia.nombre}
                       </span>
@@ -713,7 +749,7 @@ const CalendarioSemanal = ({
                         className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full transition ${
                           copiado
                             ? 'bg-green-50 text-green-600 opacity-100'
-                            : 'text-gray-400 opacity-0 hover:bg-purple-50 hover:text-[#7B1FA2] focus-visible:opacity-100 group-hover:opacity-100'
+                            : 'bg-purple-50/70 text-[#7B1FA2] opacity-100 hover:bg-purple-100 hover:text-[#6A1B9A]'
                         }`}
                       >
                         {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -721,18 +757,26 @@ const CalendarioSemanal = ({
                     </div>
                   </div>
 
-                  <DiaColumna
-                    dia={dia}
-                    esHoy={esHoy}
-                    citasDia={citasPorFecha.get(dia.fechaString) || []}
-                    bloqueos={bloqueos || []}
-                    puedeAgendar={!esTerapeuta}
-                    getEstadoColor={getEstadoColor}
-                    onSlotClick={onSlotClick}
-                    onCitaClick={onCitaClick}
-                    onBloqueoClick={setBloqueoSeleccionado}
-                    onFeriadoClick={setFeriadoSeleccionado}
-                  />
+                  <div
+                    className={`overflow-hidden rounded-b-3xl transition-colors duration-300 ${
+                      esHoy
+                        ? 'border-x-2 border-b-2 border-[#7B1FA2]'
+                        : 'border-x border-b border-purple-200 group-hover/col:border-purple-300'
+                    }`}
+                  >
+                    <DiaColumna
+                      dia={dia}
+                      esHoy={esHoy}
+                      citasDia={citasPorFecha.get(dia.fechaString) || []}
+                      bloqueos={bloqueos || []}
+                      puedeAgendar={!esTerapeuta}
+                      getEstadoColor={getEstadoColor}
+                      onSlotClick={onSlotClick}
+                      onCitaClick={onCitaClick}
+                      onBloqueoClick={setBloqueoSeleccionado}
+                      onFeriadoClick={setFeriadoSeleccionado}
+                    />
+                  </div>
                 </div>
               );
             })}

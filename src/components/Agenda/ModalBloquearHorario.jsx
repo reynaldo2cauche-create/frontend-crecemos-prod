@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Clock, Calendar, User, AlertCircle, Ban, Plus } from 'lucide-react';
+import { X, Plus, Ban, Repeat, CalendarDays, AlertCircle } from 'lucide-react';
 import { crearBloqueo } from '../../services/bloqueoService';
 import { getTipoBloqueo } from '../../services/catalogoService';
 
@@ -20,9 +20,26 @@ const fmtFechaCorta = (f) => {
   return isNaN(d) ? f : d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
+const inputClass = (error) =>
+  `w-full px-3 py-2 text-sm border rounded-xl focus:outline-none transition-all bg-white text-gray-900 ${
+    error ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
+  }`;
+
+const labelClass = 'block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1';
+
+// Etiqueta + error en una sola pieza para no repetir markup
+const Field = ({ label, error, children }) => (
+  <div>
+    <label className={labelClass}>{label}</label>
+    {children}
+    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+  </div>
+);
+
 const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, userId }) => {
   const [loading, setLoading] = useState(false);
   const [tiposBloqueo, setTiposBloqueo] = useState([]);
+  const [submitError, setSubmitError] = useState('');
   const [formData, setFormData] = useState({
     trabajadorId: '',
     tipoBloqueoId: '',
@@ -73,6 +90,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
       motivo: '',
     });
     setErrors({});
+    setSubmitError('');
   };
 
   const handleChange = (field, value) => {
@@ -81,6 +99,8 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
       setFormData(prev => ({ ...prev, tipoBloqueoId: value, diasSemana: [], fechasPuntuales: [], fechaPuntualTemp: '' }));
     } else if (field === 'todoElDia' && value === true) {
       setFormData(prev => ({ ...prev, todoElDia: true, horaInicio: '', horaFin: '' }));
+    } else if (field === 'todoElDia' && value === false) {
+      setFormData(prev => ({ ...prev, todoElDia: false, horaInicio: prev.horaInicio || '08:00', horaFin: prev.horaFin || '18:00' }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -142,6 +162,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
   };
 
   const handleSubmit = async () => {
+    setSubmitError('');
     const tipo = tiposBloqueo.find(t => t.id === parseInt(formData.tipoBloqueoId));
     const esPuntual = tipo?.codigo === 'PUNTUAL';
     const esRecurrente = tipo?.codigo === 'RECURRENTE';
@@ -158,7 +179,7 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
       userIdCrea: userId,
     };
 
-    // Construir un bloqueo por cada fecha (PUNTUAL) o por cada día de la semana (RECURRENTE).
+    // Un bloqueo por cada fecha (PUNTUAL) o por cada día de la semana (RECURRENTE).
     let bloqueos = [];
     if (esPuntual) {
       bloqueos = formData.fechasPuntuales.map(f => ({ ...base, fechaInicio: f, fechaFin: f, diaSemana: null }));
@@ -172,19 +193,31 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
     setLoading(true);
     try {
       const resultados = await Promise.allSettled(bloqueos.map(b => crearBloqueo(b)));
-      const fallidos = resultados.filter(r => r.status === 'rejected').length;
+      const idxFallidos = resultados.map((r, i) => (r.status === 'rejected' ? i : -1)).filter(i => i !== -1);
+      const fallidos = idxFallidos.length;
       const creados = resultados.length - fallidos;
 
-      if (fallidos > 0) {
-        alert(`Se crearon ${creados} de ${resultados.length} bloqueos. ${fallidos} fallaron, intenta nuevamente con los que faltan.`);
-      }
-      if (creados > 0) {
-        onBloqueoCreado();
+      if (creados > 0) onBloqueoCreado();
+
+      if (fallidos === 0) {
         onClose();
+        return;
       }
+
+      // Hubo fallos: el modal queda abierto con solo lo que faltó, para reintentar sin duplicar.
+      if (esPuntual) {
+        setFormData(prev => ({ ...prev, fechasPuntuales: prev.fechasPuntuales.filter((_, i) => idxFallidos.includes(i)) }));
+      } else if (esRecurrente) {
+        setFormData(prev => ({ ...prev, diasSemana: prev.diasSemana.filter((_, i) => idxFallidos.includes(i)) }));
+      }
+      setSubmitError(
+        creados > 0
+          ? `Se crearon ${creados} de ${resultados.length} bloqueos. Los ${fallidos} restantes fallaron y quedaron seleccionados para reintentar.`
+          : 'No se pudo crear el bloqueo. Intente nuevamente.'
+      );
     } catch (error) {
       console.error('Error al crear bloqueos:', error);
-      alert('Error al crear los bloqueos. Por favor intente nuevamente.');
+      setSubmitError('Error al crear los bloqueos. Intente nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -195,63 +228,51 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
   const tipoSeleccionado = tiposBloqueo.find(t => t.id === parseInt(formData.tipoBloqueoId));
   const esPuntual = tipoSeleccionado?.codigo === 'PUNTUAL';
   const esRecurrente = tipoSeleccionado?.codigo === 'RECURRENTE';
+  const esOtroTipo = !!tipoSeleccionado && !esPuntual && !esRecurrente;
+  const totalBloqueos = esPuntual ? formData.fechasPuntuales.length : esRecurrente ? formData.diasSemana.length : tipoSeleccionado ? 1 : 0;
 
   // Portal: monta el modal en document.body, escapando el stacking context del navbar/layout
   return ReactDOM.createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
-      {/* Overlay */}
       <div
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
         onClick={onClose}
       />
 
-      {/* Centrado */}
       <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', pointerEvents: 'none' }}>
-        <div style={{ pointerEvents: 'auto' }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-
+        <div
+          style={{ pointerEvents: 'auto' }}
+          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
+        >
           {/* Header */}
-          <div className="sticky top-0 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl border-b border-gray-100 bg-white">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-md shadow-red-500/25 flex-shrink-0">
-                <Ban className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Bloquear Horario</h2>
-                <p className="text-[13px] text-gray-500">Registra un bloqueo de agenda</p>
-              </div>
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-red-500/20">
+              <Ban className="w-4 h-4 text-white" />
             </div>
+            <h2 className="flex-1 text-base font-extrabold text-gray-900">Bloquear Horario</h2>
             <button
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-6 space-y-5">
-            {/* Info Alert */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
-                <p className="font-semibold mb-1">Importante:</p>
-                <p>Puedes bloquear varios días a la vez. El motivo es obligatorio para auditoría.</p>
-              </div>
-            </div>
+          {/* Formulario plano, sin tarjetas internas */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
+            {submitError && (
+              <p className="flex items-start gap-2 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {submitError}
+              </p>
+            )}
 
-            {/* Terapeuta */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <User className="w-4 h-4 text-red-600" />
-                Terapeuta
-                <span className="text-red-500">*</span>
-              </label>
+            <Field label="Terapeuta" error={errors.trabajadorId}>
               <select
                 value={formData.trabajadorId}
                 onChange={(e) => handleChange('trabajadorId', e.target.value)}
-                className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
-                  errors.trabajadorId ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                }`}
+                className={`${inputClass(errors.trabajadorId)} cursor-pointer`}
               >
                 <option value="">Seleccione un terapeuta</option>
                 {terapeutas?.filter(t => t.estado).map(t => (
@@ -260,261 +281,195 @@ const ModalBloquearHorario = ({ open, onClose, terapeutas, onBloqueoCreado, user
                   </option>
                 ))}
               </select>
-              {errors.trabajadorId && <p className="text-xs text-red-500 mt-1">{errors.trabajadorId}</p>}
-            </div>
+            </Field>
 
-            {/* Tipo de Bloqueo */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tipo de Bloqueo
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {tiposBloqueo.length === 0 ? (
-                  <div className="col-span-2 text-center text-sm text-gray-500 py-4">
-                    Cargando tipos de bloqueo...
-                  </div>
-                ) : (
-                  tiposBloqueo.map(tipo => (
-                    <button
-                      key={tipo.id}
-                      type="button"
-                      onClick={() => handleChange('tipoBloqueoId', tipo.id)}
-                      className={`p-4 border-2 rounded-xl text-left transition-all ${
-                        formData.tipoBloqueoId === tipo.id
-                          ? 'border-red-600 bg-red-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="font-semibold text-sm text-gray-900">{tipo.nombre}</div>
-                      <div className="text-xs text-gray-500 mt-1">{tipo.descripcion}</div>
-                    </button>
-                  ))
-                )}
-              </div>
-              {errors.tipoBloqueoId && <p className="text-xs text-red-500 mt-1">{errors.tipoBloqueoId}</p>}
-            </div>
+            <Field label="Tipo de bloqueo" error={errors.tipoBloqueoId}>
+              {tiposBloqueo.length === 0 ? (
+                <p className="text-xs text-gray-400 py-2">Cargando tipos...</p>
+              ) : (
+                <div className="flex gap-2">
+                  {tiposBloqueo.map(tipo => {
+                    const activo = formData.tipoBloqueoId === tipo.id;
+                    const Icono = tipo.codigo === 'RECURRENTE' ? Repeat : CalendarDays;
+                    return (
+                      <button
+                        key={tipo.id}
+                        type="button"
+                        title={tipo.descripcion}
+                        onClick={() => handleChange('tipoBloqueoId', tipo.id)}
+                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
+                          activo
+                            ? 'border-red-500 bg-red-50 text-red-600'
+                            : 'border-gray-200 text-gray-600 hover:border-red-300'
+                        }`}
+                      >
+                        <Icono className="w-4 h-4" />
+                        {tipo.nombre}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Field>
 
-            {/* PUNTUAL: varias fechas sueltas */}
+            {/* PUNTUAL */}
             {esPuntual && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-red-600" />
-                  Fechas a bloquear
-                  <span className="text-red-500">*</span>
-                </label>
+              <Field label="Fechas a bloquear" error={errors.fechasPuntuales}>
                 <div className="flex gap-2">
                   <input
                     type="date"
                     value={formData.fechaPuntualTemp}
                     onChange={(e) => handleChange('fechaPuntualTemp', e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarFechaPuntual(); } }}
-                    className={`flex-1 px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
-                      errors.fechasPuntuales ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                    }`}
+                    className={inputClass(errors.fechasPuntuales)}
                   />
                   <button
                     type="button"
                     onClick={agregarFechaPuntual}
                     disabled={!formData.fechaPuntualTemp}
-                    className="px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    className="flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-full shadow-md shadow-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                   >
                     <Plus className="w-4 h-4" /> Agregar
                   </button>
                 </div>
                 {formData.fechasPuntuales.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {formData.fechasPuntuales.map(f => (
-                      <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-lg">
+                      <span key={f} className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
                         {fmtFechaCorta(f)}
-                        <button type="button" onClick={() => quitarFechaPuntual(f)} className="hover:text-red-900">
+                        <button type="button" onClick={() => quitarFechaPuntual(f)} className="hover:bg-red-100 rounded-full p-0.5">
                           <X className="w-3 h-3" />
                         </button>
                       </span>
                     ))}
                   </div>
                 )}
-                {errors.fechasPuntuales && <p className="text-xs text-red-500 mt-1">{errors.fechasPuntuales}</p>}
-                <p className="text-[11px] text-gray-400 mt-2">Agrega todas las fechas que quieras; se crea un bloqueo por cada una.</p>
-              </div>
+              </Field>
             )}
 
-            {/* RECURRENTE: rango de fechas */}
+            {/* RECURRENTE */}
             {esRecurrente && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-red-600" />
-                    Desde
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.fechaInicio}
-                    onChange={(e) => handleChange('fechaInicio', e.target.value)}
-                    className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
-                      errors.fechaInicio ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                    }`}
-                  />
-                  {errors.fechaInicio && <p className="text-xs text-red-500 mt-1">{errors.fechaInicio}</p>}
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Desde" error={errors.fechaInicio}>
+                    <input type="date" value={formData.fechaInicio} onChange={(e) => handleChange('fechaInicio', e.target.value)} className={inputClass(errors.fechaInicio)} />
+                  </Field>
+                  <Field label="Hasta" error={errors.fechaFin}>
+                    <input type="date" value={formData.fechaFin} onChange={(e) => handleChange('fechaFin', e.target.value)} className={inputClass(errors.fechaFin)} />
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-red-600" />
-                    Hasta
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.fechaFin}
-                    onChange={(e) => handleChange('fechaFin', e.target.value)}
-                    className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
-                      errors.fechaFin ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                    }`}
-                  />
-                  {errors.fechaFin && <p className="text-xs text-red-500 mt-1">{errors.fechaFin}</p>}
-                </div>
-              </div>
+                <Field label="Se repite cada" error={errors.diasSemana}>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DIAS_SEMANA.map(dia => {
+                      const sel = formData.diasSemana.includes(dia.value);
+                      return (
+                        <button
+                          key={dia.value}
+                          type="button"
+                          title={dia.label}
+                          onClick={() => toggleDia(dia.value)}
+                          className={`px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all ${
+                            sel
+                              ? 'border-transparent bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm shadow-red-500/25'
+                              : 'border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600'
+                          }`}
+                        >
+                          {dia.corto}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              </>
             )}
 
-            {/* RECURRENTE: varios días de la semana */}
-            {esRecurrente && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Días de la Semana
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {DIAS_SEMANA.map(dia => {
-                    const sel = formData.diasSemana.includes(dia.value);
-                    return (
-                      <button
-                        key={dia.value}
-                        type="button"
-                        onClick={() => toggleDia(dia.value)}
-                        className={`px-3.5 py-2 text-sm font-semibold rounded-xl border-2 transition-all ${
-                          sel ? 'border-red-600 bg-red-600 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                        }`}
-                      >
-                        {dia.corto}
-                      </button>
-                    );
-                  })}
-                </div>
-                {errors.diasSemana && <p className="text-xs text-red-500 mt-1">{errors.diasSemana}</p>}
-                <p className="text-[11px] text-gray-400 mt-2">Selecciona uno o varios días (ej: Lunes y Sábado); el bloqueo se repite cada semana dentro del rango.</p>
+            {/* Otros tipos: rango simple */}
+            {esOtroTipo && (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Desde" error={errors.fechaInicio}>
+                  <input type="date" value={formData.fechaInicio} onChange={(e) => handleChange('fechaInicio', e.target.value)} className={inputClass(errors.fechaInicio)} />
+                </Field>
+                <Field label="Hasta" error={errors.fechaFin}>
+                  <input type="date" value={formData.fechaFin} onChange={(e) => handleChange('fechaFin', e.target.value)} className={inputClass(errors.fechaFin)} />
+                </Field>
               </div>
             )}
 
             {/* Horario */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Horario</label>
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="todoElDia"
-                    checked={formData.todoElDia}
-                    onChange={() => handleChange('todoElDia', true)}
-                    className="w-4 h-4 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm text-gray-700">Todo el día</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="todoElDia"
-                    checked={!formData.todoElDia}
-                    onChange={() => handleChange('todoElDia', false)}
-                    className="w-4 h-4 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm text-gray-700">Horario específico</span>
-                </label>
+            <Field label="Horario">
+              <div className="inline-flex p-0.5 rounded-full bg-gray-100">
+                {[{ v: true, t: 'Todo el día' }, { v: false, t: 'Horario específico' }].map(op => (
+                  <button
+                    key={String(op.v)}
+                    type="button"
+                    onClick={() => handleChange('todoElDia', op.v)}
+                    className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
+                      formData.todoElDia === op.v ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {op.t}
+                  </button>
+                ))}
               </div>
-
               {!formData.todoElDia && (
-                <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="grid grid-cols-2 gap-3 mt-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5" />
-                      Desde
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.horaInicio}
-                      onChange={(e) => handleChange('horaInicio', e.target.value)}
-                      className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
-                        errors.horaInicio ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                      }`}
-                    />
-                    {errors.horaInicio && <p className="text-xs text-red-500 mt-1">{errors.horaInicio}</p>}
+                    <input type="time" value={formData.horaInicio} onChange={(e) => handleChange('horaInicio', e.target.value)} className={inputClass(errors.horaInicio)} />
+                    {errors.horaInicio && <p className="text-red-500 text-xs mt-1">{errors.horaInicio}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5" />
-                      Hasta
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.horaFin}
-                      onChange={(e) => handleChange('horaFin', e.target.value)}
-                      className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow ${
-                        errors.horaFin ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                      }`}
-                    />
-                    {errors.horaFin && <p className="text-xs text-red-500 mt-1">{errors.horaFin}</p>}
+                    <input type="time" value={formData.horaFin} onChange={(e) => handleChange('horaFin', e.target.value)} className={inputClass(errors.horaFin)} />
+                    {errors.horaFin && <p className="text-red-500 text-xs mt-1">{errors.horaFin}</p>}
                   </div>
                 </div>
               )}
-            </div>
+            </Field>
 
-            {/* Motivo */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Motivo
-                <span className="text-red-500 ml-1">*</span>
-              </label>
+            <Field label="Motivo (obligatorio para auditoría)" error={errors.motivo}>
               <textarea
                 value={formData.motivo}
                 onChange={(e) => handleChange('motivo', e.target.value)}
-                placeholder="Explique la razón del bloqueo (ej: Curso de especialización, permiso médico, etc.)"
-                rows={3}
-                className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none transition-shadow resize-none ${
-                  errors.motivo ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-red-600'
-                }`}
+                placeholder="Ej: curso de especialización, permiso médico..."
+                rows={2}
+                className={`${inputClass(errors.motivo)} resize-none`}
               />
-              {errors.motivo && <p className="text-xs text-red-500 mt-1">{errors.motivo}</p>}
-            </div>
+            </Field>
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-white px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 rounded-b-2xl">
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-full hover:bg-gray-50 transition-all disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Bloqueando...
-                </>
-              ) : (
-                <>
-                  <Ban className="w-4 h-4" />
-                  Bloquear Horario
-                </>
-              )}
-            </button>
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-100">
+            <span className="text-xs text-gray-400">
+              {totalBloqueos > 0 && `${totalBloqueos} bloqueo${totalBloqueos !== 1 ? 's' : ''} a crear`}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-full transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex items-center gap-2 cx-glow bg-gradient-to-r from-red-500 to-red-600 text-white px-5 py-2 rounded-full text-sm font-semibold shadow-lg shadow-red-500/30 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Bloqueando...
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4" />
+                    Bloquear
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-
         </div>
       </div>
     </div>,

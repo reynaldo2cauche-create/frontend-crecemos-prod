@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -6,7 +6,7 @@ import {
   CircularProgress,
   Chip
 } from '@mui/material';
-import { Search, X, Filter, RefreshCw, Users, UserX, UserCheck, UserCog, Stethoscope, MessageSquare, User, UserPlus, MapPin, Layers, Activity, FileText, ChevronDown } from 'lucide-react';
+import { Search, X, Filter, RefreshCw, Users, UserX, UserCheck, UserCog, Stethoscope, MessageSquare, User, UserPlus, MapPin, Layers, Activity, FileText, ChevronDown, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { getPacientes, getEstadosPaciente, getEstadisticasPacientes } from '../services/pacienteService';
 import { getDistritos, getServicios } from '../services/catalogoService';
 import TarjetasPacientes from '../components/Pacientes/TablaPacientes';
@@ -31,6 +31,83 @@ const Sparkline = ({ color = '#7B1FA2' }) => {
       <path d="M0,28 C15,24 22,13 36,18 C50,23 58,8 72,12 C86,16 98,27 120,15 L120,40 L0,40 Z" fill={`url(#${id})`} />
       <path d="M0,28 C15,24 22,13 36,18 C50,23 58,8 72,12 C86,16 98,27 120,15" fill="none" stroke={color} strokeWidth="2" strokeOpacity="0.45" />
     </svg>
+  );
+};
+
+// Dropdown custom con opciones estilizadas (soporta planos y agrupados). Los <option> nativos no se pueden diseñar.
+const DropdownFiltro = ({
+  icon: Icon,
+  iconClass = 'text-gray-400',
+  value,
+  onChange,
+  options = null,
+  groups = null,
+  placeholder = 'Seleccionar',
+  className = '',
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handle = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const flat = groups ? groups.flatMap((g) => g.items) : (options || []);
+  const selected = flat.find((o) => String(o.value) === String(value));
+  const activo = value !== '' && value !== null && value !== undefined;
+
+  const Item = ({ o }) => {
+    const isSel = String(o.value) === String(value);
+    return (
+      <button
+        type="button"
+        onClick={() => { onChange(o.value); setOpen(false); }}
+        className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+          isSel ? 'bg-purple-50 font-semibold text-[#7B1FA2]' : 'text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        <span className="truncate">{o.label}</span>
+        {isSel && <Check className="h-4 w-4 flex-shrink-0 text-[#7B1FA2]" />}
+      </button>
+    );
+  };
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex w-full items-center ${Icon ? 'pl-10' : 'pl-4'} rounded-xl border bg-white py-2.5 pr-9 text-left text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#A3C644] ${
+          open ? 'border-[#A3C644] ring-2 ring-[#A3C644]' : 'border-gray-200'
+        }`}
+      >
+        {Icon && <Icon className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${iconClass}`} />}
+        <span className={`truncate ${activo ? 'font-medium text-gray-800' : 'text-gray-500'}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronDown className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 max-h-72 w-full min-w-[200px] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5">
+          {groups ? (
+            <>
+              <Item o={{ value: '', label: placeholder }} />
+              {groups.map((g) => (
+                <div key={g.label} className="pt-1">
+                  <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{g.label}</p>
+                  {g.items.map((o) => <Item key={o.value} o={o} />)}
+                </div>
+              ))}
+            </>
+          ) : (
+            (options || []).map((o) => <Item key={o.value} o={o} />)
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -561,7 +638,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
       {/* Filtros Section - Estilo moderno */}
       <div className="mb-3">
-        <div className="glass-panel rounded-2xl p-4">
+        <div className="glass-panel rounded-2xl p-4 relative z-30">
           {/* Filtros aplicados */}
           {filtrosActivos && (
             <div className="mb-3 p-3 bg-gradient-to-r from-[#7B1FA2]/5 to-[#A3C644]/5 rounded-xl border border-[#7B1FA2]/20">
@@ -625,7 +702,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Nombre Completo */}
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7B1FA2] pointer-events-none" />
               <input
                 type="text"
                 placeholder="Buscar por nombre..."
@@ -643,7 +720,7 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
             {/* Número de Documento */}
             <div className="relative min-w-[150px]">
-              <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 pointer-events-none" />
               <input
                 type="text"
                 placeholder="N° Documento"
@@ -662,114 +739,90 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
 
             {/* Distrito */}
             {!isTerapeuta(user) && (
-              <div className="relative min-w-[160px]">
-                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <select
-                  value={filters.distritoId}
-                  onChange={(e) => handleFilterChange('distritoId', e.target.value)}
-                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
-                >
-                  <option value="">Distrito</option>
-                  {distritos
-                    .filter(distrito => distrito.id_provincia === 1)
-                    .map((distrito) => (
-                      <option key={distrito.id} value={distrito.id}>
-                        {distrito.nombre}
-                      </option>
-                    ))}
-                </select>
-              </div>
+              <DropdownFiltro
+                className="min-w-[160px]"
+                icon={MapPin}
+                iconClass="text-rose-500"
+                placeholder="Distrito"
+                value={filters.distritoId}
+                onChange={(val) => handleFilterChange('distritoId', val)}
+                options={[
+                  { value: '', label: 'Distrito' },
+                  ...distritos
+                    .filter((d) => d.id_provincia === 1)
+                    .map((d) => ({ value: String(d.id), label: d.nombre })),
+                ]}
+              />
             )}
 
             {/* Estado por servicio */}
-            <div className="relative min-w-[150px]">
-              <Activity className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <select
-                value={filters.estadoServicioId}
-                onChange={(e) => handleFilterChange('estadoServicioId', e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
-              >
-                <option value="">Estado</option>
-                {estados.map((estado) => (
-                  <option key={estado.id} value={estado.id}>
-                    {estado.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <DropdownFiltro
+              className="min-w-[150px]"
+              icon={Activity}
+              iconClass="text-emerald-500"
+              placeholder="Estado"
+              value={filters.estadoServicioId}
+              onChange={(val) => handleFilterChange('estadoServicioId', val)}
+              options={[
+                { value: '', label: 'Estado' },
+                ...estados.map((e) => ({ value: String(e.id), label: e.nombre })),
+              ]}
+            />
 
             {/* Servicio */}
             {canViewServiceInfo(user) && (
-              <div className="relative min-w-[150px]">
-                <Layers className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <select
-                  value={filters.servicioId || ''}
-                  onChange={(e) => handleFilterChange('servicioId', e.target.value)}
-                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
-                >
-                  <option value="">Servicio</option>
-                  {Object.entries(
-                    servicios.reduce((acc, servicio) => {
-                      if (servicio.activo && servicio.area?.activo) {
-                        const area = servicio.area?.nombre || 'Sin Área';
-                        if (!acc[area]) acc[area] = [];
-                        acc[area].push(servicio);
-                      }
-                      return acc;
-                    }, {})
-                  ).map(([areaNombre, serviciosArea]) => (
-                    <optgroup key={areaNombre} label={areaNombre}>
-                      {serviciosArea.map(servicio => (
-                        <option key={servicio.id} value={servicio.id}>
-                          {servicio.nombre}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
+              <DropdownFiltro
+                className="min-w-[150px]"
+                icon={Layers}
+                iconClass="text-indigo-500"
+                placeholder="Servicio"
+                value={filters.servicioId || ''}
+                onChange={(val) => handleFilterChange('servicioId', val)}
+                groups={Object.entries(
+                  servicios.reduce((acc, servicio) => {
+                    if (servicio.activo && servicio.area?.activo) {
+                      const area = servicio.area?.nombre || 'Sin Área';
+                      if (!acc[area]) acc[area] = [];
+                      acc[area].push(servicio);
+                    }
+                    return acc;
+                  }, {})
+                ).map(([areaNombre, serviciosArea]) => ({
+                  label: areaNombre,
+                  items: serviciosArea.map((s) => ({ value: String(s.id), label: s.nombre })),
+                }))}
+              />
             )}
 
             {esJefe && (
-              <div className="relative min-w-[160px]">
-                <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7B1FA2] pointer-events-none" />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400 pointer-events-none" />
-                <select
-                  value={filtroJefe}
-                  onChange={(e) => setFiltroJefe(e.target.value)}
-                  className="w-full pl-10 pr-9 py-2.5 bg-purple-50 border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer font-medium text-purple-800"
-                >
-                  <option value="propio">Mis pacientes</option>
-                  {subordinadosJefe.map((sub) => (
-                    <option key={sub.id} value={String(sub.id)}>
-                      {sub.nombres} {sub.apellidos}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <DropdownFiltro
+                className="min-w-[160px]"
+                icon={Users}
+                iconClass="text-[#7B1FA2]"
+                placeholder="Mis pacientes"
+                value={filtroJefe}
+                onChange={(val) => setFiltroJefe(val)}
+                options={[
+                  { value: 'propio', label: 'Mis pacientes' },
+                  ...subordinadosJefe.map((sub) => ({ value: String(sub.id), label: `${sub.nombres} ${sub.apellidos}` })),
+                ]}
+              />
             )}
 
             {/* Selector de Terapeuta - solo para no terapeutas */}
             {!isTerapeuta(user) && (
-              <div className="relative min-w-[160px]">
-                <Stethoscope className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <select
-                  value={filters.terapeutaId || ''}
-                  onChange={(e) => handleFilterChange('terapeutaId', e.target.value)}
-                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] focus:border-transparent transition-all appearance-none cursor-pointer text-gray-600"
-                >
-                  <option value="">Terapeuta</option>
-                  {terapeutasDisponibles.map((terapeuta) => (
-                    <option key={terapeuta.id} value={terapeuta.id}>
-                      {terapeuta.nombres} {terapeuta.apellidos}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <DropdownFiltro
+                className="min-w-[160px]"
+                icon={Stethoscope}
+                iconClass="text-teal-500"
+                placeholder="Terapeuta"
+                value={filters.terapeutaId || ''}
+                onChange={(val) => handleFilterChange('terapeutaId', val)}
+                options={[
+                  { value: '', label: 'Terapeuta' },
+                  ...terapeutasDisponibles.map((t) => ({ value: String(t.id), label: `${t.nombres} ${t.apellidos}` })),
+                ]}
+              />
             )}
 
             {/* Botones de acción */}
@@ -850,40 +903,37 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
               de <span className="font-semibold text-gray-900">{filteredPacientes.length}</span> pacientes
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2 w-full sm:w-auto">
-              {/* Selector de filas por página */}
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value));
-                  setPage(0);
-                }}
-                className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#A3C644] cursor-pointer"
-              >
-                <option value={6}>6 por página</option>
-                <option value={12}>12 por página</option>
-                <option value={24}>24 por página</option>
-                <option value={48}>48 por página</option>
-              </select>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              {/* Selector de filas por página — dropdown custom */}
+              <DropdownFiltro
+                className="w-full sm:w-36"
+                value={String(rowsPerPage)}
+                onChange={(val) => { setRowsPerPage(parseInt(val)); setPage(0); }}
+                options={[
+                  { value: '6', label: '6 por página' },
+                  { value: '12', label: '12 por página' },
+                  { value: '24', label: '24 por página' },
+                  { value: '48', label: '48 por página' },
+                ]}
+              />
 
               {/* Botones de paginación */}
-              <div className="flex flex-wrap gap-1 justify-center">
+              <div className="flex items-center gap-1 rounded-2xl bg-gray-50/80 p-1 ring-1 ring-gray-100">
                 <button
                   onClick={() => setPage(0)}
                   disabled={page === 0}
-                  className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  title="Primero"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-[#7B1FA2] disabled:opacity-40 disabled:hover:bg-transparent"
                 >
-                  <span className="hidden sm:inline">Primero</span>
-                  <span className="sm:hidden">««</span>
+                  <ChevronsLeft className="h-4 w-4" />
                 </button>
-                
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page === 0}
-                  className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  title="Anterior"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-[#7B1FA2] disabled:opacity-40 disabled:hover:bg-transparent"
                 >
-                  <span className="hidden sm:inline">Anterior</span>
-                  <span className="sm:hidden">«</span>
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
 
                 {/* Números de página */}
@@ -904,10 +954,10 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
                       <button
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
-                        className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                        className={`flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl px-2 text-sm font-bold transition-all ${
                           page === pageNum
-                            ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white'
-                            : 'hover:bg-gray-100 text-gray-700'
+                            ? 'bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white shadow-md shadow-purple-500/25'
+                            : 'text-gray-600 hover:bg-white hover:text-[#7B1FA2]'
                         }`}
                       >
                         {pageNum + 1}
@@ -919,19 +969,18 @@ const [filtroJefe, setFiltroJefe] = useState('propio'); // ← era ''
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={page >= totalPages - 1}
-                  className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  title="Siguiente"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-[#7B1FA2] disabled:opacity-40 disabled:hover:bg-transparent"
                 >
-                  <span className="hidden sm:inline">Siguiente</span>
-                  <span className="sm:hidden">»</span>
+                  <ChevronRight className="h-4 w-4" />
                 </button>
-
                 <button
                   onClick={() => setPage(totalPages - 1)}
                   disabled={page >= totalPages - 1}
-                  className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+                  title="Último"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-[#7B1FA2] disabled:opacity-40 disabled:hover:bg-transparent"
                 >
-                  <span className="hidden sm:inline">Último</span>
-                  <span className="sm:hidden">»»</span>
+                  <ChevronsRight className="h-4 w-4" />
                 </button>
               </div>
             </div>

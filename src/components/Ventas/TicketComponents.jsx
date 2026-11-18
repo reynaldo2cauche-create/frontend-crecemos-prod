@@ -677,35 +677,42 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
 
-        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-1 min-w-0">
-            <PrinterIcon className="w-5 h-5 text-[#7B1FA2] flex-shrink-0" />
-            <h2 className="font-bold text-gray-900">Vista Previa de Impresión</h2>
-            {venta.codigo_comprobante && (
-              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
-                {venta.codigo_comprobante}
-              </span>
-            )}
-            {promociones.length > 0 && (
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                <SparklesIcon className="w-3 h-3" />
-                {promociones.length} promo{promociones.length > 1 ? 's' : ''}
-              </span>
-            )}
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+            <PrinterIcon className="w-5 h-5 text-white" />
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+              <h2 className="text-lg font-extrabold text-[#2D0A4E] leading-tight">Vista Previa de Impresión</h2>
+              {venta.codigo_comprobante && (
+                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                  {venta.codigo_comprobante}
+                </span>
+              )}
+              {promociones.length > 0 && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                  <SparklesIcon className="w-3 h-3" />
+                  {promociones.length} promo{promociones.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <p className="text-[13px] text-gray-400 truncate">
+              {formato === 'ticket' ? 'Ticket térmico 72 mm' : 'Formato A4 · 210 × 297 mm'}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0">
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
-          <span className="w-full sm:w-auto text-xs font-semibold text-gray-500 uppercase tracking-wide">Formato:</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50/70 shrink-0">
+          <span className="w-full sm:w-auto text-[11px] font-bold text-gray-400 uppercase tracking-wider">Formato</span>
           {FORMATOS_IMPRESION.map(({ id, label, desc, Icon }) => (
             <button key={id} onClick={() => setFormato(id)}
               className={`flex-1 sm:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
-                formato === id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2]' : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'
+                formato === id ? 'border-[#7B1FA2] bg-purple-50 text-[#7B1FA2] shadow-sm' : 'border-gray-200 text-gray-600 hover:border-purple-200 hover:bg-white bg-white'
               }`}>
               <Icon className="w-4 h-4 flex-shrink-0" />{label}
               <span className={`hidden sm:inline text-xs font-normal ${formato === id ? 'text-purple-500' : 'text-gray-400'}`}>{desc}</span>
@@ -723,7 +730,12 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
                 </div>
               )}
               {a4Url && !loadingA4 && (
-                <iframe src={a4Url} className="w-full border-0" style={{ height: '100%', minHeight: '500px' }} title="Vista previa A4" />
+                <iframe
+                  src={`${a4Url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                  className="w-full border-0"
+                  style={{ height: '100%', minHeight: '500px' }}
+                  title="Vista previa A4"
+                />
               )}
               {!a4Url && !loadingA4 && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -739,7 +751,7 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50/70 shrink-0">
           <p className="hidden sm:block text-xs text-gray-400">
             {formato === 'ticket' ? 'Descarga o imprime el ticket térmico de 72mm' : 'Descarga o imprime en formato A4 (210 × 297 mm)'}
             {promociones.length > 0 && (
@@ -750,16 +762,16 @@ const PrintPreviewModal = ({ venta, tipo, onClose }) => {
           </p>
           <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <button onClick={onClose}
-              className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+              className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors">
               Cerrar
             </button>
             <button onClick={handleDescargar} disabled={downloading}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-[#7B1FA2] bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 disabled:opacity-50">
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-[#7B1FA2] bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 transition-colors disabled:opacity-50">
               <ArrowDownTrayIcon className="w-4 h-4 flex-shrink-0" />
               {downloading ? 'Generando...' : 'Descargar PDF'}
             </button>
             <button onClick={handleImprimir} disabled={downloading}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#7B1FA2] rounded-xl hover:bg-[#6A1B9A] disabled:opacity-50">
+              className="w-full sm:w-auto flex items-center justify-center gap-2 cx-glow px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] rounded-full shadow-lg shadow-purple-500/30 disabled:opacity-50">
               <PrinterIcon className="w-5 h-5 flex-shrink-0" />
               {downloading ? 'Generando...' : 'Imprimir'}
             </button>

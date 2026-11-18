@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Loader2, Users, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, Users, TrendingUp } from 'lucide-react';
 import { obtenerEstadisticasCitas } from '../../services/citasEstadisticasService';
 
 // Sparkline decorativo (igual que en Lista de Pacientes)
@@ -77,12 +77,26 @@ const EstadisticasCitas = ({
   };
 
   if (loading) {
+    // Skeleton que imita las tarjetas reales (tinte por tipo de métrica)
+    const tonos = esTerapeuta
+      ? ['bg-blue-50', 'bg-green-50', 'bg-amber-50']
+      : ['bg-purple-50', 'bg-blue-50', 'bg-green-50', 'bg-amber-50'];
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-center">
-          <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
-          <span className="ml-2 text-gray-600">Cargando estadísticas...</span>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {tonos.map((tono, i) => (
+          <div key={i} className="glass-card rounded-2xl p-4 relative overflow-hidden">
+            <div className="flex items-center gap-3.5">
+              <div className={`w-12 h-12 rounded-xl ${tono} flex-shrink-0 animate-pulse`} />
+              <div className="min-w-0 flex-1 space-y-2.5">
+                <div className="h-2.5 w-2/3 rounded-full bg-gray-200/80 animate-pulse" />
+                <div className="h-6 w-10 rounded-lg bg-gray-200 animate-pulse" />
+                <div className="h-2 w-1/2 rounded-full bg-gray-100 animate-pulse" />
+              </div>
+            </div>
+            {/* barrido shimmer */}
+            <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent cx-shimmer" />
+          </div>
+        ))}
       </div>
     );
   }

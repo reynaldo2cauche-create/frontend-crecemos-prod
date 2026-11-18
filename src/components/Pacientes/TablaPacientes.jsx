@@ -200,61 +200,80 @@ const ConveniosDisplay = ({ pacienteId, convenios: propConvenios }) => {
   );
 };
 
-// Tarjeta minimalista con colores balanceados
+// Tarjeta con la vibe de editar-paciente: avatar con ring-4, meta en píldora lila,
+// chips de servicio redondos con borde, divisor lila y CTA "Ver ficha →" al hover
 const TarjetaPacienteCompacta = ({ paciente, onClick, seleccionado, user }) => {
+  const servicios = paciente.servicios || [];
   return (
     <div
       onClick={onClick}
-      className={`
-        group relative glass-card rounded-2xl p-4 cursor-pointer
-        ${seleccionado ? 'ring-2 ring-[#7B1FA2]' : ''}
-      `}
+      className={`group relative glass-card cursor-pointer overflow-hidden rounded-2xl ${
+        seleccionado ? 'ring-2 ring-[#7B1FA2]' : ''
+      }`}
     >
-      {seleccionado && (
-        <div className="absolute -left-0.5 top-4 bottom-4 w-1 bg-gradient-to-b from-[#7B1FA2] to-[#A3C644] rounded-r-full" />
-      )}
+      {/* Orbe glass decorativo */}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#7B1FA2]/[0.06] blur-2xl" />
 
-      <div className="flex items-start gap-3">
-        <div className={`
-          flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm transition-all
-          bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0]
-        `}>
-          {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="mb-2">
-            <h3 className="font-bold text-gray-900 text-sm leading-tight">
+      <div className="relative p-4">
+        {/* Cabecera */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-base font-bold text-white shadow-lg shadow-purple-500/30 ring-4 ring-purple-100/60 transition-transform group-hover:scale-105">
+            {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-extrabold leading-tight text-gray-900">
               {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
             </h3>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs text-gray-600">
-              <FileText className="w-3 h-3 flex-shrink-0 text-blue-500" />
-              <span className="font-medium">{paciente.numero_documento}</span>
-              <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-              <Calendar className="w-3 h-3 flex-shrink-0 text-orange-500" />
-              <span>{calcularEdad(paciente.fecha_nacimiento)}</span>
-            </div>
-
-            {canViewServiceInfo(user) && (
-              <div className="mt-1">
-                <ServicioChips servicios={paciente.servicios} />
-              </div>
-            )}
-
-            {/* Convenios en vista tarjeta */}
-            <div className="mt-1">
-              <ConveniosDisplay pacienteId={paciente.id} />
+            <div className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F5F0FA] px-2.5 py-1 text-[11px] text-gray-600">
+              <FileText className="h-3 w-3 flex-shrink-0 text-[#7B1FA2]" />
+              <span className="truncate font-semibold text-gray-700">{paciente.numero_documento}</span>
+              <span className="h-1 w-1 flex-shrink-0 rounded-full bg-purple-300" />
+              <Calendar className="h-3 w-3 flex-shrink-0 text-orange-500" />
+              <span className="flex-shrink-0">{calcularEdad(paciente.fecha_nacimiento)}</span>
             </div>
           </div>
         </div>
 
-        <ChevronRight className={`
-          w-4 h-4 flex-shrink-0 transition-all
-          ${seleccionado ? 'text-[#A3C644]' : 'text-gray-300 group-hover:text-[#A3C644]'}
-        `} />
+        {/* Servicios como chips redondos con borde (vibe editar-paciente) */}
+        {canViewServiceInfo(user) && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {servicios.length === 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-400">
+                Sin servicios
+              </span>
+            )}
+            {servicios.slice(0, 3).map((s, i) => {
+              const colors = getEstadoColor(s.estado_nombre);
+              return (
+                <span
+                  key={s.id ?? i}
+                  title={`${s.servicio_nombre} · ${s.estado_nombre || 'Sin estado'}`}
+                  className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${colors.bg} ${colors.text} ${colors.border}`}
+                >
+                  <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${colors.dot}`} />
+                  <span className="truncate">{s.servicio_nombre}</span>
+                </span>
+              );
+            })}
+            {servicios.length > 3 && (
+              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-500">
+                +{servicios.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Pie: convenios + CTA */}
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-purple-100/60 pt-2.5">
+          <ConveniosDisplay pacienteId={paciente.id} />
+          <span className={`inline-flex flex-shrink-0 items-center gap-1 text-[11px] font-bold transition-colors ${
+            seleccionado ? 'text-[#7B1FA2]' : 'text-gray-400 group-hover:text-[#7B1FA2]'
+          }`}>
+            Ver ficha
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -914,7 +933,7 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
         <div className="glass-panel rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-white/40 border-b border-gray-100">
+              <thead className="border-b border-purple-100/60 bg-gradient-to-r from-purple-50/60 to-white">
                 <tr>
                   <th className="px-4 py-2.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                     Paciente
@@ -938,7 +957,7 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                   <th className="px-4 py-2.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                     Convenios
                   </th>
-
+                  <th className="w-10 px-4 py-2.5" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -947,21 +966,19 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                     <tr
                       key={paciente.id}
                       onClick={() => handleClickPaciente(paciente)}
-                      className={`hover:bg-purple-50/30 transition-colors group cursor-pointer ${
-                        pacienteSeleccionadoId === paciente.id ? 'bg-purple-50/50' : ''
+                      className={`group cursor-pointer transition-colors hover:bg-purple-50/40 ${
+                        pacienteSeleccionadoId === paciente.id
+                          ? 'bg-purple-50/60 shadow-[inset_3px_0_0_#7B1FA2]'
+                          : ''
                       }`}
                     >
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
-                            pacienteSeleccionadoId === paciente.id
-                              ? 'bg-gradient-to-br from-[#9C27B0] to-[#BA68C8]'
-                              : 'bg-gradient-to-br from-[#7B1FA2] to-[#6A1B9A]'
-                          }`}>
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#7B1FA2] to-[#9C27B0] text-sm font-bold text-white shadow-sm ring-2 ring-purple-100/70 transition-transform group-hover:scale-105">
                             {paciente.nombres?.[0]}{paciente.apellido_paterno?.[0]}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-gray-900">
                               {paciente.nombres} {paciente.apellido_paterno} {paciente.apellido_materno}
                             </p>
                           </div>
@@ -969,15 +986,19 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          <span className="text-sm text-gray-900 font-medium">
+                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                            <FileText className="h-3.5 w-3.5 text-blue-500" />
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
                             {paciente.numero_documento}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-orange-50">
+                            <Calendar className="h-3.5 w-3.5 text-orange-500" />
+                          </span>
                           <span className="text-sm text-gray-700">
                             {calcularEdad(paciente.fecha_nacimiento)}
                           </span>
@@ -993,7 +1014,7 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                                   <span
                                     key={s.id ?? idx}
                                     title={`${s.servicio_nombre} · ${s.estado_nombre || 'Sin estado'}`}
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${colors.bg} ${colors.text} ${colors.border}`}
+                                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${colors.bg} ${colors.text} ${colors.border}`}
                                   >
                                     <span className={`w-1.5 h-1.5 rounded-full ${colors.dot} flex-shrink-0`} />
                                     {s.servicio_nombre} - {s.estado_nombre || 'Sin estado'}
@@ -1010,7 +1031,9 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                         <td className="px-4 py-3">
                           {paciente.celular ? (
                             <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-green-50">
+                                <Phone className="h-3.5 w-3.5 text-green-500" />
+                              </span>
                               <span className="text-sm text-gray-700">
                                 {paciente.celular}
                               </span>
@@ -1022,6 +1045,13 @@ const TarjetasPacientes = ({ pacientes, pacienteSeleccionadoId, onSelect, onEdit
                       )}
                       <td className="px-4 py-3">
                         <ConveniosDisplay pacienteId={paciente.id} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <ChevronRight className={`inline h-4 w-4 transition-all ${
+                          pacienteSeleccionadoId === paciente.id
+                            ? 'text-[#7B1FA2]'
+                            : 'text-gray-300 group-hover:translate-x-0.5 group-hover:text-[#7B1FA2]'
+                        }`} />
                       </td>
                     </tr>
                   );

@@ -7428,3 +7428,11 @@ body.no-bounce {
     font-size: 16px !important;
   }
 }
+
+/* Shimmer para skeletons de carga */
+@keyframes cx-shimmer {
+  100% { transform: translateX(200%); }
+}
+.cx-shimmer {
+  animation: cx-shimmer 1.6s infinite;
+}
