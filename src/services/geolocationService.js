@@ -5,11 +5,31 @@
  * Valida si el usuario está dentro del perímetro permitido del centro de labores
  */
 
-// 📍 COORDENADAS DEL CENTRO DE LABORES
+import api from './api';
+
+// 📍 Fallback del centro de labores (si el backend no responde). La FUENTE DE VERDAD
+// es el backend (GET /geofencing/config), que es quien enforce el perímetro.
 // Dirección: Calle 48 Nro. 234 Urbanización El Pinar, Comas 15316 Lima, Perú
 const CENTRO_COORDENADAS = { lat: -11.915504916666666, lng: -77.05404908333334 };
-// Radio permitido en metros
-const RADIO_PERMITIDO = 100; // 100 metros
+const RADIO_PERMITIDO = 100; // metros (fallback)
+
+// Config cargada del backend (cacheada). Una sola llamada; luego se reutiliza.
+let _configPromise = null;
+const obtenerConfigGeofence = () => {
+  if (!_configPromise) {
+    _configPromise = api.get('/geofencing/config')
+      .then((r) => ({
+        centro: { lat: r.data.lat, lng: r.data.lng },
+        radio: r.data.radio,
+      }))
+      .catch(() => {
+        // Si falla, usa el fallback local. No reintenta en cada verificación.
+        _configPromise = null;
+        return { centro: CENTRO_COORDENADAS, radio: RADIO_PERMITIDO };
+      });
+  }
+  return _configPromise;
+};
 
 /**
  * Calcular distancia entre dos puntos usando la fórmula de Haversine
@@ -82,34 +102,31 @@ export const obtenerUbicacionActual = async () => {
  * @returns {Promise<{dentroDelPerimetro: boolean, distancia: number, ubicacion: object}>}
  */
 export const verificarPerimetro = async () => {
-  try {
-    const ubicacion = await obtenerUbicacionActual();
+  const { centro, radio } = await obtenerConfigGeofence();
+  const ubicacion = await obtenerUbicacionActual();
 
-    const distancia = calcularDistancia(
-      ubicacion.lat,
-      ubicacion.lng,
-      CENTRO_COORDENADAS.lat,
-      CENTRO_COORDENADAS.lng
-    );
+  const distancia = calcularDistancia(
+    ubicacion.lat,
+    ubicacion.lng,
+    centro.lat,
+    centro.lng
+  );
 
-    console.log(`📍 Ubicación actual: ${ubicacion.lat}, ${ubicacion.lng}`);
-    console.log(`📏 Distancia al centro: ${distancia.toFixed(2)} metros`);
-    console.log(`✅ Dentro del perímetro: ${distancia <= RADIO_PERMITIDO}`);
+  console.log(`📍 Ubicación actual: ${ubicacion.lat}, ${ubicacion.lng}`);
+  console.log(`📏 Distancia al centro: ${distancia.toFixed(2)} metros (radio ${radio}m)`);
+  console.log(`✅ Dentro del perímetro: ${distancia <= radio}`);
 
-    return {
-      dentroDelPerimetro: distancia <= RADIO_PERMITIDO,
-      distancia: Math.round(distancia),
-      ubicacion: {
-        lat: ubicacion.lat,
-        lng: ubicacion.lng,
-        accuracy: ubicacion.accuracy
-      },
-      centro: CENTRO_COORDENADAS,
-      radioPermitido: RADIO_PERMITIDO
-    };
-  } catch (error) {
-    throw error;
-  }
+  return {
+    dentroDelPerimetro: distancia <= radio,
+    distancia: Math.round(distancia),
+    ubicacion: {
+      lat: ubicacion.lat,
+      lng: ubicacion.lng,
+      accuracy: ubicacion.accuracy
+    },
+    centro,
+    radioPermitido: radio
+  };
 };
 
 /**

@@ -35,6 +35,7 @@ import {
 import { getServicios } from '../services/catalogoService';
 import { getTrabajadores } from '../services/trabajadorService';
 import { actualizarCita } from '../services/citaService';
+import { crearSolicitudReprogramacion } from '../services/reprogramacionService';
 import { obtenerBloqueosPorTerapeuta, obtenerBloqueosActivos } from '../services/bloqueoService';
 
 // Hooks y utilidades
@@ -671,11 +672,44 @@ const guardarCita = async (datosFormulario = null) => {
         hora_fin: horaFin
       };
 
-      console.log('📤 Datos a actualizar:', citaDto);
+      // 🔁 Reprogramación 2ª+ de Admisión: en vez de aplicarse directo, se
+      // genera una SOLICITUD para que el Administrador apruebe/rechace.
+      if (datos._solicitarReprogramacion) {
+        const terapeutaNuevo = citaDto.doctor_id
+          ? trabajadores.find(t => t.id === citaDto.doctor_id)
+          : null;
+        const servicioNuevo = citaDto.servicio_id
+          ? servicios.find(s => s.id === citaDto.servicio_id)
+          : null;
+        const motivoNuevo = citaDto.motivo_id
+          ? motivos.find(m => m.id === citaDto.motivo_id)
+          : null;
 
-      await actualizarCita(citaEditando.id, citaDto);
-      setSnackbarMessage('✅ Cita actualizada correctamente');
-      setSnackbarSeverity('success');
+        await crearSolicitudReprogramacion({
+          cita_id: citaEditando.id,
+          paciente_id: citaDto.paciente_id || null,
+          solicitante_id: currentUser.id,
+          motivo: datos._motivoReprogramacion || datos.motivo_accion || '',
+          fecha_nueva: citaDto.fecha,
+          hora_inicio_nueva: citaDto.hora_inicio,
+          hora_fin_nueva: citaDto.hora_fin,
+          doctor_nombre_nuevo: terapeutaNuevo
+            ? `${terapeutaNuevo.nombres || ''} ${terapeutaNuevo.apellidos || ''}`.replace(/\s+/g, ' ').trim()
+            : null,
+          servicio_nombre_nuevo: servicioNuevo?.nombre || null,
+          motivo_cita_nuevo: motivoNuevo?.nombre || null,
+          payload: citaDto,
+        });
+
+        setSnackbarMessage('📩 Solicitud de reprogramación enviada al Administrador');
+        setSnackbarSeverity('success');
+      } else {
+        console.log('📤 Datos a actualizar:', citaDto);
+
+        await actualizarCita(citaEditando.id, citaDto);
+        setSnackbarMessage('✅ Cita actualizada correctamente');
+        setSnackbarSeverity('success');
+      }
 
     } else {
       // ➕ MODO CREACIÓN - Detectar si hay múltiples fechas

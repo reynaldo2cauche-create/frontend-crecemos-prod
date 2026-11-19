@@ -79,6 +79,10 @@ const menuSections = [
     roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION, ROLES.TERAPEUTA],
     items: [
       { text: 'Agenda',    path: '/intranet/agenda',         icon: CalendarDaysIcon },
+      {
+        text: 'Reprogramaciones', path: '/intranet/agenda/reprogramaciones', icon: ArrowPathIcon,
+        roles: [ROLES.ADMINISTRADOR],
+      },
       { text: 'Pacientes', path: '/intranet/lista-pacientes', icon: UserGroupIcon },
       {
         text: 'Informes', path: '/intranet/informes', icon: DocumentChartBarIcon,

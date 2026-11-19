@@ -19,7 +19,8 @@ import {
   MessageCircle,
   Copy,
   Check,
-  Package
+  Package,
+  Send
 } from 'lucide-react';
 import { useBusquedaPacientes } from '../../hooks/useBusquedaPacientes';
 import { useServicios } from '../../hooks/useServicios';
@@ -33,6 +34,7 @@ import { esFeriado, getNombreFeriado } from '../../constants/feriados';
 import { getVentasDisponibles, getListadoCitasPorPaciente, getInfoVentaDeCita } from '../../services/citaService';
 import { getVentaServicioById } from '../../services/ventasService';
 import { obtenerBloqueosPorTerapeuta } from '../../services/bloqueoService';
+import { getSolicitudReprogramacionPorCita } from '../../services/reprogramacionService';
 import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 const ModalAgendarCita = ({
@@ -152,6 +154,21 @@ const ModalAgendarCita = ({
   const bloqueadoPorReprogramacion = esRecepcionista && pacienteYaReprogramo;
 
   const [guardandoLocal, setGuardandoLocal] = useState(false);
+
+  // 🔁 Última solicitud de reprogramación de esta cita (para mostrar su respuesta)
+  const [solicitudReprog, setSolicitudReprog] = useState(null);
+  useEffect(() => {
+    let activo = true;
+    if (open && modoEdicion && citaEditando?.id) {
+      getSolicitudReprogramacionPorCita(citaEditando.id)
+        .then((s) => { if (activo) setSolicitudReprog(s || null); })
+        .catch(() => { if (activo) setSolicitudReprog(null); });
+    } else {
+      setSolicitudReprog(null);
+    }
+    return () => { activo = false; };
+  }, [open, modoEdicion, citaEditando?.id]);
+
   // ========== RESETEAR ESTADOS AL CERRAR MODAL ==========
   useEffect(() => {
     if (!open) {
@@ -1176,7 +1193,7 @@ useEffect(() => {
     onFormularioChange('eliminarFechaHora', index);
   };
 
-const handleGuardar = useCallback(async () => {
+const handleGuardar = useCallback(async (comoSolicitud = false) => {
   if (modoSoloLectura) return;
   if (guardandoLocal) return;
   setGuardandoLocal(true);
@@ -1426,6 +1443,12 @@ const handleGuardar = useCallback(async () => {
 
   if (modoEdicion && !esTerapeuta) {
     datosGuardar.motivo_accion = motivoAccion;
+  }
+
+  // 🔁 Reprogramación 2ª+ de Admisión → se envía como SOLICITUD al Administrador
+  if (comoSolicitud) {
+    datosGuardar._solicitarReprogramacion = true;
+    datosGuardar._motivoReprogramacion = motivoAccion;
   }
 
   if (tipoCita === 'NORMAL') {
@@ -1736,11 +1759,43 @@ const handleGuardar = useCallback(async () => {
                       </p>
                       <p className="text-xs text-amber-800">
                         {bloqueadoPorReprogramacion
-                          ? 'Este paciente ya usó su única reprogramación. Admisión no puede volver a mover una sesión: solo el Administrador, previa coordinación y registrando el motivo.'
+                          ? 'Este paciente ya usó su reprogramación libre. Indica el motivo y usa "Solicitar reprogramación": el cambio NO se aplica hasta que el Administrador lo apruebe.'
                           : 'Este paciente ya usó su reprogramación. Como Administrador puedes moverla igual; queda registrada bajo tu responsabilidad (motivo obligatorio).'}
                       </p>
                     </div>
                   </div>
+                )}
+
+                {/* 🔁 RESPUESTA DE LA SOLICITUD DE REPROGRAMACIÓN DE ESTA CITA */}
+                {solicitudReprog && (
+                  (() => {
+                    const est = solicitudReprog.estado;
+                    const cfg = est === 'aprobada'
+                      ? { box: 'bg-green-50 border-green-300', title: 'text-green-900', text: 'text-green-800', label: '✅ Reprogramación aprobada' }
+                      : est === 'rechazada'
+                        ? { box: 'bg-red-50 border-red-300', title: 'text-red-900', text: 'text-red-800', label: '❌ Reprogramación rechazada' }
+                        : { box: 'bg-amber-50 border-amber-300', title: 'text-amber-900', text: 'text-amber-800', label: '⏳ Solicitud de reprogramación pendiente' };
+                    const revisor = solicitudReprog.revisor
+                      ? `${solicitudReprog.revisor.nombres || ''} ${solicitudReprog.revisor.apellidos || ''}`.replace(/\s+/g, ' ').trim()
+                      : null;
+                    const fechaRev = solicitudReprog.fecha_revision
+                      ? new Date(solicitudReprog.fecha_revision).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : null;
+                    return (
+                      <div className={`rounded-xl p-4 flex items-start gap-3 border-2 ${cfg.box}`}>
+                        <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${cfg.title}`} />
+                        <div>
+                          <p className={`text-sm font-bold mb-1 ${cfg.title}`}>{cfg.label}</p>
+                          <p className={`text-xs ${cfg.text}`}>
+                            {est === 'pendiente'
+                              ? 'Esperando que el Administrador apruebe o rechace el cambio solicitado.'
+                              : `${est === 'aprobada' ? 'Aprobada' : 'Rechazada'}${revisor ? ` por ${revisor}` : ''}${fechaRev ? ` · ${fechaRev}` : ''}.`}
+                            {solicitudReprog.comentario_revisor ? ` Comentario: ${solicitudReprog.comentario_revisor}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
 
                 {/* PACIENTE */}
@@ -4038,18 +4093,32 @@ const handleGuardar = useCallback(async () => {
                   >
                     Cancelar
                   </button>
-                  <button
-                    onClick={handleGuardar}
-                    disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia || bloqueadoPorReprogramacion}
-                    title={bloqueadoPorReprogramacion ? 'Esta sesión ya fue reprogramada. Solo el Administrador puede volver a moverla.' : undefined}
-                    className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {(guardando || guardandoLocal) ? (
-                      <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
-                    ) : (
-                      <><Save className="w-4 h-4" />{modoEdicion ? 'Actualizar' : 'Guardar'}</>
-                    )}
-                  </button>
+                  {bloqueadoPorReprogramacion ? (
+                    <button
+                      onClick={() => handleGuardar(true)}
+                      disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
+                      title="El paciente ya reprogramó antes. Se enviará una solicitud al Administrador para aprobar este cambio."
+                      className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {(guardando || guardandoLocal) ? (
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Enviando...</>
+                      ) : (
+                        <><Send className="w-4 h-4" />Solicitar reprogramación</>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleGuardar()}
+                      disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
+                      className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#7B1FA2] to-[#9C27B0] text-white rounded-xl font-semibold text-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {(guardando || guardandoLocal) ? (
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                      ) : (
+                        <><Save className="w-4 h-4" />{modoEdicion ? 'Actualizar' : 'Guardar'}</>
+                      )}
+                    </button>
+                  )}
                 </>
               )}
             </div>
