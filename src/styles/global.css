@@ -82,6 +82,54 @@ main > *:not(.contact):not(.cx-modal-backdrop) > *:not(.modal-detalle-paciente) 
   box-shadow: 0 20px 40px -12px rgba(123, 31, 162, .70);
 }
 
+/* ============================================================
+   LOGIN — micro-interacciones para que no se sienta "muerto"
+   ============================================================ */
+
+/* Entrada del card: sube y aparece */
+@keyframes cxLoginIn {
+  from { opacity: 0; transform: translateY(18px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.cx-login-in { animation: cxLoginIn .6s cubic-bezier(.22, 1, .36, 1) both; }
+
+/* Orbes que flotan suave */
+@keyframes cxFloat {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(14px, -18px); }
+}
+@keyframes cxFloatAlt {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-16px, 14px); }
+}
+.cx-float    { animation: cxFloat 9s ease-in-out infinite; }
+.cx-float-2  { animation: cxFloatAlt 11s ease-in-out infinite; }
+
+/* Entrada escalonada de cada fila del formulario */
+@keyframes cxRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cx-rise { animation: cxRise .55s ease-out both; }
+
+/* Brillo que cruza el botón al pasar el mouse */
+.cx-shine { position: relative; overflow: hidden; }
+.cx-shine::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -120%;
+  width: 60%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: skewX(-18deg);
+  transition: left .6s ease;
+}
+.cx-shine:hover::after { left: 140%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cx-login-in, .cx-float, .cx-float-2, .cx-rise { animation: none; }
+  .cx-shine::after { display: none; }
+}
+
 /* Select con chevron propio (quita la flecha nativa fea) */
 .cx-select {
   appearance: none;
