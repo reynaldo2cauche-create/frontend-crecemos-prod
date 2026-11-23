@@ -384,25 +384,6 @@ const ModalAgendarCita = ({
     return servicio;
   };
 
-  // Bloque "Información importante" según el motivo de la cita.
-  // - Entrevista (de Padres / Adolescentes o Adultos): pago único.
-  // - Evaluación / Reevaluación: proceso que puede comprender varias sesiones.
-  const getBloqueInfoMotivo = (motivoNombre) => {
-    const m = (motivoNombre || '').toLowerCase();
-    if (m.includes('entrevista')) {
-      return `\n\n📌 *Información importante:*
-Al finalizar la entrevista, nuestra especialista les brindará las recomendaciones correspondientes. Asimismo, recibirán por WhatsApp su indicación terapéutica en formato digital, donde se detallarán los siguientes pasos a seguir.
-
-💳 Esta entrevista corresponde a un pago único, que podrán realizar en recepción, donde también podrán solicitar su indicación terapéutica impresa.`;
-    }
-    if (m.includes('evaluaci') || m.includes('reevaluaci')) {
-      return `\n\n📌 *Información importante:*
-Esta cita forma parte del proceso de evaluación, que puede comprender varias sesiones. Al finalizar todas las sesiones, nuestra especialista les brindará las recomendaciones correspondientes. Asimismo, recibirán por WhatsApp su indicación terapéutica en formato digital, donde se detallarán los siguientes pasos a seguir.
-
-💳 De acuerdo con las recomendaciones de la especialista, podrán realizar el pago del paquete de terapia correspondiente en recepción, donde también podrán solicitar su indicación terapéutica impresa.`;
-    }
-    return '';
-  };
 
   const getTerapeutaNombre = (cita) => {
     if ((cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') && cita.doctor) {
@@ -575,9 +556,7 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
         // Bloque informativo por motivo (entrevista / evaluación). Solo se AGREGA
         // para cita única del día y cuando NO hay aviso de última/penúltima sesión,
         // para no pisar las validaciones de pago del paquete ni duplicar el 💳.
-        const bloqueMotivo = (citasMismoDia.length === 1 && !mensajeUltimaSesion)
-          ? getBloqueInfoMotivo(citaEditando.motivo?.nombre)
-          : '';
+     
 
         let mensaje;
         if (citasMismoDia.length > 1) {
@@ -612,7 +591,7 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${formatearHora(citaEditando.hora_inicio)}*
   💜 ${getServicioConMotivo(citaEditando)}
-  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}${bloqueMotivo}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
 
   🥳 ¡Los esperamos! ✨`;
           } else {
@@ -621,7 +600,7 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${formatearHora(citaEditando.hora_inicio)}*
   💜 ${getServicioConMotivo(citaEditando)}
-  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}${bloqueMotivo}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
 
   🥳 ¡Lo esperamos! ✨`;
           }
@@ -682,13 +661,9 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
         servicioNombre = 'Reunión Clínica';
       }
 
-      let motivoNombreSel = '';
       if (formularioCita.motivo_id && motivos.length) {
         const motivoObj = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
-        if (motivoObj?.nombre) {
-          servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
-          motivoNombreSel = motivoObj.nombre;
-        }
+        if (motivoObj?.nombre) servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
       }
 
       let terapeutaNombre = 'Terapeuta no especificado';
@@ -699,7 +674,6 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
       }
 
       const mensajePago = '';
-      const bloqueMotivo = getBloqueInfoMotivo(motivoNombreSel);
 
       let mensaje;
       if (tieneResponsable) {
@@ -708,7 +682,7 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${horaFormateada}*
   💜 ${servicioNombre}
-  ✨ ${terapeutaNombre}${mensajePago}${bloqueMotivo}
+  ✨ ${terapeutaNombre}${mensajePago}
 
   🥳 ¡Los esperamos! ✨`;
       } else {
@@ -717,7 +691,7 @@ Esta cita forma parte del proceso de evaluación, que puede comprender varias se
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${horaFormateada}*
   💜 ${servicioNombre}
-  ✨ ${terapeutaNombre}${mensajePago}${bloqueMotivo}
+  ✨ ${terapeutaNombre}${mensajePago}
 
   🥳 ¡Lo esperamos! ✨`;
       }
