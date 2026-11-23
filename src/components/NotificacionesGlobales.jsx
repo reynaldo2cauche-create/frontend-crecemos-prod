@@ -12,6 +12,8 @@ import {
   marcarTodasComoLeidas as marcarLeidasAPI,
   marcarComoLeida
 } from '../services/notificacionesService';
+import { io } from 'socket.io-client';
+import { SERVER_BASE_URL } from '../services/api';
 
 const LIMIT = 15;
 
@@ -55,6 +57,8 @@ const TIPO_CONFIG = {
   SESIONES_TERAPIA_24:      { icono: PawPrint,          color: 'text-yellow-500', borde: 'border-yellow-400', label: '24 sesiones de terapia' },
   NOTA_CREDITO:             { icono: HandCoins,         color: 'text-amber-600',  borde: 'border-amber-500',  label: 'Devolución'            },
   SOLICITUD_PERMISO:        { icono: CalendarCheck,     color: 'text-teal-600',   borde: 'border-teal-500',   label: 'Solicitud de permiso'  },
+  SOLICITUD_REPROGRAMACION: { icono: CalendarClock,     color: 'text-amber-600',  borde: 'border-amber-500',  label: 'Solicitud de reprogramación' },
+  RESPUESTA_REPROGRAMACION: { icono: CalendarCheck,     color: 'text-violet-600', borde: 'border-violet-500', label: 'Respuesta de reprogramación' },
   DEFAULT:                  { icono: Info,          color: 'text-gray-500',   borde: 'border-gray-300',   label: 'Otro'                 },
 };
 
@@ -229,8 +233,10 @@ const useNotificaciones = () => {
     cargarBadgeInicial();
   }, []);
 
-  // ── 2. Polling cada 5s — /count para badge, /recientes para novedades ──
-  // Separados para que el badge sea liviano y las novedades no bloqueen nada
+  // ── 2. Tiempo real por WebSocket + polling lento de respaldo ──
+  // Antes: /count cada 5s y /recientes cada 15s (ruidoso). Ahora el servidor
+  // empuja "notificacion:nueva" por WS y refrescamos al instante. El polling
+  // queda solo como red de seguridad (60s/120s) por si el socket no conecta.
   useEffect(() => {
     const pollBadge = async () => {
       try {
@@ -256,14 +262,30 @@ const useNotificaciones = () => {
       } catch { /* silencioso */ }
     };
 
-    // Badge liviano cada 5s
-    const intervalBadge    = setInterval(pollBadge,    5000);
-    // Novedades cada 15s — no necesita ser tan frecuente
-    const intervalNovedades = setInterval(pollNovedades, 15000);
+    const refrescar = () => { pollBadge(); pollNovedades(); };
+
+    // ── WebSocket: push instantáneo del servidor ──
+    const token = localStorage.getItem('access_token');
+    let socket = null;
+    if (token) {
+      socket = io(SERVER_BASE_URL, {
+        auth: { token },
+        transports: ['websocket', 'polling'], // cae a long-polling si el WS está bloqueado
+        reconnectionDelay: 2000,
+      });
+      socket.on('notificacion:nueva', refrescar);
+      // Al reconectar, sincroniza por si hubo novedades mientras estuvo caído
+      socket.on('connect', refrescar);
+    }
+
+    // ── Fallback lento: si el WS está vivo casi nunca dispara data ──
+    const intervalBadge     = setInterval(pollBadge,    60000);
+    const intervalNovedades = setInterval(pollNovedades, 120000);
 
     return () => {
       clearInterval(intervalBadge);
       clearInterval(intervalNovedades);
+      if (socket) socket.disconnect();
     };
   }, []);
 

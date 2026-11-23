@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { verificarPacienteYObtenerBeneficios } from '../services/pacienteService';
+import { verificarPacienteYObtenerBeneficios,getPuntosPublicos } from '../services/pacienteService';
 import { getTerminosPorBeneficio } from '../services/conveniosService';
 import { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 import Reveal from '../components/public/Reveal';
 import RevealText from '../components/public/RevealText';
 import Decor from '../components/public/Decor';
+
+
+
 
 const VerificarBeneficios = () => {
   const [dni, setDni] = useState('');
@@ -21,6 +24,7 @@ const VerificarBeneficios = () => {
   const [modalTerminos, setModalTerminos] = useState(false);
   const [beneficioSeleccionado, setBeneficioSeleccionado] = useState(null);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [puntos, setPuntos] = useState(null);
 
   const toggleExpand = (id) => {
     setExpandedIds((prev) => {
@@ -46,53 +50,63 @@ const VerificarBeneficios = () => {
   const [loadingTerminos, setLoadingTerminos] = useState(false);
 
   // Validar y obtener beneficios desde la API real
-  const validarBeneficiosHandler = async (dniValidar) => {
-    setLoading(true);
-    setError('');
-    setPaciente(null);
-    setBeneficios([]);
-    setEstado('idle');
-    setEstadoTexto('Validando...');
+ const validarBeneficiosHandler = async (dniValidar) => {
+  setLoading(true);
+  setError('');
+  setPaciente(null);
+  setPuntos(null);
+  setBeneficios([]);
+  setEstado('idle');
+  setEstadoTexto('Validando...');
 
-    try {
-      const data = await verificarPacienteYObtenerBeneficios(dniValidar);
+  try {
+    const data = await verificarPacienteYObtenerBeneficios(dniValidar);
 
-      setPaciente(data.paciente);
-      setBeneficios(data.beneficios);
-      setTotalBeneficios(data.total_beneficios);
-      setEstado('success');
-      setEstadoTexto(`${data.total_beneficios} Beneficio${data.total_beneficios !== 1 ? 's' : ''} disponible${data.total_beneficios !== 1 ? 's' : ''}`);
+    setPaciente(data.paciente);
+    setBeneficios(data.beneficios);
+    setEstado('success');
+    setEstadoTexto(
+      `${data.total_beneficios} Beneficio${data.total_beneficios !== 1 ? 's' : ''} disponible${data.total_beneficios !== 1 ? 's' : ''}`,
+    );
 
-    } catch (err) {
-      console.error('Error completo:', err);
+    // Puntos: solo tras validar al paciente; si falla, no rompe los beneficios
+    getPuntosPublicos(dniValidar)
+  .then(setPuntos)
+  .catch((e) => {
+    console.error('Error cargando puntos:', e);
+    setPuntos(null);
+  });
+  } catch (err) {
+    console.error('Error completo:', err);
 
-      let errorMessage = 'No se pudo verificar el paciente. Intente nuevamente.';
+    let errorMessage = 'No se pudo verificar el paciente. Intente nuevamente.';
 
-      if (err.response) {
-        const status = err.response.status;
-        if (status === 404) {
-          errorMessage = 'No se encontró ningún paciente registrado con el número de documento proporcionado.';
-          setEstado('error');
-        } else if (status === 403) {
-          errorMessage = 'El paciente se encuentra inactivo en el sistema y actualmente no cuenta con acceso a beneficios. Por favor, comuníquese con el área de atención al cliente para más información.';
-          setEstado('warning');
-        } else if (err.response.data && err.response.data.message) {
-          errorMessage = err.response.data.message;
-          setEstado('error');
-        }
-      } else if (err.request) {
-        errorMessage = 'Error de conexión. Verifique su internet.';
+    if (err.response) {
+      const status = err.response.status;
+      if (status === 404) {
+        errorMessage = 'No se encontró ningún paciente registrado con el número de documento proporcionado.';
+        setEstado('error');
+      } else if (status === 403) {
+        errorMessage = 'El paciente se encuentra inactivo en el sistema y actualmente no cuenta con acceso a beneficios. Por favor, comuníquese con el área de atención al cliente para más información.';
+        setEstado('warning');
+      } else if (err.response.data?.message) {
+        errorMessage = err.response.data.message;
         setEstado('error');
       }
-
-      setError(errorMessage);
-      setEstadoTexto('Error en verificación');
-      setPaciente(null);
-      setBeneficios([]);
-    } finally {
-      setLoading(false);
+    } else if (err.request) {
+      errorMessage = 'Error de conexión. Verifique su internet.';
+      setEstado('error');
     }
-  };
+
+    setError(errorMessage);
+    setEstadoTexto('Error en verificación');
+    setPaciente(null);
+    setPuntos(null);
+    setBeneficios([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Validar desde URL
   useEffect(() => {
@@ -251,16 +265,24 @@ const VerificarBeneficios = () => {
                 {estadoTexto}
               </span>
 
-              {paciente && beneficios.length > 0 && (
-                <div className="vb-actions">
-                  <button className="cx-btn cx-btn-ghost vb-abtn" onClick={handleImprimirBeneficios}>
-                    <i className="bi bi-printer" /> Imprimir
-                  </button>
-                  <button className="cx-btn cx-btn-soft vb-abtn" onClick={handleCompartir}>
-                    <i className="bi bi-share" /> Compartir
-                  </button>
-                </div>
-              )}
+          {paciente && puntos && (
+            <div className="vb-points">
+              <div className="vb-points-main">
+                <span className="vb-points-label"><i className="bi bi-stars" /> Puntos Crecemos</span>
+                <strong className="vb-points-value">{puntos.saldo.toLocaleString('es-PE')}</strong>
+              </div>
+              <div className="vb-points-meta">
+                <span>Acumulados históricos: <b>{puntos.historico.toLocaleString('es-PE')}</b></span>
+                {puntos.proximoVencimiento && (
+                  <span>
+                    <i className="bi bi-hourglass-split" />{' '}
+                    {puntos.proximoVencimiento.puntos.toLocaleString('es-PE')} pts vencen el{' '}
+                    {new Date(`${puntos.proximoVencimiento.fecha}T00:00:00`).toLocaleDateString('es-PE')}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
             </div>
 
             {!paciente && !error && (
@@ -658,6 +680,17 @@ const VerificarBeneficios = () => {
           .no-print { display: none !important; }
           .vb-card { break-inside: avoid; page-break-inside: avoid; }
         }
+        .vb-points {
+          display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+          padding: 20px 24px; margin-bottom: 22px; border-radius: var(--cx-r-lg);
+          background: linear-gradient(120deg, var(--cx-primary), var(--cx-primary-600)); color: #fff;
+          box-shadow: 0 18px 36px -20px rgba(169, 62, 240, .6);
+        }
+        .vb-points-main { display: flex; flex-direction: column; }
+        .vb-points-label { font-size: .82rem; font-weight: 700; opacity: .9; }
+        .vb-points-value { font-size: 2.2rem; font-weight: 800; line-height: 1.1; }
+        .vb-points-meta { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; text-align: right; }
+        @media (max-width: 520px) { .vb-points-meta { text-align: left; } }
       `}</style>
     </main>
   );

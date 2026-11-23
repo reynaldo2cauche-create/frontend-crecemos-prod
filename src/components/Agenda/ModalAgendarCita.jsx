@@ -15,6 +15,7 @@ import {
   Plus,
   Save,
   Search,
+  Send,
   Trash2,
   User,
   Users,
@@ -36,6 +37,7 @@ import {
 } from '../../services/citaService';
 import { getVentaServicioById } from '../../services/ventasService';
 import { obtenerBloqueosPorTerapeuta } from '../../services/bloqueoService';
+import { getSolicitudReprogramacionPorCita } from '../../services/reprogramacionService';
 import DetalleVentaModal from '../Ventas/DetalleVentaModal';
 
 /* ═══════════════════════════ Constantes ═══════════════════════════ */
@@ -1329,6 +1331,25 @@ const ModalAgendarCita = ({
     (igual(seguimientoAsistencia?.recepcion_marco, 1) || igual(seguimientoAsistencia?.terapeuta_marco, 1));
   const deshabilitadoForm = esTerapeuta || modoSoloLectura || bloqueadoPorAsistencia;
 
+  // 🔁 Reprogramación: el PACIENTE ya usó su única reprogramación (en todo su historial).
+  // Admisión solo puede reprogramar una vez por paciente; luego solo Administrador. El backend lo valida.
+  const pacienteYaReprogramo = modoEdicion && Boolean(citaEditando?.paciente_ya_reprogramo);
+  const bloqueadoPorReprogramacion = esRecepcionista && pacienteYaReprogramo;
+
+  // 🔁 Última solicitud de reprogramación de esta cita (para mostrar su respuesta)
+  const [solicitudReprog, setSolicitudReprog] = useState(null);
+  useEffect(() => {
+    let activo = true;
+    if (open && modoEdicion && citaEditando?.id) {
+      getSolicitudReprogramacionPorCita(citaEditando.id)
+        .then((s) => { if (activo) setSolicitudReprog(s || null); })
+        .catch(() => { if (activo) setSolicitudReprog(null); });
+    } else {
+      setSolicitudReprog(null);
+    }
+    return () => { activo = false; };
+  }, [open, modoEdicion, citaEditando?.id]);
+
   /* ── Datos externos ── */
   const { pacientes } = useBusquedaPacientes(queryPaciente);
   const serviciosApi = useServicios();
@@ -1941,12 +1962,18 @@ const ModalAgendarCita = ({
     return null;
   };
 
-  const construirDatosGuardar = () => {
+  const construirDatosGuardar = (comoSolicitud = false) => {
     const datos = {
       ...formularioCita,
       esMultiple: !modoEdicion && (formularioCita.fechasHoras?.length || 0) > 1
     };
     if (modoEdicion && !esTerapeuta) datos.motivo_accion = motivoAccion;
+
+    // 🔁 Reprogramación 2ª+ de Admisión → se envía como SOLICITUD al Administrador
+    if (comoSolicitud) {
+      datos._solicitarReprogramacion = true;
+      datos._motivoReprogramacion = motivoAccion;
+    }
 
     if (tipoCita === 'NORMAL') {
       Object.assign(datos, { terapeutas_ids: [], servicios_ids: [], encargado: null, firma_documento: false });
@@ -1972,7 +1999,7 @@ const ModalAgendarCita = ({
     return datos;
   };
 
-  const handleGuardar = async () => {
+  const handleGuardar = async (comoSolicitud = false) => {
     if (modoSoloLectura || guardandoLocal) return;
     setGuardandoLocal(true);
 
@@ -1982,7 +2009,7 @@ const ModalAgendarCita = ({
         mostrarAlerta(problema.titulo, problema.mensaje, problema.tipo);
         return;
       }
-      await onGuardar(construirDatosGuardar());
+      await onGuardar(construirDatosGuardar(comoSolicitud));
     } catch (error) {
       const respuesta = error?.response?.data?.message;
       const mensaje = respuesta
@@ -2112,6 +2139,40 @@ const ModalAgendarCita = ({
                     Ya registraste la asistencia para esta cita. No se puede editar para evitar reutilización de citas antiguas. Solo un administrador puede modificarla.
                   </Aviso>
                 )}
+
+                {/* 🔁 Aviso: el paciente ya usó su reprogramación */}
+                {pacienteYaReprogramo && (
+                  <Aviso tono="amber" titulo="🔁 Paciente ya reprogramó">
+                    {bloqueadoPorReprogramacion
+                      ? 'Este paciente ya usó su reprogramación libre. Indica el motivo y usa "Solicitar reprogramación": el cambio NO se aplica hasta que el Administrador lo apruebe.'
+                      : 'Este paciente ya usó su reprogramación. Como Administrador puedes moverla igual; queda registrada bajo tu responsabilidad (motivo obligatorio).'}
+                  </Aviso>
+                )}
+
+                {/* 🔁 Respuesta de la solicitud de reprogramación de esta cita */}
+                {solicitudReprog && (() => {
+                  const est = solicitudReprog.estado;
+                  const tono = est === 'aprobada' ? 'green' : est === 'rechazada' ? 'red' : 'amber';
+                  const label = est === 'aprobada'
+                    ? '✅ Reprogramación aprobada'
+                    : est === 'rechazada'
+                      ? '❌ Reprogramación rechazada'
+                      : '⏳ Solicitud de reprogramación pendiente';
+                  const revisor = solicitudReprog.revisor
+                    ? `${solicitudReprog.revisor.nombres || ''} ${solicitudReprog.revisor.apellidos || ''}`.replace(/\s+/g, ' ').trim()
+                    : null;
+                  const fechaRev = solicitudReprog.fecha_revision
+                    ? new Date(solicitudReprog.fecha_revision).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : null;
+                  return (
+                    <Aviso tono={tono} titulo={label}>
+                      {est === 'pendiente'
+                        ? 'Esperando que el Administrador apruebe o rechace el cambio solicitado.'
+                        : `${est === 'aprobada' ? 'Aprobada' : 'Rechazada'}${revisor ? ` por ${revisor}` : ''}${fechaRev ? ` · ${fechaRev}` : ''}.`}
+                      {solicitudReprog.comentario_revisor ? ` Comentario: ${solicitudReprog.comentario_revisor}` : ''}
+                    </Aviso>
+                  );
+                })()}
 
                 {/* Motivo y paciente */}
                 <Seccion icono={FileText} titulo="Motivo y paciente">
@@ -2507,18 +2568,34 @@ const ModalAgendarCita = ({
                   <button type="button" onClick={onClose} disabled={guardando} className={BTN_OUTLINE}>
                     Cancelar
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleGuardar}
-                    disabled={guardando || guardandoLocal || bloqueadoPorAsistencia}
-                    className={BTN_PRIMARY}
-                  >
-                    {guardando || guardandoLocal ? (
-                      <><Spinner />Guardando...</>
-                    ) : (
-                      <><Save className="h-4 w-4" />{modoEdicion ? 'Actualizar' : 'Guardar'}</>
-                    )}
-                  </button>
+                  {bloqueadoPorReprogramacion ? (
+                    <button
+                      type="button"
+                      onClick={() => handleGuardar(true)}
+                      disabled={guardando || guardandoLocal || modoSoloLectura || bloqueadoPorAsistencia}
+                      title="El paciente ya reprogramó antes. Se enviará una solicitud al Administrador para aprobar este cambio."
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {guardando || guardandoLocal ? (
+                        <><Spinner />Enviando...</>
+                      ) : (
+                        <><Send className="h-4 w-4" />Solicitar reprogramación</>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleGuardar()}
+                      disabled={guardando || guardandoLocal || bloqueadoPorAsistencia}
+                      className={BTN_PRIMARY}
+                    >
+                      {guardando || guardandoLocal ? (
+                        <><Spinner />Guardando...</>
+                      ) : (
+                        <><Save className="h-4 w-4" />{modoEdicion ? 'Actualizar' : 'Guardar'}</>
+                      )}
+                    </button>
+                  )}
                 </>
               )}
             </div>

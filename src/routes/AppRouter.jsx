@@ -95,6 +95,8 @@ import GestionInformesPage from '../pages/Informes/GestionInformesPage';
 import CentroOperativo from '../pages/CentroOperativo/CentroOperativo';
 import ReporteActividades from '../pages/CentroOperativo/ReporteActividades';
 import MesaPartes from '../pages/MesaPartes/MesaPartes';
+import SolicitudesReprogramacionPage from '../pages/Agenda/SolicitudesReprogramacionPage';
+import CatalogoPremiosPage from '../pages/Beneficios/CatalogoPremiosPage';
 import ObstetriciaPage from '../pages/service-adulto/AdultoObstetricia';
 import FichaSeguimientoEscolar from '../pages/FichaSeguimientoEscolar';
 import FichaSeguimientoPsicologia from '../pages/FichaSeguimientoPsicologia';
@@ -155,6 +157,26 @@ export const AppRouter = () => {
                 </SidebarContentWrapper>
               </SidebarProvider>
       
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/agenda/reprogramaciones" element={
+          <PrivateRoute roles={[1]}>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <SolicitudesReprogramacionPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
+          </PrivateRoute>
+        } />
+        <Route path="/intranet/beneficios/catalogo" element={
+          <PrivateRoute roles={[1]}>
+            <SidebarProvider>
+              <Sidebar />
+              <SidebarContentWrapper>
+                <CatalogoPremiosPage />
+              </SidebarContentWrapper>
+            </SidebarProvider>
           </PrivateRoute>
         } />
         <Route path="/intranet/postulaciones" element={

@@ -173,7 +173,8 @@
       "Bash(ls components/)",
       "Bash(npm init *)",
       "Bash(npm install *)",
-      "Bash(SHOT1=__TRACKED_VAR__/shot-modal-top.png SHOT2=__TRACKED_VAR__/shot-modal-bottom.png node popup-test.mjs)"
+      "Bash(SHOT1=__TRACKED_VAR__/shot-modal-top.png SHOT2=__TRACKED_VAR__/shot-modal-bottom.png node popup-test.mjs)",
+      "Bash(echo \"exit:$?\")"
     ],
     "deny": [],
     "ask": []
