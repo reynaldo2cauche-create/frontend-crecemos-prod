@@ -384,6 +384,26 @@ const ModalAgendarCita = ({
     return servicio;
   };
 
+  // Bloque "Información importante" según el motivo de la cita.
+  // - Entrevista (de Padres / Adolescentes o Adultos): pago único.
+  // - Evaluación / Reevaluación: proceso que puede comprender varias sesiones.
+  const getBloqueInfoMotivo = (motivoNombre) => {
+    const m = (motivoNombre || '').toLowerCase();
+    if (m.includes('entrevista')) {
+      return `\n\n📌 *Información importante:*
+Al finalizar la entrevista, nuestra especialista les brindará las recomendaciones correspondientes. Asimismo, recibirán por WhatsApp su indicación terapéutica en formato digital, donde se detallarán los siguientes pasos a seguir.
+
+💳 Esta entrevista corresponde a un pago único, que podrán realizar en recepción, donde también podrán solicitar su indicación terapéutica impresa.`;
+    }
+    if (m.includes('evaluaci') || m.includes('reevaluaci')) {
+      return `\n\n📌 *Información importante:*
+Esta cita forma parte del proceso de evaluación, que puede comprender varias sesiones. Al finalizar todas las sesiones, nuestra especialista les brindará las recomendaciones correspondientes. Asimismo, recibirán por WhatsApp su indicación terapéutica en formato digital, donde se detallarán los siguientes pasos a seguir.
+
+💳 De acuerdo con las recomendaciones de la especialista, podrán realizar el pago del paquete de terapia correspondiente en recepción, donde también podrán solicitar su indicación terapéutica impresa.`;
+    }
+    return '';
+  };
+
   const getTerapeutaNombre = (cita) => {
     if ((cita.tipo_cita === 'NORMAL' || cita.tipo_cita === 'VISITA_ESCOLAR') && cita.doctor) {
       return `Lic. ${cita.doctor.nombres || ''} ${cita.doctor.apellidos || ''}`.trim();
@@ -552,6 +572,13 @@ const ModalAgendarCita = ({
         // El aviso de pago ya va integrado en mensajeUltimaSesion cuando es última cita
         const mensajePago = '';
 
+        // Bloque informativo por motivo (entrevista / evaluación). Solo se AGREGA
+        // para cita única del día y cuando NO hay aviso de última/penúltima sesión,
+        // para no pisar las validaciones de pago del paquete ni duplicar el 💳.
+        const bloqueMotivo = (citasMismoDia.length === 1 && !mensajeUltimaSesion)
+          ? getBloqueInfoMotivo(citaEditando.motivo?.nombre)
+          : '';
+
         let mensaje;
         if (citasMismoDia.length > 1) {
           let mensajeCitas = '';
@@ -585,7 +612,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${formatearHora(citaEditando.hora_inicio)}*
   💜 ${getServicioConMotivo(citaEditando)}
-  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}${bloqueMotivo}
 
   🥳 ¡Los esperamos! ✨`;
           } else {
@@ -594,7 +621,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${formatearHora(citaEditando.hora_inicio)}*
   💜 ${getServicioConMotivo(citaEditando)}
-  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}
+  ✨ ${getTerapeutaNombre(citaEditando)}${mensajeUltimaSesion}${mensajePago}${bloqueMotivo}
 
   🥳 ¡Lo esperamos! ✨`;
           }
@@ -655,9 +682,13 @@ const ModalAgendarCita = ({
         servicioNombre = 'Reunión Clínica';
       }
 
+      let motivoNombreSel = '';
       if (formularioCita.motivo_id && motivos.length) {
         const motivoObj = motivos.find(m => m.id === parseInt(formularioCita.motivo_id));
-        if (motivoObj?.nombre) servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
+        if (motivoObj?.nombre) {
+          servicioNombre = `${servicioNombre} - ${motivoObj.nombre}`;
+          motivoNombreSel = motivoObj.nombre;
+        }
       }
 
       let terapeutaNombre = 'Terapeuta no especificado';
@@ -668,6 +699,7 @@ const ModalAgendarCita = ({
       }
 
       const mensajePago = '';
+      const bloqueMotivo = getBloqueInfoMotivo(motivoNombreSel);
 
       let mensaje;
       if (tieneResponsable) {
@@ -676,7 +708,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${horaFormateada}*
   💜 ${servicioNombre}
-  ✨ ${terapeutaNombre}${mensajePago}
+  ✨ ${terapeutaNombre}${mensajePago}${bloqueMotivo}
 
   🥳 ¡Los esperamos! ✨`;
       } else {
@@ -685,7 +717,7 @@ const ModalAgendarCita = ({
   🗓️ *${diaSemana}, ${dia} de ${mes}*
   🕓 *${horaFormateada}*
   💜 ${servicioNombre}
-  ✨ ${terapeutaNombre}${mensajePago}
+  ✨ ${terapeutaNombre}${mensajePago}${bloqueMotivo}
 
   🥳 ¡Lo esperamos! ✨`;
       }
@@ -3992,7 +4024,11 @@ const handleGuardar = useCallback(async (comoSolicitud = false) => {
                                       <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
                                       {cita.fecha ? (
                                         <span className="text-sm font-medium text-gray-900">
-                                          {new Date(cita.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                          {(() => {
+                                            // Parsear como fecha LOCAL para no retroceder un día (UTC-5).
+                                            const [y, m, d] = cita.fecha.slice(0, 10).split('-').map(Number);
+                                            return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                                          })()}
                                         </span>
                                       ) : (
                                         <span className="text-sm text-gray-400 italic">Por agendar</span>

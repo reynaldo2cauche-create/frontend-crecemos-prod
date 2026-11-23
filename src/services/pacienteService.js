@@ -153,3 +153,8 @@ export const eliminarPacienteDeRaiz = async (pacienteId, motivo) => {
   });
   return response.data;
 }
+
+export const getPuntosPublicos = async (dni) => {
+  const response = await api.get(`/beneficios/publico/puntos/${dni}`);
+  return response.data;
+};

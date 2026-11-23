@@ -115,6 +115,15 @@ const menuSections = [
       },
     ],
   },
+  // Oculto temporalmente: "Crecemos Beneficios" aún no está listo. Reactivar cuando se termine.
+  // {
+  //   title: 'Crecemos Beneficios',
+  //   icon: GiftIcon,
+  //   roles: [ROLES.ADMINISTRADOR, ROLES.ADMISION],
+  //   items: [
+  //     { text: 'Catálogo de premios', path: '/intranet/beneficios/catalogo', icon: GiftIcon, roles: [ROLES.ADMINISTRADOR] },
+  //   ],
+  // },
   {
     title: 'Marketing',
     icon: BellAlertIcon,
